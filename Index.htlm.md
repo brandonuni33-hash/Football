@@ -1,0 +1,25 @@
+<!DOCTYPE html>  
+<html lang="fr" class="dark">  
+<head>  
+  <meta charset="UTF-8" />  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />  
+  <title>Football Career RPG</title>  
+  <script src="https://cdn.tailwindcss.com"></script>  
+  <script>  
+    tailwind.config = {  
+      darkMode: 'class',  
+      theme: {  
+        extend: {  
+          colors: { brand: { 500: '#22c55e', 600: '#16a34a', 700: '#15803d' } }  
+        }  
+      }  
+    }  
+  </script>  
+</head>  
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased pb-12">  
+  
+  <div id="app" class="max-w-4xl mx-auto p-4 md:p-6"></div>  
+  
+  <script src="app.js"></script>  
+</body>  
+</html>  
