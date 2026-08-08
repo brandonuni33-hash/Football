@@ -1,3 +1,16 @@
+// --- FONCTION DE GÉREZ LA CLÉ API EN LOCAL ---
+
+function getApiKey() {
+  let key = localStorage.getItem('gemini_api_key');
+  if (!key) {
+    key = prompt("Entre ta clé API Google AI Studio pour activer le moteur narratif :");
+    if (key) {
+      localStorage.setItem('gemini_api_key', key.trim());
+    }
+  }
+  return key;
+}
+
 // --- 1. DONNÉES & STRUCTURE DE BASE ---
 
 const POSITIONS = [
@@ -128,9 +141,12 @@ const STAFF_DATA = {
   ]
 };
 
-// --- FONCTION DE GÉNÉRATION PAR IA (AVEC TA CLÉ INTÉGRÉE) ---
+// --- FONCTION DE GÉNÉRATION PAR IA (UTILISANT LA CLÉ LOCALE) ---
 
 async function generateAIEvents(playerState) {
+  const apiKey = getApiKey();
+  if (!apiKey) return null;
+
   const prompt = `
     Tu es le moteur narratif d'un RPG textuel de football ultra-réaliste.
     Voici l'état actuel du joueur :
@@ -160,7 +176,6 @@ async function generateAIEvents(playerState) {
     }
   `;
 
-  const apiKey = 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
   try {
@@ -335,7 +350,6 @@ function hireStaff(category, level) {
   render();
 }
 
-// Fonction asynchrone pour avancer la semaine et déclencher l'appel IA
 async function advanceWeek() {
   state.player.week += 1;
   state.player.balance += state.player.weeklySalary;
@@ -345,7 +359,6 @@ async function advanceWeek() {
     state.player.age += 1;
   }
 
-  // Simulation des performances de match
   if (Math.random() < 0.6) {
     if (['bu', 'ad', 'ag', 'moc'].includes(state.player.position)) {
       if (Math.random() > 0.5) state.player.coach.currentGoals += 1;
@@ -355,7 +368,6 @@ async function advanceWeek() {
     }
   }
 
-  // Prélèvement du staff mensuel
   if (state.player.week % 4 === 0) {
     let totalStaffCost = 
       STAFF_DATA.physio[state.player.staff.physio].cost +
@@ -366,7 +378,6 @@ async function advanceWeek() {
     state.player.balance -= totalStaffCost;
   }
 
-  // Appel de l'IA Gemini pour l'événement de la semaine
   if (Math.random() < 0.7) {
     state.activeEvent = await generateAIEvents(state.player);
   } else {
@@ -408,7 +419,7 @@ function render() {
   if (!state.player) {
     app.innerHTML = `
       <div class="max-w-xl mx-auto my-6 p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 text-white shadow-xl">
-        <h1 class="text-xl font-black text-center text-emerald-400 uppercase tracking-wider">Création du Joueur & Carrière (Gemini Connecté)</h1>
+        <h1 class="text-xl font-black text-center text-emerald-400 uppercase tracking-wider">Création du Joueur & Carrière (Gemini Sécurisé)</h1>
         
         <div class="grid grid-cols-2 gap-3">
           <div>
