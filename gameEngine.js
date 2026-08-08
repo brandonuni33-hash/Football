@@ -17,6 +17,15 @@ export class GameEngine {
         const initialOvr = 60;
         const potentialOvr = initialOvr + Math.floor(Math.random() * 15) + 10;
 
+        // Création d'un objet joueur temporaire pour calculer l'offre financière
+        const tempPlayerForEconomy = {
+            overall: initialOvr,
+            age: 16
+        };
+
+        // Calcul du contrat via EconomyManager (salaire 100-300€ et bonus)
+        const contract = EconomyManager.calculateContractOffer(selectedData.youthClub, tempPlayerForEconomy);
+
         this.state = {
             player: {
                 firstname: selectedData.firstname,
@@ -24,7 +33,7 @@ export class GameEngine {
                 position: selectedData.position,
                 age: 16,
                 club: selectedData.youthClub.name,
-                salary: selectedData.youthClub.salary,
+                salary: contract.weeklySalary, // Salaire aligné sur economy.js
                 overall: initialOvr,
                 fame: 10,
                 morale: 80,
@@ -50,7 +59,7 @@ export class GameEngine {
                 }
             },
             career: {
-                balance: selectedData.youthClub.signingBonus || 1500
+                balance: contract.signingBonus || 1500 // Prime à la signature dynamique
             },
             // Calendrier simplifié : 1 bloc = 1 mois
             calendar: {
@@ -85,11 +94,14 @@ export class GameEngine {
         // 1. Simulation du bloc de 4 matchs via matchBlock.js
         const report = MatchBlockManager.simulateBlock(this.state);
         
-        // 2. Génération de stats annexes pour le bloc (passes et tacles)
+        // 2. Gestion financière du mois via EconomyManager (Salaire + Primes + Sponsors éventuels)
+        const financialReport = EconomyManager.processBlockFinances(this.state, report.summary);
+
+        // 3. Génération de stats annexes pour le bloc (passes et tacles)
         const blockPasses = Math.floor(Math.random() * 40) + 20;
         const blockTackles = Math.floor(Math.random() * 12) + 3;
 
-        // 3. Mise à jour des statistiques globales de la saison
+        // 4. Mise à jour des statistiques globales de la saison
         const stats = this.state.player.stats;
         const prevMatches = stats.matchesPlayed;
         const newTotalMatches = prevMatches + 4;
@@ -105,7 +117,7 @@ export class GameEngine {
             (((stats.averageRating * prevMatches) + (report.summary.rating * 4)) / newTotalMatches).toFixed(1)
         );
 
-        // 4. Avancer d'un mois dans le calendrier
+        // 5. Avancer d'un mois dans le calendrier
         const cal = this.state.calendar;
         if (cal.currentMonth < cal.totalMonths) {
             cal.currentMonth++;
@@ -117,9 +129,11 @@ export class GameEngine {
 
         console.log(`Mois ${cal.currentMonth - 1} terminé. Passage au mois ${cal.currentMonth} (${cal.currentPeriod})`);
         console.log("Rapport du bloc :", report);
+        console.log("Bilan financier :", financialReport);
 
         return {
             report,
+            financialReport,
             calendar: {
                 month: cal.currentMonth - 1,
                 period: cal.currentPeriod
