@@ -5,7 +5,7 @@ export const MatchBlockManager = {
     /**
      * Simule un bloc de 4 matchs en tenant compte des attributs cachés du joueur
      * @param {Object} state - L'état global du joueur/carrière
-     * @returns {Object} - Le rapport complet du bloc (résultats, finances, blessure)
+     * @returns {Object} - Le rapport complet du bloc (résultats, finances, blessure, résumé)
      */
     simulateBlock(state) {
         const player = state.player;
@@ -13,9 +13,9 @@ export const MatchBlockManager = {
         // Sécurité : initialisation des attributs cachés s'ils n'existent pas encore
         if (!player.attributes) {
             player.attributes = {
-                consistency: Math.floor(Math.random() * 15) + 5,      // Entre 5 et 20
-                bigMatchPlayer: Math.floor(Math.random() * 15) + 5,   // Entre 5 et 20
-                injuryProneness: Math.floor(Math.random() * 15) + 5   // Entre 5 et 20
+                consistency: Math.floor(Math.random() * 8) + 8,      // Entre 8 et 15
+                bigMatchPlayer: Math.floor(Math.random() * 8) + 8,   // Entre 8 et 15
+                injuryProneness: Math.floor(Math.random() * 10) + 6  // Entre 6 et 15
             };
         }
 
@@ -24,7 +24,7 @@ export const MatchBlockManager = {
         // 1. Calcul de la Constance (Impact sur la volatilité des notes)
         const volatility = 4.0 - (attrs.consistency / 20 * 2.5); 
 
-        // 2. Gestion du risque de blessure (pondéré, pas systématique)
+        // 2. Gestion du risque de blessure (pondéré)
         const baseInjuryRisk = (21 - attrs.injuryProneness) * 0.15; 
         const fatigueMultiplier = (player.fitness || 80) < 50 ? 2 : 1; 
         const finalInjuryChance = baseInjuryRisk * fatigueMultiplier;
@@ -47,24 +47,30 @@ export const MatchBlockManager = {
         const totalAssists = results.reduce((acc, m) => acc + m.assists, 0);
         const avgRating = parseFloat((results.reduce((acc, m) => acc + m.rating, 0) / 4).toFixed(1));
 
-        // 5. Mise à jour de l'économie (primes de performance)
-        const financeReport = EconomyManager.processWeeklyFinances(state, {
+        // Résumé pour l'évolution et les rapports
+        const blockSummary = {
             rating: avgRating,
             goals: totalGoals,
             assists: totalAssists
-        });
+        };
+
+        // 5. Mise à jour de l'économie (primes de performance)
+        const financeReport = EconomyManager.processWeeklyFinances(state, blockSummary);
 
         // 6. Impact sur le joueur (Moral, Fitness et État de santé)
         const moraleImpact = avgRating >= 7.0 ? 5 : -3;
         player.morale = Math.min(100, Math.max(0, (player.morale || 50) + moraleImpact));
         player.fitness = Math.min(100, Math.max(0, (player.fitness || 80) - 5));
         
+        player.isInjured = isInjured;
         if (isInjured) {
-            player.isInjured = true;
             player.morale = Math.max(0, player.morale - 15);
         }
 
-        // 7. Retour du rapport complet pour l'affichage
+        // 7. Évolution dynamique des attributs cachés
+        this.updateHiddenAttributes(player, blockSummary);
+
+        // 8. Retour du rapport complet pour l'affichage dans l'UI
         return {
             results,
             isInjured,
@@ -75,5 +81,29 @@ export const MatchBlockManager = {
                 finance: financeReport
             }
         };
+    },
+
+    /**
+     * Fait évoluer les attributs cachés du joueur en fonction de ses performances
+     */
+    updateHiddenAttributes(player, blockSummary) {
+        const attrs = player.attributes;
+
+        // Évolution de la CONSTANCE
+        if (blockSummary.rating >= 7.0 && Math.random() < 0.4) {
+            if (attrs.consistency < 20) attrs.consistency++;
+        } else if (blockSummary.rating < 5.5 && Math.random() < 0.3) {
+            if (attrs.consistency > 1) attrs.consistency--;
+        }
+
+        // Évolution de MATCH IMPORTANT (Big Match Player)
+        if ((blockSummary.goals > 0 || blockSummary.rating >= 8.0) && Math.random() < 0.25) {
+            if (attrs.bigMatchPlayer < 20) attrs.bigMatchPlayer++;
+        }
+
+        // Évolution de la RÉSISTANCE AUX BLESSURES
+        if (!player.isInjured && Math.random() < 0.15) {
+            if (attrs.injuryProneness < 20) attrs.injuryProneness++;
+        }
     }
 };
