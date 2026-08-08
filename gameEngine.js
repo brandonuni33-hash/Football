@@ -4,7 +4,7 @@ import { MatchBlockManager } from './matchBlock.js';
 import { EconomyManager } from './economy.js';
 import { SocialSystem } from './social.js';
 import { MediaSystem } from './media.js';
-import { EventEngine } from './events.js'; // 1. Import du module d'événements
+import { EventEngine } from './events.js';
 
 export class GameEngine {
     constructor() {
@@ -18,8 +18,9 @@ export class GameEngine {
      * Appelé par l'UI à la fin de l'étape 5 pour lancer la carrière
      */
     startCareer(selectedData) {
-        const initialOvr = 60;
-        const potentialOvr = initialOvr + Math.floor(Math.random() * 15) + 10;
+        // Récupère le vrai général (35-45) et le potentiel aléatoire générés dans player.js
+        const initialOvr = selectedData.ovr || Math.floor(Math.random() * 11) + 35;
+        const potentialOvr = selectedData.pot || initialOvr + Math.floor(Math.random() * 25) + 15;
 
         const tempPlayerForEconomy = {
             overall: initialOvr,
@@ -30,20 +31,28 @@ export class GameEngine {
 
         this.state = {
             player: {
-                firstname: selectedData.firstname,
-                lastname: selectedData.lastname,
+                firstname: selectedData.firstName || selectedData.firstname,
+                lastname: selectedData.lastName || selectedData.lastname,
                 position: selectedData.position,
                 age: 16,
                 club: selectedData.youthClub.name,
                 salary: contract.weeklySalary,
                 overall: initialOvr,
-                fame: 10,
+                fame: selectedData.stats?.reputation || 10,
                 morale: 80,
                 fitness: 90,
                 isInjured: false,
                 
-                // Statistiques de la saison
-                stats: {
+                // Attributs visibles et détaillés (Technique, Physique, Mental, Charisme, etc.)
+                stats: selectedData.stats || {
+                    technique: initialOvr,
+                    physique: initialOvr,
+                    mental: initialOvr,
+                    charisme: 50,
+                    reputation: 10,
+                    discipline: 50,
+                    relationCoach: 50,
+                    vestiaire: 50,
                     matchesPlayed: 0,
                     goals: 0,
                     assists: 0,
@@ -54,7 +63,7 @@ export class GameEngine {
                 potential: potentialOvr,
 
                 // Attributs cachés
-                attributes: {
+                attributes: selectedData.hidden || {
                     consistency: Math.floor(Math.random() * 8) + 8,
                     bigMatchPlayer: Math.floor(Math.random() * 8) + 8,
                     injuryProneness: Math.floor(Math.random() * 10) + 6
@@ -65,7 +74,7 @@ export class GameEngine {
             // Données média et réseaux sociaux initiales
             media: this.mediaSystem.initMediaData(),
             career: {
-                balance: contract.signingBonus || 1500
+                balance: 0 // <-- Départ strict à 0 €
             },
             calendar: {
                 currentMonth: 1,
@@ -105,8 +114,8 @@ export class GameEngine {
         // Génération des posts, de la hype et des dilemmes médias basés sur le rapport du bloc
         this.mediaSystem.generatePostAfterBlock(this.state, report);
 
-        // 2. Vérification et tirage au sort d'un événement aléatoire pondéré pour ce bloc
-        const triggeredEvent = EventEngine.checkAndTriggerEvent(this.state);
+        // Vérification et tirage au sort d'un événement aléatoire pondéré pour ce bloc
+        const triggeredEvent = EventEngine.checkAndTriggerEvent ? EventEngine.checkAndTriggerEvent(this.state) : null;
         if (triggeredEvent) {
             console.log("⚡ Événement déclenché :", triggeredEvent.titre);
             this.state.pendingEvent = triggeredEvent; // Stocke l'événement dans le state si besoin
