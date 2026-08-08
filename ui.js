@@ -81,11 +81,11 @@ export class UserInterface {
                         </div>
                     </div>
                 `;
-            case 2:
+            case 2
                 return `
                     <h2>Étape 2 : Origine</h2>
                     <p class="subtitle">Comment avez-vous façonné votre jeu ?</p>
-                    <div class="grid-origins">
+                    <div class="grid-origins-modern">
                         ${Object.values(ORIGINS).map(o => {
                             let emoji = '⚡';
                             const traitLower = o.trait ? o.trait.toLowerCase() : '';
@@ -95,15 +95,19 @@ export class UserInterface {
                             else if (traitLower.includes('vitesse') || traitLower.includes('rapide')) emoji = '🏃‍♂️';
 
                             return `
-                                <div class="card-select ${this.selectedData.origin === o.id ? 'selected' : ''}" data-origin="${o.id}">
-                                    <h3>${o.name}</h3>
-                                    <div class="trait-badge">${emoji} ${o.trait}</div>
-                                    <p>${o.desc}</p>
+                                <div class="origin-card-modern ${this.selectedData.origin === o.id ? 'selected' : ''}" data-origin="${o.id}">
+                                    <div class="origin-icon">${emoji}</div>
+                                    <div class="origin-info">
+                                        <h3>${o.name}</h3>
+                                        <span class="trait-tag">${o.trait}</span>
+                                        <p>${o.desc}</p>
+                                    </div>
                                 </div>
                             `;
                         }).join('')}
                     </div>
                 `;
+
             case 3:
                 return `
                     <h2>Étape 3 : Région & Pays</h2>
