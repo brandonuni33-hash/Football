@@ -81,12 +81,22 @@ export class UserInterface {
                     <h2>Étape 2 : Origine</h2>
                     <p class="subtitle">Comment avez-vous façonné votre jeu ?</p>
                     <div class="grid-origins">
-                        ${Object.values(ORIGINS).map(o => `
-                            <div class="card-select ${this.selectedData.origin === o.id ? 'selected' : ''}" data-origin="${o.id}">
-                                <h3>${o.name} <span class="trait-badge">${o.trait}</span></h3>
-                                <p>${o.desc}</p>
-                            </div>
-                        `).join('')}
+                        ${Object.values(ORIGINS).map(o => {
+                            let emoji = '⚡';
+                            const traitLower = o.trait ? o.trait.toLowerCase() : '';
+                            if (traitLower.includes('technique') || traitLower.includes('dribble')) emoji = '✨';
+                            else if (traitLower.includes('physique') || traitLower.includes('force')) emoji = '💪';
+                            else if (traitLower.includes('mental') || traitLower.includes('leader')) emoji = '🧠';
+                            else if (traitLower.includes('vitesse') || traitLower.includes('rapide')) emoji = '🏃‍♂️';
+
+                            return `
+                                <div class="card-select ${this.selectedData.origin === o.id ? 'selected' : ''}" data-origin="${o.id}">
+                                    <h3>${o.name}</h3>
+                                    <div class="trait-badge">${emoji} ${o.trait}</div>
+                                    <p>${o.desc}</p>
+                                </div>
+                            `;
+                        }).join('')}
                     </div>
                 `;
             case 3:
@@ -122,10 +132,9 @@ export class UserInterface {
                     </div>
                 `;
             case 5:
-                // Sélection aléatoire de 4 à 6 clubs de jeunes si ce n'est pas déjà fait
                 if (this.randomYouthClubs.length === 0) {
                     const shuffled = [...YOUTH_CLUBS_POOL].sort(() => 0.5 - Math.random());
-                    const count = Math.floor(Math.random() * 3) + 4; // Entre 4 et 6 clubs (4, 5 ou 6)
+                    const count = Math.floor(Math.random() * 3) + 4; // Entre 4 et 6 clubs
                     this.randomYouthClubs = shuffled.slice(0, count);
                 }
 
@@ -221,10 +230,9 @@ export class UserInterface {
                 card.classList.add('selected');
                 const clubName = card.getAttribute('data-club-name');
                 
-                // Attribution du club de jeunes choisi
                 this.selectedData.youthClub = this.randomYouthClubs.find(yc => yc.name === clubName);
                 
-                // Attribution automatique de la vision et du nom du coach selon l'offre du club
+                // Attribution automatique de la vision et du nom du coach
                 const randomVision = COACH_VISIONS[Math.floor(Math.random() * COACH_VISIONS.length)];
                 this.selectedData.coachVision = randomVision.title;
                 this.selectedData.coachName = COACH_NAMES[Math.floor(Math.random() * COACH_NAMES.length)];
