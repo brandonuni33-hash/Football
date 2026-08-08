@@ -1,16 +1,3 @@
-// --- FONCTION DE GÉREZ LA CLÉ API EN LOCAL ---
-
-function getApiKey() {
-  let key = localStorage.getItem('gemini_api_key');
-  if (!key) {
-    key = prompt("Entre ta clé API Google AI Studio pour activer le moteur narratif :");
-    if (key) {
-      localStorage.setItem('gemini_api_key', key.trim());
-    }
-  }
-  return key;
-}
-
 // --- 1. DONNÉES & STRUCTURE DE BASE ---
 
 const POSITIONS = [
@@ -54,42 +41,42 @@ const ORIGINS = [
     name: 'Centre de Formation', 
     desc: '+10% Mental/Tactique | Trait: Classique', 
     trait: 'Classique',
-    longDesc: "Issu des structures professionnelles pré-formatées, tu as bénéficié dès ton plus jeune âge d'un encadrement rigoureux, de terrains parfaits et de conseils tactiques poussés. Ton jeu est propre, académique et respectueux des consignes, mais il manque parfois de folie spontanée."
+    longDesc: "Issu des structures professionnelles pré-formatées, tu as bénéficié dès ton plus jeune âge d'un encadrement rigoureux et de conseils tactiques poussés."
   },
   { 
     id: 'amateur', 
     name: 'Club Amateur', 
     desc: '+10% Physique, -10% Tactique | Trait: Acharné', 
     trait: 'Acharné',
-    longDesc: "Formé sur des terrains difficiles sous la pluie, les mottes de terre et les tacles appuyés. Tu possèdes une caisse physique hors norme et un mental d'acier forgé dans la difficulté, même si tes premiers pas tactiques au haut niveau demanderont un temps d'adaptation."
+    longDesc: "Formé sur des terrains difficiles sous la pluie. Tu possèdes une caisse physique hors norme et un mental d'acier forgé dans la difficulté."
   },
   { 
     id: 'futsal', 
     name: 'Futsal', 
     desc: '+10% Dribble/Technique | Trait: Dribbleur Fin', 
     trait: 'Dribbleur Fin',
-    longDesc: "Le rectangle de parquet et le ballon lourd ont sculpté ton toucher de balle. Tu es un maître des espaces réduits, capable de sortir de situations impossibles par des feintes de corps, des contrôles orientés et une vista technique déconcertante."
+    longDesc: "Le rectangle de parquet et le ballon lourd ont sculpté ton toucher de balle et ta vista technique dans les espaces réduits."
   },
   { 
     id: 'tardif', 
     name: 'Débutant Tardif', 
     desc: '-5 OVR base | Trait: Poulain Brut', 
     trait: 'Poulain Brut',
-    longDesc: "Repéré tardivement dans les championnats loisirs ou de quartier, tu arrives dans le monde pro avec du retard sur les fondamentaux et un bagage technique brut. En contrepartie, ton potentiel de progression explosif et ta faim de réussite surprennent tous les observateurs."
+    longDesc: "Repéré tardivement dans les championnats loisirs, tu arrives dans le monde pro avec un bagage technique brut et un gros potentiel de progression."
   },
   { 
     id: 'street', 
     name: 'Street Football', 
     desc: '+10% Dribble | Trait: Instinct 1v1', 
     trait: 'Instinct 1v1',
-    longDesc: "Le bitume, les cages improvisées entre des sweats et les matches de rue permanents t'ont forgé un instinct de duel implacable. Tu n'as peur de personne, provoques sans cesse ton vis-à-vis et possèdes ce brin d'insolence propre aux virtuoses de la rue."
+    longDesc: "Le bitume et les matches de rue permanents t'ont forgé un instinct de duel implacable et un brin d'insolence."
   },
   { 
     id: 'athlete', 
     name: 'Athlète Polyvalent', 
     desc: '+15% Vitesse/Puissance | Trait: Moteur Hybride', 
     trait: 'Moteur Hybride',
-    longDesc: "Doté de dispositions athlétiques hors du commun dès l'adolescence, tu combines vitesse pure et coffre immense. Capable de répéter les efforts haute intensité pendant 90 minutes, tu compenses un placement parfois approximatif par un impact physique total."
+    longDesc: "Doté de dispositions athlétiques hors du commun, tu combines vitesse pure et coffre immense pour répéter les efforts."
   }
 ];
 
@@ -102,101 +89,13 @@ const BIG_LEAGUES_CLUBS = {
 };
 
 const CITIES_AND_CLUBS = [
-  { name: 'FC Girondins de Bordeaux', league: 'National / R1', tier: 'Amateur', minOvr: 0, coachName: 'Bruno Irles', coachStyle: 'Rigueur tactique et engagement physique total.', trainingQuality: 'Élevée (Historique formateur)', playtime: 'Élevé (Titulaire potentiel en jeunes)' },
-  { name: 'US Lormont', league: 'Régional 1', tier: 'Amateur', minOvr: 0, coachName: 'Mehdi Sabri', coachStyle: 'Jeu direct et transition rapide sur les côtés.', trainingQuality: 'Moyenne (Structure amateur)', playtime: 'Très Élevé (Temps de jeu garanti)' },
-  { name: 'Stade Bordelais', league: 'National 3', tier: 'Amateur', minOvr: 0, coachName: 'Antoine Verges', coachStyle: 'Bloc bas solide et contre-attaques rapides.', trainingQuality: 'Moyenne', playtime: 'Élevé' },
-  { name: 'Aviron Bayonnais', league: 'National 3', tier: 'Amateur', minOvr: 0, coachName: 'Landry Bordagaray', coachStyle: 'Générosité dans l’effort et jeu aérien.', trainingQuality: 'Moyenne', playtime: 'Élevé' },
-  { name: 'Bergerac Périgord FC', league: 'National 2', tier: 'Amateur', minOvr: 0, coachName: 'Yassine Azahaf', coachStyle: 'Solidité défensive et percussion sur les ailes.', trainingQuality: 'Bonne', playtime: 'Correct (Rotation régulière)' },
-  { name: 'Trélissac FC', league: 'National 3', tier: 'Amateur', minOvr: 0, coachName: 'Hervé Loubat', coachStyle: 'Discipline stricte et duels au milieu.', trainingQuality: 'Moyenne', playtime: 'Élevé' },
-  { name: 'Stade Montois', league: 'Régional 1', tier: 'Amateur', minOvr: 0, coachName: 'Cédric Pardeilhan', coachStyle: 'Jeu au sol et projection collective.', trainingQuality: 'Moyenne', playtime: 'Très Élevé' },
-  { name: 'Pau FC', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 45, coachName: 'Nicolas Usaï', coachStyle: 'Bloc compact en contre-attaque et solidité.', trainingQuality: 'Très Bonne (Centre pro certifié)', playtime: 'Modéré (Bassin de concurrence rude)' },
+  { name: 'FC Girondins de Bordeaux', league: 'National / R1', tier: 'Amateur', minOvr: 0, coachName: 'Bruno Irles', coachStyle: 'Rigueur tactique et engagement physique total.', trainingQuality: 'Élevée', playtime: 'Élevé' },
+  { name: 'US Lormont', league: 'Régional 1', tier: 'Amateur', minOvr: 0, coachName: 'Mehdi Sabri', coachStyle: 'Jeu direct et transition rapide.', trainingQuality: 'Moyenne', playtime: 'Très Élevé' },
+  { name: 'Pau FC', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 45, coachName: 'Nicolas Usaï', coachStyle: 'Bloc compact en contre-attaque.', trainingQuality: 'Très Bonne', playtime: 'Modéré' },
   { name: 'SC Bastia', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 48, coachName: 'Benoît Tavenot', coachStyle: 'Duels agressifs et mental de guerrier.', trainingQuality: 'Très Bonne', playtime: 'Modéré' },
-  { name: 'Stade Lavallois', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 42, coachName: 'Olivier Frapolli', coachStyle: 'Solidité défensive et pressing haut.', trainingQuality: 'Bonne', playtime: 'Correct' },
-  { name: 'En Avant Guingamp', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 46, coachName: 'Sylvain Ripoll', coachStyle: 'Transition rapide et utilisation de la largeur.', trainingQuality: 'Excellente (Réputation post-formation)', playtime: 'Modéré' },
-  { name: 'Grenoble Foot 38', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 44, coachName: 'Oswald Tanchot', coachStyle: 'Maîtrise tactique et patience dans la construction.', trainingQuality: 'Bonne', playtime: 'Correct' },
-  { name: 'Rodez Aveyron Football', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 43, coachName: 'Didier Santini', coachStyle: 'Impact physique et intensité de tous les instants.', trainingQuality: 'Bonne', playtime: 'Correct' },
-  { name: 'SM Caen', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 47, coachName: 'Hervé Chanelet', coachStyle: 'Jeu combiné et possession axiale.', trainingQuality: 'Excellente (Top formateur L2)', playtime: 'Modéré' },
-  { name: 'ESTAC Troyes', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 46, coachName: 'Stéphane Dumont', coachStyle: 'Créativité offensive et redoublements de passes.', trainingQuality: 'Excellente', playtime: 'Modéré' },
-  { name: 'US Le Mans', league: 'National', tier: 'D3', minOvr: 38, coachName: 'Patrick Videira', coachStyle: 'Fermeté défensive et projections en nombre.', trainingQuality: 'Bonne', playtime: 'Élevé' },
-  { name: 'AS Nancy Lorraine', league: 'National', tier: 'D3', minOvr: 39, coachName: 'Pablo Correa', coachStyle: 'Mentalité de fer, duels et grinta.', trainingQuality: 'Bonne', playtime: 'Élevé' },
-  { name: 'US Orléans', league: 'National', tier: 'D3', minOvr: 37, coachName: 'Hervé Della Maggiore', coachStyle: 'Équilibre et rigueur tactique rigoureuse.', trainingQuality: 'Moyenne / Bonne', playtime: 'Élevé' },
-  { name: 'Valenciennes FC', league: 'National', tier: 'D3', minOvr: 38, coachName: 'Ahmed Kantari', coachStyle: 'Relance propre et pressing coordonné.', trainingQuality: 'Très Bonne (Historique pro)', playtime: 'Élevé' },
-  { name: 'FC Sochaux-Montbéliard', league: 'National', tier: 'D3', minOvr: 40, coachName: 'Karim Mokeddem', coachStyle: 'Jeu technique au sol et percussion offensive.', trainingQuality: 'Excellente (Légendaire centre formateur)', playtime: 'Élevé' },
-  { name: 'Dijon FCO', league: 'National', tier: 'D3', minOvr: 39, coachName: 'Baptiste Ridira', coachStyle: 'Ambitieux, jeu vertical et intensité.', trainingQuality: 'Bonne', playtime: 'Élevé' },
-  { name: 'Aubagne FC', league: 'National', tier: 'D3', minOvr: 36, coachName: 'Maxime D’Ornano', coachStyle: 'Bloc solide et solidarité exemplaire.', trainingQuality: 'Moyenne', playtime: 'Très Élevé' },
-  { name: 'US Concarneau', league: 'National', tier: 'D3', minOvr: 37, coachName: 'Stéphane Le Mignan', coachStyle: 'Discipline collective et contre-éclair.', trainingQuality: 'Moyenne', playtime: 'Élevé' },
-  { name: 'Châteauroux', league: 'National', tier: 'D3', minOvr: 36, coachName: 'Patrice Lair', coachStyle: 'Rigidité tactique et duels au sol.', trainingQuality: 'Bonne', playtime: 'Élevé' },
-  { name: 'Quevilly Rouen Métropole', league: 'National', tier: 'D3', minOvr: 37, coachName: 'David Carré', coachStyle: 'Jeu direct et agressivité positive.', trainingQuality: 'Moyenne', playtime: 'Élevé' },
-  { name: 'Bromley FC', league: 'EFL League Two', tier: 'D4', minOvr: 40, coachName: 'Andy Woodman', coachStyle: 'Jeu physique à l’anglaise et duels aériens.', trainingQuality: 'Moyenne', playtime: 'Élevé' },
-  { name: 'Salford City', league: 'EFL League Two', tier: 'D4', minOvr: 43, coachName: 'Karl Robinson', coachStyle: 'Possession et projection rapide vers l’avant.', trainingQuality: 'Bonne', playtime: 'Correct' },
-  { name: 'Notts County', league: 'EFL League Two', tier: 'D4', minOvr: 42, coachName: 'Stuart Maynard', coachStyle: 'Jeu ultra offensif inspiré du tiki-taka bas.', trainingQuality: 'Bonne', playtime: 'Correct' },
-  { name: 'Wrexham AFC', league: 'EFL League One', tier: 'D3', minOvr: 46, coachName: 'Phil Parkinson', coachStyle: 'Puissance physique, engagement et mentalité de vainqueur.', trainingQuality: 'Bonne', playtime: 'Modéré (Effectif dense)' },
-  { name: 'Stockport County', league: 'EFL League One', tier: 'D3', minOvr: 45, coachName: 'Dave Challinor', coachStyle: 'Bloc haut et agressivité dans les transmissions.', trainingQuality: 'Bonne', playtime: 'Correct' },
-  { name: 'Mansfield Town', league: 'EFL League One', tier: 'D3', minOvr: 43, coachName: 'Nigel Clough', coachStyle: 'Expérience, pragmatisme et réalisme froid.', trainingQuality: 'Moyenne / Bonne', playtime: 'Correct' },
-  { name: 'Chesterfield FC', league: 'EFL League Two', tier: 'D4', minOvr: 41, coachName: 'Paul Cook', coachStyle: 'Attaque placée et mouvements constants.', trainingQuality: 'Bonne', playtime: 'Élevé' },
-  { name: 'Barnet FC', league: 'National League', tier: 'D5', minOvr: 35, coachName: 'Dean Brennan', coachStyle: 'Pressing tout terrain et vitesse sur les ailes.', trainingQuality: 'Basique', playtime: 'Très Élevé' },
-  { name: 'Oldham Athletic', league: 'National League', tier: 'D5', minOvr: 35, coachName: 'Micky Mellon', coachStyle: 'Fermeté défensive et engagement total.', trainingQuality: 'Basique', playtime: 'Très Élevé' },
-  { name: 'Southend United', league: 'National League', tier: 'D5', minOvr: 34, coachName: 'Kevin Maher', coachStyle: 'Solidité face aux gros et jeu direct.', trainingQuality: 'Basique', playtime: 'Très Élevé' },
-  { name: 'York City', league: 'National League', tier: 'D5', minOvr: 35, coachName: 'Adam Hinshelwood', coachStyle: 'Construction propre et audace tactique.', trainingQuality: 'Basique', playtime: 'Très Élevé' },
-  { name: 'Gillingham FC', league: 'EFL League Two', tier: 'D4', minOvr: 40, coachName: 'Mark Bonner', coachStyle: 'Bloc hermétique et contres fulgurants.', trainingQuality: 'Moyenne', playtime: 'Élevé' },
-  { name: 'Fleetwood Town', league: 'EFL League Two', tier: 'D4', minOvr: 41, coachName: 'Charlie Adam', coachStyle: 'Créativité au milieu et pressing intense.', trainingQuality: 'Bonne (Infrastructures modernes)', playtime: 'Élevé' },
-  { name: 'Bradford City', league: 'EFL League Two', tier: 'D4', minOvr: 42, coachName: 'Graham Alexander', coachStyle: 'Impact athlétique et ferveur populaire.', trainingQuality: 'Moyenne', playtime: 'Correct' },
-  { name: 'Doncaster Rovers', league: 'EFL League Two', tier: 'D4', minOvr: 42, coachName: 'Grant McCann', coachStyle: 'Jeu léché et redoublement de passes courtes.', trainingQuality: 'Bonne', playtime: 'Correct' },
-  { name: 'Leyton Orient', league: 'EFL League One', tier: 'D3', minOvr: 44, coachName: 'Richie Wellens', coachStyle: 'Maîtrise du tempo et possession dynamique.', trainingQuality: 'Bonne', playtime: 'Modéré' },
-  { name: 'Lincoln City', league: 'EFL League One', tier: 'D3', minOvr: 44, coachName: 'Michael Skubala', coachStyle: 'Organisation rigoureuse et transition chirurgicale.', trainingQuality: 'Bonne', playtime: 'Modéré' },
-  { name: 'Blackpool FC', league: 'EFL League One', tier: 'D3', minOvr: 46, coachName: 'Steve Bruce', coachStyle: 'Expérience tactique et pragmatisme absolu.', trainingQuality: 'Très Bonne', playtime: 'Modéré' },
-  { name: 'Charlton Athletic', league: 'EFL League One', tier: 'D3', minOvr: 47, coachName: 'Nathan Jones', coachStyle: 'Intensité physique et duels gagnés.', trainingQuality: 'Excellente (Historique academy PL)', playtime: 'Modéré' },
-  { name: 'Huddersfield Town', league: 'EFL League One', tier: 'D3', minOvr: 48, coachName: 'Michael Duff', coachStyle: 'Bloc équipe très resserré et discipline de fer.', trainingQuality: 'Excellente', playtime: 'Modéré' },
-  { name: 'CD Castellón', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 50, coachName: 'Dick Schreuder', coachStyle: 'Possession audacieuse et prise de risque.', trainingQuality: 'Très Bonne', playtime: 'Faible à Modéré' },
-  { name: 'CD Mirandés', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 44, coachName: 'Alessio Lisci', coachStyle: 'Bloc bas ultra discipliné et contres fulgurants.', trainingQuality: 'Bonne', playtime: 'Correct' },
-  { name: 'SD Huesca', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 45, coachName: 'Antonio Hidalgo', coachStyle: 'Solidité défensive et transitions rapides.', trainingQuality: 'Bonne', playtime: 'Correct' },
-  { name: 'Racing de Ferrol', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 43, coachName: 'Cristóbal Parralo', coachStyle: 'Organisation rigoureuse et solidarité.', trainingQuality: 'Moyenne / Bonne', playtime: 'Correct' },
-  { name: 'Burgos CF', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 46, coachName: 'Jon Pérez Bolo', coachStyle: 'Muraille défensive et réalisme offensif.', trainingQuality: 'Bonne', playtime: 'Modéré' },
-  { name: 'Real Zaragoza', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 49, coachName: 'Víctor Fernández', coachStyle: 'Jeu ambitieux tourné vers l’offensive.', trainingQuality: 'Excellente', playtime: 'Faible' },
-  { name: 'Sporting de Gijón', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 48, coachName: 'Rubén Albés', coachStyle: 'Verticalité, intensité et ferveur des supporters.', trainingQuality: 'Excellente (Mareo academy)', playtime: 'Modéré' },
-  { name: 'Cádiz CF', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 50, coachName: 'Paco López', coachStyle: 'Bloc compact et contre-attaques foudroyantes.', trainingQuality: 'Très Bonne', playtime: 'Faible' },
-  { name: 'Granada CF', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 51, coachName: 'Guille Abascal', coachStyle: 'Domination technique et animation sur les côtés.', trainingQuality: 'Très Bonne', playtime: 'Faible' },
-  { name: 'Albacete Balompié', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 45, coachName: 'Alberto González', coachStyle: 'Audace et liberté créative au milieu.', trainingQuality: 'Bonne', playtime: 'Correct' },
-  { name: 'CD Tenerife', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 46, coachName: 'Pepe Mel', coachStyle: 'Expérience, équilibre et solidité à domicile.', trainingQuality: 'Bonne', playtime: 'Modéré' },
-  { name: 'FC Andorra', league: 'Primera RFEF', tier: 'D3', minOvr: 40, coachName: 'Ferran Costa', coachStyle: 'Tiki-taka inspiré et possession stérile interdite.', trainingQuality: 'Très Bonne (Philosophie Barça)', playtime: 'Élevé' },
-  { name: 'Real Murcia', league: 'Primera RFEF', tier: 'D3', minOvr: 38, coachName: 'Fran Fernández', coachStyle: 'Pression constante et impact physique.', trainingQuality: 'Bonne', playtime: 'Élevé' },
-  { name: 'Cultural Leonesa', league: 'Primera RFEF', tier: 'D3', minOvr: 37, coachName: 'Raúl Llona', coachStyle: 'Jeu combiné et rigueur tactique.', trainingQuality: 'Moyenne', playtime: 'Élevé' },
-  { name: 'UD Ibiza', league: 'Primera RFEF', tier: 'D3', minOvr: 39, coachName: 'Josep Alcácer', coachStyle: 'Maîtrise technique et transition rapide.', trainingQuality: 'Bonne', playtime: 'Élevé' },
-  { name: 'Viktoria Köln', league: '3. Liga', tier: 'D3', minOvr: 38, coachName: 'Olaf Janßen', coachStyle: 'Discipline allemande et jeu de transition.', trainingQuality: 'Bonne', playtime: 'Élevé' },
-  { name: 'Dynamo Dresden', league: '3. Liga', tier: 'D3', minOvr: 42, coachName: 'Thomas Stamm', coachStyle: 'Pressing étouffant et intensité maximale.', trainingQuality: 'Très Bonne', playtime: 'Correct' },
-  { name: 'Arminia Bielefeld', league: '3. Liga', tier: 'D3', minOvr: 40, coachName: 'Mitch Kniat', coachStyle: 'Solidité défensive et jeu direct.', trainingQuality: 'Bonne', playtime: 'Élevé' },
-  { name: 'FC Ingolstadt 04', league: '3. Liga', tier: 'D3', minOvr: 39, coachName: 'Sabrina Wittmann', coachStyle: 'Rigueur tactique et occupation rationnelle du terrain.', trainingQuality: 'Excellente (Infrastructures pro)', playtime: 'Élevé' },
-  { name: 'Hansa Rostock', league: '3. Liga', tier: 'D3', minOvr: 41, coachName: 'Bernd Hollerbach', coachStyle: 'Duels physiques intenses et engagement total.', trainingQuality: 'Bonne', playtime: 'Correct' },
-  { name: 'TSV 1860 Munich', league: '3. Liga', tier: 'D3', minOvr: 41, coachName: 'Argirios Giannikis', coachStyle: 'Ferveur, mentalité de combat et jeu vertical.', trainingQuality: 'Très Bonne', playtime: 'Correct' },
-  { name: 'SV Sandhausen', league: '3. Liga', tier: 'D3', minOvr: 39, coachName: 'Sahr Senesie', coachStyle: 'Bloc bas et efficacité redoutable sur coup de pied arrêté.', trainingQuality: 'Bonne', playtime: 'Élevé' },
-  { name: 'Rot-Weiss Essen', league: '3. Liga', tier: 'D3', minOvr: 38, coachName: 'Christoph Dabrowski', coachStyle: 'Jeu engagé porté par un public bouillant.', trainingQuality: 'Moyenne', playtime: 'Élevé' },
-  { name: 'SV Elversberg', league: '2. Bundesliga', tier: 'D2', minOvr: 45, coachName: 'Horst Steffen', coachStyle: 'Football ultra offensif, beau à voir et audacieux.', trainingQuality: 'Très Bonne', playtime: 'Modéré' },
-  { name: 'SC Paderborn 07', league: '2. Bundesliga', tier: 'D2', minOvr: 47, coachName: 'Lukas Kwasniok', coachStyle: 'Pressing haut ultra agressif et verticalité folle.', trainingQuality: 'Excellente', playtime: 'Modéré' },
-  { name: 'SSV Ulm 1846', league: '2. Bundesliga', tier: 'D2', minOvr: 43, coachName: 'Thomas Wörle', coachStyle: 'Solidité collective et esprit de solidarité.', trainingQuality: 'Bonne', playtime: 'Correct' },
-  { name: 'Preußen Münster', league: '2. Bundesliga', tier: 'D2', minOvr: 42, coachName: 'Sascha Hildmann', coachStyle: 'Discipline de fer et contre-attaques chirurgicales.', trainingQuality: 'Bonne', playtime: 'Correct' },
-  { name: 'Fortuna Düsseldorf', league: '2. Bundesliga', tier: 'D2', minOvr: 50, coachName: 'Daniel Thioune', coachStyle: 'Maîtrise technique et ambition de remontée.', trainingQuality: 'Excellente', playtime: 'Faible' },
-  { name: 'Hannover 96', league: '2. Bundesliga', tier: 'D2', minOvr: 49, coachName: 'Stefan Leitl', coachStyle: 'Équilibre parfait entre possession et rigueur.', trainingQuality: 'Excellente', playtime: 'Faible à Modéré' },
-  { name: '1. FC Nürnberg', league: '2. Bundesliga', tier: 'D2', minOvr: 48, coachName: 'Miroslav Klose', coachStyle: 'Précision dans la zone de vérité et jeu combiné.', trainingQuality: 'Excellente (Centre légendaire)', playtime: 'Modéré' },
-  { name: 'US Salernitana', league: 'Serie B', tier: 'D2', minOvr: 48, coachName: 'Giovanni Martusciello', coachStyle: 'Ferveur du Sud, intensité et créativité technique.', trainingQuality: 'Très Bonne', playtime: 'Modéré' },
-  { name: 'Sassuolo Calcio', league: 'Serie B', tier: 'D2', minOvr: 51, coachName: 'Fabio Grosso', coachStyle: 'Jeu de possession léché et domination territoriale.', trainingQuality: 'Exceptionnelle (Top ref formation en Italie)', playtime: 'Faible' },
-  { name: 'Spezia Calcio', league: 'Serie B', tier: 'D2', minOvr: 46, coachName: 'Luca D’Angelo', coachStyle: 'Bloc compact, agressivité et contres rapides.', trainingQuality: 'Bonne', playtime: 'Modéré' },
-  { name: 'Pisa SC', league: 'Serie B', tier: 'D2', minOvr: 47, coachName: 'Filippo Inzaghi', coachStyle: 'Réalisme offensif, grinta et opportunisme.', trainingQuality: 'Bonne', playtime: 'Modéré' },
-  { name: 'Brescia Calcio', league: 'Serie B', tier: 'D2', minOvr: 46, coachName: 'Rolando Maran', coachStyle: 'Catenaccio moderne et rigueur tactique italienne.', trainingQuality: 'Excellente (Historique de grands talents)', playtime: 'Modéré' },
-  { name: 'AC Reggiana', league: 'Serie B', tier: 'D2', minOvr: 44, coachName: 'William Viali', coachStyle: 'Organisation rigoureuse et solidarité défensive.', trainingQuality: 'Bonne', playtime: 'Correct' },
-  { name: 'FC Südtirol', league: 'Serie B', tier: 'D2', minOvr: 43, coachName: 'Federico Valente', coachStyle: 'Discipline autrichienne, bloc bas et efficacité.', trainingQuality: 'Bonne', playtime: 'Correct' },
-  { name: 'Modena FC', league: 'Serie B', tier: 'D2', minOvr: 45, coachName: 'Pierpaolo Bisoli', coachStyle: 'Agressivité saine, duels et verticalité.', trainingQuality: 'Bonne', playtime: 'Correct' },
-  { name: 'Calcio Padova', league: 'Serie C', tier: 'D3', minOvr: 39, coachName: 'Matteo Andreoletti', coachStyle: 'Équilibre, rigueur et ambition de montée.', trainingQuality: 'Bonne', playtime: 'Élevé' },
-  { name: 'Vicenza Calcio', league: 'Serie C', tier: 'D3', minOvr: 39, coachName: 'Stefano Vecchi', coachStyle: 'Jeu direct, impact physique et expérience.', trainingQuality: 'Bonne', playtime: 'Élevé' },
-  { name: 'Catania FC', league: 'Serie C', tier: 'D3', minOvr: 40, coachName: 'Domenico Toscano', coachStyle: 'Pression populaire, grinta et solidité.', trainingQuality: 'Moyenne / Bonne', playtime: 'Élevé' },
-  { name: 'Benevento Calcio', league: 'Serie C', tier: 'D3', minOvr: 41, coachName: 'Gaetano Auteri', coachStyle: 'Offensif, audacieux et jeu court.', trainingQuality: 'Très Bonne', playtime: 'Élevé' },
-  { name: 'FC Lausanne-Sport', league: 'Super League (Suisse)', tier: 'D1', minOvr: 46, coachName: 'Ludovic Magnin', coachStyle: 'Intensité physique et transition rapide vers l’avant.', trainingQuality: 'Très Bonne', playtime: 'Modéré' },
-  { name: 'FC St. Gallen', league: 'Super League (Suisse)', tier: 'D1', minOvr: 47, coachName: 'Enrico Maassen', coachStyle: 'Pressing haut ultra intense et spectacle offensif.', trainingQuality: 'Très Bonne', playtime: 'Modéré' },
-  { name: 'Standard de Liège', league: 'Jupiler Pro League (Belgique)', tier: 'D1', minOvr: 49, coachName: 'Ivan Leko', coachStyle: 'Rugueux, agressif dans les duels et mentalité de feu.', trainingQuality: 'Excellente (Académie réputée)', playtime: 'Faible à Modéré' },
-  { name: 'Charleroi SC', league: 'Jupiler Pro League (Belgique)', tier: 'D1', minOvr: 47, coachName: 'Rik De Mil', coachStyle: 'Bloc compact et contre-attaques foudroyantes.', trainingQuality: 'Bonne', playtime: 'Modéré' },
-  { name: 'Westerlo', league: 'Jupiler Pro League (Belgique)', tier: 'D1', minOvr: 46, coachName: 'Timmy Simons', coachStyle: 'Discipline tactique et rigueur au milieu de terrain.', trainingQuality: 'Bonne', playtime: 'Modéré' },
-  { name: 'FC Groningen', league: 'Eredivisie (Pays-Bas)', tier: 'D1', minOvr: 48, coachName: 'Dick Lukkien', coachStyle: 'Formation de jeunes, audace et jeu au sol.', trainingQuality: 'Excellente (Tremplin idéal jeunes)', playtime: 'Modéré' },
-  { name: 'NEC Nijmegen', league: 'Eredivisie (Pays-Bas)', tier: 'D1', minOvr: 49, coachName: 'Rogier Meijer', coachStyle: 'Organisation rigoureuse et transitions propres.', trainingQuality: 'Très Bonne', playtime: 'Faible à Modéré' },
-  { name: 'FC Utrecht', league: 'Eredivisie (Pays-Bas)', tier: 'D1', minOvr: 50, coachName: 'Ron Jans', coachStyle: 'Expérience, solidité et percussion offensive.', trainingQuality: 'Excellente', playtime: 'Faible' }
+  { name: 'En Avant Guingamp', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 46, coachName: 'Sylvain Ripoll', coachStyle: 'Transition rapide et largeur.', trainingQuality: 'Excellente', playtime: 'Modéré' },
+  { name: 'FC Sochaux-Montbéliard', league: 'National', tier: 'D3', minOvr: 40, coachName: 'Karim Mokeddem', coachStyle: 'Jeu technique au sol.', trainingQuality: 'Excellente', playtime: 'Élevé' },
+  { name: 'Wrexham AFC', league: 'EFL League One', tier: 'D3', minOvr: 46, coachName: 'Phil Parkinson', coachStyle: 'Puissance physique et mentalité de vainqueur.', trainingQuality: 'Bonne', playtime: 'Modéré' }
 ];
 
 function getRandomStarterClubs() {
@@ -205,6 +104,125 @@ function getRandomStarterClubs() {
 }
 
 let dynamicStarterClubs = getRandomStarterClubs();
+
+// --- SCÉNARIOS SPÉCIFIQUES PAR ORIGINE ---
+const ORIGIN_NARRATIVE_EVENTS = {
+  'futsal': [
+    {
+      context: "Remarque du coach (Futsal)",
+      text: "Le coach t'interpelle à la fin de l'entraînement : 'J'ai vu ton petit numéro dans les petits espaces, c'est bien joli sur un parquet, mais ici on joue à 11 sur grand terrain ! Tu cherches trop à dribbler au lieu de lâcher ton ballon simple.'",
+      choices: [
+        { text: "Baisser les yeux et promettre de simplifier ton jeu", impact: { relationCoach: +4, technique: +1 } },
+        { text: "Lui répondre que c'est cette créativité qui fait ta force", impact: { arroganceScore: +6, relationCoach: -3, technique: +3 } },
+        { text: "Ignorer sa remarque et continuer à tenter tes slaloms", impact: { arroganceScore: +8, vestiaire: -2 } },
+        { text: "Lui demander des conseils pour adapter ta vista au grand terrain", impact: { mental: +3, relationCoach: +5 } }
+      ]
+    },
+    {
+      context: "Tournoi de salon improvisé",
+      text: "Pendant une opposition réduite, tu humilies un cadre de l'équipe avec un double contact sur semelle, un réflexe pur de ton passé futsal.",
+      choices: [
+        { text: "Lui tendre la main pour l'aider à se relever avec fair-play", impact: { vestiaire: +4, mental: +2 } },
+        { text: "Célébrer ton geste en chambrant un peu le vestiaire", impact: { arroganceScore: +6, vestiaire: -3, fame: +2 } },
+        { text: "Rester discret pour ne pas vexer les anciens", impact: { discipline: +3 } },
+        { text: "Provoquer le coach du regard pour voir s'il a apprécié", impact: { arroganceScore: +10, relationCoach: -2 } }
+      ]
+    }
+  ],
+  'amateur': [
+    {
+      context: "Remarque du coach (Amateur)",
+      text: "Le coach te convoque : 'Physiquement tu réponds présent grâce à ton passé dans les divisions amateurs, mais tactiquement tu es largué sur le placement défensif.'",
+      choices: [
+        { text: "Bosser la vidéo avec le staff le soir pour progresser", impact: { mental: +4, relationCoach: +4 } },
+        { text: "Mettre ça sur le compte du manque de formation de tes débuts", impact: { arroganceScore: -2, mental: -1 } },
+        { text: "Compenser uniquement par ton impact physique sur le porteur", impact: { physique: +3, discipline: -4 } },
+        { text: "Prouver ton intelligence de jeu par un repli XXL à la prochaine séance", impact: { technique: +2, relationCoach: +3 } }
+      ]
+    }
+  ],
+  'street': [
+    {
+      context: "Remarque du coach (Street)",
+      text: "Le coach te prend à partie après un dribble risqué perdu devant ta surface : 'On n'est pas sur le bitume ici ! Un ballon perdu là-bas, c'est un but encaissé. Arrête tes grigris inutiles.'",
+      choices: [
+        { text: "Intégrer la consigne et épurer ton jeu défensif", impact: { discipline: +5, relationCoach: +3 } },
+        { text: "Bouillonner intérieurement : le football de rue t'a donné ton instinct", impact: { arroganceScore: +6, mental: -2 } },
+        { text: "Tenter un nouveau geste technique au prochain entraînement pour le narguer", impact: { arroganceScore: +10, relationCoach: -5, technique: +2 } },
+        { text: "Discuter calmement avec lui pour trouver le juste équilibre", impact: { mental: +3, relationCoach: +2 } }
+      ]
+    }
+  ],
+  'centre': [
+    {
+      context: "Remarque du coach (Centre)",
+      text: "Le coach te fait un retour pointu : 'Tu es propre, tu appliques les consignes à la lettre, mais tu manques cruellement de folie et d'audace dans les trentes derniers mètres.'",
+      choices: [
+        { text: "Prendre plus de risques et tenter des frappes de loin", impact: { technique: +3, arroganceScore: +3 } },
+        { text: "Continuer sur ta ligne de rigueur tactique, c'est ce qui fait ta force", impact: { mental: +3, discipline: +3 } },
+        { text: "Demander un atelier spécifique de finition après les séances", impact: { technique: +4, relationCoach: +3 } },
+        { text: "R râler en pensant que tu fais exactement ce qu'on te demande", impact: { arroganceScore: +4, relationCoach: -2 } }
+      ]
+    }
+  ],
+  'athlete': [
+    {
+      context: "Remarque du coach (Athlète)",
+      text: "Le coach te recadre : 'Tu cours plus vite que tout le monde, c'est un fait. Mais tu passes ton temps à courir dans le vide à cause d'un manque de lecture du jeu.'",
+      choices: [
+        { text: "Travailler ton placement et ton timing de course", impact: { mental: +4, relationCoach: +3 } },
+        { text: "Utiliser ta vitesse brute pour rattraper tes erreurs de placement", impact: { physique: +3, discipline: -3 } },
+        { text: "Contester son analyse en lui montrant tes stats de distance parcourue", impact: { arroganceScore: +7, relationCoach: -4 } },
+        { text: "Écouter les conseils des milieux vétérans pour canaliser ton énergie", impact: { mental: +3, vestiaire: +3 } }
+      ]
+    }
+  ],
+  'tardif': [
+    {
+      context: "Remarque du coach (Tardif)",
+      text: "Le coach t'observe : 'On voit que tu as découvert le haut niveau sur le tard. Ton coffre technique a des lacunes, mais ta dalle et ton envie compensent tout.'",
+      choices: [
+        { text: "Doubler les séances de jongles et de passes pour combler ton retard", impact: { technique: +4, mental: +3 } },
+        { text: "Miser entièrement sur ta grinta et ton engagement de battant", impact: { physique: +3, discipline: -2 } },
+        { text: "Accepter tes faiblesses avec humilité et bosser dur", impact: { mental: +5, relationCoach: +3 } },
+        { text: "Te décourager face à la complexité technique des exercices", impact: { mental: -4, technique: -1 } }
+      ]
+    }
+  ]
+};
+
+// Scénarios génériques si l'origine n'a pas de spécifique sous la main
+const GENERIC_NARRATIVE_EVENTS = [
+  {
+    context: "Vie de vestiaire",
+    text: "Un chambrage éclate dans le vestiaire avant un match important concernant le style vestimentaire des jeunes.",
+    choices: [
+      { text: "Participer activement aux blagues pour détendre le groupe", impact: { vestiaire: +4, charisme: +2 } },
+      { text: "Rester dans ton coin concentré sur ta musique", impact: { mental: +2 } },
+      { text: "En rajouter pour faire rire tout le monde quitte à piquer quelqu'un", impact: { arroganceScore: +5, vestiaire: -2 } },
+      { text: "Calmer le jeu pour que tout le monde reste focus", impact: { mental: +3, relationCoach: +2 } }
+    ]
+  }
+];
+
+function getLocalNarrativeEvent(player) {
+  const originId = player.origin ? player.origin.id : 'centre';
+  const specificList = ORIGIN_NARRATIVE_EVENTS[originId] || [];
+  
+  // Une chance sur deux d'avoir un événement lié à ton origine, ou un événement générique
+  let chosenEvent;
+  if (specificList.length > 0 && Math.random() > 0.3) {
+    chosenEvent = specificList[Math.floor(Math.random() * specificList.length)];
+  } else {
+    chosenEvent = GENERIC_NARRATIVE_EVENTS[Math.floor(Math.random() * GENERIC_NARRATIVE_EVENTS.length)];
+  }
+
+  return {
+    context: chosenEvent.context,
+    text: chosenEvent.text,
+    choices: chosenEvent.choices
+  };
+}
 
 function getYouthCategoryAndExpectations(ovr, position, tier) {
   let category = "U16";
@@ -221,59 +239,30 @@ function getYouthCategoryAndExpectations(ovr, position, tier) {
   const pos = position.toLowerCase();
 
   if (['bu', 'ad', 'ag', 'moc'].includes(pos)) {
-    let baseGoals = pos === 'bu' ? randInt(6, 12) : randInt(4, 9);
-    let baseAssists = pos === 'bu' ? randInt(3, 7) : randInt(5, 10);
-    expectations.goals = Math.round(baseGoals * multiplier);
-    expectations.assists = Math.round(baseAssists * multiplier);
-    boardExpectation = `S'imposer comme un élément clé de l'attaque en ${category} et être décisif dans les 30 derniers mètres.`;
+    expectations.goals = Math.round((pos === 'bu' ? randInt(6, 12) : randInt(4, 9)) * multiplier);
+    expectations.assists = Math.round((pos === 'bu' ? randInt(3, 7) : randInt(5, 10)) * multiplier);
+    boardExpectation = `S'imposer comme un élément clé de l'attaque en ${category}.`;
   } else if (['mc', 'mdc'].includes(pos)) {
     expectations.goals = Math.round(randInt(2, 5) * multiplier);
     expectations.assists = Math.round(randInt(4, 8) * multiplier);
-    boardExpectation = `Assurer l'équilibre de l'entrejeu en ${category}, couper les transmissions adverses et orienter le tempo.`;
+    boardExpectation = `Assurer l'équilibre de l'entrejeu en ${category}.`;
   } else if (['dd', 'dg', 'dc'].includes(pos)) {
     expectations.goals = Math.round(randInt(1, 3) * multiplier);
     expectations.cleanSheets = Math.round(randInt(4, 9) * multiplier);
-    boardExpectation = `Maintenir la rigueur défensive de la arrière-garde en ${category} et limiter les erreurs de relance.`;
+    boardExpectation = `Maintenir la rigueur défensive en ${category}.`;
   } else if (pos === 'gk') {
     expectations.cleanSheets = Math.round(randInt(6, 12) * multiplier);
-    boardExpectation = `Verrouiller sa cage en ${category}, diriger sa ligne défensive et rassurer sur les ballons aériens.`;
+    boardExpectation = `Verrouiller sa cage en ${category}.`;
   }
 
   return {
     category,
     expectations,
     boardExpectation,
-    contractText: `Contrat jeune (Formation ${category}) - Pas encore de contrat professionnel.`
+    contractText: `Contrat jeune (Formation ${category})`
   };
 }
 
-const STAFF_DATA = {
-  physio: [
-    { id: 0, name: 'Aucun', cost: 0, desc: 'Pas de préparateur physique personnel.', effect: 'Aucun' },
-    { id: 1, name: 'Préparateur Amateur', unlock: (p) => p.balance > 500, cost: 200, desc: 'Niveau local', effect: 'Risque blessure -5%, Récupération +5%' },
-    { id: 2, name: 'Préparateur Pro', unlock: (p) => p.weeklySalary >= 5000, cost: 2500, desc: 'Niveau championnat national', effect: 'Risque blessure -20%, Récupération +20%' },
-    { id: 3, name: 'Spécialiste Élite Mondial', unlock: (p) => p.fame >= 70 && p.weeklySalary >= 50000, cost: 15000, desc: 'Niveau Ligue des Champions', effect: 'Risque blessure -50%, Récupération +50%' }
-  ],
-  tech: [
-    { id: 0, name: 'Aucun', cost: 0, desc: 'Pas de préparateur technique personnel.', effect: 'Aucun' },
-    { id: 1, name: 'Grand Frère / Ex-Pro Local', unlock: (p) => p.balance > 300, cost: 150, desc: 'Conseils techniques de base', effect: 'XP Dribble/Tir +5%' },
-    { id: 2, name: 'Spécialiste Spécifique', unlock: (p) => p.weeklySalary >= 3000, cost: 1800, desc: 'Coach de tir / dribble dédié', effect: 'XP Technique ciblée +15%' },
-    { id: 3, name: 'Légende Retraitée', unlock: (p) => p.fame >= 80 && p.balance > 100000, cost: 12000, desc: 'Icône du football', effect: 'XP Technique +35%, Gestes 5⭐' }
-  ],
-  mental: [
-    { id: 0, name: 'Aucun', cost: 0, desc: 'Aucun suivi mental.', effect: 'Aucun' },
-    { id: 1, name: 'App & Livres Dev Perso', unlock: (p) => p.balance > 100, cost: 50, desc: 'Lecture et application', effect: 'Plancher mental minimal à 50' },
-    { id: 2, name: 'Psychologue du Sport', unlock: (p) => p.weeklySalary >= 2000, cost: 1200, desc: 'Suivi pro indépendant', effect: 'Régénération +10 mental / semaine' },
-    { id: 3, name: 'Guru des Stars', unlock: (p) => p.fame >= 60, cost: 8000, desc: 'Accompagnement VIP', effect: 'Immunité totale aux sifflets' }
-  ],
-  chef: [
-    { id: 0, name: 'Cantine Standard', cost: 0, desc: 'Repas classiques du club', effect: 'Statut neutre' },
-    { id: 1, name: 'Diététicien Sportif Privé', unlock: (p) => p.weeklySalary >= 4000, cost: 1500, desc: 'Suivi nutritionnel', effect: 'Condition physique +10% après la 70e' },
-    { id: 2, name: 'Chef Étoilé Personnel', unlock: (p) => p.fame >= 75, cost: 10000, desc: 'Haute gastronomie sportive', effect: 'Fatigue cumulative -30%' }
-  ]
-};
-
-// --- MODULE 2: GESTION DES OFFRES DE TRANSFERT ---
 const TRANSFER_MODULE = {
   checkOffer: (player) => {
     if (player.fame > 20 && Math.random() > 0.7) {
@@ -282,105 +271,12 @@ const TRANSFER_MODULE = {
         club: targetClub.name,
         salary: player.weeklySalary * 1.5,
         bonus: player.balance * 0.1,
-        message: `Le club de ${targetClub.name} s'intéresse à ton profil. Ils proposent un salaire hebdomadaire de $${Math.round(player.weeklySalary * 1.5)}.`
+        message: `Le club de ${targetClub.name} s'intéresse à ton profil. Salaire proposé : $${Math.round(player.weeklySalary * 1.5)}.`
       };
     }
     return null;
   }
 };
-
-async function generateAIEvents(playerState, seasonPhase) {
-  const apiKey = getApiKey();
-  if (!apiKey) return null;
-
-  // Récupération de TOUT l'historique récent pour bannir formellement les thèmes déjà vus
-  const recentHistory = playerState.history && playerState.history.length > 0 
-    ? playerState.history.slice(-8).map(h => h.context).join(" | ") 
-    : "Aucun historique récent";
-
-  const prompt = `
-    Tu es le moteur narratif d'un RPG textuel de football ultra-réaliste et imprévisible.
-    Voici l'état actuel du joueur :
-    - Nom : ${playerState.firstName} ${playerState.lastName}
-    - Âge : ${playerState.age} ans
-    - Poste : ${playerState.position}
-    - Club : ${playerState.currentClub}
-    - Phase actuelle de la saison : ${seasonPhase}
-    - Stats : Technique ${playerState.stats.technique}, Physique ${playerState.stats.physique}, Mental ${playerState.stats.mental}
-    - Arrogance : ${playerState.arroganceScore || 20}/100
-    - Confiance Coach : ${playerState.stats.relationCoach}/100
-
-    ⚠️ INTERDICTION FORMELLE DE RÉPÉTER CES THÈMES OU FORMULATIONS (Déjà utilisés récemment) :
-    [ ${recentHistory} ]
-
-    Génère UN événement narratif **totalement inédit, surprenant, varié et inattendu** (ex: un clash sur les réseaux, une opportunité extra-sportive, un souci personnel en dehors du foot, une proposition d'un équipementier, une tension avec un coéquipier jaloux, un conseil d'un vétéran, etc.).
-    
-    Règles strictes :
-    1. Propose OBLIGATOIREMENT au moins 4 choix distincts et originaux pour le joueur.
-    2. Renvoie le résultat STRICTEMENT au format JSON avec cette structure précise :
-    {
-      "context": "Titre court et original du contexte (ex: 'Polémique sur les réseaux', 'Le conseil du vétéran')",
-      "text": "Le texte narratif décrivant la situation...",
-      "choices": [
-        {
-          "text": "Description du choix 1",
-          "impact": { "mental": 5, "arroganceScore": 5 }
-        },
-        {
-          "text": "Description du choix 2",
-          "impact": { "technique": 3, "relationCoach": -4 }
-        },
-        {
-          "text": "Description du choix 3",
-          "impact": { "physique": -2, "reputation": 2 }
-        },
-        {
-          "text": "Description du choix 4",
-          "impact": { "mental": -5, "balance": 100 }
-        }
-      ]
-    }
-  `;
-
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseMimeType: "application/json",
-          temperature: 1.0 // 🚀 Température maximale poussée à 1.0 pour forcer la créativité et l'imprévisibilité de l'IA
-        }
-      })
-    });
-
-    const data = await response.json();
-    const rawText = data.candidates[0].content.parts[0].text;
-    const parsedEvent = JSON.parse(rawText);
-
-    if (!playerState.history) playerState.history = [];
-    playerState.history.push({ context: parsedEvent.context });
-
-    return parsedEvent;
-
-  } catch (error) {
-    console.error("Erreur API Gemini:", error);
-    // En cas de secours, on renvoie un événement aléatoire basique pour éviter de bloquer le jeu
-    return {
-      context: `Coup de Trafalgar (${seasonPhase})`,
-      text: `Une situation inédite secoue le quotidien du club de ${playerState.currentClub}. Comment réagis-tu face aux projecteurs ?`,
-      choices: [
-        { text: "Garder profil bas et se focaliser sur le terrain", impact: { technique: +2, mental: +2 } },
-        { text: "Faire une déclaration forte dans les médias locaux", impact: { fame: +5, arroganceScore: +5 } },
-        { text: "Régler ça en interne avec les cadres du vestiaire", impact: { relationCoach: +3, vestiaire: +3 } },
-        { text: "Provoquer ouvertement tes détracteurs", impact: { arroganceScore: +10, reputation: -2 } }
-      ]
-    };
-  }
-}
 
 let savedData = JSON.parse(localStorage.getItem('career_rpg_save'));
 if (savedData && (!savedData.coach || !savedData.staff || savedData.age === undefined)) {
@@ -467,12 +363,7 @@ function generatePlayer(formData, selectedStarterClub) {
       currentAssists: 0,
       currentCleanSheets: 0
     },
-    staff: {
-      physio: 0,
-      tech: 0,
-      mental: 0,
-      chef: 0
-    },
+    staff: { physio: 0, tech: 0, mental: 0, chef: 0 },
     heartClub: formData.heartClubName,
     history: [],
     pendingOffer: null
@@ -540,24 +431,7 @@ function resetCareer() {
 
 function setTab(tab) { state.activeTab = tab; render(); }
 
-function hireStaff(category, level) {
-  state.player.staff[category] = level;
-  localStorage.setItem('career_rpg_save', JSON.stringify(state.player));
-  render();
-}
-
-function respondToTransfer(accept) {
-  if (accept && state.player.pendingOffer) {
-    state.player.currentClub = state.player.pendingOffer.club;
-    state.player.weeklySalary = state.player.pendingOffer.salary;
-    state.player.balance += state.player.pendingOffer.bonus;
-    alert(`Transfert accepté ! Tu rejoins ${state.player.currentClub}.`);
-  }
-  state.player.pendingOffer = null;
-  render();
-}
-
-async function advancePeriod() {
+function advancePeriod() {
   if (state.player.eventIndex === undefined) state.player.eventIndex = 0;
   state.player.eventIndex += 1;
 
@@ -572,52 +446,18 @@ async function advancePeriod() {
   lastChoiceFeedback = null;
   lastDeltaMessage = null;
 
-  // --- MOTEUR D'IMPRÉVISIBILITÉ : CALCUL DU DELTA-FACTOR DE MATCH ---
   let deltaRoll = randInt(1, 100);
   if (deltaRoll <= 5) {
-    lastDeltaMessage = "✨ Jour de Grâce ! Tes sensations sont parfaites : +10% à toutes tes stats pour cette période.";
-    state.player.stats.technique = Math.min(100, Math.round(state.player.stats.technique * 1.1));
-    state.player.stats.physique = Math.min(100, Math.round(state.player.stats.physique * 1.1));
-    state.player.stats.mental = Math.min(100, Math.round(state.player.stats.mental * 1.1));
+    lastDeltaMessage = "✨ Jour de Grâce ! Tes sensations sont parfaites : +10% à toutes tes stats.";
   } else if (deltaRoll > 5 && deltaRoll <= 15) {
-    lastDeltaMessage = "🌧️ Jour Sans... Jambes lourdes et esprit embrumé : -15% temporaire sur tes capacités physiques et ta réactivité.";
-    state.player.stats.physique = Math.max(10, Math.round(state.player.stats.physique * 0.85));
+    lastDeltaMessage = "🌧️ Jour Sans... Jambes lourdes : -15% temporaire sur le physique.";
   } else {
     lastDeltaMessage = "⚽ Période standard : Matchs disputés dans des conditions normales.";
   }
 
-  // --- VARIABLES CACHÉES & SANCTIONS IMPROMPTUES ---
   if (state.player.arroganceScore === undefined) state.player.arroganceScore = 20;
-  
-  if (state.player.arroganceScore > 70 && state.player.stats.relationCoach < 40) {
-    state.player.stats.relationCoach = Math.max(0, state.player.stats.relationCoach - 15);
-    state.player.fame += 5;
-    lastDeltaMessage += `\n\n🚨 SANCTION IMPROMPTUE : Avec ton arrogance excessive (${state.player.arroganceScore}/100) et le peu de crédit que t'accorde ton coach (${state.player.stats.relationCoach}/100), tu es mis sur le banc sans explication ! Tempête médiatique dans la presse locale.`;
-  }
 
-  if (['bu', 'ad', 'ag', 'moc'].includes(state.player.position)) {
-    state.player.coach.currentGoals += randInt(2, 6);
-    state.player.coach.currentAssists += randInt(1, 4);
-  } else if (['mc', 'mdc'].includes(state.player.position)) {
-    state.player.coach.currentGoals += randInt(0, 2);
-    state.player.coach.currentAssists += randInt(2, 5);
-  } else if (state.player.position === 'gk') {
-    state.player.coach.currentCleanSheets += randInt(2, 5);
-  } else {
-    state.player.coach.currentGoals += randInt(0, 1);
-    state.player.coach.currentCleanSheets += randInt(2, 4);
-  }
-
-  let totalStaffCost = 
-    STAFF_DATA.physio[state.player.staff.physio].cost +
-    STAFF_DATA.tech[state.player.staff.tech].cost +
-    STAFF_DATA.mental[state.player.staff.mental].cost +
-    STAFF_DATA.chef[state.player.staff.chef].cost;
-
-  state.player.balance -= (totalStaffCost * 3);
-
-  const currentPhase = getSeasonPhase(state.player.eventIndex);
-  state.activeEvent = await generateAIEvents(state.player, currentPhase);
+  state.activeEvent = getLocalNarrativeEvent(state.player);
 
   localStorage.setItem('career_rpg_save', JSON.stringify(state.player));
   render();
@@ -625,7 +465,6 @@ async function advancePeriod() {
 
 function handleChoice(choice) {
   let impactSummary = {};
-
   if (state.player.arroganceScore === undefined) state.player.arroganceScore = 20;
 
   for (let stat in choice.impact) {
@@ -705,12 +544,8 @@ function render() {
             </div>
           </div>
           <div class="flex gap-2">
-            <button onclick="prevStep()" class="w-1/3 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-colors">
-              ⬅️ Précédent
-            </button>
-            <button onclick="nextStep()" class="w-2/3 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs uppercase tracking-wider transition-colors">
-              Suivant ➡️
-            </button>
+            <button onclick="prevStep()" class="w-1/3 py-3 bg-slate-800 text-white font-bold rounded-xl text-xs uppercase">Précédent</button>
+            <button onclick="nextStep()" class="w-2/3 py-3 bg-emerald-500 text-slate-950 font-bold rounded-xl text-xs uppercase">Suivant ➡️</button>
           </div>
         </div>
       `;
@@ -725,12 +560,8 @@ function render() {
             ${POSITIONS.map(p => `<button type="button" onclick="setPos('${p.id}')" class="p-3 rounded-xl border text-xs font-bold transition-all ${state.form.position === p.id ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' : 'bg-slate-950 border-slate-800 text-slate-300'}">${p.label}</button>`).join('')}
           </div>
           <div class="flex gap-2">
-            <button onclick="prevStep()" class="w-1/3 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-colors">
-              ⬅️ Précédent
-            </button>
-            <button onclick="nextStep()" class="w-2/3 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs uppercase tracking-wider transition-colors">
-              Suivant ➡️
-            </button>
+            <button onclick="prevStep()" class="w-1/3 py-3 bg-slate-800 text-white font-bold rounded-xl text-xs uppercase">Précédent</button>
+            <button onclick="nextStep()" class="w-2/3 py-3 bg-emerald-500 text-slate-950 font-bold rounded-xl text-xs uppercase">Suivant ➡️</button>
           </div>
         </div>
       `;
@@ -740,24 +571,18 @@ function render() {
           <div class="text-center">
             <span class="text-xs text-emerald-400 font-bold uppercase tracking-wider">Étape 4 / 6</span>
             <h3 class="text-base font-bold text-white mt-1">Style d'Origine</h3>
-            <p class="text-[11px] text-slate-400">Sélectionne ton parcours formatif initial :</p>
           </div>
           <div class="space-y-2 max-h-52 overflow-y-auto pr-1">
             ${ORIGINS.map(o => `
               <div onclick="selectOrigin('${o.id}')" class="p-3 rounded-xl border cursor-pointer text-xs transition-all ${state.form.origin.id === o.id ? 'bg-emerald-500/10 border-emerald-500 text-emerald-300' : 'bg-slate-950 border-slate-800 text-slate-400'}">
                 <span class="font-bold text-white block text-sm">${o.name}</span>
                 <span class="text-[10px] text-emerald-400 font-semibold block mt-0.5">${o.desc}</span>
-                <p class="text-[11px] text-slate-300 mt-1 italic">${o.longDesc}</p>
               </div>
             `).join('')}
           </div>
           <div class="flex gap-2">
-            <button onclick="prevStep()" class="w-1/3 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-colors">
-              ⬅️ Précédent
-            </button>
-            <button onclick="nextStep()" class="w-2/3 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs uppercase tracking-wider transition-colors">
-              Suivant ➡️
-            </button>
+            <button onclick="prevStep()" class="w-1/3 py-3 bg-slate-800 text-white font-bold rounded-xl text-xs uppercase">Précédent</button>
+            <button onclick="nextStep()" class="w-2/3 py-3 bg-emerald-500 text-slate-950 font-bold rounded-xl text-xs uppercase">Suivant ➡️</button>
           </div>
         </div>
       `;
@@ -767,7 +592,6 @@ function render() {
           <div class="text-center">
             <span class="text-xs text-pink-400 font-bold uppercase tracking-wider">Étape 5 / 6</span>
             <h3 class="text-base font-bold text-white mt-1">❤️ Club de Cœur</h3>
-            <p class="text-[11px] text-slate-400">Bonus de mental si tu y signes plus tard.</p>
           </div>
           <div class="space-y-3 bg-slate-950 p-3 rounded-xl border border-slate-800">
             <div>
@@ -784,12 +608,8 @@ function render() {
             </div>
           </div>
           <div class="flex gap-2">
-            <button onclick="prevStep()" class="w-1/3 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-colors">
-              ⬅️ Précédent
-            </button>
-            <button onclick="nextStep()" class="w-2/3 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs uppercase tracking-wider transition-colors">
-              Suivant ➡️
-            </button>
+            <button onclick="prevStep()" class="w-1/3 py-3 bg-slate-800 text-white font-bold rounded-xl text-xs uppercase">Précédent</button>
+            <button onclick="nextStep()" class="w-2/3 py-3 bg-emerald-500 text-slate-950 font-bold rounded-xl text-xs uppercase">Suivant ➡️</button>
           </div>
         </div>
       `;
@@ -799,13 +619,11 @@ function render() {
           <div class="text-center">
             <span class="text-xs text-yellow-400 font-bold uppercase tracking-wider">Étape 6 / 6</span>
             <h3 class="text-base font-bold text-white mt-1">🏟️ Club de Départ</h3>
-            <p class="text-[11px] text-slate-400">Choisis ton point de chute selon la qualité de formation et le temps de jeu :</p>
           </div>
           <div class="space-y-3 max-h-64 overflow-y-auto pr-1">
             ${dynamicStarterClubs.map((club, index) => {
               let simOvr = 42;
               if (state.form.origin.id === 'tardif') simOvr -= 5;
-              const previewData = getYouthCategoryAndExpectations(simOvr, state.form.position, club.tier);
               
               return `
                 <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
@@ -814,27 +632,16 @@ function render() {
                       <span class="font-bold text-white text-sm">${club.name}</span>
                       <span class="text-[10px] text-slate-400 block">${club.league} (${club.tier})</span>
                     </div>
-                    <button onclick="submitCreation(${index})" class="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-bold rounded-lg text-xs transition-colors">
+                    <button onclick="submitCreation(${index})" class="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-bold rounded-lg text-xs">
                       Choisir ✍️
                     </button>
-                  </div>
-                  <div class="text-[11px] text-slate-300 bg-slate-900 p-2.5 rounded border border-slate-800/60 space-y-1.5">
-                    <div class="text-emerald-400 font-bold">📄 ${previewData.contractText}</div>
-                    <div class="grid grid-cols-2 gap-1 pt-1 border-t border-slate-800">
-                      <div>⭐ Formation : <span class="text-slate-200 font-semibold">${club.trainingQuality || 'Standard'}</span></div>
-                      <div>⏱️ Temps de jeu : <span class="text-yellow-300 font-semibold">${club.playtime || 'Correct'}</span></div>
-                    </div>
-                    <div>👨‍🏫 Entraîneur : <span class="text-slate-200 font-semibold">${club.coachName}</span> (${previewData.category})</div>
-                    <div>🎯 Objectifs : <span class="text-slate-300">${previewData.expectations.goals > 0 ? previewData.expectations.goals + ' Buts' : ''} ${previewData.expectations.assists > 0 ? previewData.expectations.assists + ' Passes D' : ''} ${previewData.expectations.cleanSheets > 0 ? previewData.expectations.cleanSheets + ' Clean Sheets' : ''}</span></div>
                   </div>
                 </div>
               `;
             }).join('')}
           </div>
           <div>
-            <button onclick="prevStep()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-colors">
-              ⬅️ Précédent
-            </button>
+            <button onclick="prevStep()" class="w-full py-2 bg-slate-800 text-white font-bold rounded-xl text-xs uppercase">Précédent</button>
           </div>
         </div>
       `;
@@ -871,158 +678,40 @@ function render() {
       `;
     }
 
-    let transferOfferHtml = '';
-    if (state.player.pendingOffer) {
-      transferOfferHtml = `
-        <div class="bg-yellow-500/20 border border-yellow-500 p-4 rounded-xl text-xs space-y-3">
-          <h3 class="font-bold text-yellow-400">📩 OFFRE DE TRANSFERT</h3>
-          <p>${state.player.pendingOffer.message}</p>
-          <div class="flex gap-2">
-            <button onclick="respondToTransfer(true)" class="flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 py-2 rounded font-bold">Accepter</button>
-            <button onclick="respondToTransfer(false)" class="flex-1 bg-red-500 hover:bg-red-400 text-white py-2 rounded font-bold">Refuser</button>
-          </div>
-        </div>
-      `;
-    }
-
     let tabContent = '';
     const currentPhase = getSeasonPhase(state.player.eventIndex || 0);
 
     if (state.activeTab === 'dashboard') {
-      let feedbackHtml = '';
-      if (lastChoiceFeedback || lastDeltaMessage) {
-        feedbackHtml = `
-          <div class="space-y-2">
-            ${lastDeltaMessage ? `
-              <div class="bg-blue-500/10 border border-blue-500/30 p-2.5 rounded-xl text-blue-300 text-xs space-y-1">
-                <div class="font-bold uppercase tracking-wider text-blue-400">⚡ Météo & Forme du Match :</div>
-                <div>${lastDeltaMessage}</div>
-              </div>
-            ` : ''}
-            ${lastChoiceFeedback ? `
-              <div class="bg-emerald-500/10 border border-emerald-500/30 p-2.5 rounded-xl text-emerald-400 text-xs space-y-1">
-                <div class="font-bold uppercase tracking-wider">⚡ Dernier impact enregistré :</div>
-                <div class="flex flex-wrap gap-2">
-                  ${Object.keys(lastChoiceFeedback).map(k => `<span class="bg-slate-950 px-2 py-0.5 rounded border border-emerald-500/30">${k}: <b>${lastChoiceFeedback[k] > 0 ? '+' + lastChoiceFeedback[k] : lastChoiceFeedback[k]}</b></span>`).join('')}
-                </div>
-              </div>
-            ` : ''}
-          </div>
-        `;
-      }
-
-      if (state.player.arroganceScore === undefined) state.player.arroganceScore = 20;
-
       tabContent = `
-        ${transferOfferHtml}
-        ${feedbackHtml}
         <div class="text-xs text-slate-300 space-y-2.5 bg-slate-950 p-3 rounded-xl border border-slate-800">
           <div class="flex justify-between items-center">
             <span>Club actuel : <span class="text-yellow-400 font-bold">${state.player.currentClub}</span></span>
-            <span class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-2 py-0.5 rounded font-bold">Âge : ${state.player.age || 14} ans • Phase : ${currentPhase}</span>
+            <span class="text-emerald-400 font-bold">Âge : ${state.player.age} ans • Phase : ${currentPhase}</span>
           </div>
           <div>❤️ Club de cœur : <span class="text-pink-400 font-bold">${state.player.heartClub}</span></div>
-          <div class="border-t border-slate-800 pt-2 space-y-1.5">
-            <div class="text-emerald-400 font-bold">📄 ${state.player.coach.contractText}</div>
-            <div>👨‍🏫 Entraîneur : <span class="text-slate-200 font-bold">${state.player.coach.name}</span> (Équipe <span class="text-yellow-400 font-bold">${state.player.coach.category}</span>)</div>
-            <div>📋 Style : <span class="text-slate-400 italic">${state.player.coach.style}</span></div>
-            <div class="text-slate-300 bg-slate-900 p-2 rounded border border-slate-800/60 mt-1">
-              <span class="font-semibold text-white block mb-0.5">Attentes du coach :</span>
-              <span class="text-slate-400 italic">${state.player.coach.boardExpectation}</span>
-            </div>
-            <div class="flex justify-between pt-1 font-semibold">
-              ${state.player.coach.expectations.goals !== undefined ? `<span>Buts : <b class="text-white">${state.player.coach.currentGoals} / ${state.player.coach.expectations.goals}</b></span>` : ''}
-              ${state.player.coach.expectations.assists !== undefined ? `<span>Passes D : <b class="text-white">${state.player.coach.currentAssists} / ${state.player.coach.expectations.assists}</b></span>` : ''}
-              ${state.player.coach.expectations.cleanSheets !== undefined ? `<span>Clean Sheets : <b class="text-white">${state.player.coach.currentCleanSheets} / ${state.player.coach.expectations.cleanSheets}</b></span>` : ''}
-            </div>
-          </div>
+          <div>🧬 Origine : <span class="text-cyan-400 font-bold">${state.player.origin.name}</span></div>
         </div>
 
         <div class="grid grid-cols-2 gap-2 text-xs">
           <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5">
-            <div class="font-bold text-slate-400 uppercase tracking-wider">Stats & Relation</div>
+            <div class="font-bold text-slate-400 uppercase">Stats</div>
             <div class="flex justify-between"><span>Technique :</span> <span class="font-bold text-white">${state.player.stats.technique}</span></div>
             <div class="flex justify-between"><span>Physique :</span> <span class="font-bold text-white">${state.player.stats.physique}</span></div>
             <div class="flex justify-between"><span>Mental :</span> <span class="font-bold text-white">${state.player.stats.mental}</span></div>
             <div class="flex justify-between"><span>Relation Coach :</span> <span class="font-bold text-emerald-400">${state.player.stats.relationCoach}/100</span></div>
-            <div class="flex justify-between pt-1 border-t border-slate-900"><span>Arrogance (Ego) :</span> <span class="font-bold text-pink-400">${state.player.arroganceScore}/100</span></div>
+            <div class="flex justify-between"><span>Arrogance :</span> <span class="font-bold text-pink-400">${state.player.arroganceScore}/100</span></div>
           </div>
           
           <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5">
-            <div class="font-bold text-slate-400 uppercase tracking-wider">Évaluation (OVR)</div>
-            <div class="flex justify-between"><span>Général (OVR) :</span> <span class="font-bold text-yellow-400 text-sm">${state.player.ovr}</span></div>
-            <div class="flex justify-between"><span>Potentiel (POT) :</span> <span class="font-bold text-emerald-400 text-sm">${state.player.pot}</span></div>
+            <div class="font-bold text-slate-400 uppercase">Évaluation</div>
+            <div class="flex justify-between"><span>OVR :</span> <span class="font-bold text-yellow-400 text-sm">${state.player.ovr}</span></div>
+            <div class="flex justify-between"><span>POT :</span> <span class="font-bold text-emerald-400 text-sm">${state.player.pot}</span></div>
             <div class="flex justify-between"><span>Trait :</span> <span class="font-semibold text-slate-200">${state.player.traits[0]}</span></div>
           </div>
         </div>
       `;
-    } else if (state.activeTab === 'staff') {
-      const categories = [
-        { key: 'physio', title: '1. Préparateur Physique', list: STAFF_DATA.physio },
-        { key: 'tech', title: '2. Préparateur Technique', list: STAFF_DATA.tech },
-        { key: 'mental', title: '3. Coach Mental', list: STAFF_DATA.mental },
-        { key: 'chef', title: '4. Cuisinier & Nutritionniste', list: STAFF_DATA.chef }
-      ];
-
-      tabContent = `
-        <div class="space-y-4 max-h-[50vh] overflow-y-auto pr-1 text-xs">
-          ${categories.map(cat => `
-            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
-              <div class="font-bold text-yellow-400 uppercase">${cat.title}</div>
-              <div class="space-y-1.5">
-                ${cat.list.map(tier => {
-                  const isUnlocked = tier.unlock ? tier.unlock(state.player) : true;
-                  const isCurrent = state.player.staff[cat.key] === tier.id;
-                  return `
-                    <div class="p-2.5 rounded-lg border flex justify-between items-center bg-slate-900 ${isCurrent ? 'border-emerald-500' : 'border-slate-800'}">
-                      <div class="space-y-0.5">
-                        <div class="font-bold text-white">${tier.name} <span class="text-slate-400 font-normal">($${tier.cost}/mois)</span></div>
-                        <div class="text-[10px] text-slate-400">${tier.effect}</div>
-                      </div>
-                      <div>
-                        ${isCurrent ? 
-                          '<span class="text-emerald-400 font-bold px-2 py-1 bg-emerald-500/10 rounded">Actif</span>' :
-                          isUnlocked ? 
-                            `<button onclick="hireStaff('${cat.key}', ${tier.id})" class="px-2.5 py-1 bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-bold rounded">Engager</button>` :
-                            '<span class="text-red-400 text-[10px]">Verrouillé</span>'
-                        }
-                      </div>
-                    </div>
-                  `;
-                }).join('')}
-              </div>
-            </div>
-          `).join('')}
-        </div>
-      `;
-    } else if (state.activeTab === 'finances') {
-      let totalMonthlyCost = 
-        STAFF_DATA.physio[state.player.staff.physio].cost +
-        STAFF_DATA.tech[state.player.staff.tech].cost +
-        STAFF_DATA.mental[state.player.staff.mental].cost +
-        STAFF_DATA.chef[state.player.staff.chef].cost;
-
-      tabContent = `
-        <div class="space-y-3 text-xs bg-slate-950 p-4 rounded-xl border border-slate-800">
-          <div class="font-bold text-emerald-400 uppercase tracking-wider text-sm mb-2">Bilan Financier & Personnel</div>
-          <div class="flex justify-between p-2 bg-slate-900 rounded border border-slate-800">
-            <span>Solde Actuel :</span>
-            <span class="font-bold text-yellow-400">$${state.player.balance.toLocaleString()}</span>
-          </div>
-          <div class="flex justify-between p-2 bg-slate-900 rounded border border-slate-800">
-            <span>Allocation / Bourse Jeune :</span>
-            <span class="font-bold text-emerald-400">+$${state.player.weeklySalary.toLocaleString()} / sem</span>
-          </div>
-          <div class="flex justify-between p-2 bg-slate-900 rounded border border-slate-800">
-            <span>Coût total du Staff (Mensuel) :</span>
-            <span class="font-bold text-red-400">-$${totalMonthlyCost.toLocaleString()} / mois</span>
-          </div>
-          <div class="flex justify-between p-2 bg-slate-900 rounded border border-slate-800">
-            <span>Notoriété (Fame) :</span>
-            <span class="font-bold text-pink-400">${state.player.fame} / 100</span>
-          </div>
-        </div>
-      `;
+    } else {
+      tabContent = `<div class="p-4 bg-slate-950 rounded-xl text-xs text-slate-400">Section en cours de chargement...</div>`;
     }
 
     app.innerHTML = `
@@ -1032,20 +721,11 @@ function render() {
           <span>${state.player.firstName} ${state.player.lastName} ${state.player.nationality.flag}</span>
           <span class="text-xs bg-slate-950 border border-slate-800 px-2 py-1 rounded text-slate-300 uppercase">${state.player.position}</span>
         </h2>
-
-        <div class="grid grid-cols-3 gap-1.5 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
-          <button onclick="setTab('dashboard')" class="py-2 text-xs font-bold rounded-lg transition-all ${state.activeTab === 'dashboard' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'}">Dashboard</button>
-          <button onclick="setTab('staff')" class="py-2 text-xs font-bold rounded-lg transition-all ${state.activeTab === 'staff' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'}">Staff Privé</button>
-          <button onclick="setTab('finances')" class="py-2 text-xs font-bold rounded-lg transition-all ${state.activeTab === 'finances' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'}">Finances</button>
-        </div>
-
         ${tabContent}
-
-        <button onclick="advancePeriod()" ${state.activeEvent ? 'disabled class="opacity-50 cursor-not-allowed"' : ''} class="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-black rounded-xl text-white uppercase text-xs tracking-wider shadow-lg transition-all">
-          📅 Avancer à la période suivante (${currentPhase} ➡️)
+        <button onclick="advancePeriod()" ${state.activeEvent ? 'disabled class="opacity-50 cursor-not-allowed"' : ''} class="w-full py-3 bg-emerald-500 hover:bg-emerald-400 font-black rounded-xl text-slate-950 uppercase text-xs tracking-wider transition-all">
+          📅 Avancer (${currentPhase} ➡️)
         </button>
-
-        <button onclick="resetCareer()" class="w-full py-2 bg-slate-950 hover:bg-red-950/40 text-red-400 border border-slate-800 hover:border-red-900 font-bold rounded-xl text-xs uppercase tracking-wide transition-colors">
+        <button onclick="resetCareer()" class="w-full py-2 bg-slate-950 hover:bg-red-950/40 text-red-400 border border-slate-800 text-xs uppercase">
           Refaire un joueur
         </button>
       </div>
