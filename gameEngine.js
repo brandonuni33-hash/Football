@@ -6,7 +6,6 @@ import { EconomyManager } from './economy.js';
 export class GameEngine {
     constructor() {
         this.state = null;
-        // Lance l'interface utilisateur au démarrage
         this.ui = new UserInterface(this);
     }
 
@@ -17,13 +16,11 @@ export class GameEngine {
         const initialOvr = 60;
         const potentialOvr = initialOvr + Math.floor(Math.random() * 15) + 10;
 
-        // Création d'un objet joueur temporaire pour calculer l'offre financière
         const tempPlayerForEconomy = {
             overall: initialOvr,
             age: 16
         };
 
-        // Calcul du contrat via EconomyManager (salaire 100-300€ et bonus)
         const contract = EconomyManager.calculateContractOffer(selectedData.youthClub, tempPlayerForEconomy);
 
         this.state = {
@@ -33,7 +30,7 @@ export class GameEngine {
                 position: selectedData.position,
                 age: 16,
                 club: selectedData.youthClub.name,
-                salary: contract.weeklySalary, // Salaire aligné sur economy.js
+                salary: contract.weeklySalary,
                 overall: initialOvr,
                 fame: 10,
                 morale: 80,
@@ -59,9 +56,8 @@ export class GameEngine {
                 }
             },
             career: {
-                balance: contract.signingBonus || 1500 // Prime à la signature dynamique
+                balance: contract.signingBonus || 1500
             },
-            // Calendrier simplifié : 1 bloc = 1 mois
             calendar: {
                 currentMonth: 1,
                 totalMonths: 12,
@@ -77,11 +73,11 @@ export class GameEngine {
             seasonPhase: 'pre_season'
         };
 
-        console.log("Carrière lancée avec succès, calendrier et stats initialisés !", this.state);
+        console.log("Carrière lancée avec succès !", this.state);
     }
 
     /**
-     * Permet de simuler un bloc de 4 matchs (1 mois), de mettre à jour les stats et d'avancer le calendrier
+     * Permet de simuler un bloc de 4 matchs (1 mois) via le MatchBlockManager
      */
     playBlock() {
         if (!this.state) return;
@@ -91,49 +87,23 @@ export class GameEngine {
             return;
         }
 
-        // 1. Simulation du bloc de 4 matchs via matchBlock.js
+        // Le MatchBlockManager s'occupe déjà de tout simuler, 
+        // de mettre à jour les stats globales et l'économie en interne.
         const report = MatchBlockManager.simulateBlock(this.state);
-        
-        // 2. Gestion financière du mois via EconomyManager (Salaire + Primes + Sponsors éventuels)
-        const financialReport = EconomyManager.processBlockFinances(this.state, report.summary);
 
-        // 3. Génération de stats annexes pour le bloc (passes et tacles)
-        const blockPasses = Math.floor(Math.random() * 40) + 20;
-        const blockTackles = Math.floor(Math.random() * 12) + 3;
-
-        // 4. Mise à jour des statistiques globales de la saison
-        const stats = this.state.player.stats;
-        const prevMatches = stats.matchesPlayed;
-        const newTotalMatches = prevMatches + 4;
-
-        stats.matchesPlayed = newTotalMatches;
-        stats.goals += report.summary.goals;
-        stats.assists += report.summary.assists;
-        stats.successfulPasses += blockPasses;
-        stats.tackles += blockTackles;
-
-        // Recalcul de la note moyenne globale pondérée
-        stats.averageRating = parseFloat(
-            (((stats.averageRating * prevMatches) + (report.summary.rating * 4)) / newTotalMatches).toFixed(1)
-        );
-
-        // 5. Avancer d'un mois dans le calendrier
+        // Avancer d'un mois dans le calendrier
         const cal = this.state.calendar;
         if (cal.currentMonth < cal.totalMonths) {
             cal.currentMonth++;
             cal.currentPeriod = cal.getPeriodName(cal.currentMonth);
         } else {
-            console.log("🏁 Fin de la saison ! Bilan général et évolution du potentiel...");
-            // Logique de fin de saison à venir...
+            console.log("🏁 Fin de la saison !");
         }
 
-        console.log(`Mois ${cal.currentMonth - 1} terminé. Passage au mois ${cal.currentMonth} (${cal.currentPeriod})`);
-        console.log("Rapport du bloc :", report);
-        console.log("Bilan financier :", financialReport);
+        console.log(`Mois terminé. Passage au mois ${cal.currentMonth} (${cal.currentPeriod})`);
 
         return {
             report,
-            financialReport,
             calendar: {
                 month: cal.currentMonth - 1,
                 period: cal.currentPeriod
