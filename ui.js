@@ -366,7 +366,7 @@ export class UserInterface {
                         <div class="player-widget-enhanced">
                             <div class="widget-subtitle">📅 Saison ${state.calendar.currentSeasonYear}/${state.calendar.currentSeasonYear + 1} — ${state.calendar.currentPeriod}</div>
                             
-                                                        <div class="player-card-banner">
+                            <div class="player-card-banner">
                                 <div class="player-image-badge">
                                     <img src="assets/IMG_8758.jpg" alt="Avatar">
                                     <span class="jersey-number">99</span>
@@ -376,7 +376,6 @@ export class UserInterface {
                                     <div class="player-club-sub">📍 ${state.player.club} (${state.player.position})</div>
                                 </div>
                             </div>
-
 
                             <div class="widget-stats-grid">
                                 <div class="stat-pill">⚡ OVR : <strong>${state.player.overall}</strong></div>
@@ -586,6 +585,30 @@ export class UserInterface {
         const playBtn = document.getElementById('play-block-btn');
         if (playBtn) {
             playBtn.addEventListener('click', () => {
+                const state = this.engine.state;
+
+                // Vérification si le joueur est blessé
+                if (state && state.player && state.player.isInjured) {
+                    const weeksLeft = state.player.injuryDuration || 1;
+                    
+                    const wantSimulate = confirm(`⚠️ Impossible de jouer, votre joueur est blessé pour encore ${weeksLeft} bloc(s).\n\nVoulez-vous simuler automatiquement jusqu'à votre guérison ?`);
+                    
+                    if (wantSimulate) {
+                        while (state.player.isInjured && (state.player.injuryDuration > 0)) {
+                            this.engine.playBlock();
+                            state.player.injuryDuration--;
+                            
+                            if (state.player.injuryDuration <= 0) {
+                                state.player.isInjured = false;
+                                state.player.injuryDuration = 0;
+                            }
+                        }
+                        alert("🎉 Votre joueur est totalement guéri et de retour sur les terrains !");
+                        this.renderDashboard();
+                    }
+                    return;
+                }
+
                 // Le GameEngine utilise directement this.state.trainingFocus mis à jour en temps réel
                 this.engine.playBlock();
                 const eventActuel = EventEngine.checkTriggers ? EventEngine.checkTriggers() : null;
