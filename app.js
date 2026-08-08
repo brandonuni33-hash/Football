@@ -34,7 +34,6 @@ const ORIGINS = [
   { id: 'athlete', name: 'Athlète Polyvalent', desc: '+15% Vitesse/Puissance | Trait: Moteur Hybride', trait: 'Moteur Hybride' }
 ];
 
-// Les 5 grands championnats pour le choix du club de cœur
 const BIG_LEAGUES_CLUBS = {
   "Ligue 1 McDonald's (France)": ['Paris Saint-Germain', 'Olympique de Marseille', 'AS Monaco', 'Olympique Lyonnais', 'LOSC Lille', 'RC Lens', 'Stade Rennais FC'],
   "Premier League (Angleterre)": ['Manchester City', 'Arsenal FC', 'Liverpool FC', 'Manchester United', 'Chelsea FC', 'Tottenham Hotspur', 'Newcastle United'],
@@ -42,8 +41,6 @@ const BIG_LEAGUES_CLUBS = {
   "Bundesliga (Allemagne)": ['FC Bayern München', 'Bayer Leverkusen', 'Borussia Dortmund', 'RB Leipzig', 'VfB Stuttgart'],
   "Serie A (Italie)": ['Inter Milan', 'AC Milan', 'Juventus FC', 'SSC Napoli', 'AS Roma', 'Atalanta BC']
 };
-
-// --- 2. BASE DE DONNÉES DES CLUBS DE DÉPART (AVEC ENTRAÎNEURS & OBJECTIFS) ---
 
 const STARTER_CLUBS = [
   {
@@ -54,7 +51,8 @@ const STARTER_CLUBS = [
     coachName: 'Marc Keller',
     coachStyle: 'Jeu direct et physique, pressing intense sans fioritures.',
     expectations: { goals: 5, assists: 3, cleanSheets: 0 },
-    boardExpectation: "Assurer le maintien et montrer un état d'esprit irréprochable."
+    boardExpectation: "Assurer le maintien et montrer un état d'esprit irréprochable.",
+    weeklySalary: 150
   },
   {
     name: 'Pau FC',
@@ -64,7 +62,8 @@ const STARTER_CLUBS = [
     coachName: 'Nicolas Usaï',
     coachStyle: 'Bloc compact en contre-attaque, rigueur défensive absolue.',
     expectations: { goals: 8, assists: 5, cleanSheets: 0 },
-    boardExpectation: "Ne pas descendre et faire progresser les jeunes talents."
+    boardExpectation: "Ne pas descendre et faire progresser les jeunes talents.",
+    weeklySalary: 1200
   },
   {
     name: 'SC Bastia',
@@ -74,7 +73,8 @@ const STARTER_CLUBS = [
     coachName: 'Benoît Tavenot',
     coachStyle: 'Engagement total, duels agressifs et transition rapide sur les ailes.',
     expectations: { goals: 10, assists: 6, cleanSheets: 0 },
-    boardExpectation: "Accrocher la première moitié de tableau."
+    boardExpectation: "Accrocher la première moitié de tableau.",
+    weeklySalary: 1500
   },
   {
     name: 'Bromley FC',
@@ -84,7 +84,8 @@ const STARTER_CLUBS = [
     coachName: 'Andy Woodman',
     coachStyle: 'Jeu ultra physique à l\'anglaise, duels aériens et longue distance.',
     expectations: { goals: 7, assists: 4, cleanSheets: 0 },
-    boardExpectation: "Survivre au marathon de League Two."
+    boardExpectation: "Survivre au marathon de League Two.",
+    weeklySalary: 800
   },
   {
     name: 'CD Castellón',
@@ -94,11 +95,38 @@ const STARTER_CLUBS = [
     coachName: 'Dick Schreuder',
     coachStyle: 'Possession audacieuse, pressing très haut et prise de risque permanente.',
     expectations: { goals: 12, assists: 8, cleanSheets: 0 },
-    boardExpectation: "Pratiquer un football séduisant et viser les play-offs."
+    boardExpectation: "Pratiquer un football séduisant et viser les play-offs.",
+    weeklySalary: 2500
   }
 ];
 
-// --- 3. MOTEUR NARRATIF ---
+// --- ÉCONOMIE DU STAFF PRIVÉ ---
+
+const STAFF_DATA = {
+  physio: [
+    { id: 0, name: 'Aucun', cost: 0, desc: 'Pas de préparateur physique personnel.', effect: 'Aucun' },
+    { id: 1, name: 'Préparateur Amateur', unlock: (p) => p.balance > 500, cost: 200, desc: 'Niveau local', effect: 'Risque blessure -5%, Récupération +5%' },
+    { id: 2, name: 'Préparateur Pro', unlock: (p) => p.weeklySalary >= 5000, cost: 2500, desc: 'Niveau championnat national', effect: 'Risque blessure -20%, Récupération +20%' },
+    { id: 3, name: 'Spécialiste Élite Mondial', unlock: (p) => p.fame >= 70 && p.weeklySalary >= 50000, cost: 15000, desc: 'Niveau Ligue des Champions', effect: 'Risque blessure -50%, Récupération +50%' }
+  ],
+  tech: [
+    { id: 0, name: 'Aucun', cost: 0, desc: 'Pas de préparateur technique personnel.', effect: 'Aucun' },
+    { id: 1, name: 'Grand Frère / Ex-Pro Local', unlock: (p) => p.balance > 300, cost: 150, desc: 'Conseils techniques de base', effect: 'XP Dribble/Tir +5%' },
+    { id: 2, name: 'Spécialiste Spécifique', unlock: (p) => p.weeklySalary >= 3000, cost: 1800, desc: 'Coach de tir / dribble dédié', effect: 'XP Technique ciblée +15%' },
+    { id: 3, name: 'Légende Retraitée', unlock: (p) => p.fame >= 80 && p.balance > 100000, cost: 12000, desc: 'Icône du football', effect: 'XP Technique +35%, Gestes 5⭐' }
+  ],
+  mental: [
+    { id: 0, name: 'Aucun', cost: 0, desc: 'Aucun suivi mental.', effect: 'Aucun' },
+    { id: 1, name: 'App & Livres Dev Perso', unlock: (p) => p.balance > 100, cost: 50, desc: 'Lecture et application', effect: 'Plancher mental minimal à 50' },
+    { id: 2, name: 'Psychologue du Sport', unlock: (p) => p.weeklySalary >= 2000, cost: 1200, desc: 'Suivi pro indépendant', effect: 'Régénération +10 mental / semaine' },
+    { id: 3, name: 'Guru des Stars', unlock: (p) => p.fame >= 60, cost: 8000, desc: 'Accompagnement VIP', effect: 'Immunité totale aux sifflets' }
+  ],
+  chef: [
+    { id: 0, name: 'Cantine Standard', cost: 0, desc: 'Repas classiques du club', effect: 'Statut neutre' },
+    { id: 1, name: 'Diététicien Sportif Privé', unlock: (p) => p.weeklySalary >= 4000, cost: 1500, desc: 'Suivi nutritionnel', effect: 'Condition physique +10% après la 70e' },
+    { id: 2, name: 'Chef Étoilé Personnel', unlock: (p) => p.fame >= 75, cost: 10000, desc: 'Haute gastronomie sportive', effect: 'Fatigue cumulative -30%' }
+  ]
+};
 
 const NARRATIVE_ENGINE = {
   events: [
@@ -125,16 +153,15 @@ const NARRATIVE_ENGINE = {
   ]
 };
 
-// Chargement et nettoyage de la sauvegarde si obsolète
 let savedData = JSON.parse(localStorage.getItem('career_rpg_save'));
-if (savedData && (!savedData.coach || !savedData.heartClub)) {
+if (savedData && (!savedData.coach || !savedData.staff)) {
   savedData = null; 
 }
 
 let state = {
   player: savedData,
   activeEvent: null,
-  transferOffersModal: null,
+  activeTab: 'dashboard',
   form: {
     firstName: 'Brandon',
     lastName: 'Le Moan',
@@ -151,8 +178,6 @@ let state = {
 function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
-
-// --- 4. LOGIQUE DE JEU ---
 
 function generatePlayer(formData, selectedStarterClub) {
   let baseOvr = randInt(38, 48);
@@ -185,6 +210,9 @@ function generatePlayer(formData, selectedStarterClub) {
     traits: [formData.origin.trait],
     week: 1,
     currentClub: selectedStarterClub.name,
+    weeklySalary: selectedStarterClub.weeklySalary,
+    balance: 500,
+    fame: 10,
     coach: {
       name: selectedStarterClub.coachName,
       style: selectedStarterClub.coachStyle,
@@ -193,6 +221,12 @@ function generatePlayer(formData, selectedStarterClub) {
       currentGoals: 0,
       currentAssists: 0,
       currentCleanSheets: 0
+    },
+    staff: {
+      physio: 0,
+      tech: 0,
+      mental: 0,
+      chef: 0
     },
     heartClub: formData.heartClubName,
     history: []
@@ -231,7 +265,6 @@ function submitCreation(clubIndex) {
   const chosenClub = STARTER_CLUBS[clubIndex] || STARTER_CLUBS[0];
   state.player = generatePlayer(state.form, chosenClub);
   
-  // Appliquer le bonus de mental si le club de départ est le club de cœur
   if (state.player.currentClub === state.player.heartClub) {
     state.player.stats.mental += 10;
   }
@@ -244,14 +277,24 @@ function resetCareer() {
   localStorage.removeItem('career_rpg_save');
   state.player = null;
   state.activeEvent = null;
-  state.transferOffersModal = null;
+  render();
+}
+
+function setTab(tab) {
+  state.activeTab = tab;
+  render();
+}
+
+function hireStaff(category, level) {
+  state.player.staff[category] = level;
+  localStorage.setItem('career_rpg_save', JSON.stringify(state.player));
   render();
 }
 
 function advanceWeek() {
   state.player.week += 1;
+  state.player.balance += state.player.weeklySalary;
 
-  // Simulation aléatoire d'actions de match (buts / passes)
   if (Math.random() < 0.6) {
     if (['bu', 'ad', 'ag', 'moc'].includes(state.player.position)) {
       if (Math.random() > 0.5) state.player.coach.currentGoals += 1;
@@ -261,7 +304,16 @@ function advanceWeek() {
     }
   }
 
-  // Événement narratif aléatoire
+  if (state.player.week % 4 === 0) {
+    let totalStaffCost = 0;
+    totalStaffCost += STAFF_DATA.physio[state.player.staff.physio].cost;
+    totalStaffCost += STAFF_DATA.tech[state.player.staff.tech].cost;
+    totalStaffCost += STAFF_DATA.mental[state.player.staff.mental].cost;
+    totalStaffCost += STAFF_DATA.chef[state.player.staff.chef].cost;
+
+    state.player.balance -= totalStaffCost;
+  }
+
   if (Math.random() < 0.5) {
     state.activeEvent = NARRATIVE_ENGINE.events[Math.floor(Math.random() * NARRATIVE_ENGINE.events.length)];
   } else {
@@ -295,7 +347,6 @@ function render() {
   if (!app) return;
 
   if (!state.player) {
-    // Écran de Création & Choix du Club de Départ + Club de Cœur
     app.innerHTML = `
       <div class="max-w-xl mx-auto my-6 p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 text-white shadow-xl">
         <h1 class="text-xl font-black text-center text-emerald-400 uppercase tracking-wider">Création du Joueur & Carrière</h1>
@@ -348,7 +399,6 @@ function render() {
           </div>
         </div>
 
-        <!-- CLUB DE CŒUR -->
         <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
           <label class="text-xs text-pink-400 font-bold uppercase tracking-wider block">❤️ Choix du Club de Cœur (Bonus de Mental)</label>
           <div class="grid grid-cols-2 gap-2">
@@ -361,7 +411,6 @@ function render() {
           </div>
         </div>
 
-        <!-- CHOIX DU CLUB DE DÉPART -->
         <div>
           <label class="text-xs text-yellow-400 font-bold uppercase tracking-wider block mb-2">🏟️ Choisis ton Club de Départ & ton Entraîneur :</label>
           <div class="space-y-3 max-h-60 overflow-y-auto pr-1">
@@ -370,7 +419,7 @@ function render() {
                 <div class="flex justify-between items-center">
                   <div>
                     <span class="font-bold text-white text-sm">${club.name}</span>
-                    <span class="text-[10px] text-slate-400 block">${club.league} (${club.tier})</span>
+                    <span class="text-[10px] text-slate-400 block">${club.league} (${club.tier}) • Salaire: $${club.weeklySalary}/sem</span>
                   </div>
                   <button onclick="submitCreation(${index})" class="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-bold rounded-lg text-xs transition-colors">
                     Choisir ✍️
@@ -380,7 +429,6 @@ function render() {
                   <div>👨‍🏫 Entraîneur : <span class="text-emerald-400 font-semibold">${club.coachName}</span></div>
                   <div>📋 Style : <span class="italic text-slate-400">${club.coachStyle}</span></div>
                   <div>🎯 Objectifs saison : <span class="text-yellow-300">${club.expectations.goals} Buts</span> | <span class="text-yellow-300">${club.expectations.assists} Passes D</span></div>
-                  <div>📌 Attente du board : <span class="text-slate-400">${club.boardExpectation}</span></div>
                 </div>
               </div>
             `).join('')}
@@ -413,15 +461,10 @@ function render() {
       `;
     }
 
-    app.innerHTML = `
-      ${eventModalHTML}
-      <div class="max-w-xl mx-auto my-6 p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 text-white shadow-xl">
-        <h2 class="text-lg font-black text-emerald-400 flex justify-between items-center">
-          <span>${state.player.firstName} ${state.player.lastName} ${state.player.nationality.flag}</span>
-          <span class="text-xs bg-slate-950 border border-slate-800 px-2 py-1 rounded text-slate-300 uppercase">${state.player.position}</span>
-        </h2>
+    let tabContent = '';
 
-        <!-- INFOS CLUB & ENTRAÎNEUR -->
+    if (state.activeTab === 'dashboard') {
+      tabContent = `
         <div class="text-xs text-slate-300 space-y-2 bg-slate-950 p-3 rounded-xl border border-slate-800">
           <div class="flex justify-between items-center">
             <span>Club actuel : <span class="text-yellow-400 font-bold">${state.player.currentClub}</span></span>
@@ -454,6 +497,91 @@ function render() {
             <div class="flex justify-between"><span>Trait :</span> <span class="font-semibold text-slate-200">${state.player.traits[0]}</span></div>
           </div>
         </div>
+      `;
+    } else if (state.activeTab === 'staff') {
+      const categories = [
+        { key: 'physio', title: '1. Préparateur Physique', list: STAFF_DATA.physio },
+        { key: 'tech', title: '2. Préparateur Technique', list: STAFF_DATA.tech },
+        { key: 'mental', title: '3. Coach Mental', list: STAFF_DATA.mental },
+        { key: 'chef', title: '4. Cuisinier & Nutritionniste', list: STAFF_DATA.chef }
+      ];
+
+      tabContent = `
+        <div class="space-y-4 max-h-[50vh] overflow-y-auto pr-1 text-xs">
+          ${categories.map(cat => `
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+              <div class="font-bold text-yellow-400 uppercase">${cat.title}</div>
+              <div class="space-y-1.5">
+                ${cat.list.map(tier => {
+                  const isUnlocked = tier.unlock ? tier.unlock(state.player) : true;
+                  const isCurrent = state.player.staff[cat.key] === tier.id;
+                  return `
+                    <div class="p-2.5 rounded-lg border flex justify-between items-center bg-slate-900 ${isCurrent ? 'border-emerald-500' : 'border-slate-800'}">
+                      <div class="space-y-0.5">
+                        <div class="font-bold text-white">${tier.name} <span class="text-slate-400 font-normal">($${tier.cost}/mois)</span></div>
+                        <div class="text-[10px] text-slate-400">${tier.effect}</div>
+                      </div>
+                      <div>
+                        ${isCurrent ? 
+                          '<span class="text-emerald-400 font-bold px-2 py-1 bg-emerald-500/10 rounded">Actif</span>' :
+                          isUnlocked ? 
+                            `<button onclick="hireStaff('${cat.key}', ${tier.id})" class="px-2.5 py-1 bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-bold rounded">Engager</button>` :
+                            '<span class="text-red-400 text-[10px]">Verrouillé</span>'
+                        }
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    } else if (state.activeTab === 'finances') {
+      let totalMonthlyCost = 
+        STAFF_DATA.physio[state.player.staff.physio].cost +
+        STAFF_DATA.tech[state.player.staff.tech].cost +
+        STAFF_DATA.mental[state.player.staff.mental].cost +
+        STAFF_DATA.chef[state.player.staff.chef].cost;
+
+      tabContent = `
+        <div class="space-y-3 text-xs bg-slate-950 p-4 rounded-xl border border-slate-800">
+          <div class="font-bold text-emerald-400 uppercase tracking-wider text-sm mb-2">Bilan Financier & Personnel</div>
+          <div class="flex justify-between p-2 bg-slate-900 rounded border border-slate-800">
+            <span>Solde Actuel :</span>
+            <span class="font-bold text-yellow-400">$${state.player.balance.toLocaleString()}</span>
+          </div>
+          <div class="flex justify-between p-2 bg-slate-900 rounded border border-slate-800">
+            <span>Salaire Hebdomadaire :</span>
+            <span class="font-bold text-emerald-400">+$${state.player.weeklySalary.toLocaleString()} / sem</span>
+          </div>
+          <div class="flex justify-between p-2 bg-slate-900 rounded border border-slate-800">
+            <span>Coût total du Staff (Mensuel) :</span>
+            <span class="font-bold text-red-400">-$${totalMonthlyCost.toLocaleString()} / mois</span>
+          </div>
+          <div class="flex justify-between p-2 bg-slate-900 rounded border border-slate-800">
+            <span>Notoriété (Fame) :</span>
+            <span class="font-bold text-pink-400">${state.player.fame} / 100</span>
+          </div>
+        </div>
+      `;
+    }
+
+    app.innerHTML = `
+      ${eventModalHTML}
+      <div class="max-w-xl mx-auto my-6 p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 text-white shadow-xl">
+        <h2 class="text-lg font-black text-emerald-400 flex justify-between items-center">
+          <span>${state.player.firstName} ${state.player.lastName} ${state.player.nationality.flag}</span>
+          <span class="text-xs bg-slate-950 border border-slate-800 px-2 py-1 rounded text-slate-300 uppercase">${state.player.position}</span>
+        </h2>
+
+        <div class="grid grid-cols-3 gap-1.5 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
+          <button onclick="setTab('dashboard')" class="py-2 text-xs font-bold rounded-lg transition-all ${state.activeTab === 'dashboard' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'}">Dashboard</button>
+          <button onclick="setTab('staff')" class="py-2 text-xs font-bold rounded-lg transition-all ${state.activeTab === 'staff' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'}">Staff Privé</button>
+          <button onclick="setTab('finances')" class="py-2 text-xs font-bold rounded-lg transition-all ${state.activeTab === 'finances' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-white'}">Finances</button>
+        </div>
+
+        ${tabContent}
 
         <button onclick="advanceWeek()" ${state.activeEvent ? 'disabled class="opacity-50 cursor-not-allowed"' : ''} class="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-black rounded-xl text-white uppercase text-xs tracking-wider shadow-lg transition-all">
           📅 Avancer d'une Semaine (Jouer / S'entraîner)
