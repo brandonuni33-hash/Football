@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Football Career Simulator - V2</title>
     <style>
-        /* CSS intégré directement pour éviter tout problème de cache */
+        /* CSS intégré pour la grille compacte de l'étape 2 et le design global */
         body {
             background-color: #111827;
             color: #f3f4f6;
@@ -39,61 +39,58 @@
         .contract-details strong { color: #d1d5db; }
         .prestige-badge { align-self: flex-end; font-size: 0.8rem; color: #34d399; font-weight: bold; }
 
-        /* Style moderne pour la grille d'origine de l'étape 2 */
-        .grid-origins-modern {
+        /* Grille compacte 2 colonnes pour l'étape 2 */
+        .grid-origins-compact {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 12px;
-            margin-top: 20px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 15px;
         }
-        .origin-card-modern {
+        .origin-card-compact {
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 10px;
-            padding: 16px;
+            border-radius: 8px;
+            padding: 10px;
             cursor: pointer;
             display: flex;
-            align-items: flex-start;
-            gap: 14px;
+            align-items: center;
+            gap: 10px;
             transition: all 0.2s ease;
         }
-        .origin-card-modern:hover {
+        .origin-card-compact:hover {
             background: rgba(255, 255, 255, 0.07);
             border-color: rgba(255, 255, 255, 0.2);
-            transform: translateY(-2px);
         }
-        .origin-card-modern.selected {
+        .origin-card-compact.selected {
             background: rgba(37, 99, 235, 0.15);
             border-color: #2563eb;
-            box-shadow: 0 0 15px rgba(37, 99, 235, 0.3);
         }
-        .origin-icon {
-            font-size: 24px;
+        .origin-icon-small {
+            font-size: 18px;
             background: rgba(255, 255, 255, 0.05);
-            padding: 10px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            padding: 6px;
+            border-radius: 6px;
         }
-        .origin-info h3 { margin: 0 0 4px 0; font-size: 16px; color: #fff; }
+        .origin-info-small h3 {
+            margin: 0 0 2px 0;
+            font-size: 13px;
+            color: #fff;
+        }
         .trait-tag {
             display: inline-block;
-            font-size: 11px;
+            font-size: 10px;
             background: rgba(250, 204, 21, 0.1);
             color: #facc15;
-            padding: 2px 8px;
+            padding: 2px 6px;
             border-radius: 4px;
-            margin-bottom: 6px;
             font-weight: 500;
         }
-        .origin-info p { margin: 0; font-size: 12px; color: #94a3b8; line-height: 1.4; }
     </style>
 </head>
 <body>
     
     <div id="app"></div>
 
-    <script type="module" src="./main.js?v=102"></script>
+    <script type="module" src="./main.js?v=103"></script>
 </body>
 </html>
