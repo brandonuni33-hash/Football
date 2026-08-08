@@ -18,7 +18,6 @@ export class GameEngine {
      * Appelé par l'UI à la fin de l'étape 5 pour lancer la carrière
      */
     startCareer(selectedData) {
-        // Récupère le vrai général (35-45) et le potentiel aléatoire générés dans player.js
         const initialOvr = selectedData.ovr || Math.floor(Math.random() * 11) + 35;
         const potentialOvr = selectedData.pot || initialOvr + Math.floor(Math.random() * 25) + 15;
 
@@ -43,7 +42,6 @@ export class GameEngine {
                 fitness: 90,
                 isInjured: false,
                 
-                // Attributs visibles et détaillés (Technique, Physique, Mental, Charisme, etc.)
                 stats: selectedData.stats || {
                     technique: initialOvr,
                     physique: initialOvr,
@@ -62,36 +60,36 @@ export class GameEngine {
                 },
                 potential: potentialOvr,
 
-                // Attributs cachés
                 attributes: selectedData.hidden || {
                     consistency: Math.floor(Math.random() * 8) + 8,
                     bigMatchPlayer: Math.floor(Math.random() * 8) + 8,
                     injuryProneness: Math.floor(Math.random() * 10) + 6
                 }
             },
-            // Données sociales
             social: this.socialSystem.initSocialData(selectedData.coachName),
-            // Données média et réseaux sociaux initiales
             media: this.mediaSystem.initMediaData(),
             career: {
-                balance: 0 // <-- Départ strict à 0 €
+                balance: 0,
+                seasonHistory: [] // Tableau pour stocker l'historique des saisons passées
             },
             calendar: {
-                currentMonth: 1,
+                currentMonth: 8,     // Mois de départ : Août (1 = Août, ..., 10 = Mai, 11 = Juin, 12 = Juillet)
+                currentSeasonYear: 2026,
                 totalMonths: 12,
-                currentPeriod: "Avant-saison & Début",
+                currentPeriod: "Reprise & Pré-saison",
                 getPeriodName(month) {
-                    if (month <= 3) return "Avant-saison & Début";
-                    if (month <= 6) return "Première partie de saison";
-                    if (month === 7) return "Mercato hivernal & Trêve";
-                    if (month <= 10) return "Seconde partie de saison";
-                    return "Sprint final & Bilan";
+                    if (month === 8) return "Pré-saison & Début de championnat";
+                    if (month >= 9 && month <= 11) return "Première partie de saison";
+                    if (month === 12) return "Mercato hivernal & Trêve";
+                    if (month >= 1 && month <= 4) return "Seconde partie de saison";
+                    if (month === 5) return "Sprint final & Bilan de saison";
+                    return "Trêve estivale & Bilan";
                 }
             },
             seasonPhase: 'pre_season'
         };
 
-        console.log("Carrière lancée avec succès !", this.state);
+        console.log("Carrière lancée avec succès (Août) !", this.state);
     }
 
     /**
@@ -105,41 +103,77 @@ export class GameEngine {
             return;
         }
 
-        // Le MatchBlockManager s'occupe de simuler et de mettre à jour les stats globales/économie
         const report = MatchBlockManager.simulateBlock(this.state);
 
-        // Mise à jour du cycle social à chaque fin de mois
         this.socialSystem.updateSocialCycle(this.state);
-
-        // Génération des posts, de la hype et des dilemmes médias basés sur le rapport du bloc
         this.mediaSystem.generatePostAfterBlock(this.state, report);
 
-        // Vérification et tirage au sort d'un événement aléatoire pondéré pour ce bloc
         const triggeredEvent = EventEngine.checkAndTriggerEvent ? EventEngine.checkAndTriggerEvent(this.state) : null;
         if (triggeredEvent) {
             console.log("⚡ Événement déclenché :", triggeredEvent.titre);
-            this.state.pendingEvent = triggeredEvent; // Stocke l'événement dans le state si besoin
+            this.state.pendingEvent = triggeredEvent;
         }
 
-        // Avancer d'un mois dans le calendrier
+        // Gestion du calendrier (Août -> Juillet)
         const cal = this.state.calendar;
-        if (cal.currentMonth < cal.totalMonths) {
+        
+        if (cal.currentMonth < 12) {
             cal.currentMonth++;
-            cal.currentPeriod = cal.getPeriodName(cal.currentMonth);
         } else {
-            console.log("🏁 Fin de la saison !");
+            // Fin du mois de Juillet : Bouclage de l'année civile, on passe à la saison suivante en Août
+            this.archiveAndResetSeason();
+            cal.currentMonth = 8; // Retour en Août
+            cal.currentSeasonYear++;
         }
+        
+        cal.currentPeriod = cal.getPeriodName(cal.currentMonth);
 
-        console.log(`Mois terminé. Passage au mois ${cal.currentMonth} (${cal.currentPeriod})`);
+        console.log(`Mois terminé. Passage au mois ${cal.currentMonth} (${cal.currentPeriod}) - Saison ${cal.currentSeasonYear}/${cal.currentSeasonYear + 1}`);
 
         return {
             report,
             calendar: {
-                month: cal.currentMonth - 1,
+                month: cal.currentMonth,
+                year: cal.currentSeasonYear,
                 period: cal.currentPeriod
             },
             event: triggeredEvent || null
         };
+    }
+
+    /**
+     * Archive la saison écoulée en juin/juillet et réinitialise les stats de club pour la rentrée d'août
+     */
+    archiveAndResetSeason() {
+        const player = this.state.player;
+        const currentYear = this.state.calendar.currentSeasonYear;
+
+        // 1. Sauvegarde des statistiques de la saison dans l'historique
+        const seasonSummary = {
+            seasonLabel: `${currentYear}/${currentYear + 1}`,
+            club: player.club,
+            overall: player.overall,
+            age: player.age,
+            stats: { ...player.stats }
+        };
+
+        if (!this.state.career.seasonHistory) {
+            this.state.career.seasonHistory = [];
+        }
+        this.state.career.seasonHistory.push(seasonSummary);
+
+        // 2. Vieillissement du joueur d'un an
+        player.age += 1;
+
+        // 3. Réinitialisation des statistiques de match pour la nouvelle saison
+        player.stats.matchesPlayed = 0;
+        player.stats.goals = 0;
+        player.stats.assists = 0;
+        player.stats.successfulPasses = 0;
+        player.stats.tackles = 0;
+        player.stats.averageRating = 0.0;
+
+        console.log("📁 Saison archivée et statistiques de club réinitialisées pour la nouvelle rentrée en Août !", seasonSummary);
     }
 
     /**
