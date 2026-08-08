@@ -19,11 +19,10 @@ export class UserInterface {
         };
         
         this.initDOM();
-        this.bindEvents();
+        this.render();
     }
 
     initDOM() {
-        // Conteneur principal injecté dynamiquement si absent
         let app = document.getElementById('app');
         if (!app) {
             app = document.createElement('div');
@@ -37,7 +36,7 @@ export class UserInterface {
         app.innerHTML = `
             <div class="career-container">
                 <header class="career-header">
-                    <h1>⚽ Mode Carrière - Création de Profil</h1>
+                    <h1>⚽ Mode Carrière</h1>
                     <div class="progress-bar">
                         <div class="progress" style="width: ${(this.currentStep / 5) * 100}%"></div>
                     </div>
@@ -47,7 +46,7 @@ export class UserInterface {
                 </main>
                 <footer class="career-footer">
                     ${this.currentStep > 1 ? '<button id="prev-btn" class="btn-secondary">Précédent</button>' : ''}
-                    ${this.currentStep < 5 ? '<button id="next-btn" class="btn-primary" disabled>Suivant</button>' : '<button id="start-btn" class="btn-success" disabled>Lancer la Carrière</button>'}
+                    ${this.currentStep < 5 ? '<button id="next-btn" class="btn-primary" disabled>Suivant</button>' : '<button id="start-btn" class="btn-success" disabled>Lancer</button>'}
                 </footer>
             </div>
         `;
@@ -68,7 +67,7 @@ export class UserInterface {
                         <input type="text" id="lastname" value="${this.selectedData.lastname}" placeholder="ex: Mbappé">
                     </div>
                     <div class="form-group">
-                        <label>Poste de prédilection :</label>
+                        <label>Poste :</label>
                         <div class="grid-positions">
                             ${POSITIONS.map(p => `
                                 <button class="chip ${this.selectedData.position === p.id ? 'selected' : ''}" data-pos="${p.id}">${p.name}</button>
@@ -78,8 +77,8 @@ export class UserInterface {
                 `;
             case 2:
                 return `
-                    <h2>Étape 2 : Origine & Contexte de Formation</h2>
-                    <p class="subtitle">Comment avez-vous façonné votre jeu avant d'intégrer le circuit ?</p>
+                    <h2>Étape 2 : Origine</h2>
+                    <p class="subtitle">Comment avez-vous façonné votre jeu ?</p>
                     <div class="grid-origins">
                         ${Object.values(ORIGINS.origins || ORIGINS).map(o => `
                             <div class="card-select ${this.selectedData.origin === o.id ? 'selected' : ''}" data-origin="${o.id}">
@@ -91,15 +90,14 @@ export class UserInterface {
                 `;
             case 3:
                 return `
-                    <h2>Étape 3 : Zone Géographique & Pays</h2>
-                    <p class="subtitle">Sélectionnez votre continent d'origine ou d'implantation :</p>
+                    <h2>Étape 3 : Région & Pays</h2>
                     <div class="grid-continents">
                         ${Object.keys(CONTINENTS).map(continent => `
                             <button class="chip-continent ${this.selectedData.continent === continent ? 'selected' : ''}" data-continent="${continent}">${continent}</button>
                         `).join('')}
                     </div>
                     ${this.selectedData.continent ? `
-                        <h3>Choisissez votre pays :</h3>
+                        <h3>Pays :</h3>
                         <div class="grid-countries">
                             ${CONTINENTS[this.selectedData.continent].map(c => `
                                 <button class="chip-country ${this.selectedData.country === c.name ? 'selected' : ''}" data-country="${c.name}">${c.flag} ${c.name}</button>
@@ -111,9 +109,9 @@ export class UserInterface {
                 return `
                     <h2>Étape 4 : Club de Cœur & Mentor</h2>
                     <div class="form-group">
-                        <label>Votre club de cœur (Inspiration) :</label>
+                        <label>Club de cœur :</label>
                         <select id="heart-club-select">
-                            <option value="">-- Sélectionnez un championnat puis un club --</option>
+                            <option value="">-- Choisir un club --</option>
                             ${Object.entries(HEART_CLUBS).map(([league, clubs]) => `
                                 <optgroup label="${league}">
                                     ${clubs.map(c => `<option value="${c.name}" ${this.selectedData.heartClub === c.name ? 'selected' : ''}>${c.name}</option>`).join('')}
@@ -122,7 +120,7 @@ export class UserInterface {
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Profil du Coach formateur initial :</label>
+                        <label>Profil du Coach :</label>
                         <div class="grid-visions">
                             ${COACH_VISIONS.map(cv => `
                                 <div class="card-select ${this.selectedData.coachVision === cv.title ? 'selected' : ''}" data-vision="${cv.title}">
@@ -135,8 +133,7 @@ export class UserInterface {
                 `;
             case 5:
                 return `
-                    <h2>Étape 5 : Point de Chute Initial (Tremplin ou Élite)</h2>
-                    <p class="subtitle">Choisissez où débuter votre aventure professionnelle ou votre pré-formation :</p>
+                    <h2>Étape 5 : Point de Chute Initial</h2>
                     <div class="grid-youth-clubs">
                         ${YOUTH_CLUBS_POOL.map(yc => `
                             <div class="card-select club-card ${this.selectedData.youthClub?.name === yc.name ? 'selected' : ''}" data-club-name="${yc.name}">
@@ -159,11 +156,9 @@ export class UserInterface {
         const prevBtn = document.getElementById('prev-btn');
         const startBtn = document.getElementById('start-btn');
 
-        // Validation dynamique des boutons
         if (nextBtn) nextBtn.disabled = !this.isStepValid();
         if (startBtn) startBtn.disabled = !this.isStepValid();
 
-        // Inputs textuels (Étape 1)
         const firstnameInput = document.getElementById('firstname');
         const lastnameInput = document.getElementById('lastname');
         if (firstnameInput) {
@@ -179,7 +174,6 @@ export class UserInterface {
             });
         }
 
-        // Boutons positions (Étape 1)
         document.querySelectorAll('.chip').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 document.querySelectorAll('.chip').forEach(b => b.classList.remove('selected'));
@@ -189,9 +183,8 @@ export class UserInterface {
             });
         });
 
-        // Origines (Étape 2)
         document.querySelectorAll('.grid-origins .card-select').forEach(card => {
-            card.addEventListener('click', (e) => {
+            card.addEventListener('click', () => {
                 document.querySelectorAll('.grid-origins .card-select').forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
                 this.selectedData.origin = card.getAttribute('data-origin');
@@ -199,16 +192,14 @@ export class UserInterface {
             });
         });
 
-        // Continents (Étape 3)
         document.querySelectorAll('.chip-continent').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 this.selectedData.continent = e.target.getAttribute('data-continent');
-                this.selectedData.country = null; // Reset country
+                this.selectedData.country = null;
                 this.render();
             });
         });
 
-        // Pays (Étape 3)
         document.querySelectorAll('.chip-country').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 document.querySelectorAll('.chip-country').forEach(b => b.classList.remove('selected'));
@@ -218,7 +209,6 @@ export class UserInterface {
             });
         });
 
-        // Heart Club (Étape 4)
         const heartSelect = document.getElementById('heart-club-select');
         if (heartSelect) {
             heartSelect.addEventListener('change', (e) => {
@@ -227,21 +217,18 @@ export class UserInterface {
             });
         }
 
-        // Coach Vision (Étape 4)
         document.querySelectorAll('.grid-visions .card-select').forEach(card => {
-            card.addEventListener('click', (e) => {
+            card.addEventListener('click', () => {
                 document.querySelectorAll('.grid-visions .card-select').forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
                 this.selectedData.coachVision = card.getAttribute('data-vision');
-                // Assigner un nom aléatoire de coach
                 this.selectedData.coachName = COACH_NAMES[Math.floor(Math.random() * COACH_NAMES.length)];
                 if(nextBtn) nextBtn.disabled = !this.isStepValid();
             });
         });
 
-        // Youth Clubs / Régionaux (Étape 5)
         document.querySelectorAll('.grid-youth-clubs .card-select').forEach(card => {
-            card.addEventListener('click', (e) => {
+            card.addEventListener('click', () => {
                 document.querySelectorAll('.grid-youth-clubs .card-select').forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
                 const clubName = card.getAttribute('data-club-name');
@@ -250,7 +237,6 @@ export class UserInterface {
             });
         });
 
-        // Navigation boutons bas de page
         if (nextBtn) {
             nextBtn.addEventListener('click', () => {
                 if (this.currentStep < 5) {
@@ -271,7 +257,11 @@ export class UserInterface {
 
         if (startBtn) {
             startBtn.addEventListener('click', () => {
-                this.engine.startCareer(this.selectedData);
+                if (typeof this.engine.startCareer === 'function') {
+                    this.engine.startCareer(this.selectedData);
+                } else {
+                    console.error("La méthode startCareer n'existe pas dans le moteur.");
+                }
             });
         }
     }
@@ -294,9 +284,5 @@ export class UserInterface {
             default:
                 return false;
         }
-    }
-
-    bindEvents() {
-        // Global events if necessary
     }
 }
