@@ -13,12 +13,22 @@ export const listeEvenements = [
       {
         id: "refuser",
         texte: "Rester chez soi et se reposer",
-        impacts: { fitness: 3, moral: 0, entente_coequipiers: 1 }
+        impacts: { fitness: 3, morale: 0, discipline: 2 }
       },
       {
         id: "sortir",
         texte: "Y aller pour souffler un peu",
-        impacts: { fitness: -8, moral: 5, entente_coequipiers: 4 }
+        impacts: { fitness: -8, morale: 5, discipline: -3 }
+      },
+      {
+        id: "coup_de_vent",
+        texte: "Passer juste une heure sans boire d'alcool",
+        impacts: { fitness: 0, morale: 2, discipline: 0 }
+      },
+      {
+        id: "inviter_chez_soi",
+        texte: "Les inviter chez toi pour contrôler l'heure du coucher",
+        impacts: { balance: -50, fitness: -2, morale: 4, discipline: -1 }
       }
     ]
   },
@@ -33,12 +43,22 @@ export const listeEvenements = [
       {
         id: "accepter_agent",
         texte: "Signer avec lui",
-        impacts: { argent: -200, influence: 10, opportunites_transfert: 5 }
+        impacts: { balance: -200, fame: 5 }
       },
       {
         id: "refuser_agent",
         texte: "Continuer en solo pour l'instant",
-        impacts: { argent: 0, influence: 0 }
+        impacts: { balance: 0, fame: 0 }
+      },
+      {
+        id: "negocier_contrat",
+        texte: "Négocier fermement ses commissions à la baisse",
+        impacts: { balance: -50, fame: 3, morale: -1 }
+      },
+      {
+        id: "avis_famille",
+        texte: "Demander conseil à ta famille avant de décider",
+        impacts: { morale: 2, fame: 1 }
       }
     ]
   },
@@ -53,12 +73,22 @@ export const listeEvenements = [
       {
         id: "donner_fond",
         texte: "Serrer les dents et tout donner",
-        impacts: { fitness: -5, progression_note: 3 }
+        impacts: { fitness: -5, 'attributes.physique': 1 }
       },
       {
         id: "lever_pied",
         texte: "Lever le pied pour éviter la blessure",
-        impacts: { fitness: 4, progression_note: -1 }
+        impacts: { fitness: 4, morale: -1 }
+      },
+      {
+        id: "entrainement_allege",
+        texte: "Demander un programme allégé au coach",
+        impacts: { fitness: 2, discipline: -1, morale: 1 }
+      },
+      {
+        id: "cryotherapie",
+        texte: "Payer une séance de cryothérapie en clinique privée",
+        impacts: { balance: -100, fitness: 8, morale: 2 }
       }
     ]
   },
@@ -72,13 +102,23 @@ export const listeEvenements = [
     choix: [
       {
         id: "communique_excuses",
-        texte: "Publier un communiqué d'excuses",
-        impacts: { moral: -2, popularite_fans: 2 }
+        texte: "Publier un communiqué d'excuses formel",
+        impacts: { morale: -2, fame: 2 }
       },
       {
         id: "ignorer_polemique",
         texte: "Ignorer et laisser couler",
-        impacts: { moral: 1, popularite_fans: -5 }
+        impacts: { morale: 1, fame: -3 }
+      },
+      {
+        id: "video_humour",
+        texte: "Désamorcer avec une vidéo explicative humoristique",
+        impacts: { morale: 2, fame: 4, discipline: -1 }
+      },
+      {
+        id: "agence_com",
+        texte: "Engager une agence de relation presse pour éteindre l'incendie",
+        impacts: { balance: -300, fame: 5, morale: 1 }
       }
     ]
   },
@@ -93,12 +133,22 @@ export const listeEvenements = [
       {
         id: "epargner",
         texte: "Placer l'argent sagement",
-        impacts: { argent: 1500, moral: 2 }
+        impacts: { balance: 1500, morale: 2 }
       },
       {
         id: "faire_plaisir",
-        texte: "Investir dans du matériel / Se faire plaisir",
-        impacts: { argent: 500, moral: 6, fitness: 2 }
+        texte: "Investir dans du matériel ou se faire plaisir",
+        impacts: { balance: 500, morale: 6, fitness: 2 }
+      },
+      {
+        id: "regaler_equipe",
+        texte: "Inviter toute l'équipe au restaurant",
+        impacts: { balance: -200, morale: 8, discipline: 3 }
+      },
+      {
+        id: "don_association",
+        texte: "Faire un don à une association caritative locale",
+        impacts: { balance: -500, fame: 8, morale: 5 }
       }
     ]
   },
@@ -113,12 +163,22 @@ export const listeEvenements = [
       {
         id: "accepter_interview",
         texte: "Accepter l'interview pour soigner ton image",
-        impacts: { popularite_fans: 8, moral: 2, fatigue: 2 }
+        impacts: { fame: 5, morale: 2, fitness: -2 }
       },
       {
         id: "refuser_interview",
         texte: "Refuser pour rester concentré sur le terrain",
-        impacts: { popularite_fans: 0, moral: 0 }
+        impacts: { fame: 0, morale: 0 }
+      },
+      {
+        id: "interview_differee",
+        texte: "Demander à repousser l'interview après le prochain match",
+        impacts: { fame: 2, morale: 1, discipline: 1 }
+      },
+      {
+        id: "interview_duo",
+        texte: "Accepter mais imposer de la faire avec un coéquipier",
+        impacts: { fame: 3, morale: 4, discipline: 2 }
       }
     ]
   },
@@ -133,12 +193,22 @@ export const listeEvenements = [
       {
         id: "aider_financierement",
         texte: "L'aider généreusement",
-        impacts: { argent: -1000, moral: 6, relation_proches: 10 }
+        impacts: { balance: -1000, morale: 6 }
       },
       {
         id: "refuser_poliment",
         texte: "Expliquer ta situation et refuser",
-        impacts: { argent: 0, moral: -4, relation_proches: -5 }
+        impacts: { balance: 0, morale: -4 }
+      },
+      {
+        id: "aider_partiellement",
+        texte: "Prêter une somme plus modeste",
+        impacts: { balance: -300, morale: 2 }
+      },
+      {
+        id: "aider_temps",
+        texte: "L'aider avec ton temps et ton réseau plutôt qu'avec de l'argent",
+        impacts: { fitness: -3, morale: 3, fame: 1 }
       }
     ]
   },
@@ -153,12 +223,22 @@ export const listeEvenements = [
       {
         id: "prevenir_staff",
         texte: "Le dire tout de suite au staff médical",
-        impacts: { fitness: 5, indisponibilite_jours: 3 }
+        impacts: { fitness: 5, isInjured: true, injuryDuration: 1 }
       },
       {
         id: "cacher_douleur",
         texte: "Cacher la douleur pour ne pas rater le prochain match",
-        impacts: { fitness: -15, risque_grosse_blessure: true }
+        impacts: { fitness: -15, isInjured: true, injuryDuration: 2 }
+      },
+      {
+        id: "medecin_prive",
+        texte: "Consulter un ostéopathe privé en urgence",
+        impacts: { balance: -150, fitness: 8, isInjured: false, morale: 2 }
+      },
+      {
+        id: "strap_bandage",
+        texte: "Demander un gros strap au kiné sans parler de la gravité",
+        impacts: { fitness: -5, discipline: -1, isInjured: true, injuryDuration: 1 }
       }
     ]
   },
@@ -172,13 +252,23 @@ export const listeEvenements = [
     choix: [
       {
         id: "signer_contrat",
-        texte: "Accepter le contrat de sponsoring",
-        impacts: { argent: 800, popularite_fans: 5 }
+        texte: "Accepter le contrat de sponsoring classique",
+        impacts: { balance: 800, fame: 5 }
       },
       {
         id: "refuser_contrat",
         texte: "Trouver l'offre trop basse et refuser",
-        impacts: { argent: 0, moral: 0 }
+        impacts: { balance: 0, morale: 0 }
+      },
+      {
+        id: "surenchere",
+        texte: "Faire jouer la concurrence pour faire monter le prix",
+        impacts: { balance: 1200, fame: 2, morale: -2 }
+      },
+      {
+        id: "dotation_club",
+        texte: "Accepter, mais exiger des équipements pour ton club formateur",
+        impacts: { balance: 300, fame: 10, morale: 6 }
       }
     ]
   },
@@ -192,39 +282,81 @@ export const listeEvenements = [
     choix: [
       {
         id: "reparer_immediat",
-        texte: "Passer par le garage en urgence",
-        impacts: { argent: -450, moral: -2 }
+        texte: "Faire remorquer au garage en urgence",
+        impacts: { balance: -450, morale: -2 }
       },
       {
         id: "transports_commun",
-        texte: "Prendre les transports et arriver en retard",
-        impacts: { argent: -20, moral: -5, relation_entraineur: -3 }
+        texte: "Prendre les transports en commun et arriver en retard",
+        impacts: { balance: -20, morale: -5, discipline: -3 }
+      },
+      {
+        id: "covoiturage_coequipier",
+        texte: "Appeler un coéquipier pour qu'il passe te prendre",
+        impacts: { morale: 3, discipline: 1 }
+      },
+      {
+        id: "velo_course",
+        texte: "Y aller en courant ou à vélo comme un vrai athlète",
+        impacts: { fitness: -5, 'attributes.physique': 1, morale: 2 }
       }
     ]
   }
 ];
 
 export const EventEngine = {
-    checkTriggers: () => {
-        const state = StateManager.get();
-        
-        // 1. Filtrer les événements selon les conditions du joueur
+    checkAndTriggerEvent(state) {
+        const playerAge = state.player.age || 16;
         const disponibles = listeEvenements.filter(ev => {
-            if (ev.conditions.age_min && state.age < ev.conditions.age_min) return false;
+            if (ev.conditions.age_min && playerAge < ev.conditions.age_min) return false;
             return true;
         });
 
         if (disponibles.length === 0) return null;
 
-        // 2. Sélection pondérée
-        const totalPoids = disponibles.reduce((acc, ev) => acc + ev.poids, 0);
-        let random = Math.random() * totalPoids;
+        if (Math.random() < 0.40) {
+            const totalPoids = disponibles.reduce((acc, ev) => acc + ev.poids, 0);
+            let random = Math.random() * totalPoids;
 
-        for (const ev of disponibles) {
-            if (random < ev.poids) return ev;
-            random -= ev.poids;
+            for (const ev of disponibles) {
+                if (random < ev.poids) return ev;
+                random -= ev.poids;
+            }
+            return disponibles[0];
         }
 
-        return disponibles[0];
+        return null;
+    },
+
+    resolveChoice(state, eventId, choiceIndex) {
+        const event = listeEvenements.find(e => e.id === eventId);
+        if (!event || !event.choix[choiceIndex]) return null;
+
+        const choice = event.choix[choiceIndex];
+        const impacts = choice.impacts;
+        const player = state.player;
+
+        for (const [key, value] of Object.entries(impacts)) {
+            if (key.startsWith('attributes.')) {
+                const attrName = key.split('.')[1];
+                if (player.attributes && player.attributes[attrName] !== undefined) {
+                    player.attributes[attrName] = Math.min(player.potential || 99, player.attributes[attrName] + value);
+                }
+            } else if (key === 'balance') {
+                if (!state.career) state.career = { balance: 0 };
+                state.career.balance = (state.career.balance || 0) + value;
+            } else if (player[key] !== undefined) {
+                if (typeof player[key] === 'boolean') {
+                    player[key] = value;
+                } else {
+                    player[key] = Math.max(0, Math.min(100, player[key] + value));
+                }
+            } else if (player.stats && player.stats[key] !== undefined) {
+                player.stats[key] = Math.max(0, Math.min(100, player.stats[key] + value));
+            }
+        }
+
+        console.log(`🎯 Événement résolu [${event.titre}] -> Choix : "${choice.texte}"`, impacts);
+        return choice.texte;
     }
 };
