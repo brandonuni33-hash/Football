@@ -5,7 +5,9 @@ import { EconomyManager } from './economy.js';
 import { SocialSystem } from './social.js';
 import { MediaSystem } from './media.js';
 import { EventEngine } from './events.js';
-import { TrainingManager } from './entrainement.js'; // Import du manager d'entraînement
+import { TrainingManager } from './entrainement.js';
+import { CoachSystem } from './coachSystem.js'; // Import du système de l'entraîneur formateur
+import { MatchChoiceManager } from './matchChoices.js'; // Import du gestionnaire de choix de match
 
 export class GameEngine {
     constructor() {
@@ -27,6 +29,8 @@ export class GameEngine {
             age: 16
         };
         const contract = EconomyManager.calculateContractOffer(selectedData.youthClub, tempPlayerForEconomy);
+
+        const coachName = selectedData.coachName || "l'entraîneur";
 
         this.state = {
             player: {
@@ -69,9 +73,19 @@ export class GameEngine {
                     mental: initialOvr + Math.floor(Math.random() * 7) - 3
                 }
             },
-            // Ajout du focus d'entraînement par défaut dans le state global
+            // Focus d'entraînement par défaut
             trainingFocus: 'TECHNIQUE',
-            social: this.socialSystem.initSocialData(selectedData.coachName),
+            social: {
+                ...this.socialSystem.initSocialData(coachName),
+                // Initialisation des données détaillées du coach formateur
+                coachData: {
+                    name: coachName,
+                    relation: 50,
+                    opinion: "Neutre",
+                    hasLeftClub: false
+                },
+                youthClubName: selectedData.youthClub.name
+            },
             media: this.mediaSystem.initMediaData(),
             career: {
                 balance: 0,
@@ -91,7 +105,9 @@ export class GameEngine {
                     return "Trêve estivale & Bilan";
                 }
             },
-            seasonPhase: 'pre_season'
+            seasonPhase: 'pre_season',
+            pendingMatchDilemma: null,
+            pendingCoachEvent: null
         };
 
         console.log("Carrière lancée avec succès (Août) !", this.state);
@@ -103,7 +119,7 @@ export class GameEngine {
     playBlock(selectedChoice = null) {
         if (!this.state) return;
 
-        // Si le joueur est blessé, on décrémente la durée au lieu de bloquer bêtement
+        // 1. Gestion de la blessure
         if (this.state.player.isInjured) {
             if (this.state.player.injuryDuration > 0) {
                 this.state.player.injuryDuration--;
@@ -114,8 +130,13 @@ export class GameEngine {
             }
         }
 
-        // On passe le focus d'entraînement actuel stocké dans le state au simulateur
+        // 2. Simulation du bloc de matchs en passant le choix tactique utilisateur éventuel
         const report = MatchBlockManager.simulateBlock(this.state, this.state.trainingFocus, selectedChoice);
+        
+        // Nettoyage du dilemme de match en suspens après la simulation
+        this.state.pendingMatchDilemma = null;
+
+        // 3. Cycles sociaux, médias et événements standards
         this.socialSystem.updateSocialCycle(this.state);
         this.mediaSystem.generatePostAfterBlock(this.state, report);
 
@@ -125,7 +146,14 @@ export class GameEngine {
             this.state.pendingEvent = triggeredEvent;
         }
 
-        // Gestion du calendrier (Août -> Juillet)
+        // 4. Vérification d'un événement / dialogue avec l'entraîneur formateur
+        const coachEvent = CoachSystem.checkCoachInteraction(this.state);
+        if (coachEvent) {
+            console.log("💬 Événement entraîneur formateur déclenché :", coachEvent.title);
+            this.state.pendingCoachEvent = coachEvent;
+        }
+
+        // 5. Gestion du calendrier (Août -> Juillet)
         const cal = this.state.calendar;
         if (cal.currentMonth < 12) {
             cal.currentMonth++;
@@ -137,6 +165,9 @@ export class GameEngine {
 
         cal.currentPeriod = cal.getPeriodName(cal.currentMonth);
 
+        // 6. Vérification optionnelle si un dilemme de match doit être préparé pour le PROCHAIN bloc
+        // (Tu pourras appeler MatchChoiceManager.shouldTriggerDilemma et getMatchDilemma depuis ton UI avant de lancer playBlock)
+
         console.log(`Mois terminé. Passage au mois ${cal.currentMonth} (${cal.currentPeriod}) - Saison ${cal.currentSeasonYear}/${cal.currentSeasonYear + 1}`);
 
         return {
@@ -146,7 +177,8 @@ export class GameEngine {
                 year: cal.currentSeasonYear,
                 period: cal.currentPeriod
             },
-            event: triggeredEvent || null
+            event: triggeredEvent || null,
+            coachEvent: coachEvent || null
         };
     }
 
@@ -157,6 +189,16 @@ export class GameEngine {
         if (!this.state) return;
         this.state.trainingFocus = focusKey;
         console.log(`Focus d'entraînement mis à jour : ${focusKey}`);
+    }
+
+    /**
+     * Permet de résoudre un choix d'interaction avec l'entraîneur formateur
+     */
+    resolveCoachChoice(choiceIndex) {
+        if (!this.state || !this.state.pendingCoachEvent) return null;
+        const result = CoachSystem.resolveCoachChoice(this.state, choiceIndex, this.state.pendingCoachEvent);
+        this.state.pendingCoachEvent = null; // Nettoyage après résolution
+        return result;
     }
 
     /**
@@ -178,6 +220,13 @@ export class GameEngine {
             this.state.career.seasonHistory = [];
         }
         this.state.career.seasonHistory.push(seasonSummary);
+
+        // Si le joueur change de club, on met à jour le suivi de l'entraîneur formateur
+        if (this.state.social && this.state.social.coachData) {
+            if (player.club !== this.state.social.youthClubName) {
+                this.state.social.coachData.hasLeftClub = true;
+            }
+        }
 
         player.age += 1;
         player.stats.matchesPlayed = 0;
