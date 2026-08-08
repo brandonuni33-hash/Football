@@ -325,8 +325,9 @@ export class UserInterface {
         const state = this.engine.state;
         if (!state) return;
 
-        // Récupération sécurisée des données sociales
+        // Récupération sécurisée des données sociales et médias
         const socialState = state.social || { romance: { unlocked: false }, relationships: [] };
+        const mediaState = state.media || { followers: 0, hypeLevel: 0, feed: [], recentDilemma: null };
 
         const app = document.getElementById('app');
         app.innerHTML = `
@@ -357,6 +358,47 @@ export class UserInterface {
                     </ul>
                 </section>
 
+                <!-- SECTION MEDIA & RÉSEAUX SOCIAUX -->
+                <section class="media-overview" style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #3b82f6;">
+                    <h3>📱 Réseaux Sociaux & Médias</h3>
+                    <div style="display: flex; gap: 20px; margin-bottom: 12px; font-size: 0.95rem;">
+                        <span>👥 Abonnés : <strong>${mediaState.followers.toLocaleString()}</strong></span>
+                        <span>🔥 Niveau de Hype : <strong>${mediaState.hypeLevel}/100</strong></span>
+                    </div>
+
+                    <!-- Si un dilemme média est en attente, l'afficher de façon prioritaire -->
+                    ${mediaState.recentDilemma ? `
+                        <div style="background: rgba(59, 130, 246, 0.15); border: 1px solid #3b82f6; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+                            <h4 style="margin: 0 0 8px 0; color: #60a5fa;">${mediaState.recentDilemma.title}</h4>
+                            <p style="font-size: 0.9rem; margin: 0 0 10px 0;">${mediaState.recentDilemma.description}</p>
+                            <div style="display: flex; flex-direction: column; gap: 6px;">
+                                ${mediaState.recentDilemma.choices.map((choice, idx) => `
+                                    <button class="btn-dilemma" data-choice-idx="${idx}" style="background: #2563eb; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; text-align: left; font-size: 0.85rem;">
+                                        👉 ${choice.text}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    <p style="font-size: 0.9rem; margin-bottom: 5px;"><strong>Fil d'actualité & Buzz :</strong></p>
+                    <div style="max-height: 160px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 5px;">
+                        ${mediaState.feed.map(post => `
+                            <div style="background: rgba(0,0,0,0.2); padding: 8px 10px; border-radius: 6px; font-size: 0.85rem;">
+                                <div style="display: flex; justify-content: space-between; color: #94a3b8; font-size: 0.75rem; margin-bottom: 2px;">
+                                    <span>📢 ${post.source}</span>
+                                    <span>${post.date}</span>
+                                </div>
+                                <p style="margin: 0; color: #e2e8f0;">${post.content}</p>
+                                <div style="display: flex; gap: 10px; margin-top: 4px; color: #94a3b8; font-size: 0.75rem;">
+                                    <span>❤️ ${post.likes} likes</span>
+                                    <span>💬 ${post.commentsCount} commentaires</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </section>
+
                 <div class="action-panel">
                     <button id="play-block-btn" class="btn-primary" style="padding: 12px 24px; font-size: 16px; background: #22c55e; color: white; border: none; border-radius: 6px; cursor: pointer;">
                         ▶️ Jouer le mois (Bloc de 4 matchs)
@@ -365,9 +407,19 @@ export class UserInterface {
             </div>
         `;
 
+        // Événement pour simuler le mois
         document.getElementById('play-block-btn').addEventListener('click', () => {
             this.engine.playBlock();
             this.renderDashboard();
+        });
+
+        // Événements pour résoudre les dilemmes médias s'il y en a
+        document.querySelectorAll('.btn-dilemma').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const choiceIdx = parseInt(e.currentTarget.getAttribute('data-choice-idx'));
+                this.engine.resolveMediaDilemma(choiceIdx);
+                this.renderDashboard();
+            });
         });
     }
 }
