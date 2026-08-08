@@ -280,6 +280,115 @@
         .btn-back-home:hover {
             background: #4b5563;
         }
+
+        /* ==========================================
+           ⭐ WIDGET JOUEUR ENRICHI (DASHBOARD)
+           ========================================== */
+        .player-widget-enhanced {
+            background: rgba(15, 23, 42, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            padding: 12px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        .widget-subtitle {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+        .player-card-banner {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .player-jersey-badge {
+            position: relative;
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.4);
+            flex-shrink: 0;
+        }
+        .jersey-icon {
+            font-size: 22px;
+        }
+        .jersey-number {
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            background: #0f172a;
+            color: #facc15;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 1px 4px;
+            border-radius: 6px;
+            border: 1px solid #2563eb;
+        }
+        .player-main-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            overflow: hidden;
+        }
+        .widget-title {
+            font-size: 15px;
+            font-weight: bold;
+            color: #f8fafc;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .player-club-sub {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+        .widget-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+        }
+        .stat-pill {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            color: #cbd5e1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .stat-pill strong {
+            color: #fff;
+        }
+        .btn-play-block {
+            width: 100%;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+            transition: transform 0.1s ease;
+            margin-top: auto;
+        }
+        .btn-play-block:hover {
+            transform: scale(1.02);
+        }
     </style>
 </head>
 <body>
