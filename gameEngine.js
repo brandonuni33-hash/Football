@@ -2,12 +2,14 @@
 import { UserInterface } from './ui.js';
 import { MatchBlockManager } from './matchBlock.js';
 import { EconomyManager } from './economy.js';
-import { SocialSystem } from './social.js'; // 1. Import du module social
+import { SocialSystem } from './social.js';
+import { MediaSystem } from './media.js'; // 1. Import du module média
 
 export class GameEngine {
     constructor() {
         this.state = null;
-        this.socialSystem = new SocialSystem(this); // 2. Initialisation du système social
+        this.socialSystem = new SocialSystem(this);
+        this.mediaSystem = new MediaSystem(this); // 2. Initialisation du système média
         this.ui = new UserInterface(this);
     }
 
@@ -57,8 +59,10 @@ export class GameEngine {
                     injuryProneness: Math.floor(Math.random() * 10) + 6
                 }
             },
-            // 3. Ajout des données sociales initiales dans le state
+            // Données sociales
             social: this.socialSystem.initSocialData(selectedData.coachName),
+            // 3. Ajout des données média et réseaux sociaux initiales dans le state
+            media: this.mediaSystem.initMediaData(),
             career: {
                 balance: contract.signingBonus || 1500
             },
@@ -91,19 +95,20 @@ export class GameEngine {
             return;
         }
 
-        // Le MatchBlockManager s'occupe déjà de tout simuler, 
-        // de mettre à jour les stats globales et l'économie en interne.
+        // Le MatchBlockManager s'occupe de simuler et de mettre à jour les stats globales/économie
         const report = MatchBlockManager.simulateBlock(this.state);
 
-        // 4. Mise à jour du cycle social à chaque fin de mois (âge, impact romance/moral)
+        // 4. Mise à jour du cycle social à chaque fin de mois
         this.socialSystem.updateSocialCycle(this.state);
+
+        // 5. Génération des posts, de la hype et des dilemmes médias basés sur le rapport du bloc
+        this.mediaSystem.generatePostAfterBlock(this.state, report);
 
         // Avancer d'un mois dans le calendrier
         const cal = this.state.calendar;
         if (cal.currentMonth < cal.totalMonths) {
             cal.currentMonth++;
             cal.currentPeriod = cal.getPeriodName(cal.currentMonth);
-            // On peut aussi vieillir le joueur d'un mois ou gérer l'anniversaire si besoin
         } else {
             console.log("🏁 Fin de la saison !");
         }
@@ -117,6 +122,14 @@ export class GameEngine {
                 period: cal.currentPeriod
             }
         };
+    }
+
+    /**
+     * Permet de résoudre un dilemme média depuis l'interface
+     */
+    resolveMediaDilemma(choiceIndex) {
+        if (!this.state) return;
+        this.mediaSystem.resolveDilemma(this.state, choiceIndex);
     }
 }
 
