@@ -4,10 +4,96 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Football Career Simulator - V2</title>
-    <link rel="stylesheet" href="./style.css?v=101">
+    <style>
+        /* CSS intégré directement pour éviter tout problème de cache */
+        body {
+            background-color: #111827;
+            color: #f3f4f6;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+        .career-container { max-width: 600px; margin: 0 auto; padding: 16px; }
+        .career-header h1 { font-size: 1.5rem; font-weight: bold; margin-bottom: 8px; }
+        .progress-bar { background-color: #374151; height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 24px; }
+        .progress { background-color: #10b981; height: 100%; transition: width 0.3s ease; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; font-weight: 500; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; background-color: #1f2937; border: 1px solid #374151; color: white; border-radius: 6px; box-sizing: border-box; }
+        .grid-positions, .grid-countries, .grid-continents { display: flex; flex-wrap: wrap; gap: 8px; }
+        .chip, .chip-continent, .chip-country { background-color: #1f2937; border: 1px solid #374151; color: white; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
+        .chip.selected, .chip-continent.selected, .chip-country.selected { background-color: #10b981; border-color: #10b981; }
+        .career-footer { display: flex; justify-content: space-between; margin-top: 24px; }
+        .btn-primary, .btn-secondary, .btn-success { padding: 10px 20px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; }
+        .btn-primary { background-color: #3b82f6; color: white; }
+        .btn-secondary { background-color: #4b5563; color: white; }
+        .btn-success { background-color: #10b981; color: white; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .card-select { background-color: #1f2937; border: 1px solid #374151; padding: 12px; border-radius: 8px; margin-bottom: 8px; cursor: pointer; }
+        .card-select.selected { border-color: #10b981; background-color: #064e3b; }
+        .club-card { display: flex; flex-direction: column; gap: 8px; text-align: left; }
+        .club-header-info { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #374151; padding-bottom: 6px; }
+        .club-header-info h3 { margin: 0; font-size: 1.1rem; color: #f3f4f6; }
+        .contract-details { font-size: 0.85rem; color: #9ca3af; display: flex; flex-direction: column; gap: 4px; }
+        .contract-details strong { color: #d1d5db; }
+        .prestige-badge { align-self: flex-end; font-size: 0.8rem; color: #34d399; font-weight: bold; }
+
+        /* Style moderne pour la grille d'origine de l'étape 2 */
+        .grid-origins-modern {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .origin-card-modern {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            transition: all 0.2s ease;
+        }
+        .origin-card-modern:hover {
+            background: rgba(255, 255, 255, 0.07);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        .origin-card-modern.selected {
+            background: rgba(37, 99, 235, 0.15);
+            border-color: #2563eb;
+            box-shadow: 0 0 15px rgba(37, 99, 235, 0.3);
+        }
+        .origin-icon {
+            font-size: 24px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .origin-info h3 { margin: 0 0 4px 0; font-size: 16px; color: #fff; }
+        .trait-tag {
+            display: inline-block;
+            font-size: 11px;
+            background: rgba(250, 204, 21, 0.1);
+            color: #facc15;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        .origin-info p { margin: 0; font-size: 12px; color: #94a3b8; line-height: 1.4; }
+    </style>
 </head>
 <body>
+    
     <div id="app"></div>
-    <script type="module" src="./main.js?v=101"></script>
+
+    <script type="module" src="./main.js?v=102"></script>
 </body>
 </html>
