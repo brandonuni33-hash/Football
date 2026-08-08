@@ -80,7 +80,7 @@ export class UserInterface {
                     <h2>Étape 2 : Origine</h2>
                     <p class="subtitle">Comment avez-vous façonné votre jeu ?</p>
                     <div class="grid-origins">
-                        ${Object.values(ORIGINS.origins || ORIGINS).map(o => `
+                        ${Object.values(ORIGINS).map(o => `
                             <div class="card-select ${this.selectedData.origin === o.id ? 'selected' : ''}" data-origin="${o.id}">
                                 <h3>${o.name} <span class="trait-badge">${o.trait}</span></h3>
                                 <p>${o.desc}</p>
