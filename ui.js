@@ -2,14 +2,14 @@
 import { POSITIONS, CONTINENTS, ORIGINS, HEART_CLUBS, YOUTH_CLUBS_POOL, COACH_VISIONS, COACH_NAMES } from './constants.js';
 import { EventEngine } from './events.js';
 import { TrainingManager } from './entrainement.js';
-import { MatchChoiceManager } from './matchChoices.js'; // Import du gestionnaire de choix de match
+import { MatchChoiceManager } from './matchChoices.js';
 
 export class UserInterface {
     constructor(gameEngine) {
         this.engine = gameEngine;
         this.currentStep = 1;
         this.activeApp = 'home';
-        this.selectedFocus = 'TECHNIQUE'; // Synchronisé avec la valeur par défaut du state du GameEngine
+        this.selectedFocus = 'TECHNIQUE';
         this.selectedData = {
             firstname: '',
             lastname: '',
@@ -363,7 +363,6 @@ export class UserInterface {
                         <span>🔋 100%</span>
                     </div>
                     <div class="phone-home-screen">
-                        <!-- Widget Joueur Enrichi : Maillot floqué & Stats -->
                         <div class="player-widget-enhanced">
                             <div class="widget-subtitle">📅 Saison ${state.calendar.currentSeasonYear}/${state.calendar.currentSeasonYear + 1} — ${state.calendar.currentPeriod}</div>
                             
@@ -456,6 +455,7 @@ export class UserInterface {
         const socialState = state.social || { romance: { unlocked: false }, relationships: [] };
         const mediaState = state.media || { followers: 0, hypeLevel: 0, feed: [], recentDilemma: null };
         const history = state.career.seasonHistory || [];
+        const attr = state.player.attributes || {};
 
         switch(this.activeApp) {
             case 'career':
@@ -537,13 +537,21 @@ export class UserInterface {
             case 'stats':
                 return `
                     <div class="app-pane">
-                        <h3 class="pane-title stats-color">📊 Statistiques de Saison</h3>
-                        <p><strong>Club actuel :</strong> ${state.player.club}</p>
-                        <p><strong>Matchs joués :</strong> ${state.player.stats.matchesPlayed}</p>
-                        <p><strong>Buts :</strong> ${state.player.stats.goals}</p>
-                        <p><strong>Passes décisives :</strong> ${state.player.stats.assists}</p>
+                        <h3 class="pane-title stats-color">📊 Statistiques & Attributs</h3>
+                        <p><strong>Matchs :</strong> ${state.player.stats.matchesPlayed} | <strong>Buts :</strong> ${state.player.stats.goals} | <strong>Passes :</strong> ${state.player.stats.assists}</p>
                         <p><strong>Note moyenne :</strong> ${state.player.stats.averageRating}</p>
-                        <p><strong>Note globale (OVR) :</strong> ${state.player.overall}</p>
+
+                        <hr class="pane-divider">
+                        <h4 class="history-section-title">⚡ Attributs (OVR : ${state.player.overall} / Pot : ${state.player.potential})</h4>
+                        <div class="attributes-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; font-size: 0.9rem;">
+                            <div class="stat-pill">🏃‍♂️ Vitesse : <strong>${attr.vitesse || 50}</strong></div>
+                            <div class="stat-pill">🎯 Tir : <strong>${attr.tir || 50}</strong></div>
+                            <div class="stat-pill">🎯 Passe : <strong>${attr.passe || 50}</strong></div>
+                            <div class="stat-pill">✨ Dribble : <strong>${attr.dribble || 50}</strong></div>
+                            <div class="stat-pill">🛡️ Défense : <strong>${attr.defense || 50}</strong></div>
+                            <div class="stat-pill">💪 Physique : <strong>${attr.physique || 50}</strong></div>
+                            <div class="stat-pill" style="grid-column: span 2;">🧠 Mental : <strong>${attr.mental || 50}</strong></div>
+                        </div>
 
                         <hr class="pane-divider-large">
                         <h4 class="history-section-title">📁 Historique des Saisons</h4>
@@ -553,9 +561,6 @@ export class UserInterface {
                                     <div class="history-item">
                                         <div class="history-item-title">Saison ${season.seasonLabel} — ${season.club}</div>
                                         <div class="history-item-sub">Âge : ${season.age} | OVR : ${season.overall}</div>
-                                        <div class="history-item-details">
-                                            Matchs : ${season.stats.matchesPlayed} | Buts : ${season.stats.goals} | Passes : ${season.stats.assists} | Note : ${season.stats.averageRating}
-                                        </div>
                                     </div>
                                 `).join('')}
                             </div>
@@ -588,38 +593,30 @@ export class UserInterface {
             playBtn.addEventListener('click', () => {
                 const state = this.engine.state;
 
-                // Vérification si le joueur est blessé
                 if (state && state.player && state.player.isInjured) {
                     const weeksLeft = state.player.injuryDuration || 1;
-                    
                     const wantSimulate = confirm(`⚠️ Impossible de jouer, votre joueur est blessé pour encore ${weeksLeft} bloc(s).\n\nVoulez-vous simuler automatiquement jusqu'à votre guérison ?`);
                     
                     if (wantSimulate) {
                         while (state.player.isInjured && (state.player.injuryDuration > 0)) {
                             this.engine.playBlock();
                             state.player.injuryDuration--;
-                            
                             if (state.player.injuryDuration <= 0) {
                                 state.player.isInjured = false;
                                 state.player.injuryDuration = 0;
                             }
                         }
-                        alert("🎉 Votre joueur est totalement guéri et de retour sur les terrains !");
+                        alert("🎉 Votre joueur est de retour sur les terrains !");
                         this.renderDashboard();
                     }
                     return;
                 }
 
-                // Détermination du type de match (ex: Fin de saison en mai = finale, ou aléatoire/rival)
                 const isFinalPeriod = state.calendar.currentMonth === 5; 
                 const matchType = isFinalPeriod ? 'final' : (Math.random() < 0.25 ? 'rival' : 'standard');
-                
-                // Récupération du dilemme d'avant-match
                 const matchDilemma = MatchChoiceManager.getMatchDilemma(matchType, "l'adversaire direct");
 
-                // Affichage de la modale de choix tactique avant de simuler le bloc
                 this.afficherModaleMatchDilemma(matchDilemma, (selectedChoice) => {
-                    // Une fois le choix fait, on lance le bloc en passant le bonus choisi
                     this.engine.playBlock(selectedChoice);
 
                     const eventActuel = EventEngine.checkTriggers ? EventEngine.checkTriggers() : null;
@@ -662,7 +659,6 @@ export class UserInterface {
                 cardEl.classList.add('selected');
                 const focusKey = cardEl.getAttribute('data-focus-key');
                 this.selectedFocus = focusKey;
-                // Synchronisation immédiate avec le GameEngine
                 if (typeof this.engine.setTrainingFocus === 'function') {
                     this.engine.setTrainingFocus(focusKey);
                 }
@@ -684,7 +680,6 @@ export class UserInterface {
                 <span class="event-modal-category">⚡ CONSIGNE TACTIQUE & MATCH CLÉ</span>
                 <h3 class="event-modal-title">${dilemma.title}</h3>
                 <p class="event-modal-desc">${dilemma.description}</p>
-                
                 <div class="event-modal-choices">
                     ${dilemma.choices.map((choix, index) => `
                         <button class="btn-event-choice" data-choice-index="${index}">
@@ -700,14 +695,11 @@ export class UserInterface {
                 const choiceIndex = parseInt(e.currentTarget.getAttribute('data-choice-index'), 10);
                 const choixSelectionne = dilemma.choices[choiceIndex];
 
-                // Appliquer les impacts directs (ex: moral, physique, etc.)
                 if (choixSelectionne.impacts) {
                     this.appliquerImpactsChoix(choixSelectionne.impacts);
                 }
 
                 modal.remove();
-                
-                // Exécuter le callback avec les bonus du match
                 if (typeof onChoiceMade === 'function') {
                     onChoiceMade(choixSelectionne);
                 }
@@ -729,7 +721,6 @@ export class UserInterface {
                 <span class="event-modal-category">${event.categorie}</span>
                 <h3 class="event-modal-title">${event.titre}</h3>
                 <p class="event-modal-desc">${event.description}</p>
-                
                 <div class="event-modal-choices">
                     ${event.choix.map((choix, index) => `
                         <button class="btn-event-choice" data-choice-index="${index}">
@@ -762,8 +753,6 @@ export class UserInterface {
                 state.player[stat] += valeur;
             } else if (state.career && state.career[stat] !== undefined) {
                 state.career[stat] += valeur;
-            } else {
-                console.warn(`Statistique "${stat}" non trouvée dans le state.`);
             }
         }
     }
