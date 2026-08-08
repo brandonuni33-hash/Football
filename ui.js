@@ -1,197 +1,147 @@
 // ui.js
 import { StateManager } from './state.js';
 import { PlayerLogic } from './player.js';
-import { POSITIONS, ORIGINS, STARTING_CLUBS } from './constants.js';
+import { POSITIONS, CONTINENTS, ORIGINS } from './constants.js';
 
 export const UIRenderer = {
     init: () => {
         const app = document.getElementById('app');
         UIRenderer.render(app);
-        
-        // Rafraîchissement automatique de l'UI quand l'état change
         window.addEventListener('stateChanged', () => UIRenderer.render(app));
     },
 
     render: (container) => {
-        const state = StateManager.get();
-        container.innerHTML = ''; // Nettoyage propre
-        
-        if (!state.isCreated) {
+        const currentState = StateManager.get();
+        container.innerHTML = '';
+        if (!currentState.isCreated) {
             container.innerHTML = UIRenderer.templates.creationForm();
             UIRenderer.bindCreationEvents();
         } else {
-            container.innerHTML = UIRenderer.templates.dashboard(state);
+            container.innerHTML = UIRenderer.templates.dashboard(currentState);
             UIRenderer.bindDashboardEvents();
         }
+    },
+
+    generateNationalityOptions: () => {
+        let html = '';
+        for (const [continent, countries] of Object.entries(CONTINENTS)) {
+            html += `<optgroup label="${continent}">`;
+            countries.forEach(c => {
+                html += `<option value="${c.id}">${c.flag} ${c.name}</option>`;
+            });
+            html += `</optgroup>`;
+        }
+        return html;
     },
 
     templates: {
         creationForm: () => `
             <div class="bg-gray-800 p-8 rounded-xl shadow-2xl fade-in border border-gray-700">
-                <h1 class="text-3xl font-bold mb-6 text-blue-400">Création de Joueur</h1>
+                <h1 class="text-3xl font-bold mb-6 text-blue-400">Création du Joueur</h1>
                 <form id="creation-form" class="space-y-6">
-                    
-                    <!-- Étape 1 : Identité -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-gray-700 pb-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-1">Prénom</label>
-                            <input type="text" id="c_first" class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-white" required>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-1">Nom</label>
-                            <input type="text" id="c_last" class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-white" required>
-                        </div>
+                        <div><label class="block text-sm text-gray-400 mb-1">Prénom</label><input type="text" id="c_first" class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-white" required></div>
+                        <div><label class="block text-sm text-gray-400 mb-1">Nom</label><input type="text" id="c_last" class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-white" required></div>
+                        <div class="md:col-span-2"><button type="button" id="btn-random-name" class="text-sm text-blue-400 hover:text-blue-300">Générer un nom aléatoire</button></div>
                         <div class="md:col-span-2">
-                            <button type="button" id="btn-random-name" class="text-sm text-blue-400 hover:text-blue-300">Générer un nom aléatoire</button>
+                            <label class="block text-sm text-gray-400 mb-1">Nationalité</label>
+                            <select id="c_nat" class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-white">
+                                ${UIRenderer.generateNationalityOptions()}
+                            </select>
                         </div>
                     </div>
-
-                    <!-- Étape 2 : Morphologie -->
-                    <div class="grid grid-cols-2 gap-6 border-b border-gray-700 pb-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-1">Taille (<span id="height-val">175</span> cm)</label>
-                            <input type="range" id="c_height" min="160" max="210" value="175" class="w-full accent-blue-500">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-1">Poids (<span id="weight-val">70</span> kg)</label>
-                            <input type="range" id="c_weight" min="55" max="110" value="70" class="w-full accent-blue-500">
-                        </div>
-                    </div>
-
-                    <!-- Étape 3, 4, 5, 6 : Sélecteurs -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-1">Poste</label>
-                            <select id="c_position" class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-white">
-                                ${POSITIONS.map(p => `<option value="${p.id}">${p.name} (${p.id})</option>`).join('')}
+                            <label class="block text-sm text-gray-400 mb-1">Poste de Prédilection</label>
+                            <select id="c_pos" class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-white">
+                                ${POSITIONS.map(p => `<option value="${p.id}">${p.id} - ${p.name}</option>`).join('')}
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-1">Origine & Style</label>
-                            <select id="c_origin" class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-white">
+                            <label class="block text-sm text-gray-400 mb-1">Origine du Joueur</label>
+                            <select id="c_ori" class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-white">
                                 ${Object.values(ORIGINS).map(o => `<option value="${o.id}">${o.name} (Trait: ${o.trait})</option>`).join('')}
                             </select>
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-1">Club de cœur</label>
-                            <input type="text" id="c_favClub" class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-white" placeholder="Ex: Real Madrid">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-400 mb-1">Club de Départ</label>
-                            <select id="c_startClub" class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-white">
-                                ${STARTING_CLUBS.map(c => `<option value="${c.id}">${c.name} (${c.league})</option>`).join('')}
-                            </select>
-                        </div>
                     </div>
-
-                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-lg transition-colors mt-6">
-                        Lancer la Carrière
-                    </button>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-4 rounded-lg mt-6 shadow-lg">Générer les Statistiques</button>
                 </form>
             </div>
         `,
-        dashboard: (state) => `
-            <div class="fade-in">
-                <header class="bg-gray-800 p-6 rounded-xl shadow-lg mb-6 border border-gray-700 flex justify-between items-center">
-                    <div>
-                        <h1 class="text-2xl font-bold text-white">${state.player.firstName} ${state.player.lastName}</h1>
-                        <p class="text-blue-400 font-medium">${state.player.position} | ${state.career.age} ans | OVR: ${state.player.ovr}</p>
+        dashboard: (s) => `
+            <div class="fade-in space-y-6">
+                <header class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 flex flex-col md:flex-row justify-between items-center">
+                    <div class="flex items-center space-x-4">
+                        <div class="h-16 w-16 bg-gray-700 rounded-full flex items-center justify-center text-2xl border-2 border-blue-500 font-bold">${s.player.position}</div>
+                        <div>
+                            <h1 class="text-2xl font-bold text-white">${s.player.firstName} ${s.player.lastName}</h1>
+                            <p class="text-blue-400 font-medium">${ORIGINS[s.player.origin].name} | ${s.career.age} ans</p>
+                        </div>
                     </div>
-                    <div class="text-right">
-                        <p class="text-sm text-gray-400">Club Actuel</p>
-                        <p class="font-bold text-lg text-white">${STARTING_CLUBS.find(c => c.id === state.player.currentClub)?.name || 'Agent Libre'}</p>
+                    <div class="mt-4 md:mt-0 text-center md:text-right">
+                        <p class="text-sm text-gray-400">Général (OVR) / Potentiel</p>
+                        <p class="font-bold text-3xl text-white"><span class="text-green-400">${s.player.ovr}</span> <span class="text-gray-500 text-xl">/ ${s.player.pot}</span></p>
                     </div>
                 </header>
-
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
-                        <h2 class="text-lg font-bold mb-4 text-gray-200 border-b border-gray-700 pb-2">Attributs</h2>
-                        <ul class="space-y-2 text-sm">
-                            <li class="flex justify-between"><span>Technique</span> <span>${state.player.stats.technique}</span></li>
-                            <li class="flex justify-between"><span>Physique</span> <span>${state.player.stats.physique}</span></li>
-                            <li class="flex justify-between"><span>Mental</span> <span>${state.player.stats.mental}</span></li>
-                            <li class="flex justify-between"><span>Vitesse</span> <span>${state.player.stats.vitesse}</span></li>
+                    <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                        <h2 class="text-lg font-bold mb-4 text-blue-300 border-b border-gray-700 pb-2">Attributs Purs</h2>
+                        <ul class="space-y-3 text-sm font-mono">
+                            <li class="flex justify-between items-center"><span>Technique</span> <span class="bg-gray-700 px-2 py-1 rounded">${s.player.stats.technique}</span></li>
+                            <li class="flex justify-between items-center"><span>Physique</span> <span class="bg-gray-700 px-2 py-1 rounded">${s.player.stats.physique}</span></li>
+                            <li class="flex justify-between items-center"><span>Mental</span> <span class="bg-gray-700 px-2 py-1 rounded">${s.player.stats.mental}</span></li>
                         </ul>
                     </div>
-
-                    <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
-                        <h2 class="text-lg font-bold mb-4 text-gray-200 border-b border-gray-700 pb-2">Mental & Vestiaire</h2>
-                        <ul class="space-y-2 text-sm">
-                            <li class="flex justify-between"><span>Confiance Coach</span> <span>${state.player.relations.coach}%</span></li>
-                            <li class="flex justify-between"><span>Respect Vestiaire</span> <span>${state.player.relations.dressingRoom}%</span></li>
-                            <li class="flex justify-between"><span>Arrogance</span> <span>${state.player.relations.arrogance}%</span></li>
+                    <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                        <h2 class="text-lg font-bold mb-4 text-purple-300 border-b border-gray-700 pb-2">Carrière & Social</h2>
+                        <ul class="space-y-3 text-sm font-mono">
+                            <li class="flex justify-between items-center"><span>Charisme</span> <span class="bg-gray-700 px-2 py-1 rounded">${s.player.stats.charisme}</span></li>
+                            <li class="flex justify-between items-center"><span>Réputation</span> <span class="bg-gray-700 px-2 py-1 rounded">${s.player.stats.reputation}</span></li>
+                            <li class="flex justify-between items-center"><span>Discipline</span> <span class="bg-gray-700 px-2 py-1 rounded">${s.player.stats.discipline}</span></li>
                         </ul>
                     </div>
-
-                    <div class="bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700 flex flex-col justify-center items-center">
-                        <p class="text-gray-400 mb-2">Semaine ${state.career.week} / Saison ${state.career.season}</p>
-                        <button id="btn-advance" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-lg transition-colors">
-                            Avancer la semaine
-                        </button>
+                    <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                        <h2 class="text-lg font-bold mb-4 text-yellow-300 border-b border-gray-700 pb-2">Relations</h2>
+                        <ul class="space-y-3 text-sm font-mono">
+                            <li class="flex justify-between items-center"><span>Relation Coach</span> <span class="bg-gray-700 px-2 py-1 rounded">${s.player.stats.relationCoach}</span></li>
+                            <li class="flex justify-between items-center"><span>Vestiaire</span> <span class="bg-gray-700 px-2 py-1 rounded">${s.player.stats.vestiaire}</span></li>
+                        </ul>
+                        <div class="mt-4 p-3 bg-gray-900 rounded border border-gray-600 text-xs text-gray-400">
+                            <p class="font-bold text-gray-200 mb-1">Trait Unique :</p>
+                            <p>${s.player.trait}</p>
+                        </div>
                     </div>
+                </div>
+                <div class="text-center mt-8">
+                     <button id="btn-reset" class="text-sm text-red-500 hover:text-red-400 underline">Effacer la sauvegarde et recommencer</button>
                 </div>
             </div>
         `
     },
 
     bindCreationEvents: () => {
-        // UI Sliders dynamiques
-        document.getElementById('c_height')?.addEventListener('input', (e) => document.getElementById('height-val').innerText = e.target.value);
-        document.getElementById('c_weight')?.addEventListener('input', (e) => document.getElementById('weight-val').innerText = e.target.value);
-        
-        // Bouton random
         document.getElementById('btn-random-name')?.addEventListener('click', () => {
-            const fullName = PlayerLogic.generateRandomName().split(' ');
-            document.getElementById('c_first').value = fullName[0];
-            document.getElementById('c_last').value = fullName[1] || '';
+            const name = PlayerLogic.generateRandomName().split(' ');
+            document.getElementById('c_first').value = name[0];
+            document.getElementById('c_last').value = name[1];
         });
-
-        // Soumission
         document.getElementById('creation-form')?.addEventListener('submit', (e) => {
             e.preventDefault();
-            const formData = {
+            const newPlayer = PlayerLogic.createPlayerProfile({
                 firstName: document.getElementById('c_first').value,
                 lastName: document.getElementById('c_last').value,
-                height: parseInt(document.getElementById('c_height').value),
-                weight: parseInt(document.getElementById('c_weight').value),
-                position: document.getElementById('c_position').value,
-                originId: document.getElementById('c_origin').value,
-                favoriteClub: document.getElementById('c_favClub').value,
-                startingClub: document.getElementById('c_startClub').value,
-            };
-
-            const newPlayer = PlayerLogic.createPlayerProfile(formData);
-            
-            StateManager.update({
-                isCreated: true,
-                player: newPlayer
+                nationality: document.getElementById('c_nat').value,
+                position: document.getElementById('c_pos').value,
+                originId: document.getElementById('c_ori').value
             });
+            StateManager.update({ isCreated: true, player: newPlayer });
         });
     },
 
     bindDashboardEvents: () => {
-        document.getElementById('btn-advance')?.addEventListener('click', () => {
-            const state = StateManager.get();
-            let newWeek = state.career.week + 1;
-            let newAge = state.career.age;
-            let newSeason = state.career.season;
-
-            if (newWeek > 52) {
-                newWeek = 1;
-                newAge += 1;
-                newSeason += 1;
-            }
-
-            StateManager.update({
-                career: {
-                    ...state.career,
-                    week: newWeek,
-                    age: newAge,
-                    season: newSeason
-                }
-            });
-            
-            // Ici on pourrait déclencher l'EventEngine pour afficher une modale narrative
+        document.getElementById('btn-reset')?.addEventListener('click', () => {
+            localStorage.removeItem('fc_career_save_v2.0');
+            location.reload();
         });
     }
 };
