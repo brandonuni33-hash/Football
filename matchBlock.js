@@ -3,13 +3,23 @@ import { EconomyManager } from './economy.js';
 
 export const MatchBlockManager = {
     /**
-     * Simule un bloc de 4 matchs en tenant compte des attributs cachés du joueur
-     * et met à jour directement ses statistiques globales de saison.
+     * Simule un bloc de matchs mensuel en tenant compte des attributs cachés du joueur,
+     * du calendrier réel (Août à Juillet) et met à jour ses statistiques globales de saison.
      * @param {Object} state - L'état global du joueur/carrière
      * @returns {Object} - Le rapport complet du bloc (résultats, finances, blessure, résumé)
      */
     simulateBlock(state) {
         const player = state.player;
+        const calendar = state.calendar;
+
+        // Détermination du nombre de matchs dans le mois selon le calendrier (Août -> Juillet)
+        let matchesInMonth = 4; // Standard (environ 4 matchs par mois)
+        
+        if (calendar.currentMonth === 12) {
+            matchesInMonth = 2; // Trêve hivernale / fêtes de fin d'année
+        } else if (calendar.currentMonth === 7) {
+            matchesInMonth = 0; // Mois de juillet = Trêve estivale / Repos total (Mercato)
+        }
         
         // Sécurité : initialisation des attributs cachés s'ils n'existent pas encore
         if (!player.attributes) {
@@ -28,12 +38,12 @@ export const MatchBlockManager = {
         // 2. Gestion du risque de blessure (pondéré)
         const baseInjuryRisk = (21 - attrs.injuryProneness) * 0.15; 
         const fatigueMultiplier = (player.fitness || 80) < 50 ? 2 : 1; 
-        const finalInjuryChance = baseInjuryRisk * fatigueMultiplier;
+        const finalInjuryChance = matchesInMonth > 0 ? (baseInjuryRisk * fatigueMultiplier) : 0;
         
         const isInjured = Math.random() * 100 < finalInjuryChance;
 
-        // 3. Simulation des 4 matchs
-        const results = Array.from({ length: 4 }, () => {
+        // 3. Simulation des matchs du mois
+        const results = Array.from({ length: matchesInMonth }, () => {
             const baseRating = 6.0 + (Math.random() * volatility);
             
             return {
@@ -46,11 +56,11 @@ export const MatchBlockManager = {
         // 4. Calcul des totaux et moyennes du bloc
         const totalGoals = results.reduce((acc, m) => acc + m.goals, 0);
         const totalAssists = results.reduce((acc, m) => acc + m.assists, 0);
-        const avgRating = parseFloat((results.reduce((acc, m) => acc + m.rating, 0) / 4).toFixed(1));
+        const avgRating = matchesInMonth > 0 ? parseFloat((results.reduce((acc, m) => acc + m.rating, 0) / matchesInMonth).toFixed(1)) : 0.0;
 
         // Génération de stats annexes pour le bloc (passes réussies et tacles)
-        const blockPasses = Math.floor(Math.random() * 40) + 20;
-        const blockTackles = Math.floor(Math.random() * 12) + 3;
+        const blockPasses = matchesInMonth > 0 ? Math.floor(Math.random() * 40) + 20 : 0;
+        const blockTackles = matchesInMonth > 0 ? Math.floor(Math.random() * 12) + 3 : 0;
 
         // Résumé pour l'évolution et les rapports
         const blockSummary = {
@@ -61,10 +71,10 @@ export const MatchBlockManager = {
             tackles: blockTackles
         };
 
-        // 5. Mise à jour automatique des statistiques globales de la saison dans le state
-        if (player.stats) {
+        // 5. Mise à jour automatique des statistiques globales de la saison dans le state (si des matchs ont été joués)
+        if (player.stats && matchesInMonth > 0) {
             const prevMatches = player.stats.matchesPlayed || 0;
-            const newTotalMatches = prevMatches + 4;
+            const newTotalMatches = prevMatches + matchesInMonth;
 
             player.stats.matchesPlayed = newTotalMatches;
             player.stats.goals += totalGoals;
@@ -73,18 +83,25 @@ export const MatchBlockManager = {
             player.stats.tackles += blockTackles;
 
             // Recalcul de la note moyenne globale pondérée sur l'ensemble des matchs joués
+            const currentAvg = player.stats.averageRating || 0.0;
             player.stats.averageRating = parseFloat(
-                (((player.stats.averageRating * prevMatches) + (avgRating * 4)) / newTotalMatches).toFixed(1)
+                (((currentAvg * prevMatches) + (avgRating * matchesInMonth)) / newTotalMatches).toFixed(1)
             );
         }
 
-        // 6. Mise à jour de l'économie (primes de fin de bloc basées sur le résumé)
+        // 6. Mise à jour de l'économie (primes de fin de bloc / salaire mensuel)
         const financeReport = EconomyManager.processBlockFinances(state, blockSummary);
 
         // 7. Impact sur le joueur (Moral, Fitness et État de santé)
-        const moraleImpact = avgRating >= 7.0 ? 5 : -3;
-        player.morale = Math.min(100, Math.max(0, (player.morale || 50) + moraleImpact));
-        player.fitness = Math.min(100, Math.max(0, (player.fitness || 80) - 5));
+        if (matchesInMonth > 0) {
+            const moraleImpact = avgRating >= 7.0 ? 5 : -3;
+            player.morale = Math.min(100, Math.max(0, (player.morale || 50) + moraleImpact));
+            player.fitness = Math.min(100, Math.max(0, (player.fitness || 80) - (matchesInMonth * 2)));
+        } else {
+            // Récupération complète pendant les mois de trêve/repos
+            player.fitness = Math.min(100, (player.fitness || 80) + 20);
+            player.morale = Math.min(100, (player.morale || 50) + 5);
+        }
         
         player.isInjured = isInjured;
         if (isInjured) {
@@ -92,7 +109,9 @@ export const MatchBlockManager = {
         }
 
         // 8. Évolution dynamique des attributs cachés
-        this.updateHiddenAttributes(player, blockSummary);
+        if (matchesInMonth > 0) {
+            this.updateHiddenAttributes(player, blockSummary);
+        }
 
         // 9. Retour du rapport complet pour l'affichage dans l'UI
         return {
