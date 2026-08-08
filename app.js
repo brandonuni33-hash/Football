@@ -136,3 +136,61 @@ let state = {
 function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
+
+// --- BLOC 2 : GÉNÉRATION DU JOUEUR & CALCUL DES STATS ---
+
+function generatePlayer(formData) {
+  // 1. Calcul du Général (OVR) de base (35-50)
+  let baseOvr = randInt(35, 50);
+  
+  // Appliquer le malus si "Débutant Tardif"
+  if (formData.origin.id === 'tardif') baseOvr += formData.origin.modifiers.ovrOffset;
+
+  // 2. Calcul du Potentiel (POT)
+  let basePot = randInt(70, 99);
+  if (basePot > 98) basePot = randInt(88, 95);
+
+  // 3. Calcul des Stats selon la Morphologie
+  // Plus c'est grand/lourd, plus le physique monte et la technique baisse
+  const physicalBonus = Math.floor((formData.height / 10) + (formData.weight / 10));
+  const technicalPenalty = Math.floor((formData.height / 20) + (formData.weight / 20));
+
+  // 4. Initialisation des Stats (0-100)
+  let stats = {
+    technique: Math.max(0, Math.min(100, 40 - technicalPenalty + (formData.origin.modifiers.technique || 0))),
+    physique: Math.max(0, Math.min(100, 40 + physicalBonus + (formData.origin.modifiers.physique || 0))),
+    mental: 40 + (formData.origin.modifiers.mental || 0),
+    charisme: randInt(20, 60),
+    reputation: 10,
+    discipline: 50 + (formData.origin.modifiers.discipline || 0),
+    relationCoach: 50,
+    vestiaire: 50
+  };
+
+  // 5. Stats Cachées (1-20)
+  const hiddenStats = {
+    regularite: randInt(1, 20),
+    matchImportant: randInt(1, 20),
+    blessure: randInt(1, 20) // Plus c'est haut, plus le risque est élevé
+  };
+
+  return {
+    firstName: formData.firstName,
+    lastName: formData.lastName,
+    nationality: formData.nationality,
+    position: formData.position,
+    origin: formData.origin,
+    height: formData.height,
+    weight: formData.weight,
+    ovr: baseOvr,
+    pot: basePot,
+    stats: stats,
+    hidden: hiddenStats,
+    traits: [formData.origin.trait],
+    history: []
+  };
+}
+
+// Exemple d'utilisation : 
+// const monJoueur = generatePlayer(state.form);
+// console.log(monJoueur);
