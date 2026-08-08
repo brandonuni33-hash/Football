@@ -147,8 +147,13 @@ async function generateAIEvents(playerState) {
   const apiKey = getApiKey();
   if (!apiKey) return null;
 
+  // On récupère les derniers événements de l'historique pour éviter les répétitions (si disponibles)
+  const recentHistory = playerState.history && playerState.history.length > 0 
+    ? playerState.history.slice(-5).map(h => h.context).join(", ") 
+    : "Aucun historique récent";
+
   const prompt = `
-    Tu es le moteur narratif d'un RPG textuel de football ultra-réaliste.
+    Tu es le moteur narratif d'un RPG textuel de football ultra-réaliste et imprévisible.
     Voici l'état actuel du joueur :
     - Nom : ${playerState.firstName} ${playerState.lastName}
     - Âge : ${playerState.age} ans
@@ -158,10 +163,16 @@ async function generateAIEvents(playerState) {
     - Relation Coach : ${playerState.stats.relationCoach}/100
     - Solde : $${playerState.balance}
 
-    Génère UN événement narratif complexe, profond et immersif adapté à son âge exact et à sa situation actuelle. 
-    Renvoie le résultat STRICTEMENT au format JSON avec cette structure précise :
+    ÉVÉNEMENTS RÉCENTS À NE SURTOUT PAS REPRODUIRE (INTERDICTION FORMELLE DE RÉPÉTER CES THÈMES OU FORMULATIONS) :
+    [ ${recentHistory} ]
+
+    Génère UN événement narratif complètement inédit, surprenant et varié (ex: vie de groupe, proposition extérieure, problème extrasportif, tactique, relation presse ou entraîneur, fatigue, opportunité, etc.).
+    
+    Règles strictes :
+    1. Propose OBLIGATOIREMENT au moins 4 choix distincts pour le joueur.
+    2. Renvoie le résultat STRICTEMENT au format JSON avec cette structure précise :
     {
-      "context": "Titre court du contexte",
+      "context": "Titre court et original du contexte",
       "text": "Le texte narratif décrivant la situation...",
       "choices": [
         {
@@ -171,6 +182,14 @@ async function generateAIEvents(playerState) {
         {
           "text": "Description du choix 2",
           "impact": { "technique": 3, "relationCoach": -4 }
+        },
+        {
+          "text": "Description du choix 3",
+          "impact": { "physique": -2, "reputation": 2 }
+        },
+        {
+          "text": "Description du choix 4",
+          "impact": { "mental": -5, "balance": 100 }
         }
       ]
     }
@@ -192,16 +211,24 @@ async function generateAIEvents(playerState) {
 
     const data = await response.json();
     const rawText = data.candidates[0].content.parts[0].text;
-    return JSON.parse(rawText);
+    const parsedEvent = JSON.parse(rawText);
+
+    // On enregistre le contexte dans l'historique du joueur pour alimenter la mémoire anti-répétition
+    if (!playerState.history) playerState.history = [];
+    playerState.history.push({ context: parsedEvent.context });
+
+    return parsedEvent;
 
   } catch (error) {
     console.error("Erreur API Gemini:", error);
     return {
-      context: `Événement de Carrière (${playerState.age} ans)`,
-      text: `Une semaine charnière s'annonce à ${playerState.currentClub}, testant ta concentration et ta résistance mentale.`,
+      context: `Session d'entraînement intense (${playerState.age} ans)`,
+      text: `Une tension particulière émerge lors de la mise en place tactique de la semaine au sein du club de ${playerState.currentClub}. Comment gères-tu la situation ?`,
       choices: [
-        { text: "Redoubler d'efforts en solitaire", impact: { technique: +3, physique: +2 } },
-        { text: "Solliciter un entretien avec le coach", impact: { relationCoach: +4 } }
+        { text: "Prendre les devants et motiver le groupe", impact: { mental: +3, relationCoach: +2 } },
+        { text: "Garder profil bas et tout donner à l'entraînement", impact: { technique: +2, physique: +2 } },
+        { text: "Provoquer une discussion franche avec l'entraîneur", impact: { relationCoach: +5, mental: -2 } },
+        { text: "Faire cavalier seul pour briller individuellement", impact: { technique: +4, vestiaire: -4 } }
       ]
     };
   }
