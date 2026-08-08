@@ -148,7 +148,6 @@ export class UserInterface {
                         const randomVision = COACH_VISIONS[Math.floor(Math.random() * COACH_VISIONS.length)];
                         const randomCoachName = COACH_NAMES[Math.floor(Math.random() * COACH_NAMES.length)];
                         
-                        // Salaire entre 100 et 300€
                         const salary = Math.round(100 + (Math.random() * 200));
                         
                         const playtimeOptions = ["Temps de jeu limité", "Joueur de rotation", "Espoir / Prêt potentiel", "Titulaire en jeunes"];
@@ -224,7 +223,6 @@ export class UserInterface {
             });
         });
 
-        // Écouteur mis à jour pour la nouvelle classe moderne de l'étape 2
         document.querySelectorAll('.origin-card-modern').forEach(card => {
             card.addEventListener('click', () => {
                 document.querySelectorAll('.origin-card-modern').forEach(c => c.classList.remove('selected'));
