@@ -282,7 +282,7 @@
         }
 
         /* ==========================================
-           ⭐ WIDGET JOUEUR ENRICHI (DASHBOARD)
+           ⭐ WIDGET JOUEUR ENRICHI (AVEC IMAGE)
            ========================================== */
         .player-widget-enhanced {
             background: rgba(15, 23, 42, 0.75);
@@ -308,20 +308,25 @@
             padding-bottom: 10px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         }
-        .player-jersey-badge {
+        /* Remplacement du maillot par l'image */
+        .player-image-badge {
             position: relative;
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-            width: 44px;
-            height: 44px;
+            width: 48px;
+            height: 48px;
             border-radius: 12px;
+            overflow: hidden;
+            background: #1e293b;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+            flex-shrink: 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.4);
-            flex-shrink: 0;
         }
-        .jersey-icon {
-            font-size: 22px;
+        .player-image-badge img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
         .jersey-number {
             position: absolute;
@@ -334,6 +339,7 @@
             padding: 1px 4px;
             border-radius: 6px;
             border: 1px solid #2563eb;
+            z-index: 2;
         }
         .player-main-info {
             display: flex;
