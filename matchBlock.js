@@ -1,9 +1,10 @@
 // matchBlock.js
 import { EconomyManager } from './economy.js';
 import { TrainingManager } from './entrainement.js';
+import { MatchChoiceManager } from './matchChoices.js'; // Import de notre gestionnaire de choix
 
 export const MatchBlockManager = {
-    simulateBlock(state, trainingFocus = 'TECHNIQUE') { // Valeur par défaut si non fourni
+    simulateBlock(state, trainingFocus = 'TECHNIQUE', userMatchChoice = null) { 
         const player = state.player;
         const calendar = state.calendar;
 
@@ -30,14 +31,26 @@ export const MatchBlockManager = {
         const isInjured = Math.random() * 100 < finalInjuryChance;
 
         // 3. Simulation des matchs
-        const results = Array.from({ length: matchesInMonth }, () => {
+        const results = Array.from({ length: matchesInMonth }, (_, index) => {
+            const isLastMatchOfBlock = (index === matchesInMonth - 1);
+            let matchRatingBonus = trainingEffect.ratingBonus || 0;
+            let goalBonusChance = trainingEffect.goalBonus || 0;
+            let assistBonusChance = trainingEffect.assistBonus || 0;
+
+            // Si c'est le dernier match du bloc et qu'un choix tactique a été appliqué
+            if (isLastMatchOfBlock && userMatchChoice && userMatchChoice.bonusMatch) {
+                const b = userMatchChoice.bonusMatch;
+                matchRatingBonus += b.ratingBoost || 0;
+                goalBonusChance += b.goalChance || 0;
+                assistBonusChance += b.assistChance || 0;
+            }
+
             const baseRating = 6.0 + (Math.random() * volatility);
-            const ratingBonus = trainingEffect.ratingBonus || 0;
             
             return {
-                rating: parseFloat(Math.min(10.0, Math.max(4.0, baseRating + ratingBonus)).toFixed(1)),
-                goals: Math.random() > (0.85 - (trainingEffect.goalBonus || 0)) ? 1 : 0,
-                assists: Math.random() > (0.8 - (trainingEffect.assistBonus || 0)) ? 1 : 0
+                rating: parseFloat(Math.min(10.0, Math.max(4.0, baseRating + matchRatingBonus)).toFixed(1)),
+                goals: Math.random() > (0.85 - goalBonusChance) ? 1 : 0,
+                assists: Math.random() > (0.8 - assistBonusChance) ? 1 : 0
             };
         });
 
