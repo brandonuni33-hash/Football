@@ -2,10 +2,12 @@
 import { UserInterface } from './ui.js';
 import { MatchBlockManager } from './matchBlock.js';
 import { EconomyManager } from './economy.js';
+import { SocialSystem } from './social.js'; // 1. Import du module social
 
 export class GameEngine {
     constructor() {
         this.state = null;
+        this.socialSystem = new SocialSystem(this); // 2. Initialisation du système social
         this.ui = new UserInterface(this);
     }
 
@@ -55,6 +57,8 @@ export class GameEngine {
                     injuryProneness: Math.floor(Math.random() * 10) + 6
                 }
             },
+            // 3. Ajout des données sociales initiales dans le state
+            social: this.socialSystem.initSocialData(selectedData.coachName),
             career: {
                 balance: contract.signingBonus || 1500
             },
@@ -91,11 +95,15 @@ export class GameEngine {
         // de mettre à jour les stats globales et l'économie en interne.
         const report = MatchBlockManager.simulateBlock(this.state);
 
+        // 4. Mise à jour du cycle social à chaque fin de mois (âge, impact romance/moral)
+        this.socialSystem.updateSocialCycle(this.state);
+
         // Avancer d'un mois dans le calendrier
         const cal = this.state.calendar;
         if (cal.currentMonth < cal.totalMonths) {
             cal.currentMonth++;
             cal.currentPeriod = cal.getPeriodName(cal.currentMonth);
+            // On peut aussi vieillir le joueur d'un mois ou gérer l'anniversaire si besoin
         } else {
             console.log("🏁 Fin de la saison !");
         }
