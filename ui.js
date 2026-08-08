@@ -82,7 +82,6 @@ export class UserInterface {
                     </div>
                 `;
             case 2:
-                // Retrouver la description de l'origine actuellement sélectionnée
                 const selectedOriginObj = Object.values(ORIGINS).find(o => o.id === this.selectedData.origin);
                 
                 return `
@@ -231,7 +230,7 @@ export class UserInterface {
         document.querySelectorAll('.origin-card-compact').forEach(card => {
             card.addEventListener('click', () => {
                 this.selectedData.origin = card.getAttribute('data-origin');
-                this.render(); // Redessine pour afficher instantanément la description dans l'encadré
+                this.render();
             });
         });
 
@@ -326,12 +325,15 @@ export class UserInterface {
         const state = this.engine.state;
         if (!state) return;
 
+        // Récupération sécurisée des données sociales
+        const socialState = state.social || { romance: { unlocked: false }, relationships: [] };
+
         const app = document.getElementById('app');
         app.innerHTML = `
             <div class="dashboard-container" style="padding: 20px; color: white; font-family: sans-serif;">
                 <header style="border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 20px;">
                     <h1>⭐ ${state.player.firstname} ${state.player.lastname}</h1>
-                    <p>Club : <strong>${state.player.club}</strong> | Poste : <strong>${state.player.position}</strong> | OVR : <strong>${state.player.overall}</strong></p>
+                    <p>Club : <strong>${state.player.club}</strong> | Poste : <strong>${state.player.position}</strong> | Âge : <strong>${state.player.age} ans</strong> | OVR : <strong>${state.player.overall}</strong></p>
                     <p>📅 Période : <strong>${state.calendar.currentPeriod}</strong> (Mois ${state.calendar.currentMonth} / ${state.calendar.totalMonths})</p>
                 </header>
 
@@ -342,6 +344,17 @@ export class UserInterface {
                     <p>Note moyenne : ${state.player.stats.averageRating}</p>
                     <p>💰 Solde bancaire : ${state.career.balance} €</p>
                     <p>❤️ Moral : ${state.player.morale}% | ⚡ Forme : ${state.player.fitness}%</p>
+                </section>
+
+                <!-- SECTION SOCIALE (VESTIAIRE & ROMANCE) -->
+                <section class="social-overview" style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <h3>❤️ Vie Privée & Vestiaire</h3>
+                    <p><strong>Situation amoureuse :</strong> ${socialState.romance.unlocked ? (socialState.romance.partnerName ? `${socialState.romance.partnerName} (${socialState.romance.status} - Affection: ${socialState.romance.affection}%)` : 'Célibataire à la recherche de l’amour') : '🔒 Disponible à partir de 18 ans'}</p>
+                    <hr style="border-color: rgba(255,255,255,0.1); margin: 10px 0;">
+                    <p><strong>Relations clés :</strong></p>
+                    <ul style="padding-left: 20px; margin: 5px 0; font-size: 0.9rem; color: #94a3b8;">
+                        ${socialState.relationships.map(rel => `<li>${rel.role} (${rel.name}) : ${rel.score}/100 [${rel.status}]</li>`).join('')}
+                    </ul>
                 </section>
 
                 <div class="action-panel">
