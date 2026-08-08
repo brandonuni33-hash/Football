@@ -1,4 +1,4 @@
-// --- BLOC 1 : DONNÉES & STRUCTURE DE GÉNÉRATION (AVEC TAILLE & POIDS) ---
+// --- BLOC 1 & 2 : DONNÉES & GÉNÉRATION ---
 
 const POSITIONS = [
   { id: 'bu', label: 'BU' },
@@ -12,9 +12,7 @@ const POSITIONS = [
   { id: 'gk', label: 'GK' }
 ];
 
-// 15 plus gros pays par continent avec drapeaux
 const NATIONALITIES = [
-  // Europe
   { name: 'France', flag: '🇫🇷', continent: 'Europe' },
   { name: 'Angleterre', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', continent: 'Europe' },
   { name: 'Espagne', flag: '🇪🇸', continent: 'Europe' },
@@ -23,139 +21,52 @@ const NATIONALITIES = [
   { name: 'Pays-Bas', flag: '🇳🇱', continent: 'Europe' },
   { name: 'Portugal', flag: '🇵🇹', continent: 'Europe' },
   { name: 'Belgique', flag: '🇧🇪', continent: 'Europe' },
-  { name: 'Croatie', flag: '🇭🇷', continent: 'Europe' },
-  { name: 'Danemark', flag: '🇩🇰', continent: 'Europe' },
-  { name: 'Suisse', flag: '🇨🇭', continent: 'Europe' },
-  { name: 'Autriche', flag: '🇦🇹', continent: 'Europe' },
-  { name: 'Pologne', flag: '🇵🇱', continent: 'Europe' },
-  { name: 'Ukraine', flag: '🇺🇦', continent: 'Europe' },
-  { name: 'Suède', flag: '🇸🇪', continent: 'Europe' },
-  // Amérique du Sud
   { name: 'Brésil', flag: '🇧🇷', continent: 'Amérique du Sud' },
   { name: 'Argentine', flag: '🇦🇷', continent: 'Amérique du Sud' },
-  { name: 'Uruguay', flag: '🇺🇾', continent: 'Amérique du Sud' },
-  { name: 'Colombie', flag: '🇨🇴', continent: 'Amérique du Sud' },
-  { name: 'Chili', flag: '🇨🇱', continent: 'Amérique du Sud' },
-  { name: 'Pérou', flag: '🇵🇪', continent: 'Amérique du Sud' },
-  { name: 'Équateur', flag: '🇪🇨', continent: 'Amérique du Sud' },
-  { name: 'Paraguay', flag: '🇵🇾', continent: 'Amérique du Sud' },
-  { name: 'Venezuela', flag: '🇻🇪', continent: 'Amérique du Sud' },
-  { name: 'Bolivie', flag: '🇧🇴', continent: 'Amérique du Sud' },
-  { name: 'USA', flag: '🇺🇸', continent: 'Amérique du Nord' },
-  { name: 'Mexique', flag: '🇲🇽', continent: 'Amérique du Nord' },
-  { name: 'Canada', flag: '🇨🇦', continent: 'Amérique du Nord' },
-  // Afrique
   { name: 'Maroc', flag: '🇲🇦', continent: 'Afrique' },
   { name: 'Sénégal', flag: '🇸🇳', continent: 'Afrique' },
-  { name: 'Nigeria', flag: '🇳🇬', continent: 'Afrique' },
-  { name: 'Algérie', flag: '🇩🇿', continent: 'Afrique' },
-  { name: 'Égypte', flag: '🇪🇬', continent: 'Afrique' },
-  { name: 'Cameroun', flag: '🇨🇲', continent: 'Afrique' },
-  { name: 'Ghana', flag: '🇬🇭', continent: 'Afrique' },
-  { name: 'Côte d’Ivoire', flag: '🇨🇮', continent: 'Afrique' },
-  { name: 'Mali', flag: '🇲🇱', continent: 'Afrique' },
-  { name: 'Tunisie', flag: '🇹🇳', continent: 'Afrique' },
-  // Asie
   { name: 'Japon', flag: '🇯🇵', continent: 'Asie' },
   { name: 'Corée du Sud', flag: '🇰🇷', continent: 'Asie' },
-  { name: 'Arabie Saoudite', flag: '🇸🇦', continent: 'Asie' },
-  { name: 'Iran', flag: '🇮🇷', continent: 'Asie' },
-  { name: 'Australie', flag: '🇦🇺', continent: 'Asie' }
+  { name: 'USA', flag: '🇺🇸', continent: 'Amérique du Nord' }
 ];
 
 const ORIGINS = [
-  { 
-    id: 'centre', 
-    name: 'Centre de Formation', 
-    desc: '+10% Mental/Tactique | Trait: Classique (Attraction grands clubs)', 
-    modifiers: { mental: 10, tactique: 10 }, 
-    trait: 'Classique' 
-  },
-  { 
-    id: 'amateur', 
-    name: 'Club Amateur', 
-    desc: '+10% Physique/Endurance, -10% Tactique | Trait: Acharné (XP Mental +15%)', 
-    modifiers: { physique: 10, tactique: -10 }, 
-    trait: 'Acharné' 
-  },
-  { 
-    id: 'futsal', 
-    name: 'Futsal', 
-    desc: '+10% Dribble/Technique, -15% Physique | Trait: Dribbleur Fin', 
-    modifiers: { technique: 10, physique: -15 }, 
-    trait: 'Dribbleur Fin' 
-  },
-  { 
-    id: 'tardif', 
-    name: 'Débutant Tardif', 
-    desc: '-5 OVR base | Trait: Poulain Brut (Potentiel flou 65-99)', 
-    modifiers: { ovrOffset: -5 }, 
-    trait: 'Poulain Brut' 
-  },
-  { 
-    id: 'street', 
-    name: 'Street Football', 
-    desc: '+10% Agressivité/Dribble, -10% Discipline/Placement | Trait: Instinct 1v1', 
-    modifiers: { technique: 10, discipline: -10 }, 
-    trait: 'Instinct 1v1' 
-  },
-  { 
-    id: 'athlete', 
-    name: 'Athlète Polyvalent', 
-    desc: '+15% Vitesse/Puissance, -10% Toucher | Trait: Moteur Hybride', 
-    modifiers: { physique: 15, technique: -10 }, 
-    trait: 'Moteur Hybride' 
-  },
-  { 
-    id: 'fils_pro', 
-    name: 'Fils de Pro', 
-    desc: '+10 Vitesse/Technique | Trait: Héritage Tactique, mediaHype = 80', 
-    modifiers: { technique: 10, physique: 10, mediaHype: 80 }, 
-    trait: 'Héritage Tactique',
-    exclusiveGen2: true 
-  }
+  { id: 'centre', name: 'Centre de Formation', desc: '+10% Mental/Tactique | Trait: Classique', modifiers: { mental: 10, tactique: 10 }, trait: 'Classique' },
+  { id: 'amateur', name: 'Club Amateur', desc: '+10% Physique, -10% Tactique | Trait: Acharné', modifiers: { physique: 10, tactique: -10 }, trait: 'Acharné' },
+  { id: 'futsal', name: 'Futsal', desc: '+10% Dribble/Technique, -15% Physique | Trait: Dribbleur Fin', modifiers: { technique: 10, physique: -15 }, trait: 'Dribbleur Fin' },
+  { id: 'tardif', name: 'Débutant Tardif', desc: '-5 OVR base | Trait: Poulain Brut', modifiers: { ovrOffset: -5 }, trait: 'Poulain Brut' },
+  { id: 'street', name: 'Street Football', desc: '+10% Dribble, -10% Discipline | Trait: Instinct 1v1', modifiers: { technique: 10, discipline: -10 }, trait: 'Instinct 1v1' },
+  { id: 'athlete', name: 'Athlète Polyvalent', desc: '+15% Vitesse/Puissance, -10% Toucher | Trait: Moteur Hybride', modifiers: { physique: 15, technique: -10 }, trait: 'Moteur Hybride' }
 ];
 
-// État initial de l'application enrichi avec la morphologie
 let state = {
-  step: 1, // Étape 1 : Identité, Nationalité, Taille, Poids
+  step: 1,
   player: JSON.parse(localStorage.getItem('career_rpg_save')) || null,
   form: {
     firstName: 'Brandon',
     lastName: 'Le Moan',
     nationality: NATIONALITIES[0],
-    height: 180, // en cm par défaut
-    weight: 75,  // en kg par défaut
+    height: 180,
+    weight: 75,
     position: 'BU',
     origin: ORIGINS[0]
-  },
-  weekLogs: []
+  }
 };
 
-// Fonction utilitaire pour générer des entiers aléatoires
 function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-// --- BLOC 2 : GÉNÉRATION DU JOUEUR & CALCUL DES STATS ---
-
 function generatePlayer(formData) {
-  // 1. Calcul du Général (OVR) de base (35-50)
   let baseOvr = randInt(35, 50);
-  
-  // Appliquer le malus si "Débutant Tardif"
   if (formData.origin.id === 'tardif') baseOvr += formData.origin.modifiers.ovrOffset;
 
-  // 2. Calcul du Potentiel (POT)
   let basePot = randInt(70, 99);
   if (basePot > 98) basePot = randInt(88, 95);
 
-  // 3. Calcul des Stats selon la Morphologie
-  // Plus c'est grand/lourd, plus le physique monte et la technique baisse
   const physicalBonus = Math.floor((formData.height / 10) + (formData.weight / 10));
   const technicalPenalty = Math.floor((formData.height / 20) + (formData.weight / 20));
 
-  // 4. Initialisation des Stats (0-100)
   let stats = {
     technique: Math.max(0, Math.min(100, 40 - technicalPenalty + (formData.origin.modifiers.technique || 0))),
     physique: Math.max(0, Math.min(100, 40 + physicalBonus + (formData.origin.modifiers.physique || 0))),
@@ -167,11 +78,10 @@ function generatePlayer(formData) {
     vestiaire: 50
   };
 
-  // 5. Stats Cachées (1-20)
   const hiddenStats = {
     regularite: randInt(1, 20),
     matchImportant: randInt(1, 20),
-    blessure: randInt(1, 20) // Plus c'est haut, plus le risque est élevé
+    blessure: randInt(1, 20)
   };
 
   return {
@@ -191,6 +101,137 @@ function generatePlayer(formData) {
   };
 }
 
-// Exemple d'utilisation : 
-// const monJoueur = generatePlayer(state.form);
-// console.log(monJoueur);
+// --- BLOC 3 : INTERFACE UTILISATEUR & RENDU ---
+
+function setPos(p) { 
+  state.form.position = p; 
+  render(); 
+}
+
+function selectOrigin(id) {
+  state.form.origin = ORIGINS.find(o => o.id === id);
+  render();
+}
+
+function setNat(name) {
+  state.form.nationality = NATIONALITIES.find(n => n.name === name);
+  render();
+}
+
+function submitCreation() {
+  state.form.firstName = document.getElementById('inp-fn').value || 'Brandon';
+  state.form.lastName = document.getElementById('inp-ln').value || 'Le Moan';
+  state.form.height = parseInt(document.getElementById('inp-h').value) || 180;
+  state.form.weight = parseInt(document.getElementById('inp-w').value) || 75;
+
+  state.player = generatePlayer(state.form);
+  localStorage.setItem('career_rpg_save', JSON.stringify(state.player));
+  render();
+}
+
+function resetCareer() {
+  localStorage.removeItem('career_rpg_save');
+  state.player = null;
+  state.step = 1;
+  render();
+}
+
+function render() {
+  const app = document.getElementById('app');
+  if (!app) return;
+
+  if (!state.player) {
+    // Écran de création unique et complet
+    app.innerHTML = `
+      <div class="max-w-xl mx-auto my-6 p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 text-white">
+        <h1 class="text-xl font-black text-center text-emerald-400 uppercase">Création du Joueur</h1>
+        
+        <!-- Nom & Prénom -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs text-slate-400 font-bold">Prénom</label>
+            <input id="inp-fn" type="text" value="${state.form.firstName}" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-sm text-white mt-1"/>
+          </div>
+          <div>
+            <label class="text-xs text-slate-400 font-bold">Nom</label>
+            <input id="inp-ln" type="text" value="${state.form.lastName}" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-sm text-white mt-1"/>
+          </div>
+        </div>
+
+        <!-- Nationalité -->
+        <div>
+          <label class="text-xs text-slate-400 font-bold">Nationalité</label>
+          <select onchange="setNat(this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-sm text-white mt-1">
+            ${NATIONALITIES.map(n => `<option value="${n.name}" ${state.form.nationality.name === n.name ? 'selected' : ''}>${n.flag} ${n.name}</option>`).join('')}
+          </select>
+        </div>
+
+        <!-- Taille & Poids -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs text-slate-400 font-bold">Taille (cm) : <span id="val-h">${state.form.height}</span>cm</label>
+            <input id="inp-h" type="range" min="160" max="205" value="${state.form.height}" oninput="document.getElementById('val-h').innerText=this.value" class="w-full mt-2 accent-emerald-400"/>
+          </div>
+          <div>
+            <label class="text-xs text-slate-400 font-bold">Poids (kg) : <span id="val-w">${state.form.weight}</span>kg</label>
+            <input id="inp-w" type="range" min="55" max="100" value="${state.form.weight}" oninput="document.getElementById('val-w').innerText=this.value" class="w-full mt-2 accent-emerald-400"/>
+          </div>
+        </div>
+
+        <!-- Poste -->
+        <div>
+          <label class="text-xs text-slate-400 font-bold uppercase">Poste</label>
+          <div class="grid grid-cols-5 gap-1.5 mt-1">
+            ${POSITIONS.map(p => `<button type="button" onclick="setPos('${p.id}')" class="p-2 rounded border text-xs font-bold ${state.form.position === p.id ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' : 'bg-slate-950 border-slate-800 text-slate-300'}">${p.label}</button>`).join('')}
+          </div>
+        </div>
+
+        <!-- Origines -->
+        <div>
+          <label class="text-xs text-slate-400 font-bold uppercase">Style d'Origine</label>
+          <div class="space-y-1.5 mt-1 max-h-40 overflow-y-auto pr-1">
+            ${ORIGINS.map(o => `
+              <div onclick="selectOrigin('${o.id}')" class="p-2.5 rounded-xl border cursor-pointer text-xs ${state.form.origin.id === o.id ? 'bg-emerald-500/10 border-emerald-500 text-emerald-300' : 'bg-slate-950 border-slate-800 text-slate-400'}">
+                <span class="font-bold text-white">${o.name}</span> — ${o.desc}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <button onclick="submitCreation()" class="w-full py-3 bg-emerald-500 font-black rounded-xl text-slate-950 uppercase text-sm tracking-wide mt-2">Valider et Lancer la Carrière 🚀</button>
+      </div>
+    `;
+  } else {
+    // Écran principal une fois le joueur créé (Dashboard temporaire)
+    app.innerHTML = `
+      <div class="max-w-xl mx-auto my-6 p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 text-white">
+        <h2 class="text-lg font-black text-emerald-400">Joueur : ${state.player.firstName} ${state.player.lastName} ${state.player.nationality.flag}</h2>
+        <div class="text-xs text-slate-300 space-y-1 bg-slate-950 p-3 rounded-xl border border-slate-800">
+          <div>Poste : <span class="font-bold text-white uppercase">${state.player.position}</span> | Origine : <span class="text-emerald-400">${state.player.origin.name}</span></div>
+          <div>Général (OVR) : <span class="font-bold text-yellow-400">${state.player.ovr}</span> | Potentiel : <span class="font-bold text-emerald-400">${state.player.pot}</span></div>
+          <div>Morphologie : ${state.player.height}cm / ${state.player.weight}kg</div>
+          <div>Trait : ${state.player.traits[0]}</div>
+        </div>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
+            <div class="font-bold text-slate-400 uppercase">Stats Principales</div>
+            <div>Technique : ${state.player.stats.technique}</div>
+            <div>Physique : ${state.player.stats.physique}</div>
+            <div>Mental : ${state.player.stats.mental}</div>
+            <div>Discipline : ${state.player.stats.discipline}</div>
+          </div>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
+            <div class="font-bold text-slate-400 uppercase">Stats Cachées (1-20)</div>
+            <div>Régularité : ${state.player.hidden.regularite}</div>
+            <div>Matchs Importants : ${state.player.hidden.matchImportant}</div>
+            <div>Résistance Blessure : ${state.player.hidden.blessure}</div>
+          </div>
+        </div>
+        <button onclick="resetCareer()" class="w-full py-2 bg-red-600 text-white font-bold rounded-xl text-xs uppercase tracking-wide">Refaire un joueur</button>
+      </div>
+    `;
+  }
+}
+
+// Lancement automatique au chargement
+render();
