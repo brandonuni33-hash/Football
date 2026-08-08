@@ -1,105 +1,138 @@
-const POSITIONS = ['BU', 'AG', 'AD', 'MOC', 'MC', 'MDC', 'DC', 'DD', 'DG', 'GK'];
+// --- BLOC 1 : DONNÉES & STRUCTURE DE GÉNÉRATION (AVEC TAILLE & POIDS) ---
 
-const ACADEMY_POOL = [
-  { id: 'bacalan', club: 'FC Bacalan U15', division: 'Régional 1', salary: 120, coach: { name: 'Marc Vasseur', style: 'Gegenpressing', trust: 50 } },
-  { id: 'pessac', club: 'US Pessac U15', division: 'Régional 2', salary: 95, coach: { name: 'Antoine Morel', style: 'Tiki-Taka', trust: 60 } },
-  { id: 'girondins_b', club: 'Girondins B (U15)', division: 'National U15', salary: 220, coach: { name: 'Laurent Blanc', style: 'Contre-Attaque', trust: 40 } }
+const POSITIONS = [
+  { id: 'bu', label: 'BU' },
+  { id: 'ad', label: 'AD' },
+  { id: 'ag', label: 'AG' },
+  { id: 'moc', label: 'MOC' },
+  { id: 'mc', label: 'MC' },
+  { id: 'dd', label: 'DD' },
+  { id: 'dg', label: 'DG' },
+  { id: 'dc', label: 'DC' },
+  { id: 'gk', label: 'GK' }
 ];
 
-// État initial du jeu
+// 15 plus gros pays par continent avec drapeaux
+const NATIONALITIES = [
+  // Europe
+  { name: 'France', flag: '🇫🇷', continent: 'Europe' },
+  { name: 'Angleterre', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', continent: 'Europe' },
+  { name: 'Espagne', flag: '🇪🇸', continent: 'Europe' },
+  { name: 'Allemagne', flag: '🇩🇪', continent: 'Europe' },
+  { name: 'Italie', flag: '🇮🇹', continent: 'Europe' },
+  { name: 'Pays-Bas', flag: '🇳🇱', continent: 'Europe' },
+  { name: 'Portugal', flag: '🇵🇹', continent: 'Europe' },
+  { name: 'Belgique', flag: '🇧🇪', continent: 'Europe' },
+  { name: 'Croatie', flag: '🇭🇷', continent: 'Europe' },
+  { name: 'Danemark', flag: '🇩🇰', continent: 'Europe' },
+  { name: 'Suisse', flag: '🇨🇭', continent: 'Europe' },
+  { name: 'Autriche', flag: '🇦🇹', continent: 'Europe' },
+  { name: 'Pologne', flag: '🇵🇱', continent: 'Europe' },
+  { name: 'Ukraine', flag: '🇺🇦', continent: 'Europe' },
+  { name: 'Suède', flag: '🇸🇪', continent: 'Europe' },
+  // Amérique du Sud
+  { name: 'Brésil', flag: '🇧🇷', continent: 'Amérique du Sud' },
+  { name: 'Argentine', flag: '🇦🇷', continent: 'Amérique du Sud' },
+  { name: 'Uruguay', flag: '🇺🇾', continent: 'Amérique du Sud' },
+  { name: 'Colombie', flag: '🇨🇴', continent: 'Amérique du Sud' },
+  { name: 'Chili', flag: '🇨🇱', continent: 'Amérique du Sud' },
+  { name: 'Pérou', flag: '🇵🇪', continent: 'Amérique du Sud' },
+  { name: 'Équateur', flag: '🇪🇨', continent: 'Amérique du Sud' },
+  { name: 'Paraguay', flag: '🇵🇾', continent: 'Amérique du Sud' },
+  { name: 'Venezuela', flag: '🇻🇪', continent: 'Amérique du Sud' },
+  { name: 'Bolivie', flag: '🇧🇴', continent: 'Amérique du Sud' },
+  { name: 'USA', flag: '🇺🇸', continent: 'Amérique du Nord' },
+  { name: 'Mexique', flag: '🇲🇽', continent: 'Amérique du Nord' },
+  { name: 'Canada', flag: '🇨🇦', continent: 'Amérique du Nord' },
+  // Afrique
+  { name: 'Maroc', flag: '🇲🇦', continent: 'Afrique' },
+  { name: 'Sénégal', flag: '🇸🇳', continent: 'Afrique' },
+  { name: 'Nigeria', flag: '🇳🇬', continent: 'Afrique' },
+  { name: 'Algérie', flag: '🇩🇿', continent: 'Afrique' },
+  { name: 'Égypte', flag: '🇪🇬', continent: 'Afrique' },
+  { name: 'Cameroun', flag: '🇨🇲', continent: 'Afrique' },
+  { name: 'Ghana', flag: '🇬🇭', continent: 'Afrique' },
+  { name: 'Côte d’Ivoire', flag: '🇨🇮', continent: 'Afrique' },
+  { name: 'Mali', flag: '🇲🇱', continent: 'Afrique' },
+  { name: 'Tunisie', flag: '🇹🇳', continent: 'Afrique' },
+  // Asie
+  { name: 'Japon', flag: '🇯🇵', continent: 'Asie' },
+  { name: 'Corée du Sud', flag: '🇰🇷', continent: 'Asie' },
+  { name: 'Arabie Saoudite', flag: '🇸🇦', continent: 'Asie' },
+  { name: 'Iran', flag: '🇮🇷', continent: 'Asie' },
+  { name: 'Australie', flag: '🇦🇺', continent: 'Asie' }
+];
+
+const ORIGINS = [
+  { 
+    id: 'centre', 
+    name: 'Centre de Formation', 
+    desc: '+10% Mental/Tactique | Trait: Classique (Attraction grands clubs)', 
+    modifiers: { mental: 10, tactique: 10 }, 
+    trait: 'Classique' 
+  },
+  { 
+    id: 'amateur', 
+    name: 'Club Amateur', 
+    desc: '+10% Physique/Endurance, -10% Tactique | Trait: Acharné (XP Mental +15%)', 
+    modifiers: { physique: 10, tactique: -10 }, 
+    trait: 'Acharné' 
+  },
+  { 
+    id: 'futsal', 
+    name: 'Futsal', 
+    desc: '+10% Dribble/Technique, -15% Physique | Trait: Dribbleur Fin', 
+    modifiers: { technique: 10, physique: -15 }, 
+    trait: 'Dribbleur Fin' 
+  },
+  { 
+    id: 'tardif', 
+    name: 'Débutant Tardif', 
+    desc: '-5 OVR base | Trait: Poulain Brut (Potentiel flou 65-99)', 
+    modifiers: { ovrOffset: -5 }, 
+    trait: 'Poulain Brut' 
+  },
+  { 
+    id: 'street', 
+    name: 'Street Football', 
+    desc: '+10% Agressivité/Dribble, -10% Discipline/Placement | Trait: Instinct 1v1', 
+    modifiers: { technique: 10, discipline: -10 }, 
+    trait: 'Instinct 1v1' 
+  },
+  { 
+    id: 'athlete', 
+    name: 'Athlète Polyvalent', 
+    desc: '+15% Vitesse/Puissance, -10% Toucher | Trait: Moteur Hybride', 
+    modifiers: { physique: 15, technique: -10 }, 
+    trait: 'Moteur Hybride' 
+  },
+  { 
+    id: 'fils_pro', 
+    name: 'Fils de Pro', 
+    desc: '+10 Vitesse/Technique | Trait: Héritage Tactique, mediaHype = 80', 
+    modifiers: { technique: 10, physique: 10, mediaHype: 80 }, 
+    trait: 'Héritage Tactique',
+    exclusiveGen2: true 
+  }
+];
+
+// État initial de l'application enrichi avec la morphologie
 let state = {
-  step: 1,
+  step: 1, // Étape 1 : Identité, Nationalité, Taille, Poids
   player: JSON.parse(localStorage.getItem('career_rpg_save')) || null,
-  form: { firstName: 'Brandon', lastName: 'Le Moan', position: 'BU' },
-  availableOffers: [],
-  selectedOffer: null,
-  weekLogs: [],
-  matchState: null,
-  trainingDoneThisWeek: false
+  form: {
+    firstName: 'Brandon',
+    lastName: 'Le Moan',
+    nationality: NATIONALITIES[0],
+    height: 180, // en cm par défaut
+    weight: 75,  // en kg par défaut
+    position: 'BU',
+    origin: ORIGINS[0]
+  },
+  weekLogs: []
 };
 
-// --- Fonctions de Navigation / Création ---
-
-function setPos(p) { state.form.position = p; render(); }
-
-function goToStep2() {
-  state.form.firstName = document.getElementById('inp-fn').value || 'Brandon';
-  state.form.lastName = document.getElementById('inp-ln').value || 'Le Moan';
-  state.availableOffers = [...ACADEMY_POOL];
-  state.selectedOffer = state.availableOffers[0];
-  state.step = 2;
-  render();
+// Fonction utilitaire pour générer des entiers aléatoires
+function randInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
-
-function selectOffer(id) { 
-  state.selectedOffer = state.availableOffers.find(o => o.id === id); 
-  render(); 
-}
-
-function startCareer() {
-  const offer = state.selectedOffer;
-  state.player = {
-    identity: { firstName: state.form.firstName, lastName: state.form.lastName, position: state.form.position },
-    status: { week: 1, season: 1, averageRating: 6.5 },
-    contract: { club: offer.club, division: offer.division, salary: offer.salary },
-    coachTrust: offer.coach.trust,
-    finances: { balance: 350 },
-    stats: { tir: 52, passe: 50, dribble: 54, physique: 48, mental: 50, moral: 75 },
-    history: { matchs: 0, goals: 0, assists: 0 }
-  };
-  localStorage.setItem('career_rpg_save', JSON.stringify(state.player));
-  state.weekLogs = [`Signature au ${offer.club}.`];
-  render();
-}
-
-function resetCareer() { 
-  localStorage.removeItem('career_rpg_save'); 
-  state.player = null; 
-  state.step = 1; 
-  render(); 
-}
-
-// --- Rendu de l'interface ---
-
-function render() {
-  const app = document.getElementById('app');
-  if (!app) return;
-
-  if (!state.player) {
-    if (state.step === 1) {
-      app.innerHTML = `
-        <div class="max-w-xl mx-auto my-8 p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
-          <h1 class="text-2xl font-black text-center text-brand-500 uppercase">Création du Joueur</h1>
-          <div class="grid grid-cols-2 gap-3">
-            <input id="inp-fn" type="text" value="${state.form.firstName}" class="bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-white"/>
-            <input id="inp-ln" type="text" value="${state.form.lastName}" class="bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-white"/>
-          </div>
-          <div class="grid grid-cols-5 gap-2">
-            ${POSITIONS.map(p => `<button onclick="setPos('${p}')" class="p-2.5 rounded border text-xs font-bold ${state.form.position === p ? 'bg-brand-500/20 border-brand-500 text-brand-500' : 'bg-slate-950 border-slate-800'}">${p}</button>`).join('')}
-          </div>
-          <button onclick="goToStep2()" class="w-full py-3 bg-brand-500 font-black rounded-xl text-slate-950 uppercase">Suivant ▶</button>
-        </div>
-      `;
-    } else {
-      app.innerHTML = `
-        <div class="max-w-xl mx-auto my-8 p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
-          <h2 class="text-lg font-bold">Choisir un contrat d'Académie</h2>
-          <div class="space-y-2">
-            ${state.availableOffers.map(o => `
-              <div onclick="selectOffer('${o.id}')" class="p-4 rounded-xl border cursor-pointer ${state.selectedOffer && state.selectedOffer.id === o.id ? 'bg-brand-500/10 border-brand-500' : 'bg-slate-950 border-slate-800'}">
-                <div class="font-bold">${o.club}</div>
-                <div class="text-xs text-slate-400">${o.division} • ${o.salary}€ / sem</div>
-              </div>
-            `).join('')}
-          </div>
-          <button onclick="startCareer()" class="w-full py-3 bg-brand-500 font-black rounded-xl text-slate-950 uppercase">Signer le contrat ✍️</button>
-        </div>
-      `;
-    }
-  } else {
-    // Ici, le rendu de l'interface principale (stats, entraînement, etc.)
-    app.innerHTML = `<div class="text-white">Carrière active : ${state.player.identity.firstName} ${state.player.identity.lastName}</div>`;
-  }
-}
-
-render();
