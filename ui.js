@@ -84,6 +84,7 @@ export class UserInterface {
                                     else if (id === 'DD' || id === 'RB') coords = { top: '65%', left: '85%' };
                                     else if (id === 'DG' || id === 'LB') coords = { top: '65%', left: '15%' };
                                     else if (id === 'MDC' || id === 'CDM') coords = { top: '50%', left: '50%' };
+                                    // Inversion ici : MC descend à 40% et MOC monte à 28%
                                     else if (id === 'MC' || id === 'CM') coords = { top: '40%', left: '50%' };
                                     else if (id === 'MO' || id === 'CAM') coords = { top: '28%', left: '50%' };
                                     else if (id === 'AD' || id === 'RW') coords = { top: '22%', left: '80%' };
@@ -240,7 +241,6 @@ export class UserInterface {
             });
         }
 
-        // Écoute des clics sur les nœuds du mini-terrain Pro Clubs
         document.querySelectorAll('.proclubs-node').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 document.querySelectorAll('.proclubs-node').forEach(b => b.classList.remove('selected'));
@@ -349,7 +349,6 @@ export class UserInterface {
         const state = this.engine.state;
         if (!state) return;
 
-        // Récupération sécurisée des données sociales et médias
         const socialState = state.social || { romance: { unlocked: false }, relationships: [] };
         const mediaState = state.media || { followers: 0, hypeLevel: 0, feed: [], recentDilemma: null };
 
@@ -371,7 +370,6 @@ export class UserInterface {
                     <p>❤️ Moral : ${state.player.morale}% | ⚡ Forme : ${state.player.fitness}%</p>
                 </section>
 
-                <!-- SECTION SOCIALE (VESTIAIRE & ROMANCE) -->
                 <section class="social-overview" style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
                     <h3>❤️ Vie Privée & Vestiaire</h3>
                     <p><strong>Situation amoureuse :</strong> ${socialState.romance.unlocked ? (socialState.romance.partnerName ? `${socialState.romance.partnerName} (${socialState.romance.status} - Affection: ${socialState.romance.affection}%)` : 'Célibataire à la recherche de l’amour') : '🔒 Disponible à partir de 18 ans'}</p>
@@ -382,7 +380,6 @@ export class UserInterface {
                     </ul>
                 </section>
 
-                <!-- SECTION MEDIA & RÉSEAUX SOCIAUX -->
                 <section class="media-overview" style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #3b82f6;">
                     <h3>📱 Réseaux Sociaux & Médias</h3>
                     <div style="display: flex; gap: 20px; margin-bottom: 12px; font-size: 0.95rem;">
