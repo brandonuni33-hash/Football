@@ -37,6 +37,7 @@ export const PlayerLogic = {
             vestiaire: 50
         };
 
+        // Application des coefficients d'origine
         if (originData.mults) {
             if (originData.mults.technique) stats.technique = Math.round(stats.technique * originData.mults.technique);
             if (originData.mults.physique) stats.physique = Math.round(stats.physique * originData.mults.physique);
@@ -44,6 +45,20 @@ export const PlayerLogic = {
             if (originData.mults.discipline) stats.discipline = Math.round(stats.discipline * originData.mults.discipline);
         }
 
+        // Impact de la morphologie (Taille en cm / Poids en kg)
+        // Un joueur grand (> 185cm) gagne un peu en physique, perd un peu en technique
+        const height = parseInt(formData.height) || 178;
+        const weight = parseInt(formData.weight) || 72;
+
+        if (height > 185) {
+            stats.physique += 2;
+            stats.technique -= 1;
+        } else if (height < 170) {
+            stats.technique += 2;
+            stats.physique -= 1;
+        }
+
+        // Plafonner les stats entre 1 et 100
         for (let key in stats) {
             stats[key] = Math.min(100, Math.max(1, stats[key]));
         }
@@ -62,8 +77,11 @@ export const PlayerLogic = {
             lastName: formData.lastName,
             nationality: formData.nationality,
             position: formData.position,
+            height: height,
+            weight: weight,
             origin: formData.originId,
             trait: originData.trait,
+            heartClub: formData.heartClub,
             ovr: finalOvr,
             pot: pot,
             stats: stats,
