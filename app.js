@@ -55,63 +55,33 @@ const BIG_LEAGUES_CLUBS = {
   "Serie A (Italie)": ['Inter Milan', 'AC Milan', 'Juventus FC', 'SSC Napoli', 'AS Roma', 'Atalanta BC']
 };
 
-const STARTER_CLUBS = [
-  {
-    name: 'FC Local (Amateur)',
-    tier: 'Amateur',
-    minOvr: 0,
-    league: 'Régional 1',
-    coachName: 'Marc Keller',
-    coachStyle: 'Jeu direct et physique, pressing intense sans fioritures.',
-    expectations: { goals: 5, assists: 3, cleanSheets: 0 },
-    boardExpectation: "Assurer le maintien et montrer un état d'esprit irréprochable.",
-    weeklySalary: 150
-  },
-  {
-    name: 'Pau FC',
-    tier: 'D2',
-    minOvr: 45,
-    league: 'Ligue 2 BKT',
-    coachName: 'Nicolas Usaï',
-    coachStyle: 'Bloc compact en contre-attaque, rigueur défensive absolue.',
-    expectations: { goals: 8, assists: 5, cleanSheets: 0 },
-    boardExpectation: "Ne pas descendre et faire progresser les jeunes talents.",
-    weeklySalary: 1200
-  },
-  {
-    name: 'SC Bastia',
-    tier: 'D2',
-    minOvr: 48,
-    league: 'Ligue 2 BKT',
-    coachName: 'Benoît Tavenot',
-    coachStyle: 'Engagement total, duels agressifs et transition rapide sur les ailes.',
-    expectations: { goals: 10, assists: 6, cleanSheets: 0 },
-    boardExpectation: "Accrocher la première moitié de tableau.",
-    weeklySalary: 1500
-  },
-  {
-    name: 'Bromley FC',
-    tier: 'D4',
-    minOvr: 40,
-    league: 'EFL League Two',
-    coachName: 'Andy Woodman',
-    coachStyle: 'Jeu ultra physique à l\'anglaise, duels aériens et longue distance.',
-    expectations: { goals: 7, assists: 4, cleanSheets: 0 },
-    boardExpectation: "Survivre au marathon de League Two.",
-    weeklySalary: 800
-  },
-  {
-    name: 'CD Castellón',
-    tier: 'D2',
-    minOvr: 50,
-    league: 'LaLiga Hypermotion',
-    coachName: 'Dick Schreuder',
-    coachStyle: 'Possession audacieuse, pressing très haut et prise de risque permanente.',
-    expectations: { goals: 12, assists: 8, cleanSheets: 0 },
-    boardExpectation: "Pratiquer un football séduisant et viser les play-offs.",
-    weeklySalary: 2500
-  }
+// --- LISTES DE GÉNÉRATION ALÉATOIRE DES CLUBS ---
+
+const CITIES_AND_CLUBS = [
+  { name: 'FC Girondins de Bordeaux', league: 'National / R1', tier: 'Amateur', minOvr: 0, coachName: 'Bruno Irles', coachStyle: 'Rigueur tactique et engagement physique total.', weeklySalary: 300 },
+  { name: 'US Lormont', league: 'Régional 1', tier: 'Amateur', minOvr: 0, coachName: 'Mehdi Sabri', coachStyle: 'Jeu direct et transition rapide sur les côtés.', weeklySalary: 150 },
+  { name: 'Pau FC', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 45, coachName: 'Nicolas Usaï', coachStyle: 'Bloc compact en contre-attaque et solidité.', weeklySalary: 1200 },
+  { name: 'SC Bastia', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 48, coachName: 'Benoît Tavenot', coachStyle: 'Duels agressifs et mental de guerrier.', weeklySalary: 1500 },
+  { name: 'Stade Lavallois', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 42, coachName: 'Olivier Frapolli', coachStyle: 'Solidité défensive et pressing haut.', weeklySalary: 1000 },
+  { name: 'Bromley FC', league: 'EFL League Two', tier: 'D4', minOvr: 40, coachName: 'Andy Woodman', coachStyle: 'Jeu physique à l’anglaise et duels aériens.', weeklySalary: 800 },
+  { name: 'Salford City', league: 'EFL League Two', tier: 'D4', minOvr: 43, coachName: 'Karl Robinson', coachStyle: 'Possession et projection rapide vers l’avant.', weeklySalary: 950 },
+  { name: 'CD Castellón', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 50, coachName: 'Dick Schreuder', coachStyle: 'Possession audacieuse et prise de risque.', weeklySalary: 2500 },
+  { name: 'CD Mirandés', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 44, coachName: 'Alessio Lisci', coachStyle: 'Bloc bas ultra discipliné et contres fulgurants.', weeklySalary: 1400 },
+  { name: 'Viktoria Köln', league: '3. Liga', tier: 'D3', minOvr: 38, coachName: 'Olaf Janßen', coachStyle: 'Discipline allemande et jeu de transition.', weeklySalary: 700 }
 ];
+
+// Fonction pour générer une sélection aléatoire de 4 clubs au lancement
+function getRandomStarterClubs() {
+  let shuffled = [...CITIES_AND_CLUBS].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, 4).map(club => ({
+    ...club,
+    expectations: { goals: randInt(5, 12), assists: randInt(3, 8), cleanSheets: 0 },
+    boardExpectation: "S'imposer dans l'effectif et répondre aux attentes du coach."
+  }));
+}
+
+// Variable globale dynamique pour les clubs de départ de la session actuelle
+let dynamicStarterClubs = getRandomStarterClubs();
 
 // --- ÉCONOMIE DU STAFF PRIVÉ ---
 
@@ -347,7 +317,7 @@ function setHeartClub(club) {
 
 function submitCreation(clubIndex) {
   updateFormInput();
-  const chosenClub = STARTER_CLUBS[clubIndex] || STARTER_CLUBS[0];
+  const chosenClub = dynamicStarterClubs[clubIndex] || dynamicStarterClubs[0];
   state.player = generatePlayer(state.form, chosenClub);
   
   if (state.player.currentClub === state.player.heartClub) {
@@ -363,6 +333,7 @@ function resetCareer() {
   state.player = null;
   state.activeEvent = null;
   lastChoiceFeedback = null;
+  dynamicStarterClubs = getRandomStarterClubs();
   render();
 }
 
@@ -511,7 +482,7 @@ function render() {
         <div>
           <label class="text-xs text-yellow-400 font-bold uppercase tracking-wider block mb-2">🏟️ Choisis ton Club de Départ & ton Entraîneur :</label>
           <div class="space-y-3 max-h-60 overflow-y-auto pr-1">
-            ${STARTER_CLUBS.map((club, index) => `
+            ${dynamicStarterClubs.map((club, index) => `
               <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
                 <div class="flex justify-between items-center">
                   <div>
