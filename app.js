@@ -58,32 +58,43 @@ function randInt(min, max) {
 }
 
 function generatePlayer(formData) {
+  // 1. OVR de base
   let baseOvr = randInt(35, 50);
-  if (formData.origin.id === 'tardif') baseOvr += formData.origin.modifiers.ovrOffset;
+  if (formData.origin.id === 'tardif') baseOvr -= 5;
 
+  // 2. Calcul du potentiel
   let basePot = randInt(70, 99);
-  if (basePot > 98) basePot = randInt(88, 95);
 
-  const physicalBonus = Math.floor((formData.height / 10) + (formData.weight / 10));
-  const technicalPenalty = Math.floor((formData.height / 20) + (formData.weight / 20));
+  // 3. Calcul de la morphologie (impact réel sur les stats)
+  // Plus le joueur est grand/lourd, plus le physique est haut mais la technique chute
+  const physicalBonus = Math.floor((formData.height / 10) + (formData.weight / 10)) - 25;
+  const technicalPenalty = Math.floor((formData.height / 20) + (formData.weight / 20)) - 12;
 
+  // 4. Système de multiplicateurs par origine (C'est ici que tu ajustes la cohérence)
+  const mods = {
+    centre: { tech: 1.2, phys: 1.0, ment: 1.3 },
+    amateur: { tech: 0.9, phys: 1.2, ment: 0.8 },
+    futsal: { tech: 1.4, phys: 0.7, ment: 1.0 },
+    tardif: { tech: 0.8, phys: 1.1, ment: 1.0 },
+    street: { tech: 1.3, phys: 1.1, ment: 0.7 },
+    athlete: { tech: 0.7, phys: 1.5, ment: 0.9 }
+  };
+  
+  const m = mods[formData.origin.id] || { tech: 1, phys: 1, ment: 1 };
+
+  // 5. Calcul final des stats (Base 40 + bonus morpho) * multiplicateur origine
   let stats = {
-    technique: Math.max(0, Math.min(100, 40 - technicalPenalty + (formData.origin.modifiers.technique || 0))),
-    physique: Math.max(0, Math.min(100, 40 + physicalBonus + (formData.origin.modifiers.physique || 0))),
-    mental: 40 + (formData.origin.modifiers.mental || 0),
+    technique: Math.round((40 - technicalPenalty) * m.tech),
+    physique: Math.round((40 + physicalBonus) * m.phys),
+    mental: Math.round(40 * m.ment),
     charisme: randInt(20, 60),
     reputation: 10,
-    discipline: 50 + (formData.origin.modifiers.discipline || 0),
+    discipline: 50,
     relationCoach: 50,
     vestiaire: 50
   };
 
-  const hiddenStats = {
-    regularite: randInt(1, 20),
-    matchImportant: randInt(1, 20),
-    blessure: randInt(1, 20)
-  };
-
+  // ... (Garde le reste de la fonction tel quel pour les hidden stats)
   return {
     firstName: formData.firstName,
     lastName: formData.lastName,
@@ -95,11 +106,11 @@ function generatePlayer(formData) {
     ovr: baseOvr,
     pot: basePot,
     stats: stats,
-    hidden: hiddenStats,
-    traits: [formData.origin.trait],
-    history: []
+    hidden: { regularite: randInt(1, 20), matchImportant: randInt(1, 20), blessure: randInt(1, 20) },
+    traits: [formData.origin.trait]
   };
 }
+
 
 // --- BLOC 3 : INTERFACE UTILISATEUR & RENDU ---
 
