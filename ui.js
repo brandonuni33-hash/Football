@@ -8,7 +8,7 @@ export class UserInterface {
         this.engine = gameEngine;
         this.currentStep = 1;
         this.activeApp = 'home';
-        this.selectedFocus = 'PHYSIQUE'; // Focus d'entraînement par défaut
+        this.selectedFocus = 'TECHNIQUE'; // Synchronisé avec la valeur par défaut du state du GameEngine
         this.selectedData = {
             firstname: '',
             lastname: '',
@@ -550,9 +550,9 @@ export class UserInterface {
                         <p class="subtitle">Choisis ton axe de travail pour le prochain bloc mensuel :</p>
                         <div class="grid-focus">
                             ${Object.entries(TrainingManager.FOCUS_TYPES).map(([key, focusObj]) => `
-                                <div class="card-select training-card ${this.selectedFocus === key ? 'selected' : ''}" data-focus-key="${key}">
-                                    <h4>${focusObj.label}</h4>
-                                    <p>${focusObj.desc}</p>
+                                <div class="card-select training-card ${state.trainingFocus === key ? 'selected' : ''}" data-focus-key="${key}">
+                                    <h4>${focusObj.name}</h4>
+                                    <p>${focusObj.description}</p>
                                 </div>
                             `).join('')}
                         </div>
@@ -567,9 +567,9 @@ export class UserInterface {
         const playBtn = document.getElementById('play-block-btn');
         if (playBtn) {
             playBtn.addEventListener('click', () => {
-                // Passe le focus d'entraînement sélectionné lors du lancement du bloc
-                this.engine.playBlock(this.selectedFocus);
-                const eventActuel = EventEngine.checkTriggers();
+                // Le GameEngine utilise directement this.state.trainingFocus mis à jour en temps réel
+                this.engine.playBlock();
+                const eventActuel = EventEngine.checkTriggers ? EventEngine.checkTriggers() : null;
                 
                 if (eventActuel) {
                     this.afficherModaleEvenement(eventActuel);
@@ -607,7 +607,12 @@ export class UserInterface {
                 document.querySelectorAll('.training-card').forEach(c => c.classList.remove('selected'));
                 const cardEl = e.currentTarget;
                 cardEl.classList.add('selected');
-                this.selectedFocus = cardEl.getAttribute('data-focus-key');
+                const focusKey = cardEl.getAttribute('data-focus-key');
+                this.selectedFocus = focusKey;
+                // Synchronisation immédiate avec le GameEngine
+                if (typeof this.engine.setTrainingFocus === 'function') {
+                    this.engine.setTrainingFocus(focusKey);
+                }
             });
         });
     }
