@@ -79,7 +79,7 @@ export const PlayerLogic = {
             position: formData.position,
             height: height,
             weight: weight,
-            origin: formData.originId,
+            origin: formData.origin,
             trait: originData.trait,
             heartClub: formData.heartClub,
             ovr: finalOvr,
