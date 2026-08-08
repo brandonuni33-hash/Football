@@ -33,7 +33,6 @@ export class UserInterface {
     }
 
     render() {
-        // Si le jeu a commencé, on affiche le Dashboard au lieu des étapes de création
         if (this.engine.state) {
             this.renderDashboard();
             return;
@@ -146,7 +145,9 @@ export class UserInterface {
                         const randomVision = COACH_VISIONS[Math.floor(Math.random() * COACH_VISIONS.length)];
                         const randomCoachName = COACH_NAMES[Math.floor(Math.random() * COACH_NAMES.length)];
                         
-                        const salary = Math.round((yc.prestige * 150) + (Math.random() * 500));
+                        // Modification apportée ici : salaire entre 100 et 300€
+                        const salary = Math.round(100 + (Math.random() * 200));
+                        
                         const playtimeOptions = ["Temps de jeu limité", "Joueur de rotation", "Espoir / Prêt potentiel", "Titulaire en jeunes"];
                         const playtime = playtimeOptions[Math.floor(Math.random() * playtimeOptions.length)];
                         const targetRating = Math.min(75, 55 + Math.round(yc.prestige / 4));
@@ -290,12 +291,8 @@ export class UserInterface {
         if (startBtn) {
             startBtn.addEventListener('click', () => {
                 if (typeof this.engine.startCareer === 'function') {
-                    // 1. Lance la carrière dans le GameEngine
                     this.engine.startCareer(this.selectedData);
-                    // 2. Met à jour l'affichage pour afficher le Dashboard
                     this.renderDashboard();
-                } else {
-                    console.error("La méthode startCareer n'existe pas dans le moteur.");
                 }
             });
         }
@@ -320,9 +317,6 @@ export class UserInterface {
         }
     }
 
-    /**
-     * Affiche le tableau de bord principal une fois la carrière lancée
-     */
     renderDashboard() {
         const state = this.engine.state;
         if (!state) return;
@@ -343,7 +337,6 @@ export class UserInterface {
                     <p>Note moyenne : ${state.player.stats.averageRating}</p>
                     <p>💰 Solde bancaire : ${state.career.balance} €</p>
                     <p>❤️ Moral : ${state.player.morale}% | ⚡ Forme : ${state.player.fitness}%</p>
-                    ${state.player.isInjured ? '<p style="color: red; font-weight: bold;">🚑 JOUEUR BLESSÉ !</p>' : ''}
                 </section>
 
                 <div class="action-panel">
@@ -354,16 +347,9 @@ export class UserInterface {
             </div>
         `;
 
-        // Écouteur pour lancer le bloc de matchs
-        const playBtn = document.getElementById('play-block-btn');
-        if (playBtn) {
-            playBtn.addEventListener('click', () => {
-                const report = this.engine.playBlock();
-                if (report) {
-                    // Rafraîchit le dashboard pour afficher les nouvelles stats mises à jour
-                    this.renderDashboard();
-                }
-            });
-        }
+        document.getElementById('play-block-btn').addEventListener('click', () => {
+            this.engine.playBlock();
+            this.renderDashboard();
+        });
     }
 }
