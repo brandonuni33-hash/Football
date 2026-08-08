@@ -17,6 +17,7 @@ export class UserInterface {
             coachVision: null,
             coachName: null
         };
+        this.randomYouthClubs = []; // Stocke les 4 à 6 clubs tirés au sort pour cette partie
         
         this.initDOM();
         this.render();
@@ -107,7 +108,7 @@ export class UserInterface {
                 `;
             case 4:
                 return `
-                    <h2>Étape 4 : Club de Cœur & Mentor</h2>
+                    <h2>Étape 4 : Club de Cœur</h2>
                     <div class="form-group">
                         <label>Club de cœur :</label>
                         <select id="heart-club-select">
@@ -119,23 +120,20 @@ export class UserInterface {
                             `).join('')}
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label>Profil du Coach :</label>
-                        <div class="grid-visions">
-                            ${COACH_VISIONS.map(cv => `
-                                <div class="card-select ${this.selectedData.coachVision === cv.title ? 'selected' : ''}" data-vision="${cv.title}">
-                                    <h4>${cv.title}</h4>
-                                    <p>${cv.desc}</p>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
                 `;
             case 5:
+                // Sélection aléatoire de 4 à 6 clubs de jeunes si ce n'est pas déjà fait
+                if (this.randomYouthClubs.length === 0) {
+                    const shuffled = [...YOUTH_CLUBS_POOL].sort(() => 0.5 - Math.random());
+                    const count = Math.floor(Math.random() * 3) + 4; // Entre 4 et 6 clubs (4, 5 ou 6)
+                    this.randomYouthClubs = shuffled.slice(0, count);
+                }
+
                 return `
-                    <h2>Étape 5 : Point de Chute Initial</h2>
+                    <h2>Étape 5 : Offres de Contrat Jeune</h2>
+                    <p class="subtitle">Voici les clubs qui s'intéressent à vous :</p>
                     <div class="grid-youth-clubs">
-                        ${YOUTH_CLUBS_POOL.map(yc => `
+                        ${this.randomYouthClubs.map(yc => `
                             <div class="card-select club-card ${this.selectedData.youthClub?.name === yc.name ? 'selected' : ''}" data-club-name="${yc.name}">
                                 <div class="club-info">
                                     <h4>${yc.name}</h4>
@@ -217,22 +215,20 @@ export class UserInterface {
             });
         }
 
-        document.querySelectorAll('.grid-visions .card-select').forEach(card => {
-            card.addEventListener('click', () => {
-                document.querySelectorAll('.grid-visions .card-select').forEach(c => c.classList.remove('selected'));
-                card.classList.add('selected');
-                this.selectedData.coachVision = card.getAttribute('data-vision');
-                this.selectedData.coachName = COACH_NAMES[Math.floor(Math.random() * COACH_NAMES.length)];
-                if(nextBtn) nextBtn.disabled = !this.isStepValid();
-            });
-        });
-
         document.querySelectorAll('.grid-youth-clubs .card-select').forEach(card => {
             card.addEventListener('click', () => {
                 document.querySelectorAll('.grid-youth-clubs .card-select').forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
                 const clubName = card.getAttribute('data-club-name');
-                this.selectedData.youthClub = YOUTH_CLUBS_POOL.find(yc => yc.name === clubName);
+                
+                // Attribution du club de jeunes choisi
+                this.selectedData.youthClub = this.randomYouthClubs.find(yc => yc.name === clubName);
+                
+                // Attribution automatique de la vision et du nom du coach selon l'offre du club
+                const randomVision = COACH_VISIONS[Math.floor(Math.random() * COACH_VISIONS.length)];
+                this.selectedData.coachVision = randomVision.title;
+                this.selectedData.coachName = COACH_NAMES[Math.floor(Math.random() * COACH_NAMES.length)];
+
                 if(startBtn) startBtn.disabled = !this.isStepValid();
             });
         });
@@ -277,8 +273,7 @@ export class UserInterface {
             case 3:
                 return this.selectedData.continent !== null && this.selectedData.country !== null;
             case 4:
-                return this.selectedData.heartClub !== null && this.selectedData.heartClub !== '' && 
-                       this.selectedData.coachVision !== null;
+                return this.selectedData.heartClub !== null && this.selectedData.heartClub !== '';
             case 5:
                 return this.selectedData.youthClub !== null;
             default:
