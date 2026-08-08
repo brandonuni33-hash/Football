@@ -362,10 +362,28 @@ export class UserInterface {
                         <span>🔋 100%</span>
                     </div>
                     <div class="phone-home-screen">
-                        <div class="player-widget">
+                        <!-- Widget Joueur Enrichi : Maillot floqué & Stats -->
+                        <div class="player-widget-enhanced">
                             <div class="widget-subtitle">📅 Saison ${state.calendar.currentSeasonYear}/${state.calendar.currentSeasonYear + 1} — ${state.calendar.currentPeriod}</div>
-                            <div class="widget-title">⭐ ${state.player.firstname} ${state.player.lastname} (${state.player.club})</div>
-                            <div class="widget-stats">OVR : ${state.player.overall} | 💰 ${state.career.balance} €</div>
+                            
+                            <div class="player-card-banner">
+                                <div class="player-jersey-badge">
+                                    <span class="jersey-icon">👕</span>
+                                    <span class="jersey-number">99</span>
+                                </div>
+                                <div class="player-main-info">
+                                    <div class="widget-title">⭐ ${state.player.firstname} ${state.player.lastname}</div>
+                                    <div class="player-club-sub">📍 ${state.player.club} (${state.player.position})</div>
+                                </div>
+                            </div>
+
+                            <div class="widget-stats-grid">
+                                <div class="stat-pill">⚡ OVR : <strong>${state.player.overall}</strong></div>
+                                <div class="stat-pill">✨ Pot : <strong>${state.player.potential}</strong></div>
+                                <div class="stat-pill">🔋 Forme : <strong>${state.player.fitness}%</strong></div>
+                                <div class="stat-pill">❤️ Moral : <strong>${state.player.morale}%</strong></div>
+                                <div class="stat-pill">💰 <strong>${state.career.balance} €</strong></div>
+                            </div>
                         </div>
 
                         <div class="apps-grid">
