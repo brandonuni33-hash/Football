@@ -145,6 +145,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     color: #34d399;
     font-weight: bold;
 }
+
 /* Style moderne pour la grille d'origine de l'étape 2 */
 .grid-origins-modern {
     display: grid;
