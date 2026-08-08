@@ -74,28 +74,28 @@ export class UserInterface {
                     </div>
                     <div class="form-group">
                         <label>Choisis ton poste sur le terrain :</label>
-                        <div class="tactical-pitch-container">
-                            <div class="soccer-pitch">
+                        <div class="proclubs-pitch-container">
+                            <div class="proclubs-soccer-pitch">
                                 ${POSITIONS.map(p => {
                                     let coords = { top: '50%', left: '50%' };
                                     const id = p.id;
-                                    if (id === 'GK') coords = { top: '88%', left: '50%' };
-                                    else if (id === 'DC' || id === 'CB') coords = { top: '72%', left: '50%' };
+                                    if (id === 'GK') coords = { top: '86%', left: '50%' };
+                                    else if (id === 'DC' || id === 'CB') coords = { top: '70%', left: '50%' };
                                     else if (id === 'DD' || id === 'RB') coords = { top: '65%', left: '85%' };
                                     else if (id === 'DG' || id === 'LB') coords = { top: '65%', left: '15%' };
-                                    else if (id === 'MDC' || id === 'CDM') coords = { top: '52%', left: '50%' };
-                                    else if (id === 'MC' || id === 'CM') coords = { top: '42%', left: '50%' };
-                                    else if (id === 'MO' || id === 'CAM') coords = { top: '30%', left: '50%' };
+                                    else if (id === 'MDC' || id === 'CDM') coords = { top: '50%', left: '50%' };
+                                    else if (id === 'MC' || id === 'CM') coords = { top: '40%', left: '50%' };
+                                    else if (id === 'MO' || id === 'CAM') coords = { top: '28%', left: '50%' };
                                     else if (id === 'AD' || id === 'RW') coords = { top: '22%', left: '80%' };
                                     else if (id === 'AG' || id === 'LW') coords = { top: '22%', left: '20%' };
-                                    else if (id === 'BU' || id === 'ST') coords = { top: '15%', left: '50%' };
+                                    else if (id === 'BU' || id === 'ST') coords = { top: '12%', left: '50%' };
 
                                     const isSelected = this.selectedData.position === p.id ? 'selected' : '';
 
                                     return `
-                                        <button class="pitch-node ${isSelected}" data-pos="${p.id}" style="top: ${coords.top}; left: ${coords.left};" title="${p.name}">
-                                            <span class="pos-badge">${p.id}</span>
-                                            <span class="pos-name">${p.name}</span>
+                                        <button class="proclubs-node ${isSelected}" data-pos="${p.id}" style="top: ${coords.top}; left: ${coords.left};" title="${p.name}">
+                                            <div class="proclubs-jersey">👕</div>
+                                            <span class="proclubs-pos-name">${p.id}</span>
                                         </button>
                                     `;
                                 }).join('')}
@@ -240,10 +240,10 @@ export class UserInterface {
             });
         }
 
-        // Écoute des clics sur les nœuds du terrain tactique
-        document.querySelectorAll('.pitch-node').forEach(btn => {
+        // Écoute des clics sur les nœuds du mini-terrain Pro Clubs
+        document.querySelectorAll('.proclubs-node').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.pitch-node').forEach(b => b.classList.remove('selected'));
+                document.querySelectorAll('.proclubs-node').forEach(b => b.classList.remove('selected'));
                 const targetBtn = e.currentTarget;
                 targetBtn.classList.add('selected');
                 this.selectedData.position = targetBtn.getAttribute('data-pos');
