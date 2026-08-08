@@ -128,6 +128,8 @@ const STAFF_DATA = {
   ]
 };
 
+// --- FONCTION DE GÉNÉRATION PAR IA (AVEC TA CLÉ INTÉGRÉE) ---
+
 async function generateAIEvents(playerState) {
   const prompt = `
     Tu es le moteur narratif d'un RPG textuel de football ultra-réaliste.
@@ -140,8 +142,8 @@ async function generateAIEvents(playerState) {
     - Relation Coach : ${playerState.stats.relationCoach}/100
     - Solde : $${playerState.balance}
 
-    Génère UN événement narratif complexe et immersif adapté à son âge et à sa situation actuelle. 
-    Renvoie le résultat STRICTEMENT au format JSON avec cette structure :
+    Génère UN événement narratif complexe, profond et immersif adapté à son âge exact et à sa situation actuelle. 
+    Renvoie le résultat STRICTEMENT au format JSON avec cette structure précise :
     {
       "context": "Titre court du contexte",
       "text": "Le texte narratif décrivant la situation...",
@@ -158,22 +160,37 @@ async function generateAIEvents(playerState) {
     }
   `;
 
-  // Appel de l'API LLM (Exemple conceptuel)
-  /*
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Authorization': 'Bearer TON_API_KEY', 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      messages: [{ role: 'user', content: prompt }],
-      response_format: { type: "json_object" }
-    })
-  });
-  const data = await response.json();
-  return JSON.parse(data.choices[0].message.content);
-  */
-}
+  const apiKey = 
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseMimeType: "application/json"
+        }
+      })
+    });
+
+    const data = await response.json();
+    const rawText = data.candidates[0].content.parts[0].text;
+    return JSON.parse(rawText);
+
+  } catch (error) {
+    console.error("Erreur API Gemini:", error);
+    return {
+      context: `Événement de Carrière (${playerState.age} ans)`,
+      text: `Une semaine charnière s'annonce à ${playerState.currentClub}, testant ta concentration et ta résistance mentale.`,
+      choices: [
+        { text: "Redoubler d'efforts en solitaire", impact: { technique: +3, physique: +2 } },
+        { text: "Solliciter un entretien avec le coach", impact: { relationCoach: +4 } }
+      ]
+    };
+  }
+}
 
 // --- ÉTAT GLOBAL ET GESTION DU JEU ---
 
@@ -229,7 +246,7 @@ function generatePlayer(formData, selectedStarterClub) {
     origin: formData.origin,
     height: formData.height,
     weight: formData.weight,
-    age: 14, // Âge de départ fixé à 14 ans
+    age: 14,
     ovr: baseOvr,
     pot: basePot,
     stats: stats,
@@ -318,12 +335,12 @@ function hireStaff(category, level) {
   render();
 }
 
-function advanceWeek() {
+// Fonction asynchrone pour avancer la semaine et déclencher l'appel IA
+async function advanceWeek() {
   state.player.week += 1;
   state.player.balance += state.player.weeklySalary;
   lastChoiceFeedback = null;
 
-  // Augmentation de l'âge chaque 52 semaines
   if (state.player.week % 52 === 0) {
     state.player.age += 1;
   }
@@ -349,12 +366,9 @@ function advanceWeek() {
     state.player.balance -= totalStaffCost;
   }
 
-  // Filtrage des événements selon l'âge actuel du joueur
-  const currentAge = state.player.age || 14;
-  const eligibleEvents = NARRATIVE_ENGINE.eventsPool.filter(ev => currentAge >= ev.minAge && currentAge <= ev.maxAge);
-
-  if (Math.random() < 0.7 && eligibleEvents.length > 0) {
-    state.activeEvent = eligibleEvents[Math.floor(Math.random() * eligibleEvents.length)];
+  // Appel de l'IA Gemini pour l'événement de la semaine
+  if (Math.random() < 0.7) {
+    state.activeEvent = await generateAIEvents(state.player);
   } else {
     state.activeEvent = null;
   }
@@ -394,7 +408,7 @@ function render() {
   if (!state.player) {
     app.innerHTML = `
       <div class="max-w-xl mx-auto my-6 p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 text-white shadow-xl">
-        <h1 class="text-xl font-black text-center text-emerald-400 uppercase tracking-wider">Création du Joueur & Carrière</h1>
+        <h1 class="text-xl font-black text-center text-emerald-400 uppercase tracking-wider">Création du Joueur & Carrière (Gemini Connecté)</h1>
         
         <div class="grid grid-cols-2 gap-3">
           <div>
@@ -642,7 +656,7 @@ function render() {
         ${tabContent}
 
         <button onclick="advanceWeek()" ${state.activeEvent ? 'disabled class="opacity-50 cursor-not-allowed"' : ''} class="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-black rounded-xl text-white uppercase text-xs tracking-wider shadow-lg transition-all">
-          📅 Avancer d'une Semaine (Jouer / S'entraîner)
+          📅 Avancer d'une Semaine (IA / Match)
         </button>
 
         <button onclick="resetCareer()" class="w-full py-2 bg-slate-950 hover:bg-red-950/40 text-red-400 border border-slate-800 hover:border-red-900 font-bold rounded-xl text-xs uppercase tracking-wide transition-colors">
