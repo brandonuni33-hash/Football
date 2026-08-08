@@ -1,18 +1,13 @@
 // matchBlock.js
 import { EconomyManager } from './economy.js';
-import { TrainingManager } from './entrainement.js'; // Import du module d'entraînement
+import { TrainingManager } from './entrainement.js';
 
 export const MatchBlockManager = {
-    /**
-     * @param {Object} state - L'état global
-     * @param {string} trainingFocus - Le focus choisi (ex: 'PHYSIQUE', 'TECHNIQUE')
-     */
-    simulateBlock(state, trainingFocus) {
+    simulateBlock(state, trainingFocus = 'TECHNIQUE') { // Valeur par défaut si non fourni
         const player = state.player;
         const calendar = state.calendar;
 
-        // 0. Interaction avec le TrainingManager : Récupération des effets du focus
-        // On récupère les bonus de stats et l'impact sur la fatigue
+        // 0. Récupération des effets du focus
         const trainingEffect = TrainingManager.getEffect(trainingFocus);
         
         // Détermination du nombre de matchs
@@ -20,7 +15,7 @@ export const MatchBlockManager = {
         if (calendar.currentMonth === 12) matchesInMonth = 2;
         else if (calendar.currentMonth === 7) matchesInMonth = 0;
         
-        // ... (Initialisation des attributs cachés reste identique)
+        // Initialisation attributs
         if (!player.attributes) {
             player.attributes = { consistency: 12, bigMatchPlayer: 12, injuryProneness: 10 };
         }
@@ -28,17 +23,15 @@ export const MatchBlockManager = {
         const attrs = player.attributes;
         const volatility = 4.0 - (attrs.consistency / 20 * 2.5); 
 
-        // 2. Gestion blessure avec impact du focus 'PHYSIQUE'
+        // 2. Gestion blessure
         const baseInjuryRisk = (21 - attrs.injuryProneness) * 0.15; 
-        // Si entraînement physique poussé, risque un peu plus élevé si fatigue élevée
         const fatigueMultiplier = ((player.fitness || 80) < 50 || trainingFocus === 'PHYSIQUE') ? 2 : 1; 
         const finalInjuryChance = matchesInMonth > 0 ? (baseInjuryRisk * fatigueMultiplier) : 0;
         const isInjured = Math.random() * 100 < finalInjuryChance;
 
-        // 3. Simulation avec bonus liés au TrainingManager
+        // 3. Simulation des matchs
         const results = Array.from({ length: matchesInMonth }, () => {
             const baseRating = 6.0 + (Math.random() * volatility);
-            // Application du bonus de performance via le TrainingManager
             const ratingBonus = trainingEffect.ratingBonus || 0;
             
             return {
@@ -48,7 +41,7 @@ export const MatchBlockManager = {
             };
         });
 
-        // 4. Calcul des totaux et moyennes
+        // 4. Totaux
         const totalGoals = results.reduce((acc, m) => acc + m.goals, 0);
         const totalAssists = results.reduce((acc, m) => acc + m.assists, 0);
         const avgRating = matchesInMonth > 0 ? parseFloat((results.reduce((acc, m) => acc + m.rating, 0) / matchesInMonth).toFixed(1)) : 0.0;
@@ -59,17 +52,24 @@ export const MatchBlockManager = {
 
         // 5. Mise à jour stats globales
         if (player.stats && matchesInMonth > 0) {
-            // ... (logique de mise à jour stats reste identique)
+            const prevMatches = player.stats.matchesPlayed || 0;
+            const newTotalMatches = prevMatches + matchesInMonth;
+            player.stats.matchesPlayed = newTotalMatches;
+            player.stats.goals += totalGoals;
+            player.stats.assists += totalAssists;
+            player.stats.successfulPasses += blockPasses;
+            player.stats.tackles += blockTackles;
+            const currentAvg = player.stats.averageRating || 0.0;
+            player.stats.averageRating = parseFloat((((currentAvg * prevMatches) + (avgRating * matchesInMonth)) / newTotalMatches).toFixed(1));
         }
 
-        // 6. Mise à jour économie
+        // 6. Économie
         const financeReport = EconomyManager.processBlockFinances(state, blockSummary);
 
-        // 7. Impact sur le joueur (Intégration du coût énergétique de l'entraînement)
+        // 7. Impact Fitness/Moral
         if (matchesInMonth > 0) {
             const moraleImpact = avgRating >= 7.0 ? 5 : -3;
             player.morale = Math.min(100, Math.max(0, (player.morale || 50) + moraleImpact));
-            // La fitness baisse selon les matchs ET le focus entraînement
             const fitnessLoss = (matchesInMonth * 2) + (trainingEffect.fitnessCost || 5);
             player.fitness = Math.min(100, Math.max(0, (player.fitness || 80) - fitnessLoss));
         } else {
@@ -77,6 +77,7 @@ export const MatchBlockManager = {
         }
         
         player.isInjured = isInjured;
+        if (isInjured) player.morale = Math.max(0, player.morale - 15);
 
         // 8. Évolution attributs
         if (matchesInMonth > 0) this.updateHiddenAttributes(player, blockSummary);
@@ -85,6 +86,11 @@ export const MatchBlockManager = {
     },
 
     updateHiddenAttributes(player, blockSummary) {
-        // ... (votre logique d'évolution existante)
+        const attrs = player.attributes;
+        if (blockSummary.rating >= 7.0 && Math.random() < 0.4) attrs.consistency++;
+        else if (blockSummary.rating < 5.5 && Math.random() < 0.3) attrs.consistency--;
+        
+        if ((blockSummary.goals > 0 || blockSummary.rating >= 8.0) && Math.random() < 0.25) attrs.bigMatchPlayer++;
+        if (!player.isInjured && Math.random() < 0.15) attrs.injuryProneness++;
     }
 };
