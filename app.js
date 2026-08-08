@@ -293,8 +293,9 @@ async function generateAIEvents(playerState, seasonPhase) {
   const apiKey = getApiKey();
   if (!apiKey) return null;
 
+  // Récupération de TOUT l'historique récent pour bannir formellement les thèmes déjà vus
   const recentHistory = playerState.history && playerState.history.length > 0 
-    ? playerState.history.slice(-5).map(h => h.context).join(", ") 
+    ? playerState.history.slice(-8).map(h => h.context).join(" | ") 
     : "Aucun historique récent";
 
   const prompt = `
@@ -308,18 +309,17 @@ async function generateAIEvents(playerState, seasonPhase) {
     - Stats : Technique ${playerState.stats.technique}, Physique ${playerState.stats.physique}, Mental ${playerState.stats.mental}
     - Arrogance : ${playerState.arroganceScore || 20}/100
     - Confiance Coach : ${playerState.stats.relationCoach}/100
-    - Solde : $${playerState.balance}
 
-    ÉVÉNEMENTS RÉCENTS À NE SURTOUT PAS REPRODUIRE (INTERDICTION FORMELLE DE RÉPÉTER CES THÈMES OU FORMULATIONS) :
+    ⚠️ INTERDICTION FORMELLE DE RÉPÉTER CES THÈMES OU FORMULATIONS (Déjà utilisés récemment) :
     [ ${recentHistory} ]
 
-    Génère UN événement narratif complètement inédit, surprenant, varié et STRICTEMENT adapté à la phase actuelle (${seasonPhase}).
+    Génère UN événement narratif **totalement inédit, surprenant, varié et inattendu** (ex: un clash sur les réseaux, une opportunité extra-sportive, un souci personnel en dehors du foot, une proposition d'un équipementier, une tension avec un coéquipier jaloux, un conseil d'un vétéran, etc.).
     
     Règles strictes :
-    1. Propose OBLIGATOIREMENT au moins 4 choix distincts pour le joueur.
+    1. Propose OBLIGATOIREMENT au moins 4 choix distincts et originaux pour le joueur.
     2. Renvoie le résultat STRICTEMENT au format JSON avec cette structure précise :
     {
-      "context": "Titre court et original du contexte",
+      "context": "Titre court et original du contexte (ex: 'Polémique sur les réseaux', 'Le conseil du vétéran')",
       "text": "Le texte narratif décrivant la situation...",
       "choices": [
         {
@@ -351,7 +351,8 @@ async function generateAIEvents(playerState, seasonPhase) {
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
-          responseMimeType: "application/json"
+          responseMimeType: "application/json",
+          temperature: 1.0 // 🚀 Température maximale poussée à 1.0 pour forcer la créativité et l'imprévisibilité de l'IA
         }
       })
     });
@@ -367,14 +368,15 @@ async function generateAIEvents(playerState, seasonPhase) {
 
   } catch (error) {
     console.error("Erreur API Gemini:", error);
+    // En cas de secours, on renvoie un événement aléatoire basique pour éviter de bloquer le jeu
     return {
-      context: `Événement de ${seasonPhase} (${playerState.age} ans)`,
-      text: `Une situation marquante survient en cette période de ${seasonPhase} au sein du club de ${playerState.currentClub}. Comment gères-tu la situation ?`,
+      context: `Coup de Trafalgar (${seasonPhase})`,
+      text: `Une situation inédite secoue le quotidien du club de ${playerState.currentClub}. Comment réagis-tu face aux projecteurs ?`,
       choices: [
-        { text: "Prendre les devants et assumer ses responsabilités", impact: { mental: +3, relationCoach: +2 } },
-        { text: "Travailler en silence et redoubler d'efforts", impact: { technique: +2, physique: +2 } },
-        { text: "Solliciter une explication franche avec l'entraîneur", impact: { relationCoach: +5, mental: -2 } },
-        { text: "Afficher ton statut et marquer ton territoire", impact: { arroganceScore: +10, vestiaire: -4 } }
+        { text: "Garder profil bas et se focaliser sur le terrain", impact: { technique: +2, mental: +2 } },
+        { text: "Faire une déclaration forte dans les médias locaux", impact: { fame: +5, arroganceScore: +5 } },
+        { text: "Régler ça en interne avec les cadres du vestiaire", impact: { relationCoach: +3, vestiaire: +3 } },
+        { text: "Provoquer ouvertement tes détracteurs", impact: { arroganceScore: +10, reputation: -2 } }
       ]
     };
   }
