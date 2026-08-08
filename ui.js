@@ -43,7 +43,7 @@ export class UserInterface {
         app.innerHTML = `
             <div class="career-container">
                 <header class="career-header">
-                    <h1>⚽ Mode Carrière</h1>
+                    <h1>⚡ Street to Pro</h1>
                     <div class="progress-bar">
                         <div class="progress" style="width: ${(this.currentStep / 5) * 100}%"></div>
                     </div>
@@ -356,7 +356,7 @@ export class UserInterface {
                 <div class="phone-frame">
                     <div class="phone-status-bar">
                         <span>9:41</span>
-                        <span>⚽ ProCareer</span>
+                        <span>⚡ Street to Pro</span>
                         <span>🔋 100%</span>
                     </div>
                     <div class="phone-home-screen">
@@ -405,7 +405,7 @@ export class UserInterface {
                 <div class="phone-frame">
                     <div class="phone-status-bar">
                         <span>9:41</span>
-                        <span>⚽ ProCareer</span>
+                        <span>⚡ Street to Pro</span>
                         <span>🔋 100%</span>
                     </div>
                     <div class="phone-app-view">
