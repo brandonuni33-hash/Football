@@ -39,7 +39,6 @@ const NATIONALITIES = [
   { name: 'Japon', flag: '🇯🇵', continent: 'Asie' }
 ];
 
-// Listes de prénoms et noms aléatoires pour la génération automatique
 const RANDOM_FIRST_NAMES = ['Lucas', 'Enzo', 'Noah', 'Louis', 'Gabriel', 'Raphaël', 'Leo', 'Arthur', 'Jules', 'Maël', 'Ethan', 'Hugo', 'Nathan', 'Sacha', 'Adam', 'Tom', 'Mohamed', 'Mehdi', 'Ilyes', 'Amine'];
 const RANDOM_LAST_NAMES = ['Bernard', 'Petit', 'Robert', 'Richard', 'Durand', 'Dubois', 'Moreau', 'Laurent', 'Simon', 'Michel', 'Lefebvre', 'Leroy', 'Roux', 'David', 'Bertrand', 'Morel', 'Fournier', 'Girard', 'Bonnet', 'Dupont', 'Le Moan'];
 
@@ -101,8 +100,6 @@ const BIG_LEAGUES_CLUBS = {
   "Bundesliga (Allemagne)": ['FC Bayern München', 'Bayer Leverkusen', 'Borussia Dortmund', 'RB Leipzig', 'VfB Stuttgart'],
   "Serie A (Italie)": ['Inter Milan', 'AC Milan', 'Juventus FC', 'SSC Napoli', 'AS Roma', 'Atalanta BC']
 };
-
-// --- LISTE MASSIVE DE PLUS DE 100 CLUBS DE DÉPART ALÉATOIRES ---
 
 const CITIES_AND_CLUBS = [
   { name: 'FC Girondins de Bordeaux', league: 'National / R1', tier: 'Amateur', minOvr: 0, coachName: 'Bruno Irles', coachStyle: 'Rigueur tactique et engagement physique total.', trainingQuality: 'Élevée (Historique formateur)', playtime: 'Élevé (Titulaire potentiel en jeunes)' },
@@ -209,8 +206,6 @@ function getRandomStarterClubs() {
 
 let dynamicStarterClubs = getRandomStarterClubs();
 
-// --- FONCTION DE GÉNÉRATION DYNAMIQUE DES OBJECTIFS & CONTRAT JEUNE ---
-
 function getYouthCategoryAndExpectations(ovr, position, tier) {
   let category = "U16";
   if (ovr >= 44 && ovr < 49) category = "U17";
@@ -252,8 +247,6 @@ function getYouthCategoryAndExpectations(ovr, position, tier) {
   };
 }
 
-// --- ÉCONOMIE DU STAFF PRIVÉ ---
-
 const STAFF_DATA = {
   physio: [
     { id: 0, name: 'Aucun', cost: 0, desc: 'Pas de préparateur physique personnel.', effect: 'Aucun' },
@@ -280,8 +273,6 @@ const STAFF_DATA = {
   ]
 };
 
-// --- FONCTION DE GÉNÉRATION PAR IA ---
-
 async function generateAIEvents(playerState, seasonPhase) {
   const apiKey = getApiKey();
   if (!apiKey) return null;
@@ -299,7 +290,8 @@ async function generateAIEvents(playerState, seasonPhase) {
     - Club : ${playerState.currentClub}
     - Phase actuelle de la saison : ${seasonPhase}
     - Stats : Technique ${playerState.stats.technique}, Physique ${playerState.stats.physique}, Mental ${playerState.stats.mental}
-    - Relation Coach : ${playerState.stats.relationCoach}/100
+    - Arrogance : ${playerState.arroganceScore || 20}/100
+    - Confiance Coach : ${playerState.stats.relationCoach}/100
     - Solde : $${playerState.balance}
 
     ÉVÉNEMENTS RÉCENTS À NE SURTOUT PAS REPRODUIRE (INTERDICTION FORMELLE DE RÉPÉTER CES THÈMES OU FORMULATIONS) :
@@ -316,7 +308,7 @@ async function generateAIEvents(playerState, seasonPhase) {
       "choices": [
         {
           "text": "Description du choix 1",
-          "impact": { "mental": 5, "discipline": -2 }
+          "impact": { "mental": 5, "arroganceScore": 5 }
         },
         {
           "text": "Description du choix 2",
@@ -366,13 +358,11 @@ async function generateAIEvents(playerState, seasonPhase) {
         { text: "Prendre les devants et assumer ses responsabilités", impact: { mental: +3, relationCoach: +2 } },
         { text: "Travailler en silence et redoubler d'efforts", impact: { technique: +2, physique: +2 } },
         { text: "Solliciter une explication franche avec l'entraîneur", impact: { relationCoach: +5, mental: -2 } },
-        { text: "Tenter de faire valoir ses intérêts personnels", impact: { technique: +4, vestiaire: -4 } }
+        { text: "Afficher ton statut et marquer ton territoire", impact: { arroganceScore: +10, vestiaire: -4 } }
       ]
     };
   }
 }
-
-// --- ÉTAT GLOBAL ET GESTION DU JEU ---
 
 let savedData = JSON.parse(localStorage.getItem('career_rpg_save'));
 if (savedData && (!savedData.coach || !savedData.staff || savedData.age === undefined)) {
@@ -400,13 +390,13 @@ let state = {
 };
 
 let lastChoiceFeedback = null;
+let lastDeltaMessage = null; // Notification météo / match
 
 function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 function getSeasonPhase(eventIndex) {
-  // 4 fréquences d'événements par année (1 par trimestre ou cycle)
   const phases = ['Pré-saison', 'Saison', 'Mercato', 'Fin de saison'];
   return phases[eventIndex % 4];
 }
@@ -441,8 +431,9 @@ function generatePlayer(formData, selectedStarterClub) {
     ovr: baseOvr,
     pot: basePot,
     stats: stats,
+    arroganceScore: 20, // Valeur initiale d'arrogance
     traits: [formData.origin.trait],
-    eventIndex: 0, // Compteur d'événements pour les 4 fréquences annuelles
+    eventIndex: 0,
     currentClub: selectedStarterClub.name,
     weeklySalary: selectedStarterClub.weeklySalary || 150,
     balance: 300,
@@ -488,18 +479,8 @@ function randomizeName() {
   render();
 }
 
-function nextStep() {
-  updateFormInput();
-  state.creationStep += 1;
-  render();
-}
-
-function prevStep() {
-  updateFormInput();
-  state.creationStep -= 1;
-  render();
-}
-
+function nextStep() { updateFormInput(); state.creationStep += 1; render(); }
+function prevStep() { updateFormInput(); state.creationStep -= 1; render(); }
 function setPos(p) { updateFormInput(); state.form.position = p; render(); }
 function selectOrigin(id) { updateFormInput(); state.form.origin = ORIGINS.find(o => o.id === id); render(); }
 function setNat(name) { updateFormInput(); state.form.nationality = NATIONALITIES.find(n => n.name === name); render(); }
@@ -509,11 +490,7 @@ function setHeartLeague(league) {
   state.form.heartClubName = BIG_LEAGUES_CLUBS[league][0];
   render();
 }
-function setHeartClub(club) {
-  updateFormInput();
-  state.form.heartClubName = club;
-  render();
-}
+function setHeartClub(club) { updateFormInput(); state.form.heartClubName = club; render(); }
 
 function submitCreation(clubIndex) {
   updateFormInput();
@@ -534,6 +511,7 @@ function resetCareer() {
   state.activeEvent = null;
   state.creationStep = 1;
   lastChoiceFeedback = null;
+  lastDeltaMessage = null;
   dynamicStarterClubs = getRandomStarterClubs();
   const newRandName = getRandomPlayerName();
   state.form.firstName = newRandName.firstName;
@@ -541,10 +519,7 @@ function resetCareer() {
   render();
 }
 
-function setTab(tab) {
-  state.activeTab = tab;
-  render();
-}
+function setTab(tab) { state.activeTab = tab; render(); }
 
 function hireStaff(category, level) {
   state.player.staff[category] = level;
@@ -556,15 +531,39 @@ async function advancePeriod() {
   if (state.player.eventIndex === undefined) state.player.eventIndex = 0;
   state.player.eventIndex += 1;
 
-  // Chaque cycle de 4 événements représente une année complète écoulée
   if (state.player.eventIndex % 4 === 0) {
     state.player.age += 1;
   }
 
-  state.player.balance += (state.player.weeklySalary * 4); // Ajustement de la paie sur la période
+  state.player.balance += (state.player.weeklySalary * 4);
   lastChoiceFeedback = null;
+  lastDeltaMessage = null;
 
-  // Statistiques de match simulées par période
+  // --- MOTEUR D'IMPRÉVISIBILITÉ : CALCUL DU DELTA-FACTOR DE MATCH ---
+  let deltaRoll = randInt(1, 100);
+  if (deltaRoll <= 5) {
+    // Jour de Grâce (5% chance)
+    lastDeltaMessage = "✨ Jour de Grâce ! Tes sensations sont parfaites : +10% à toutes tes stats pour cette période.";
+    state.player.stats.technique = Math.min(100, Math.round(state.player.stats.technique * 1.1));
+    state.player.stats.physique = Math.min(100, Math.round(state.player.stats.physique * 1.1));
+    state.player.stats.mental = Math.min(100, Math.round(state.player.stats.mental * 1.1));
+  } else if (deltaRoll > 5 && deltaRoll <= 15) {
+    // Jour Sans (10% chance)
+    lastDeltaMessage = "🌧️ Jour Sans... Jambes lourdes et esprit embrumé : -15% temporaire sur tes capacités physiques et ta réactivité.";
+    state.player.stats.physique = Math.max(10, Math.round(state.player.stats.physique * 0.85));
+  } else {
+    lastDeltaMessage = "⚽ Période standard : Matchs disputés dans des conditions normales.";
+  }
+
+  // --- VARIABLES CACHÉES & SANCTIONS IMPROMPTUES ---
+  if (state.player.arroganceScore === undefined) state.player.arroganceScore = 20;
+  
+  if (state.player.arroganceScore > 70 && state.player.stats.relationCoach < 40) {
+    state.player.stats.relationCoach = Math.max(0, state.player.stats.relationCoach - 15);
+    state.player.fame += 5; // Bad buzz médiatique
+    lastDeltaMessage += `\n\n🚨 SANCTION IMPROMPTUE : Avec ton arrogance excessive (${state.player.arroganceScore}/100) et le peu de crédit que t'accorde ton coach (${state.player.stats.relationCoach}/100), tu es mis sur le banc sans explication ! Tempête médiatique dans la presse locale.`;
+  }
+
   if (['bu', 'ad', 'ag', 'moc'].includes(state.player.position)) {
     state.player.coach.currentGoals += randInt(2, 6);
     state.player.coach.currentAssists += randInt(1, 4);
@@ -584,7 +583,7 @@ async function advancePeriod() {
     STAFF_DATA.mental[state.player.staff.mental].cost +
     STAFF_DATA.chef[state.player.staff.chef].cost;
 
-  state.player.balance -= (totalStaffCost * 3); // Coût mensuel sur le trimestre
+  state.player.balance -= (totalStaffCost * 3);
 
   const currentPhase = getSeasonPhase(state.player.eventIndex);
   state.activeEvent = await generateAIEvents(state.player, currentPhase);
@@ -596,11 +595,15 @@ async function advancePeriod() {
 function handleChoice(choice) {
   let impactSummary = {};
 
+  if (state.player.arroganceScore === undefined) state.player.arroganceScore = 20;
+
   for (let stat in choice.impact) {
     let val = choice.impact[stat];
     impactSummary[stat] = val;
 
-    if (state.player.stats.hasOwnProperty(stat)) {
+    if (stat === 'arroganceScore') {
+      state.player.arroganceScore = Math.max(0, Math.min(100, state.player.arroganceScore + val));
+    } else if (state.player.stats.hasOwnProperty(stat)) {
       state.player.stats[stat] = Math.max(0, Math.min(100, state.player.stats[stat] + val));
     } else if (state.player.hasOwnProperty(stat)) {
       state.player[stat] += val;
@@ -614,8 +617,6 @@ function handleChoice(choice) {
   localStorage.setItem('career_rpg_save', JSON.stringify(state.player));
   render();
 }
-
-// --- RENDU GRAPHIQUE ---
 
 function render() {
   const app = document.getElementById('app');
@@ -844,16 +845,28 @@ function render() {
 
     if (state.activeTab === 'dashboard') {
       let feedbackHtml = '';
-      if (lastChoiceFeedback) {
+      if (lastChoiceFeedback || lastDeltaMessage) {
         feedbackHtml = `
-          <div class="bg-emerald-500/10 border border-emerald-500/30 p-2.5 rounded-xl text-emerald-400 text-xs space-y-1 animate-pulse">
-            <div class="font-bold uppercase tracking-wider">⚡ Dernier impact enregistré :</div>
-            <div class="flex flex-wrap gap-2">
-              ${Object.keys(lastChoiceFeedback).map(k => `<span class="bg-slate-950 px-2 py-0.5 rounded border border-emerald-500/30">${k}: <b>${lastChoiceFeedback[k] > 0 ? '+' + lastChoiceFeedback[k] : lastChoiceFeedback[k]}</b></span>`).join('')}
-            </div>
+          <div class="space-y-2">
+            ${lastDeltaMessage ? `
+              <div class="bg-blue-500/10 border border-blue-500/30 p-2.5 rounded-xl text-blue-300 text-xs space-y-1">
+                <div class="font-bold uppercase tracking-wider text-blue-400">⚡ Météo & Forme du Match :</div>
+                <div>${lastDeltaMessage}</div>
+              </div>
+            ` : ''}
+            ${lastChoiceFeedback ? `
+              <div class="bg-emerald-500/10 border border-emerald-500/30 p-2.5 rounded-xl text-emerald-400 text-xs space-y-1">
+                <div class="font-bold uppercase tracking-wider">⚡ Dernier impact enregistré :</div>
+                <div class="flex flex-wrap gap-2">
+                  ${Object.keys(lastChoiceFeedback).map(k => `<span class="bg-slate-950 px-2 py-0.5 rounded border border-emerald-500/30">${k}: <b>${lastChoiceFeedback[k] > 0 ? '+' + lastChoiceFeedback[k] : lastChoiceFeedback[k]}</b></span>`).join('')}
+                </div>
+              </div>
+            ` : ''}
           </div>
         `;
       }
+
+      if (state.player.arroganceScore === undefined) state.player.arroganceScore = 20;
 
       tabContent = `
         ${feedbackHtml}
@@ -886,6 +899,7 @@ function render() {
             <div class="flex justify-between"><span>Physique :</span> <span class="font-bold text-white">${state.player.stats.physique}</span></div>
             <div class="flex justify-between"><span>Mental :</span> <span class="font-bold text-white">${state.player.stats.mental}</span></div>
             <div class="flex justify-between"><span>Relation Coach :</span> <span class="font-bold text-emerald-400">${state.player.stats.relationCoach}/100</span></div>
+            <div class="flex justify-between pt-1 border-t border-slate-900"><span>Arrogance (Ego) :</span> <span class="font-bold text-pink-400">${state.player.arroganceScore}/100</span></div>
           </div>
           
           <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5">
