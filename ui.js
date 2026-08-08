@@ -81,7 +81,7 @@ export class UserInterface {
                         </div>
                     </div>
                 `;
-            case 2
+            case 2:
                 return `
                     <h2>Étape 2 : Origine</h2>
                     <p class="subtitle">Comment avez-vous façonné votre jeu ?</p>
@@ -107,7 +107,6 @@ export class UserInterface {
                         }).join('')}
                     </div>
                 `;
-
             case 3:
                 return `
                     <h2>Étape 3 : Région & Pays</h2>
@@ -149,7 +148,7 @@ export class UserInterface {
                         const randomVision = COACH_VISIONS[Math.floor(Math.random() * COACH_VISIONS.length)];
                         const randomCoachName = COACH_NAMES[Math.floor(Math.random() * COACH_NAMES.length)];
                         
-                        // Modification apportée ici : salaire entre 100 et 300€
+                        // Salaire entre 100 et 300€
                         const salary = Math.round(100 + (Math.random() * 200));
                         
                         const playtimeOptions = ["Temps de jeu limité", "Joueur de rotation", "Espoir / Prêt potentiel", "Titulaire en jeunes"];
@@ -225,9 +224,10 @@ export class UserInterface {
             });
         });
 
-        document.querySelectorAll('.grid-origins .card-select').forEach(card => {
+        // Écouteur mis à jour pour la nouvelle classe moderne de l'étape 2
+        document.querySelectorAll('.origin-card-modern').forEach(card => {
             card.addEventListener('click', () => {
-                document.querySelectorAll('.grid-origins .card-select').forEach(c => c.classList.remove('selected'));
+                document.querySelectorAll('.origin-card-modern').forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
                 this.selectedData.origin = card.getAttribute('data-origin');
                 if(nextBtn) nextBtn.disabled = !this.isStepValid();
