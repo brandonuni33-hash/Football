@@ -5,6 +5,7 @@ export class UserInterface {
     constructor(gameEngine) {
         this.engine = gameEngine;
         this.currentStep = 1;
+        this.activeApp = 'home'; // Gère l'application ouverte dans le smartphone ('home', 'career', 'social', 'messages', 'bank', 'stats')
         this.selectedData = {
             firstname: '',
             lastname: '',
@@ -84,7 +85,6 @@ export class UserInterface {
                                     else if (id === 'DD' || id === 'RB') coords = { top: '65%', left: '85%' };
                                     else if (id === 'DG' || id === 'LB') coords = { top: '65%', left: '15%' };
                                     else if (id === 'MDC' || id === 'CDM') coords = { top: '50%', left: '50%' };
-                                    // Inversion ici : MC descend à 40% et MOC monte à 28%
                                     else if (id === 'MC' || id === 'CM') coords = { top: '40%', left: '50%' };
                                     else if (id === 'MO' || id === 'CAM') coords = { top: '28%', left: '50%' };
                                     else if (id === 'AD' || id === 'RW') coords = { top: '22%', left: '80%' };
@@ -349,88 +349,202 @@ export class UserInterface {
         const state = this.engine.state;
         if (!state) return;
 
+        const app = document.getElementById('app');
+
+        if (!this.activeApp || this.activeApp === 'home') {
+            app.innerHTML = `
+                <div class="phone-frame">
+                    <div class="phone-status-bar">
+                        <span>9:41</span>
+                        <span>⚽ ProCareer</span>
+                        <span>🔋 100%</span>
+                    </div>
+                    <div class="phone-home-screen">
+                        <div style="background: rgba(255,255,255,0.05); padding: 14px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);">
+                            <div style="font-size: 13px; color: #94a3b8;">📅 ${state.calendar.currentPeriod}</div>
+                            <div style="font-size: 16px; font-weight: bold; color: white; margin-top: 2px;">⭐ ${state.player.firstname} ${state.player.lastname} (${state.player.club})</div>
+                            <div style="font-size: 12px; color: #34d399; margin-top: 4px;">OVR : ${state.player.overall} | 💰 ${state.career.balance} €</div>
+                        </div>
+
+                        <div class="apps-grid">
+                            <button class="app-icon" data-app="career">
+                                <div class="app-logo" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">⚽</div>
+                                <span class="app-label">Carrière</span>
+                            </button>
+
+                            <button class="app-icon" data-app="social">
+                                <div class="app-logo" style="background: linear-gradient(135deg, #ec4899, #be185d);">📱</div>
+                                <span class="app-label">Instafoot</span>
+                                ${state.media.recentDilemma ? '<span class="notification-badge">1</span>' : ''}
+                            </button>
+
+                            <button class="app-icon" data-app="messages">
+                                <div class="app-logo" style="background: linear-gradient(135deg, #10b981, #047857);">💬</div>
+                                <span class="app-label">Messages</span>
+                            </button>
+
+                            <button class="app-icon" data-app="bank">
+                                <div class="app-logo" style="background: linear-gradient(135deg, #f59e0b, #b45309);">🏦</div>
+                                <span class="app-label">Banque</span>
+                            </button>
+
+                            <button class="app-icon" data-app="stats">
+                                <div class="app-logo" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9);">📊</div>
+                                <span class="app-label">Stats</span>
+                            </button>
+                        </div>
+
+                        <button id="play-block-btn" style="background: #22c55e; color: white; border: none; padding: 14px; border-radius: 14px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 4px 12px rgba(34,197,94,0.3);">
+                            ▶️ Lancer le prochain bloc
+                        </button>
+                    </div>
+                </div>
+            `;
+        } else {
+            app.innerHTML = `
+                <div class="phone-frame">
+                    <div class="phone-status-bar">
+                        <span>9:41</span>
+                        <span>⚽ ProCareer</span>
+                        <span>🔋 100%</span>
+                    </div>
+                    <div class="phone-app-view">
+                        <div class="app-header-bar">
+                            <button class="btn-back-home" id="back-home-btn">⬅️ Accueil</button>
+                            <span style="font-weight: bold; color: white; text-transform: uppercase; font-size: 13px;">${this.activeApp}</span>
+                            <span></span>
+                        </div>
+                        <div id="app-content-body" style="flex: 1; overflow-y: auto;">
+                            ${this.renderSpecificAppContent()}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        this.bindDashboardEvents();
+    }
+
+    renderSpecificAppContent() {
+        const state = this.engine.state;
         const socialState = state.social || { romance: { unlocked: false }, relationships: [] };
         const mediaState = state.media || { followers: 0, hypeLevel: 0, feed: [], recentDilemma: null };
 
-        const app = document.getElementById('app');
-        app.innerHTML = `
-            <div class="dashboard-container" style="padding: 20px; color: white; font-family: sans-serif;">
-                <header style="border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 20px;">
-                    <h1>⭐ ${state.player.firstname} ${state.player.lastname}</h1>
-                    <p>Club : <strong>${state.player.club}</strong> | Poste : <strong>${state.player.position}</strong> | Âge : <strong>${state.player.age} ans</strong> | OVR : <strong>${state.player.overall}</strong></p>
-                    <p>📅 Période : <strong>${state.calendar.currentPeriod}</strong> (Mois ${state.calendar.currentMonth} / ${state.calendar.totalMonths})</p>
-                </header>
-
-                <section class="stats-overview" style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                    <h3>📊 Statistiques de la saison</h3>
-                    <p>Matchs joués : ${state.player.stats.matchesPlayed}</p>
-                    <p>Buts : ${state.player.stats.goals} | Passes décisives : ${state.player.stats.assists}</p>
-                    <p>Note moyenne : ${state.player.stats.averageRating}</p>
-                    <p>💰 Solde bancaire : ${state.career.balance} €</p>
-                    <p>❤️ Moral : ${state.player.morale}% | ⚡ Forme : ${state.player.fitness}%</p>
-                </section>
-
-                <section class="social-overview" style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                    <h3>❤️ Vie Privée & Vestiaire</h3>
-                    <p><strong>Situation amoureuse :</strong> ${socialState.romance.unlocked ? (socialState.romance.partnerName ? `${socialState.romance.partnerName} (${socialState.romance.status} - Affection: ${socialState.romance.affection}%)` : 'Célibataire à la recherche de l’amour') : '🔒 Disponible à partir de 18 ans'}</p>
-                    <hr style="border-color: rgba(255,255,255,0.1); margin: 10px 0;">
-                    <p><strong>Relations clés :</strong></p>
-                    <ul style="padding-left: 20px; margin: 5px 0; font-size: 0.9rem; color: #94a3b8;">
-                        ${socialState.relationships.map(rel => `<li>${rel.role} (${rel.name}) : ${rel.score}/100 [${rel.status}]</li>`).join('')}
-                    </ul>
-                </section>
-
-                <section class="media-overview" style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #3b82f6;">
-                    <h3>📱 Réseaux Sociaux & Médias</h3>
-                    <div style="display: flex; gap: 20px; margin-bottom: 12px; font-size: 0.95rem;">
-                        <span>👥 Abonnés : <strong>${mediaState.followers.toLocaleString()}</strong></span>
-                        <span>🔥 Niveau de Hype : <strong>${mediaState.hypeLevel}/100</strong></span>
+        switch(this.activeApp) {
+            case 'career':
+                return `
+                    <div style="color: white; font-size: 0.9rem;">
+                        <h3 style="margin-top: 0; color: #60a5fa;">⚽ Gestion Carrière</h3>
+                        <p><strong>Club :</strong> ${state.player.club}</p>
+                        <p><strong>Poste :</strong> ${state.player.position} | <strong>Âge :</strong> ${state.player.age} ans</p>
+                        <p><strong>Période :</strong> ${state.calendar.currentPeriod} (Mois ${state.calendar.currentMonth} / ${state.calendar.totalMonths})</p>
+                        <hr style="border-color: #374151;">
+                        <p><strong>Forme physique :</strong> ${state.player.fitness}%</p>
+                        <p><strong>Moral :</strong> ${state.player.morale}%</p>
                     </div>
-
-                    ${mediaState.recentDilemma ? `
-                        <div style="background: rgba(59, 130, 246, 0.15); border: 1px solid #3b82f6; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
-                            <h4 style="margin: 0 0 8px 0; color: #60a5fa;">${mediaState.recentDilemma.title}</h4>
-                            <p style="font-size: 0.9rem; margin: 0 0 10px 0;">${mediaState.recentDilemma.description}</p>
-                            <div style="display: flex; flex-direction: column; gap: 6px;">
-                                ${mediaState.recentDilemma.choices.map((choice, idx) => `
-                                    <button class="btn-dilemma" data-choice-idx="${idx}" style="background: #2563eb; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; text-align: left; font-size: 0.85rem;">
-                                        👉 ${choice.text}
-                                    </button>
-                                `).join('')}
-                            </div>
+                `;
+            case 'social':
+                return `
+                    <div style="color: white; font-size: 0.9rem;">
+                        <h3 style="margin-top: 0; color: #f472b6;">📱 Instafoot & Médias</h3>
+                        <div style="display: flex; gap: 15px; margin-bottom: 12px; font-size: 0.85rem;">
+                            <span>👥 Abonnés : <strong>${mediaState.followers.toLocaleString()}</strong></span>
+                            <span>🔥 Hype : <strong>${mediaState.hypeLevel}/100</strong></span>
                         </div>
-                    ` : ''}
 
-                    <p style="font-size: 0.9rem; margin-bottom: 5px;"><strong>Fil d'actualité & Buzz :</strong></p>
-                    <div style="max-height: 160px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 5px;">
-                        ${mediaState.feed.map(post => `
-                            <div style="background: rgba(0,0,0,0.2); padding: 8px 10px; border-radius: 6px; font-size: 0.85rem;">
-                                <div style="display: flex; justify-content: space-between; color: #94a3b8; font-size: 0.75rem; margin-bottom: 2px;">
-                                    <span>📢 ${post.source}</span>
-                                    <span>${post.date}</span>
-                                </div>
-                                <p style="margin: 0; color: #e2e8f0;">${post.content}</p>
-                                <div style="display: flex; gap: 10px; margin-top: 4px; color: #94a3b8; font-size: 0.75rem;">
-                                    <span>❤️ ${post.likes} likes</span>
-                                    <span>💬 ${post.commentsCount} commentaires</span>
+                        ${mediaState.recentDilemma ? `
+                            <div style="background: rgba(59, 130, 246, 0.15); border: 1px solid #3b82f6; padding: 10px; border-radius: 6px; margin-bottom: 12px;">
+                                <h4 style="margin: 0 0 6px 0; color: #60a5fa; font-size: 0.95rem;">${mediaState.recentDilemma.title}</h4>
+                                <p style="font-size: 0.85rem; margin: 0 0 8px 0;">${mediaState.recentDilemma.description}</p>
+                                <div style="display: flex; flex-direction: column; gap: 6px;">
+                                    ${mediaState.recentDilemma.choices.map((choice, idx) => `
+                                        <button class="btn-dilemma" data-choice-idx="${idx}" style="background: #2563eb; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; text-align: left; font-size: 0.8rem;">
+                                            👉 ${choice.text}
+                                        </button>
+                                    `).join('')}
                                 </div>
                             </div>
-                        `).join('')}
+                        ` : ''}
+
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            ${mediaState.feed.map(post => `
+                                <div style="background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; font-size: 0.8rem;">
+                                    <div style="display: flex; justify-content: space-between; color: #94a3b8; font-size: 0.7rem; margin-bottom: 2px;">
+                                        <span>📢 ${post.source}</span>
+                                        <span>${post.date}</span>
+                                    </div>
+                                    <p style="margin: 0; color: #e2e8f0;">${post.content}</p>
+                                    <div style="display: flex; gap: 10px; margin-top: 4px; color: #94a3b8; font-size: 0.7rem;">
+                                        <span>❤️ ${post.likes}</span>
+                                        <span>💬 ${post.commentsCount}</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
                     </div>
-                </section>
+                `;
+            case 'messages':
+                return `
+                    <div style="color: white; font-size: 0.9rem;">
+                        <h3 style="margin-top: 0; color: #34d399;">💬 Messages & Vestiaire</h3>
+                        <p><strong>Situation amoureuse :</strong> ${socialState.romance.unlocked ? (socialState.romance.partnerName ? `${socialState.romance.partnerName} (${socialState.romance.status} - ${socialState.romance.affection}%)` : 'Célibataire') : '🔒 Disponible à 18 ans'}</p>
+                        <hr style="border-color: #374151;">
+                        <p style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 6px;">Relations clés :</p>
+                        <ul style="padding-left: 15px; margin: 0; font-size: 0.85rem; color: #cbd5e1;">
+                            ${socialState.relationships.map(rel => `<li>${rel.role} (${rel.name}) : ${rel.score}/100 [${rel.status}]</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            case 'bank':
+                return `
+                    <div style="color: white; font-size: 0.9rem;">
+                        <h3 style="margin-top: 0; color: #fbbf24;">🏦 Banque & Finances</h3>
+                        <div style="background: rgba(255,255,255,0.04); padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 15px;">
+                            <span style="font-size: 12px; color: #94a3b8;">Solde actuel</span>
+                            <div style="font-size: 22px; font-weight: bold; color: #34d399; margin-top: 4px;">${state.career.balance} €</div>
+                        </div>
+                        <p style="font-size: 0.85rem; color: #94a3b8;">Revenus hebdomadaires basés sur ton contrat en cours avec ${state.player.club}.</p>
+                    </div>
+                `;
+            case 'stats':
+                return `
+                    <div style="color: white; font-size: 0.9rem;">
+                        <h3 style="margin-top: 0; color: #a78bfa;">📊 Statistiques de Saison</h3>
+                        <p><strong>Matchs joués :</strong> ${state.player.stats.matchesPlayed}</p>
+                        <p><strong>Buts :</strong> ${state.player.stats.goals}</p>
+                        <p><strong>Passes décisives :</strong> ${state.player.stats.assists}</p>
+                        <p><strong>Note moyenne :</strong> ${state.player.stats.averageRating}</p>
+                        <p><strong>Note globale (OVR) :</strong> ${state.player.overall}</p>
+                    </div>
+                `;
+            default:
+                return `<p style="color: white;">Application en cours de développement...</p>`;
+        }
+    }
 
-                <div class="action-panel">
-                    <button id="play-block-btn" class="btn-primary" style="padding: 12px 24px; font-size: 16px; background: #22c55e; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        ▶️ Jouer le mois (Bloc de 4 matchs)
-                    </button>
-                </div>
-            </div>
-        `;
+    bindDashboardEvents() {
+        const playBtn = document.getElementById('play-block-btn');
+        if (playBtn) {
+            playBtn.addEventListener('click', () => {
+                this.engine.playBlock();
+                this.renderDashboard();
+            });
+        }
 
-        document.getElementById('play-block-btn').addEventListener('click', () => {
-            this.engine.playBlock();
-            this.renderDashboard();
+        document.querySelectorAll('.app-icon').forEach(icon => {
+            icon.addEventListener('click', (e) => {
+                this.activeApp = e.currentTarget.getAttribute('data-app');
+                this.renderDashboard();
+            });
         });
+
+        const backBtn = document.getElementById('back-home-btn');
+        if (backBtn) {
+            backBtn.addEventListener('click', () => {
+                this.activeApp = 'home';
+                this.renderDashboard();
+            });
+        }
 
         document.querySelectorAll('.btn-dilemma').forEach(btn => {
             btn.addEventListener('click', (e) => {
