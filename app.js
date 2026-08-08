@@ -272,10 +272,10 @@ const STAFF_DATA = {
     { id: 2, name: 'Chef Étoilé Personnel', unlock: (p) => p.fame >= 75, cost: 10000, desc: 'Haute gastronomie sportive', effect: 'Fatigue cumulative -30%' }
   ]
 };
+
 // --- MODULE 2: GESTION DES OFFRES DE TRANSFERT ---
 const TRANSFER_MODULE = {
   checkOffer: (player) => {
-    // Le joueur reçoit une offre si sa réputation est suffisante ou son OVR en progression
     if (player.fame > 20 && Math.random() > 0.7) {
       const targetClub = CITIES_AND_CLUBS[Math.floor(Math.random() * CITIES_AND_CLUBS.length)];
       return {
@@ -406,7 +406,7 @@ let state = {
 };
 
 let lastChoiceFeedback = null;
-let lastDeltaMessage = null; // Notification météo / match
+let lastDeltaMessage = null;
 
 function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -447,7 +447,7 @@ function generatePlayer(formData, selectedStarterClub) {
     ovr: baseOvr,
     pot: basePot,
     stats: stats,
-    arroganceScore: 20, // Valeur initiale d'arrogance
+    arroganceScore: 20,
     traits: [formData.origin.trait],
     eventIndex: 0,
     currentClub: selectedStarterClub.name,
@@ -472,13 +472,10 @@ function generatePlayer(formData, selectedStarterClub) {
       chef: 0
     },
     heartClub: formData.heartClubName,
-    history: []
+    history: [],
+    pendingOffer: null
   };
 }
-// ... restes des propriétés
-  pendingOffer: null, 
-  // ...
-};
 
 function updateFormInput() {
   const fnInput = document.getElementById('inp-fn');
@@ -546,6 +543,7 @@ function hireStaff(category, level) {
   localStorage.setItem('career_rpg_save', JSON.stringify(state.player));
   render();
 }
+
 function respondToTransfer(accept) {
   if (accept && state.player.pendingOffer) {
     state.player.currentClub = state.player.pendingOffer.club;
@@ -568,8 +566,6 @@ async function advancePeriod() {
     state.player.pendingOffer = TRANSFER_MODULE.checkOffer(state.player);
   }
 
-  // ... (fin de la fonction)
-}
   state.player.balance += (state.player.weeklySalary * 4);
   lastChoiceFeedback = null;
   lastDeltaMessage = null;
@@ -577,13 +573,11 @@ async function advancePeriod() {
   // --- MOTEUR D'IMPRÉVISIBILITÉ : CALCUL DU DELTA-FACTOR DE MATCH ---
   let deltaRoll = randInt(1, 100);
   if (deltaRoll <= 5) {
-    // Jour de Grâce (5% chance)
     lastDeltaMessage = "✨ Jour de Grâce ! Tes sensations sont parfaites : +10% à toutes tes stats pour cette période.";
     state.player.stats.technique = Math.min(100, Math.round(state.player.stats.technique * 1.1));
     state.player.stats.physique = Math.min(100, Math.round(state.player.stats.physique * 1.1));
     state.player.stats.mental = Math.min(100, Math.round(state.player.stats.mental * 1.1));
   } else if (deltaRoll > 5 && deltaRoll <= 15) {
-    // Jour Sans (10% chance)
     lastDeltaMessage = "🌧️ Jour Sans... Jambes lourdes et esprit embrumé : -15% temporaire sur tes capacités physiques et ta réactivité.";
     state.player.stats.physique = Math.max(10, Math.round(state.player.stats.physique * 0.85));
   } else {
@@ -595,7 +589,7 @@ async function advancePeriod() {
   
   if (state.player.arroganceScore > 70 && state.player.stats.relationCoach < 40) {
     state.player.stats.relationCoach = Math.max(0, state.player.stats.relationCoach - 15);
-    state.player.fame += 5; // Bad buzz médiatique
+    state.player.fame += 5;
     lastDeltaMessage += `\n\n🚨 SANCTION IMPROMPTUE : Avec ton arrogance excessive (${state.player.arroganceScore}/100) et le peu de crédit que t'accorde ton coach (${state.player.stats.relationCoach}/100), tu es mis sur le banc sans explication ! Tempête médiatique dans la presse locale.`;
   }
 
@@ -659,17 +653,6 @@ function render() {
 
   if (!state.player) {
     let stepContent = '';
-    
-  if (state.player.pendingOffer) {
-  tabContent += `
-    <div class="bg-yellow-500/20 border border-yellow-500 p-4 rounded-xl mt-4 text-xs space-y-3">
-      <h3 class="font-bold text-yellow-400">📩 OFFRE DE TRANSFERT</h3>
-      <p>${state.player.pendingOffer.message}</p>
-      <div class="flex gap-2">
-        <button onclick="respondToTransfer(true)" class="flex-1 bg-emerald-500 py-2 rounded font-bold">Accepter</button>
-        <button onclick="respondToTransfer(false)" class="flex-1 bg-red-500 py-2 rounded font-bold">Refuser</button>
-      </div>
-    </div>
   
     if (state.creationStep === 1) {
       stepContent = `
@@ -886,6 +869,20 @@ function render() {
       `;
     }
 
+    let transferOfferHtml = '';
+    if (state.player.pendingOffer) {
+      transferOfferHtml = `
+        <div class="bg-yellow-500/20 border border-yellow-500 p-4 rounded-xl text-xs space-y-3">
+          <h3 class="font-bold text-yellow-400">📩 OFFRE DE TRANSFERT</h3>
+          <p>${state.player.pendingOffer.message}</p>
+          <div class="flex gap-2">
+            <button onclick="respondToTransfer(true)" class="flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 py-2 rounded font-bold">Accepter</button>
+            <button onclick="respondToTransfer(false)" class="flex-1 bg-red-500 hover:bg-red-400 text-white py-2 rounded font-bold">Refuser</button>
+          </div>
+        </div>
+      `;
+    }
+
     let tabContent = '';
     const currentPhase = getSeasonPhase(state.player.eventIndex || 0);
 
@@ -915,6 +912,7 @@ function render() {
       if (state.player.arroganceScore === undefined) state.player.arroganceScore = 20;
 
       tabContent = `
+        ${transferOfferHtml}
         ${feedbackHtml}
         <div class="text-xs text-slate-300 space-y-2.5 bg-slate-950 p-3 rounded-xl border border-slate-800">
           <div class="flex justify-between items-center">
