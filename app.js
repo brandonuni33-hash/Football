@@ -1,4 +1,4 @@
-// --- BLOC 1 & 2 : DONNÉES & GÉNÉRATION ---
+// --- 1. DONNÉES & STRUCTURE DE BASE ---
 
 const POSITIONS = [
   { id: 'bu', label: 'BU' },
@@ -18,16 +18,11 @@ const NATIONALITIES = [
   { name: 'Espagne', flag: '🇪🇸', continent: 'Europe' },
   { name: 'Allemagne', flag: '🇩🇪', continent: 'Europe' },
   { name: 'Italie', flag: '🇮🇹', continent: 'Europe' },
-  { name: 'Pays-Bas', flag: '🇳🇱', continent: 'Europe' },
-  { name: 'Portugal', flag: '🇵🇹', continent: 'Europe' },
-  { name: 'Belgique', flag: '🇧🇪', continent: 'Europe' },
   { name: 'Brésil', flag: '🇧🇷', continent: 'Amérique du Sud' },
   { name: 'Argentine', flag: '🇦🇷', continent: 'Amérique du Sud' },
   { name: 'Maroc', flag: '🇲🇦', continent: 'Afrique' },
   { name: 'Sénégal', flag: '🇸🇳', continent: 'Afrique' },
-  { name: 'Japon', flag: '🇯🇵', continent: 'Asie' },
-  { name: 'Corée du Sud', flag: '🇰🇷', continent: 'Asie' },
-  { name: 'USA', flag: '🇺🇸', continent: 'Amérique du Nord' }
+  { name: 'Japon', flag: '🇯🇵', continent: 'Asie' }
 ];
 
 const ORIGINS = [
@@ -39,9 +34,41 @@ const ORIGINS = [
   { id: 'athlete', name: 'Athlète Polyvalent', desc: '+15% Vitesse/Puissance, -10% Toucher | Trait: Moteur Hybride', modifiers: { physique: 15, technique: -10 }, trait: 'Moteur Hybride' }
 ];
 
+// --- 2. MOTEUR NARRATIF (5 CHOIX) ---
+
+const NARRATIVE_ENGINE = {
+  events: [
+    {
+      id: 'family_night',
+      context: 'Veille de Match Capital',
+      text: "Tes deux enfants ont du mal à dormir et pleurent, ton/ta partenaire est à bout de nerfs. Demain, c'est le match le plus important de la saison.",
+      choices: [
+        { text: "Veiller toute la nuit avec eux (Sacrifier ton sommeil)", impact: { mental: +8, physique: -10, relationCoach: -2 } },
+        { text: "S'isoler dans une autre pièce pour dormir (Froid et pragmatique)", impact: { physique: +5, mental: -5, discipline: +3 } },
+        { text: "Déléguer en payant une baby-sitter de nuit en urgence", impact: { charisme: +4, reputation: +2, discipline: -3 } },
+        { text: "Prendre un somnifère pour couper net et ignorer le bruit", impact: { physique: +2, mental: -8 } },
+        { text: "Discuter des heures avec ton/ta partenaire pour crever l'abcès", impact: { mental: +4, charisme: +3, physique: -6 } }
+      ]
+    },
+    {
+      id: 'scout_interest',
+      context: 'Pression des Médias & Agent',
+      text: "Un agent te contacte en secret : un grand club s'intéresse à toi, mais il exige que tu fasses le forcing pour pourrir l'ambiance à l'entraînement et forcer ton transfert.",
+      choices: [
+        { text: "Refuser net : 'Je reste fidèle à mon club et je parle sur le terrain'", impact: { discipline: +10, relationCoach: +10, reputation: -5 } },
+        { text: "Accepter de mettre la pression subtilement via les réseaux sociaux", impact: { charisme: +6, relationCoach: -10, reputation: +8 } },
+        { text: "Faire la grève des entraînements pour obliger les dirigeants à céder", impact: { discipline: -15, relationCoach: -25, reputation: +15 } },
+        { text: "Transférer l'appel directement à ton coach par honnêteté totale", impact: { relationCoach: +15, discipline: +5, charisme: -2 } },
+        { text: "Ignorer l'agent et te concentrer uniquement sur tes stats personnelles", impact: { technique: +3, vestiaire: -5 } }
+      ]
+    }
+  ]
+};
+
 let state = {
   step: 1,
   player: JSON.parse(localStorage.getItem('career_rpg_save')) || null,
+  activeEvent: null, // Stocke l'événement imposé par le jeu
   form: {
     firstName: 'Brandon',
     lastName: 'Le Moan',
@@ -57,20 +84,16 @@ function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+// --- 3. GÉNÉRATION DES STATS ---
+
 function generatePlayer(formData) {
-  // 1. OVR de base
   let baseOvr = randInt(35, 50);
   if (formData.origin.id === 'tardif') baseOvr -= 5;
-
-  // 2. Calcul du potentiel
   let basePot = randInt(70, 99);
 
-  // 3. Calcul de la morphologie (impact réel sur les stats)
-  // Plus le joueur est grand/lourd, plus le physique est haut mais la technique chute
   const physicalBonus = Math.floor((formData.height / 10) + (formData.weight / 10)) - 25;
   const technicalPenalty = Math.floor((formData.height / 20) + (formData.weight / 20)) - 12;
 
-  // 4. Système de multiplicateurs par origine (C'est ici que tu ajustes la cohérence)
   const mods = {
     centre: { tech: 1.2, phys: 1.0, ment: 1.3 },
     amateur: { tech: 0.9, phys: 1.2, ment: 0.8 },
@@ -79,10 +102,8 @@ function generatePlayer(formData) {
     street: { tech: 1.3, phys: 1.1, ment: 0.7 },
     athlete: { tech: 0.7, phys: 1.5, ment: 0.9 }
   };
-  
   const m = mods[formData.origin.id] || { tech: 1, phys: 1, ment: 1 };
 
-  // 5. Calcul final des stats (Base 40 + bonus morpho) * multiplicateur origine
   let stats = {
     technique: Math.round((40 - technicalPenalty) * m.tech),
     physique: Math.round((40 + physicalBonus) * m.phys),
@@ -94,7 +115,6 @@ function generatePlayer(formData) {
     vestiaire: 50
   };
 
-  // ... (Garde le reste de la fonction tel quel pour les hidden stats)
   return {
     firstName: formData.firstName,
     lastName: formData.lastName,
@@ -107,27 +127,17 @@ function generatePlayer(formData) {
     pot: basePot,
     stats: stats,
     hidden: { regularite: randInt(1, 20), matchImportant: randInt(1, 20), blessure: randInt(1, 20) },
-    traits: [formData.origin.trait]
+    traits: [formData.origin.trait],
+    history: [],
+    week: 1
   };
 }
 
+// --- 4. GESTION DU TEMPS & DU JEU ---
 
-// --- BLOC 3 : INTERFACE UTILISATEUR & RENDU ---
-
-function setPos(p) { 
-  state.form.position = p; 
-  render(); 
-}
-
-function selectOrigin(id) {
-  state.form.origin = ORIGINS.find(o => o.id === id);
-  render();
-}
-
-function setNat(name) {
-  state.form.nationality = NATIONALITIES.find(n => n.name === name);
-  render();
-}
+function setPos(p) { state.form.position = p; render(); }
+function selectOrigin(id) { state.form.origin = ORIGINS.find(o => o.id === id); render(); }
+function setNat(name) { state.form.nationality = NATIONALITIES.find(n => n.name === name); render(); }
 
 function submitCreation() {
   state.form.firstName = document.getElementById('inp-fn').value || 'Brandon';
@@ -143,21 +153,55 @@ function submitCreation() {
 function resetCareer() {
   localStorage.removeItem('career_rpg_save');
   state.player = null;
-  state.step = 1;
+  state.activeEvent = null;
   render();
 }
+
+// C'est le JEU qui décide d'avancer et d'imposer un événement de manière aléatoire
+function advanceWeek() {
+  state.player.week += 1;
+
+  // 1 chance sur 2 (par exemple) de déclencher un événement imposé par le jeu chaque semaine
+  if (Math.random() < 0.6) {
+    state.activeEvent = NARRATIVE_ENGINE.events[Math.floor(Math.random() * NARRATIVE_ENGINE.events.length)];
+  } else {
+    state.activeEvent = null; // Pas d'événement cette semaine-là, simple semaine d'entraînement
+  }
+
+  localStorage.setItem('career_rpg_save', JSON.stringify(state.player));
+  render();
+}
+
+function handleChoice(choice) {
+  for (let stat in choice.impact) {
+    if (state.player.stats.hasOwnProperty(stat)) {
+      state.player.stats[stat] = Math.max(0, Math.min(100, state.player.stats[stat] + choice.impact[stat]));
+    } else if (state.player.hasOwnProperty(stat)) {
+      state.player[stat] += choice.impact[stat];
+    }
+  }
+  
+  state.player.ovr = Math.round((state.player.stats.technique * 0.4) + (state.player.stats.physique * 0.3) + (state.player.stats.mental * 0.3));
+  
+  // L'événement est résolu, on le retire
+  state.activeEvent = null;
+  
+  localStorage.setItem('career_rpg_save', JSON.stringify(state.player));
+  render();
+}
+
+// --- 5. RENDU GRAPHIQUE ---
 
 function render() {
   const app = document.getElementById('app');
   if (!app) return;
 
   if (!state.player) {
-    // Écran de création unique et complet
+    // Écran de Création
     app.innerHTML = `
-      <div class="max-w-xl mx-auto my-6 p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 text-white">
-        <h1 class="text-xl font-black text-center text-emerald-400 uppercase">Création du Joueur</h1>
+      <div class="max-w-xl mx-auto my-6 p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 text-white shadow-xl">
+        <h1 class="text-xl font-black text-center text-emerald-400 uppercase tracking-wider">Création du Joueur</h1>
         
-        <!-- Nom & Prénom -->
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="text-xs text-slate-400 font-bold">Prénom</label>
@@ -169,7 +213,6 @@ function render() {
           </div>
         </div>
 
-        <!-- Nationalité -->
         <div>
           <label class="text-xs text-slate-400 font-bold">Nationalité</label>
           <select onchange="setNat(this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-sm text-white mt-1">
@@ -177,7 +220,6 @@ function render() {
           </select>
         </div>
 
-        <!-- Taille & Poids -->
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="text-xs text-slate-400 font-bold">Taille (cm) : <span id="val-h">${state.form.height}</span>cm</label>
@@ -189,60 +231,103 @@ function render() {
           </div>
         </div>
 
-        <!-- Poste -->
         <div>
           <label class="text-xs text-slate-400 font-bold uppercase">Poste</label>
           <div class="grid grid-cols-5 gap-1.5 mt-1">
-            ${POSITIONS.map(p => `<button type="button" onclick="setPos('${p.id}')" class="p-2 rounded border text-xs font-bold ${state.form.position === p.id ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' : 'bg-slate-950 border-slate-800 text-slate-300'}">${p.label}</button>`).join('')}
+            ${POSITIONS.map(p => `<button type="button" onclick="setPos('${p.id}')" class="p-2 rounded border text-xs font-bold transition-all ${state.form.position === p.id ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' : 'bg-slate-950 border-slate-800 text-slate-300'}">${p.label}</button>`).join('')}
           </div>
         </div>
 
-        <!-- Origines -->
         <div>
           <label class="text-xs text-slate-400 font-bold uppercase">Style d'Origine</label>
           <div class="space-y-1.5 mt-1 max-h-40 overflow-y-auto pr-1">
             ${ORIGINS.map(o => `
-              <div onclick="selectOrigin('${o.id}')" class="p-2.5 rounded-xl border cursor-pointer text-xs ${state.form.origin.id === o.id ? 'bg-emerald-500/10 border-emerald-500 text-emerald-300' : 'bg-slate-950 border-slate-800 text-slate-400'}">
+              <div onclick="selectOrigin('${o.id}')" class="p-2.5 rounded-xl border cursor-pointer text-xs transition-all ${state.form.origin.id === o.id ? 'bg-emerald-500/10 border-emerald-500 text-emerald-300' : 'bg-slate-950 border-slate-800 text-slate-400'}">
                 <span class="font-bold text-white">${o.name}</span> — ${o.desc}
               </div>
             `).join('')}
           </div>
         </div>
 
-        <button onclick="submitCreation()" class="w-full py-3 bg-emerald-500 font-black rounded-xl text-slate-950 uppercase text-sm tracking-wide mt-2">Valider et Lancer la Carrière 🚀</button>
+        <button onclick="submitCreation()" class="w-full py-3 bg-emerald-500 font-black rounded-xl text-slate-950 uppercase text-sm tracking-wide mt-2 hover:bg-emerald-400 transition-colors">Valider et Lancer la Carrière 🚀</button>
       </div>
     `;
   } else {
-    // Écran principal une fois le joueur créé (Dashboard temporaire)
+    // Si le jeu impose un événement, on affiche le pop-up par-dessus le dashboard
+    let eventModalHTML = '';
+    if (state.activeEvent) {
+      eventModalHTML = `
+        <div class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div class="bg-slate-900 border-2 border-emerald-500 p-5 rounded-2xl max-w-lg w-full my-auto space-y-4 shadow-2xl animate-fade-in">
+            <div>
+              <span class="text-xs font-black uppercase text-emerald-400 tracking-widest bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20">${state.activeEvent.context}</span>
+              <p class="text-white text-sm mt-3 leading-relaxed">${state.activeEvent.text}</p>
+            </div>
+            
+            <div class="space-y-2 max-h-[55vh] overflow-y-auto pr-1">
+              ${state.activeEvent.choices.map((c, index) => `
+                <button onclick='handleChoice(${JSON.stringify(c)})' 
+                        class="w-full text-left p-3 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-emerald-500 rounded-xl text-xs text-slate-300 hover:text-white transition-all flex items-center gap-3 group">
+                  <span class="w-5 h-5 rounded-full bg-slate-900 border border-slate-700 group-hover:border-emerald-400 group-hover:text-emerald-400 flex items-center justify-center font-bold text-[10px] shrink-0">${index + 1}</span>
+                  <span>${c.text}</span>
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Tableau de bord Principal (Dashboard)
     app.innerHTML = `
-      <div class="max-w-xl mx-auto my-6 p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 text-white">
-        <h2 class="text-lg font-black text-emerald-400">Joueur : ${state.player.firstName} ${state.player.lastName} ${state.player.nationality.flag}</h2>
-        <div class="text-xs text-slate-300 space-y-1 bg-slate-950 p-3 rounded-xl border border-slate-800">
-          <div>Poste : <span class="font-bold text-white uppercase">${state.player.position}</span> | Origine : <span class="text-emerald-400">${state.player.origin.name}</span></div>
-          <div>Général (OVR) : <span class="font-bold text-yellow-400">${state.player.ovr}</span> | Potentiel : <span class="font-bold text-emerald-400">${state.player.pot}</span></div>
-          <div>Morphologie : ${state.player.height}cm / ${state.player.weight}kg</div>
-          <div>Trait : ${state.player.traits[0]}</div>
+      ${eventModalHTML}
+      <div class="max-w-xl mx-auto my-6 p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 text-white shadow-xl">
+        <h2 class="text-lg font-black text-emerald-400 flex justify-between items-center">
+          <span>${state.player.firstName} ${state.player.lastName} ${state.player.nationality.flag}</span>
+          <span class="text-xs bg-slate-950 border border-slate-800 px-2 py-1 rounded text-slate-300 uppercase">${state.player.position}</span>
+        </h2>
+
+        <div class="text-xs text-slate-300 space-y-1.5 bg-slate-950 p-3 rounded-xl border border-slate-800">
+          <div class="flex justify-between items-center">
+            <span>Origine : <span class="text-emerald-400 font-bold">${state.player.origin.name}</span></span>
+            <span class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-2 py-0.5 rounded font-bold">Semaine ${state.player.week}</span>
+          </div>
+          <div class="flex gap-4">
+            <div>Général (OVR) : <span class="font-bold text-yellow-400 text-sm">${state.player.ovr}</span></div>
+            <div>Potentiel (POT) : <span class="font-bold text-emerald-400 text-sm">${state.player.pot}</span></div>
+          </div>
+          <div>Morphologie : ${state.player.height}cm / ${state.player.weight}kg | Trait : <span class="text-slate-100 font-semibold">${state.player.traits[0]}</span></div>
         </div>
+
         <div class="grid grid-cols-2 gap-2 text-xs">
-          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
-            <div class="font-bold text-slate-400 uppercase">Stats Principales</div>
-            <div>Technique : ${state.player.stats.technique}</div>
-            <div>Physique : ${state.player.stats.physique}</div>
-            <div>Mental : ${state.player.stats.mental}</div>
-            <div>Discipline : ${state.player.stats.discipline}</div>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5">
+            <div class="font-bold text-slate-400 uppercase tracking-wider">Stats Principales</div>
+            <div class="flex justify-between"><span>Technique :</span> <span class="font-bold text-white">${state.player.stats.technique}</span></div>
+            <div class="flex justify-between"><span>Physique :</span> <span class="font-bold text-white">${state.player.stats.physique}</span></div>
+            <div class="flex justify-between"><span>Mental :</span> <span class="font-bold text-white">${state.player.stats.mental}</span></div>
+            <div class="flex justify-between"><span>Relation Coach :</span> <span class="font-bold text-emerald-400">${state.player.stats.relationCoach}</span></div>
           </div>
-          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
-            <div class="font-bold text-slate-400 uppercase">Stats Cachées (1-20)</div>
-            <div>Régularité : ${state.player.hidden.regularite}</div>
-            <div>Matchs Importants : ${state.player.hidden.matchImportant}</div>
-            <div>Résistance Blessure : ${state.player.hidden.blessure}</div>
+          
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5">
+            <div class="font-bold text-slate-400 uppercase tracking-wider">Stats Cachées</div>
+            <div class="flex justify-between"><span>Régularité :</span> <span class="font-bold text-slate-300">${state.player.hidden.regularite}/20</span></div>
+            <div class="flex justify-between"><span>Matchs Clés :</span> <span class="font-bold text-slate-300">${state.player.hidden.matchImportant}/20</span></div>
+            <div class="flex justify-between"><span>Résist. Blessure :</span> <span class="font-bold text-slate-300">${state.player.hidden.blessure}/20</span></div>
           </div>
         </div>
-        <button onclick="resetCareer()" class="w-full py-2 bg-red-600 text-white font-bold rounded-xl text-xs uppercase tracking-wide">Refaire un joueur</button>
+
+        <!-- Bouton de progression temporelle géré par le jeu -->
+        <button onclick="advanceWeek()" ${state.activeEvent ? 'disabled class="opacity-50 cursor-not-allowed"' : ''} class="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-black rounded-xl text-white uppercase text-xs tracking-wider shadow-lg transition-all">
+          📅 Avancer d'une Semaine (Jouer / S'entraîner)
+        </button>
+
+        <button onclick="resetCareer()" class="w-full py-2 bg-slate-950 hover:bg-red-950/40 text-red-400 border border-slate-800 hover:border-red-900 font-bold rounded-xl text-xs uppercase tracking-wide transition-colors">
+          Refaire un joueur
+        </button>
       </div>
     `;
   }
 }
 
-// Lancement automatique au chargement
+// Lancement automatique
 render();
