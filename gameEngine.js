@@ -14,9 +14,8 @@ export class GameEngine {
      * Appelé par l'UI à la fin de l'étape 5 pour lancer la carrière
      */
     startCareer(selectedData) {
-        // Détermination d'une note générale de départ (OVR) et d'un potentiel selon le club jeune
         const initialOvr = 60;
-        const potentialOvr = initialOvr + Math.floor(Math.random() * 15) + 10; // Entre 75 et 85 de potentiel
+        const potentialOvr = initialOvr + Math.floor(Math.random() * 15) + 10;
 
         this.state = {
             player: {
@@ -32,7 +31,7 @@ export class GameEngine {
                 fitness: 90,
                 isInjured: false,
                 
-                // 1. Enrichissement de l'état du joueur (Stats & Potentiel)
+                // Statistiques de la saison
                 stats: {
                     matchesPlayed: 0,
                     goals: 0,
@@ -43,7 +42,7 @@ export class GameEngine {
                 },
                 potential: potentialOvr,
 
-                // Attributs cachés initialisés
+                // Attributs cachés
                 attributes: {
                     consistency: Math.floor(Math.random() * 8) + 8,
                     bigMatchPlayer: Math.floor(Math.random() * 8) + 8,
@@ -51,19 +50,32 @@ export class GameEngine {
                 }
             },
             career: {
-                balance: selectedData.youthClub.signingBonus || 1500 // Solde de départ
+                balance: selectedData.youthClub.signingBonus || 1500
+            },
+            // Calendrier simplifié : 1 bloc = 1 mois
+            calendar: {
+                currentMonth: 1,
+                totalMonths: 12,
+                currentPeriod: "Avant-saison & Début",
+                getPeriodName(month) {
+                    if (month <= 3) return "Avant-saison & Début";
+                    if (month <= 6) return "Première partie de saison";
+                    if (month === 7) return "Mercato hivernal & Trêve";
+                    if (month <= 10) return "Seconde partie de saison";
+                    return "Sprint final & Bilan";
+                }
             },
             seasonPhase: 'pre_season'
         };
 
-        console.log("Carrière lancée avec succès et statistiques initialisées !", this.state);
+        console.log("Carrière lancée avec succès, calendrier et stats initialisés !", this.state);
         
-        // Basculement vers l'affichage du Dashboard principal (à créer selon ton UI)
+        // Basculement vers l'affichage du Dashboard principal (à décommenter selon ton UI)
         // this.renderDashboard();
     }
 
     /**
-     * Permet de simuler un bloc de 4 matchs et de mettre à jour les statistiques
+     * Permet de simuler un bloc de 4 matchs (1 mois), de mettre à jour les stats et d'avancer le calendrier
      */
     playBlock() {
         if (!this.state) return;
@@ -73,27 +85,49 @@ export class GameEngine {
             return;
         }
 
-        // Appel du gestionnaire de bloc de matchs
+        // 1. Simulation du bloc de 4 matchs via matchBlock.js
         const report = MatchBlockManager.simulateBlock(this.state);
         
-        // Exemple de génération aléatoire complémentaire pour alimenter les passes et tacles du bloc
+        // 2. Génération de stats annexes pour le bloc (passes et tacles)
         const blockPasses = Math.floor(Math.random() * 40) + 20;
         const blockTackles = Math.floor(Math.random() * 12) + 3;
 
-        // Mise à jour des statistiques globales de la saison
+        // 3. Mise à jour des statistiques globales de la saison
         const stats = this.state.player.stats;
-        stats.matchesPlayed += 4;
+        const prevMatches = stats.matchesPlayed;
+        const newTotalMatches = prevMatches + 4;
+
+        stats.matchesPlayed = newTotalMatches;
         stats.goals += report.summary.goals;
         stats.assists += report.summary.assists;
         stats.successfulPasses += blockPasses;
         stats.tackles += blockTackles;
 
-        // Recalcul de la note moyenne globale de la saison
-        const totalMatches = stats.matchesPlayed;
-        stats.averageRating = parseFloat(((stats.averageRating * (totalMatches - 4) + (report.summary.rating * 4)) / totalMatches).toFixed(1));
+        // Recalcul de la note moyenne globale pondérée
+        stats.averageRating = parseFloat(
+            (((stats.averageRating * prevMatches) + (report.summary.rating * 4)) / newTotalMatches).toFixed(1)
+        );
 
-        console.log("Rapport du bloc et stats mises à jour :", report, stats);
-        return report;
+        // 4. Avancer d'un mois dans le calendrier
+        const cal = this.state.calendar;
+        if (cal.currentMonth < cal.totalMonths) {
+            cal.currentMonth++;
+            cal.currentPeriod = cal.getPeriodName(cal.currentMonth);
+        } else {
+            console.log("🏁 Fin de la saison ! Bilan général et évolution du potentiel...");
+            // Logique de fin de saison à venir...
+        }
+
+        console.log(`Mois ${cal.currentMonth - 1} terminé. Passage au mois ${cal.currentMonth} (${cal.currentPeriod})`);
+        console.log("Rapport du bloc :", report);
+
+        return {
+            report,
+            calendar: {
+                month: cal.currentMonth - 1,
+                period: cal.currentPeriod
+            }
+        };
     }
 }
 
