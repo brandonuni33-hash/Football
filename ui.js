@@ -85,7 +85,7 @@ export class UserInterface {
                 return `
                     <h2>Étape 2 : Origine</h2>
                     <p class="subtitle">Comment avez-vous façonné votre jeu ?</p>
-                    <div class="grid-origins-modern">
+                    <div class="grid-origins-compact">
                         ${Object.values(ORIGINS).map(o => {
                             let emoji = '⚡';
                             const traitLower = o.trait ? o.trait.toLowerCase() : '';
@@ -95,12 +95,11 @@ export class UserInterface {
                             else if (traitLower.includes('vitesse') || traitLower.includes('rapide')) emoji = '🏃‍♂️';
 
                             return `
-                                <div class="origin-card-modern ${this.selectedData.origin === o.id ? 'selected' : ''}" data-origin="${o.id}">
-                                    <div class="origin-icon">${emoji}</div>
-                                    <div class="origin-info">
+                                <div class="origin-card-compact ${this.selectedData.origin === o.id ? 'selected' : ''}" data-origin="${o.id}">
+                                    <div class="origin-icon-small">${emoji}</div>
+                                    <div class="origin-info-small">
                                         <h3>${o.name}</h3>
                                         <span class="trait-tag">${o.trait}</span>
-                                        <p>${o.desc}</p>
                                     </div>
                                 </div>
                             `;
@@ -223,9 +222,9 @@ export class UserInterface {
             });
         });
 
-        document.querySelectorAll('.origin-card-modern').forEach(card => {
+        document.querySelectorAll('.origin-card-compact').forEach(card => {
             card.addEventListener('click', () => {
-                document.querySelectorAll('.origin-card-modern').forEach(c => c.classList.remove('selected'));
+                document.querySelectorAll('.origin-card-compact').forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
                 this.selectedData.origin = card.getAttribute('data-origin');
                 if(nextBtn) nextBtn.disabled = !this.isStepValid();
