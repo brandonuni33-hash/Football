@@ -68,7 +68,7 @@ const NARRATIVE_ENGINE = {
 let state = {
   step: 1,
   player: JSON.parse(localStorage.getItem('career_rpg_save')) || null,
-  activeEvent: null, // Stocke l'événement imposé par le jeu
+  activeEvent: null,
   form: {
     firstName: 'Brandon',
     lastName: 'Le Moan',
@@ -133,18 +133,41 @@ function generatePlayer(formData) {
   };
 }
 
-// --- 4. GESTION DU TEMPS & DU JEU ---
+// --- 4. GESTION DU TEMPS & FORMULAIRE ---
 
-function setPos(p) { state.form.position = p; render(); }
-function selectOrigin(id) { state.form.origin = ORIGINS.find(o => o.id === id); render(); }
-function setNat(name) { state.form.nationality = NATIONALITIES.find(n => n.name === name); render(); }
+// Sauvegarde en direct des champs du formulaire pour éviter les pertes de données lors des clics
+function updateFormInput() {
+  const fnInput = document.getElementById('inp-fn');
+  const lnInput = document.getElementById('inp-ln');
+  const hInput = document.getElementById('inp-h');
+  const wInput = document.getElementById('inp-w');
+
+  if (fnInput) state.form.firstName = fnInput.value;
+  if (lnInput) state.form.lastName = lnInput.value;
+  if (hInput) state.form.height = parseInt(hInput.value);
+  if (wInput) state.form.weight = parseInt(wInput.value);
+}
+
+function setPos(p) {
+  updateFormInput();
+  state.form.position = p;
+  render();
+}
+
+function selectOrigin(id) {
+  updateFormInput();
+  state.form.origin = ORIGINS.find(o => o.id === id);
+  render();
+}
+
+function setNat(name) {
+  updateFormInput();
+  state.form.nationality = NATIONALITIES.find(n => n.name === name);
+  render();
+}
 
 function submitCreation() {
-  state.form.firstName = document.getElementById('inp-fn').value || 'Brandon';
-  state.form.lastName = document.getElementById('inp-ln').value || 'Le Moan';
-  state.form.height = parseInt(document.getElementById('inp-h').value) || 180;
-  state.form.weight = parseInt(document.getElementById('inp-w').value) || 75;
-
+  updateFormInput();
   state.player = generatePlayer(state.form);
   localStorage.setItem('career_rpg_save', JSON.stringify(state.player));
   render();
@@ -157,15 +180,13 @@ function resetCareer() {
   render();
 }
 
-// C'est le JEU qui décide d'avancer et d'imposer un événement de manière aléatoire
 function advanceWeek() {
   state.player.week += 1;
 
-  // 1 chance sur 2 (par exemple) de déclencher un événement imposé par le jeu chaque semaine
   if (Math.random() < 0.6) {
     state.activeEvent = NARRATIVE_ENGINE.events[Math.floor(Math.random() * NARRATIVE_ENGINE.events.length)];
   } else {
-    state.activeEvent = null; // Pas d'événement cette semaine-là, simple semaine d'entraînement
+    state.activeEvent = null;
   }
 
   localStorage.setItem('career_rpg_save', JSON.stringify(state.player));
@@ -182,8 +203,6 @@ function handleChoice(choice) {
   }
   
   state.player.ovr = Math.round((state.player.stats.technique * 0.4) + (state.player.stats.physique * 0.3) + (state.player.stats.mental * 0.3));
-  
-  // L'événement est résolu, on le retire
   state.activeEvent = null;
   
   localStorage.setItem('career_rpg_save', JSON.stringify(state.player));
@@ -253,7 +272,6 @@ function render() {
       </div>
     `;
   } else {
-    // Si le jeu impose un événement, on affiche le pop-up par-dessus le dashboard
     let eventModalHTML = '';
     if (state.activeEvent) {
       eventModalHTML = `
@@ -278,7 +296,6 @@ function render() {
       `;
     }
 
-    // Tableau de bord Principal (Dashboard)
     app.innerHTML = `
       ${eventModalHTML}
       <div class="max-w-xl mx-auto my-6 p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 text-white shadow-xl">
@@ -316,7 +333,6 @@ function render() {
           </div>
         </div>
 
-        <!-- Bouton de progression temporelle géré par le jeu -->
         <button onclick="advanceWeek()" ${state.activeEvent ? 'disabled class="opacity-50 cursor-not-allowed"' : ''} class="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-black rounded-xl text-white uppercase text-xs tracking-wider shadow-lg transition-all">
           📅 Avancer d'une Semaine (Jouer / S'entraîner)
         </button>
@@ -329,5 +345,4 @@ function render() {
   }
 }
 
-// Lancement automatique
 render();
