@@ -128,195 +128,52 @@ const STAFF_DATA = {
   ]
 };
 
-// --- MOTEUR NARRATIF RICHE (20+ ÉVÉNEMENTS RÉPARTIS PAR ÂGE) ---
+async function generateAIEvents(playerState) {
+  const prompt = `
+    Tu es le moteur narratif d'un RPG textuel de football ultra-réaliste.
+    Voici l'état actuel du joueur :
+    - Nom : ${playerState.firstName} ${playerState.lastName}
+    - Âge : ${playerState.age} ans
+    - Poste : ${playerState.position}
+    - Club : ${playerState.currentClub}
+    - Stats : Technique ${playerState.stats.technique}, Physique ${playerState.stats.physique}, Mental ${playerState.stats.mental}
+    - Relation Coach : ${playerState.stats.relationCoach}/100
+    - Solde : $${playerState.balance}
 
-const NARRATIVE_ENGINE = {
-  eventsPool: [
-    // --- TRANCHE 14 - 17 ANS : FORMATION ET FONDATIONS ---
+    Génère UN événement narratif complexe et immersif adapté à son âge et à sa situation actuelle. 
+    Renvoie le résultat STRICTEMENT au format JSON avec cette structure :
     {
-      id: 'school_vs_football', minAge: 14, maxAge: 17, context: 'Scolarité & Centre',
-      text: "Ton professeur principal menace de t'interdire d'aller à l'entraînement du soir si tes notes en mathématiques ne remontent pas.",
-      choices: [
-        { text: "Réviser toute la soirée (Sacrifier le terrain)", impact: { mental: +5, technique: -3, discipline: +4 } },
-        { text: "Sécher les révisions et supplier le coach", impact: { relationCoach: +5, discipline: -5, charisme: +2 } },
-        { text: "Payer un tuteur en urgence avec tes économies", impact: { balance: -100, mental: +2, discipline: +2 } }
-      ]
-    },
-    {
-      id: 'youth_agency', minAge: 14, maxAge: 17, context: 'Premiers Requins',
-      text: "Un faux agent rôde autour du terrain et te promet un essai à l'étranger si tu signes un accord en cachette de tes parents.",
-      choices: [
-        { text: "Signer aveuglément pour voir du pays", impact: { fame: +5, balance: +300, discipline: -8 } },
-        { text: "Refuser net et en parler à tes parents", impact: { mental: +6, discipline: +5 } },
-        { text: "Consulter l'éducateur du club", impact: { relationCoach: +6, mental: +3 } }
-      ]
-    },
-    {
-      id: 'street_tournament_injury_risk', minAge: 14, maxAge: 17, context: 'Tournoi de Quartier',
-      text: "Tes potes d'enfance t'organisent un tournoi de street foot clandestin la veille d'un match officiel du centre.",
-      choices: [
-        { text: "Y aller en cachette pour retrouver le kiff", impact: { technique: +5, physique: -5, discipline: -6 } },
-        { text: "Refuser sagement pour te reposer", impact: { mental: +4, discipline: +4 } },
-        { text: "Y aller juste pour regarder en tribune", impact: { charisme: +2, mental: +1 } }
-      ]
-    },
-    {
-      id: 'growth_pain_crisis', minAge: 14, maxAge: 16, context: 'Crous de Croissance',
-      text: "Tu prends 5 cm en quelques mois, ton corps souffre de douleurs articulaires intenses et ta coordination en prend un coup.",
-      choices: [
-        { text: "Forcer à l'entraînement pour ne pas perdre ta place", impact: { physique: -8, mental: +5, technique: -3 } },
-        { text: "Lever le pied et faire de la kiné préventive", impact: { physique: +4, mental: +2, relationCoach: -2 } },
-        { text: "Consulter un ostéo privé hors structure", impact: { balance: -200, physique: +5 } }
-      ]
-    },
-    {
-      id: 'first_gear_sponsor', minAge: 15, maxAge: 18, context: 'Premiers Équipements',
-      text: "Un équipementier local propose de t'offrir tes crampons si tu fais la promo de leur boutique sur tes réseaux.",
-      choices: [
-        { text: "Accepter et poster à gogo", impact: { fame: +4, balance: +150, discipline: -2 } },
-        { text: "Refuser, tu veux rester concentré sur le jeu", impact: { mental: +3, discipline: +3 } }
-      ]
-    },
-
-    // --- TRANCHE 18 - 25 ANS : ÉCLUSION ET TENTATIONS ---
-    {
-      id: 'family_night', minAge: 18, maxAge: 35, context: 'Veille de Match Capital',
-      text: "Tes deux enfants pleurent toute la nuit et ton/ta partenaire est à bout de nerfs. Demain, c'est le match le plus important de la saison.",
-      choices: [
-        { text: "Veiller toute la nuit avec eux (Sacrifier ton sommeil)", impact: { mental: +8, physique: -10, relationCoach: -2 } },
-        { text: "S'isoler dans une autre pièce pour dormir", impact: { physique: +5, mental: -5, discipline: +3 } },
-        { text: "Payer une baby-sitter de nuit en urgence", impact: { charisme: +4, balance: -150, discipline: -3 } }
-      ]
-    },
-    {
-      id: 'coach_talk', minAge: 16, maxAge: 40, context: 'Point Tactique',
-      text: "Ton entraîneur te convoque pour discuter de ton implication défensive dans son système de jeu rigide.",
-      choices: [
-        { text: "Écouter et valider ses consignes", impact: { relationCoach: +8, mental: +3 } },
-        { text: "Revendiquer plus de liberté offensive", impact: { technique: +3, relationCoach: -5 } },
-        { text: "Promettre de doubler les efforts physiques", impact: { physique: +5, discipline: +3 } }
-      ]
-    },
-    {
-      id: 'social_media_buzz', minAge: 17, maxAge: 32, context: 'Polémique Réseaux',
-      text: "Une vidéo de toi en boîte de nuit à deux jours d'entraînement fuite sur TikTok. La presse locale s'emballe.",
-      choices: [
-        { text: "Faire un communiqué d'excuses publiques", impact: { discipline: +5, fame: +2, mental: -3 } },
-        { text: "Ignorer et répondre sur le terrain", impact: { mental: +5, relationCoach: -3 } },
-        { text: "Sortir une story provocante pour le buzz", impact: { fame: +8, discipline: -8, relationCoach: -5 } }
-      ]
-    },
-    {
-      id: 'extra_training', minAge: 15, maxAge: 35, context: 'Séance Personnalisée',
-      text: "C'est ton jour de repos, mais ton préparateur technique te propose une session intensive sous la pluie.",
-      choices: [
-        { text: "Y aller à fond et bosser tes points faibles", impact: { technique: +5, physique: -4 } },
-        { text: "Refuser net pour souffler", impact: { physique: +3, mental: +2 } },
-        { text: "Faire une séance légère en solo", impact: { technique: +2, physique: +1 } }
-      ]
-    },
-    {
-      id: 'first_big_agent', minAge: 18, maxAge: 26, context: 'Appel du Grand Agent',
-      text: "Un requin des agents te propose un montage financier louche mais te garantit un transfert en première division.",
-      choices: [
-        { text: "Signer les yeux fermés", impact: { balance: +2000, fame: +10, discipline: -12, relationCoach: -4 } },
-        { text: "Refuser et rester fidèle à ton clan", impact: { mental: +5, discipline: +5, fame: -2 } },
-        { text: "Soumettre le contrat à un avocat", impact: { balance: -200, mental: +3, discipline: +4 } }
-      ]
-    },
-    {
-      id: 'locker_room_tension', minAge: 19, maxAge: 30, context: 'Guerre d’Ego',
-      text: "La star historique de l'équipe t'isole sur le terrain et refuse de te faire la passe par jalousie.",
-      choices: [
-        { text: "Lui faire face vertement dans le vestiaire", impact: { charisme: +6, relationCoach: -3, vestiaire: -5 } },
-        { text: "Garder le silence et t'imposer par tes stats pures", impact: { technique: +4, mental: +5, vestiaire: +2 } },
-        { text: "Aller se plaindre auprès du coach", impact: { relationCoach: -5, charisme: -6, mental: -4 } }
-      ]
-    },
-    {
-      id: 'car_purchase_luxury', minAge: 20, maxAge: 35, context: 'Premier Gros Caprice',
-      text: "Avec tes dernières primes, tu as l'opportunité de t'offrir une grosse cylindrée allemande d'occasion.",
-      choices: [
-        { text: "Craquer et l'acheter cash", impact: { balance: -15000, fame: +8, discipline: -3 } },
-        { text: "Investir sagement dans l'immobilier locatif à la place", impact: { balance: -10000, mental: +6, discipline: +5 } },
-        { text: "Rester raisonnable et garder ton vieux tacot", impact: { mental: +3, discipline: +4 } }
-      ]
-    },
-    {
-      id: 'charity_event_invitation', minAge: 21, maxAge: 35, context: 'Match Caritatif',
-      text: "Une association locale te propose de parrainer un tournoi pour les enfants malades de la région.",
-      choices: [
-        { text: "Y aller avec le sourire et faire un gros don", impact: { balance: -500, fame: +10, mental: +5 } },
-        { text: "Envoyer un chèque discret sans te déplacer", impact: { balance: -300, fame: +2 } },
-        { text: "Refuser par manque de temps", impact: { fame: -3, physique: +1 } }
-      ]
-    },
-
-    // --- TRANCHE 26 - 40 ANS : STATUT DE STAR, PRESSION ET DÉCLINE ---
-    {
-      id: 'transfer_rumor_madness', minAge: 24, maxAge: 35, context: 'Feuilleton Mercato',
-      text: "La Une de la presse sportive t'envoie dans un cador européen. Ton téléphone explose de sollicitations.",
-      choices: [
-        { text: "Alimenter le flou pour faire monter les enchères salariales", impact: { fame: +12, discipline: -5, balance: +5000 } },
-        { text: "Faire un communiqué officiel de fidélité", impact: { mental: +6, relationCoach: +8, fame: -3 } },
-        { text: "Couper ton téléphone pour te couper du bruit", impact: { mental: +8, discipline: +5 } }
-      ]
-    },
-    {
-      id: 'burnout_pressure', minAge: 26, maxAge: 36, context: 'Alerte Surcharge Mentale',
-      text: "Enchaînement de matchs tous les 3 jours, pression des sponsors... Tu frôles la crise d'angoisse avant un choc européen.",
-      choices: [
-        { text: "Simuler une petite alerte physique pour souffler", impact: { physique: +5, mental: +10, discipline: -8, relationCoach: -5 } },
-        { text: "Prendre sur toi et serrer les dents", impact: { physique: -6, mental: -10, discipline: +3 } },
-        { text: "Consulter un préparateur mental en urgence", impact: { mental: +12, charisme: +4, balance: -300 } }
-      ]
-    },
-    {
-      id: 'bad_form_slump', minAge: 22, maxAge: 37, context: 'Traversée du Désert',
-      text: "Tu enchaînes 5 matchs sans marquer ni faire la moindre passe décisive. Le public commence à siffler ton nom à l'annonce des compos.",
-      choices: [
-        { text: "Faire dos rond, doubler les séances invisibles", impact: { technique: +4, mental: +6, physique: -2 } },
-        { text: "Provoquer une explication musclée avec les supporters ultras", impact: { charisme: +5, discipline: -10, relationCoach: -4 } },
-        { text: "Demander au coach de te mettre sur le banc pour couper", impact: { mental: +5, relationCoach: +2, fame: -4 } }
-      ]
-    },
-    {
-      id: 'referee_controversy', minAge: 20, maxAge: 36, context: 'Colère Médiatique',
-      text: "Après une simulation évidente pour obtenir un penalty décisif, les plateaux télé s'acharnent sur ton 'fair-play'.",
-      choices: [
-        { text: "Faire profil bas et ignorer les polémiques", impact: { mental: +4, discipline: +3 } },
-        { text: "Lâcher une punchline sarcastique en zone mixte", impact: { fame: +8, discipline: -8, relationCoach: -3 } },
-        { text: "Présenter des excuses publiques ambigües", impact: { fame: +2, discipline: +2 } }
-      ]
-    },
-    {
-      id: 'legend_status_decline', minAge: 33, maxAge: 40, context: 'Le Poids des Ans',
-      text: "Les supporters t'adulent comme une icône, mais tes jambes ne suivent plus les transitions ultra-rapides des jeunes de 20 ans.",
-      choices: [
-        { text: "Accepter un rôle de joker de luxe et encadrer les pépites", impact: { mental: +8, relationCoach: +10, fame: +5 } },
-        { text: "Refuser la rotation et bouder à l'entraînement", impact: { relationCoach: -10, mental: -5, vestiaire: -6 } },
-        { text: "Anoncer ta dernière danse avant la reconversion", impact: { fame: +15, mental: +5 } }
-      ]
-    },
-    {
-      id: 'body_wear_tear', minAge: 31, maxAge: 40, context: 'Usure Chronique',
-      text: "Tes genoux grincent fort au réveil. Le staff médical t'impose un protocole de soins lourd les jours de repos.",
-      choices: [
-        { text: "Suivre le protocole à la lettre quitte à rater des entraînements", impact: { physique: +4, mental: +3, technique: -2 } },
-        { text: "Prendre des analgésiques en cachette pour tout jouer", impact: { physique: -10, mental: +6, discipline: -4 } },
-        { text: "Engager un kiné personnel exclusif", impact: { balance: -1500, physique: +8 } }
-      ]
-    },
-    {
-      id: 'retirement_prep_offer', minAge: 34, maxAge: 40, context: 'Reconversion Anticipée',
-      text: "Un club partenaire te propose de basculer directement du terrain au costume d'entraîneur de l'équipe réserve dès l'hiver prochain.",
-      choices: [
-        { text: "Accepter la proposition et raccrocher sereinement", impact: { mental: +10, fame: +5, discipline: +5 } },
-        { text: "Refuser, tu veux prolonger l'aventure sur le pré", impact: { physique: -3, mental: +2 } }
+      "context": "Titre court du contexte",
+      "text": "Le texte narratif décrivant la situation...",
+      "choices": [
+        {
+          "text": "Description du choix 1",
+          "impact": { "mental": 5, "discipline": -2 }
+        },
+        {
+          "text": "Description du choix 2",
+          "impact": { "technique": 3, "relationCoach": -4 }
+        }
       ]
     }
-  ]
-};
+  `;
+
+  // Appel de l'API LLM (Exemple conceptuel)
+  /*
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer TON_API_KEY', 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: "json_object" }
+    })
+  });
+  const data = await response.json();
+  return JSON.parse(data.choices[0].message.content);
+  */
+}
+
 
 // --- ÉTAT GLOBAL ET GESTION DU JEU ---
 
