@@ -42,6 +42,7 @@ export class GameEngine {
                 morale: 80,
                 fitness: 90,
                 isInjured: false,
+                injuryDuration: 0, // Ajouté pour suivre le nombre de blocs d'absence
                 
                 stats: selectedData.stats || {
                     technique: initialOvr,
@@ -101,9 +102,15 @@ export class GameEngine {
     playBlock() {
         if (!this.state) return;
 
+        // Si le joueur est blessé, on décrémente la durée au lieu de bloquer bêtement
         if (this.state.player.isInjured) {
-            alert("Impossible de jouer, votre joueur est blessé !");
-            return;
+            if (this.state.player.injuryDuration > 0) {
+                this.state.player.injuryDuration--;
+            }
+            if (this.state.player.injuryDuration <= 0) {
+                this.state.player.isInjured = false;
+                this.state.player.injuryDuration = 0;
+            }
         }
 
         // On passe le focus d'entraînement actuel stocké dans le state au simulateur
