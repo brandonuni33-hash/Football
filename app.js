@@ -34,7 +34,46 @@ const ORIGINS = [
   { id: 'athlete', name: 'Athlète Polyvalent', desc: '+15% Vitesse/Puissance, -10% Toucher | Trait: Moteur Hybride', modifiers: { physique: 15, technique: -10 }, trait: 'Moteur Hybride' }
 ];
 
-// --- 2. MOTEUR NARRATIF (5 CHOIX) ---
+// --- 2. BASE DE DONNÉES DES CLUBS (5 Grands Championnats & Ligues Inférieures) ---
+
+const CLUBS_DATABASE = {
+  france: [
+    { name: 'FC Local (Amateur)', tier: 'Amateur', minOvr: 0, league: 'Régional 1' },
+    { name: 'Pau FC', tier: 'D2', minOvr: 55, league: 'Ligue 2 BKT' },
+    { name: 'SC Bastia', tier: 'D2', minOvr: 58, league: 'Ligue 2 BKT' },
+    { name: 'FC Nantes', tier: 'D1', minOvr: 68, league: 'Ligue 1 McDonald\'s' },
+    { name: 'OGC Nice', tier: 'D1', minOvr: 73, league: 'Ligue 1 McDonald\'s' },
+    { name: 'Olympique de Marseille', tier: 'Top', minOvr: 78, league: 'Ligue 1 McDonald\'s' },
+    { name: 'Paris Saint-Germain', tier: 'Elite', minOvr: 84, league: 'Ligue 1 McDonald\'s' }
+  ],
+  angleterre: [
+    { name: 'Bromley FC', tier: 'D4', minOvr: 52, league: 'EFL League Two' },
+    { name: 'Wrexham AFC', tier: 'D3', minOvr: 58, league: 'EFL League One' },
+    { name: 'Leeds United', tier: 'D2', minOvr: 68, league: 'EFL Championship' },
+    { name: 'West Ham United', tier: 'D1', minOvr: 75, league: 'Premier League' },
+    { name: 'Liverpool FC', tier: 'Elite', minOvr: 85, league: 'Premier League' }
+  ],
+  espagne: [
+    { name: 'CD Castellón', tier: 'D2', minOvr: 57, league: 'LaLiga Hypermotion' },
+    { name: 'Real Zaragoza', tier: 'D2', minOvr: 62, league: 'LaLiga Hypermotion' },
+    { name: 'Villarreal CF', tier: 'D1', minOvr: 74, league: 'LaLiga EA Sports' },
+    { name: 'Atlético de Madrid', tier: 'Elite', minOvr: 82, league: 'LaLiga EA Sports' }
+  ],
+  allemagne: [
+    { name: 'Dynamo Dresde', tier: 'D3', minOvr: 55, league: '3. Liga' },
+    { name: 'Schalke 04', tier: 'D2', minOvr: 65, league: '2. Bundesliga' },
+    { name: 'VfB Stuttgart', tier: 'D1', minOvr: 74, league: 'Bundesliga' },
+    { name: 'FC Bayern München', tier: 'Elite', minOvr: 85, league: 'Bundesliga' }
+  ],
+  italie: [
+    { name: 'LR Vicenza', tier: 'D3', minOvr: 54, league: 'Serie C' },
+    { name: 'Palermo FC', tier: 'D2', minOvr: 63, league: 'Serie B' },
+    { name: 'Torino FC', tier: 'D1', minOvr: 72, league: 'Serie A' },
+    { name: 'Inter Milan', tier: 'Elite', minOvr: 84, league: 'Serie A' }
+  ]
+};
+
+// --- 3. MOTEUR NARRATIF ---
 
 const NARRATIVE_ENGINE = {
   events: [
@@ -69,6 +108,7 @@ let state = {
   step: 1,
   player: JSON.parse(localStorage.getItem('career_rpg_save')) || null,
   activeEvent: null,
+  transferOffersModal: null, // Gère l'affichage des offres de clubs
   form: {
     firstName: 'Brandon',
     lastName: 'Le Moan',
@@ -84,7 +124,7 @@ function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-// --- 3. GÉNÉRATION DES STATS ---
+// --- 4. GÉNÉRATION DES STATS & GESTION DU MERCATO ---
 
 function generatePlayer(formData) {
   let baseOvr = randInt(35, 50);
@@ -129,13 +169,44 @@ function generatePlayer(formData) {
     hidden: { regularite: randInt(1, 20), matchImportant: randInt(1, 20), blessure: randInt(1, 20) },
     traits: [formData.origin.trait],
     history: [],
-    week: 1
+    week: 1,
+    currentClub: 'FC Local (Amateur)'
   };
 }
 
-// --- 4. GESTION DU TEMPS & FORMULAIRE ---
+// Générateur d'offres de contrat selon l'OVR actuel du joueur
+function checkTransferOffers() {
+  let availableClubs = [];
+  
+  // Parcourir toutes les nations et trouver les clubs adaptés à l'OVR du joueur
+  for (let country in CLUBS_DATABASE) {
+    CLUBS_DATABASE[country].forEach(club => {
+      // Le joueur reçoit des offres de clubs dont le minOvr est proche ou inférieur à son niveau
+      if (state.player.ovr >= club.minOvr && state.player.ovr <= club.minOvr + 12 && club.name !== state.player.currentClub) {
+        availableClubs.push(club);
+      }
+    });
+  }
 
-// Sauvegarde en direct des champs du formulaire pour éviter les pertes de données lors des clics
+  // Si on trouve des clubs, on en pioche 3 aléatoirement pour les proposer
+  if (availableClubs.length > 0) {
+    // Mélange et sélection de 3 max
+    let shuffled = availableClubs.sort(() => 0.5 - Math.random());
+    state.transferOffersModal = shuffled.slice(0, 3);
+  } else {
+    // Offre de secours par défaut si l'OVR est très bas
+    state.transferOffersModal = [{ name: 'FC Local (Amateur)', tier: 'Amateur', league: 'Régional 1' }];
+  }
+  render();
+}
+
+function acceptOffer(clubName) {
+  state.player.currentClub = clubName;
+  state.transferOffersModal = null;
+  localStorage.setItem('career_rpg_save', JSON.stringify(state.player));
+  render();
+}
+
 function updateFormInput() {
   const fnInput = document.getElementById('inp-fn');
   const lnInput = document.getElementById('inp-ln');
@@ -148,23 +219,9 @@ function updateFormInput() {
   if (wInput) state.form.weight = parseInt(wInput.value);
 }
 
-function setPos(p) {
-  updateFormInput();
-  state.form.position = p;
-  render();
-}
-
-function selectOrigin(id) {
-  updateFormInput();
-  state.form.origin = ORIGINS.find(o => o.id === id);
-  render();
-}
-
-function setNat(name) {
-  updateFormInput();
-  state.form.nationality = NATIONALITIES.find(n => n.name === name);
-  render();
-}
+function setPos(p) { updateFormInput(); state.form.position = p; render(); }
+function selectOrigin(id) { updateFormInput(); state.form.origin = ORIGINS.find(o => o.id === id); render(); }
+function setNat(name) { updateFormInput(); state.form.nationality = NATIONALITIES.find(n => n.name === name); render(); }
 
 function submitCreation() {
   updateFormInput();
@@ -177,13 +234,20 @@ function resetCareer() {
   localStorage.removeItem('career_rpg_save');
   state.player = null;
   state.activeEvent = null;
+  state.transferOffersModal = null;
   render();
 }
 
 function advanceWeek() {
   state.player.week += 1;
 
-  if (Math.random() < 0.6) {
+  // Tous les 10 semaines, le mercato ouvre et propose de nouveaux contrats
+  if (state.player.week % 10 === 0) {
+    checkTransferOffers();
+    return;
+  }
+
+  if (Math.random() < 0.5) {
     state.activeEvent = NARRATIVE_ENGINE.events[Math.floor(Math.random() * NARRATIVE_ENGINE.events.length)];
   } else {
     state.activeEvent = null;
@@ -272,11 +336,12 @@ function render() {
       </div>
     `;
   } else {
+    // Pop-up d'événement narratif
     let eventModalHTML = '';
     if (state.activeEvent) {
       eventModalHTML = `
         <div class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div class="bg-slate-900 border-2 border-emerald-500 p-5 rounded-2xl max-w-lg w-full my-auto space-y-4 shadow-2xl animate-fade-in">
+          <div class="bg-slate-900 border-2 border-emerald-500 p-5 rounded-2xl max-w-lg w-full my-auto space-y-4 shadow-2xl">
             <div>
               <span class="text-xs font-black uppercase text-emerald-400 tracking-widest bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20">${state.activeEvent.context}</span>
               <p class="text-white text-sm mt-3 leading-relaxed">${state.activeEvent.text}</p>
@@ -296,8 +361,38 @@ function render() {
       `;
     }
 
+    // Pop-up des Offres de Transfert (Mercato)
+    let transferModalHTML = '';
+    if (state.transferOffersModal) {
+      transferModalHTML = `
+        <div class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div class="bg-slate-900 border-2 border-yellow-500 p-5 rounded-2xl max-w-lg w-full my-auto space-y-4 shadow-2xl">
+            <div>
+              <span class="text-xs font-black uppercase text-yellow-400 tracking-widest bg-yellow-500/10 px-2.5 py-1 rounded-md border border-yellow-500/20">Mercato - Offres de Contrat  mercato 📄</span>
+              <p class="text-white text-sm mt-3 leading-relaxed">Tes performances et ton OVR actuel (${state.player.ovr}) attirent des recruteurs. Choisis ta nouvelle destination :</p>
+            </div>
+            
+            <div class="space-y-2">
+              ${state.transferOffersModal.map(club => `
+                <button onclick="acceptOffer('${club.name}')" 
+                        class="w-full text-left p-3.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-yellow-500 rounded-xl text-xs text-slate-200 transition-all flex justify-between items-center group">
+                  <div>
+                    <div class="font-bold text-white text-sm group-hover:text-yellow-400">${club.name}</div>
+                    <div class="text-[10px] text-slate-400">${club.league} (${club.tier})</div>
+                  </div>
+                  <span class="px-2.5 py-1 bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 rounded-lg font-bold">Signer ✍️</span>
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Tableau de bord Principal
     app.innerHTML = `
       ${eventModalHTML}
+      ${transferModalHTML}
       <div class="max-w-xl mx-auto my-6 p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 text-white shadow-xl">
         <h2 class="text-lg font-black text-emerald-400 flex justify-between items-center">
           <span>${state.player.firstName} ${state.player.lastName} ${state.player.nationality.flag}</span>
@@ -306,14 +401,14 @@ function render() {
 
         <div class="text-xs text-slate-300 space-y-1.5 bg-slate-950 p-3 rounded-xl border border-slate-800">
           <div class="flex justify-between items-center">
-            <span>Origine : <span class="text-emerald-400 font-bold">${state.player.origin.name}</span></span>
+            <span>Club actuel : <span class="text-yellow-400 font-bold">${state.player.currentClub}</span></span>
             <span class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-2 py-0.5 rounded font-bold">Semaine ${state.player.week}</span>
           </div>
           <div class="flex gap-4">
             <div>Général (OVR) : <span class="font-bold text-yellow-400 text-sm">${state.player.ovr}</span></div>
             <div>Potentiel (POT) : <span class="font-bold text-emerald-400 text-sm">${state.player.pot}</span></div>
           </div>
-          <div>Morphologie : ${state.player.height}cm / ${state.player.weight}kg | Trait : <span class="text-slate-100 font-semibold">${state.player.traits[0]}</span></div>
+          <div>Origine : ${state.player.origin.name} | Trait : <span class="text-slate-100 font-semibold">${state.player.traits[0]}</span></div>
         </div>
 
         <div class="grid grid-cols-2 gap-2 text-xs">
@@ -333,7 +428,7 @@ function render() {
           </div>
         </div>
 
-        <button onclick="advanceWeek()" ${state.activeEvent ? 'disabled class="opacity-50 cursor-not-allowed"' : ''} class="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-black rounded-xl text-white uppercase text-xs tracking-wider shadow-lg transition-all">
+        <button onclick="advanceWeek()" ${state.activeEvent || state.transferOffersModal ? 'disabled class="opacity-50 cursor-not-allowed"' : ''} class="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-black rounded-xl text-white uppercase text-xs tracking-wider shadow-lg transition-all">
           📅 Avancer d'une Semaine (Jouer / S'entraîner)
         </button>
 
