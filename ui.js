@@ -17,7 +17,7 @@ export class UserInterface {
             coachVision: null,
             coachName: null
         };
-        this.randomYouthClubs = []; // Stocke les 4 à 6 clubs tirés au sort pour cette partie
+        this.randomYouthClubs = []; // Stocke les offres détaillées tirées au sort pour cette partie
         
         this.initDOM();
         this.render();
@@ -135,20 +135,44 @@ export class UserInterface {
                 if (this.randomYouthClubs.length === 0) {
                     const shuffled = [...YOUTH_CLUBS_POOL].sort(() => 0.5 - Math.random());
                     const count = Math.floor(Math.random() * 3) + 4; // Entre 4 et 6 clubs
-                    this.randomYouthClubs = shuffled.slice(0, count);
+                    
+                    this.randomYouthClubs = shuffled.slice(0, count).map(yc => {
+                        const randomVision = COACH_VISIONS[Math.floor(Math.random() * COACH_VISIONS.length)];
+                        const randomCoachName = COACH_NAMES[Math.floor(Math.random() * COACH_NAMES.length)];
+                        
+                        const salary = Math.round((yc.prestige * 150) + (Math.random() * 500));
+                        const playtimeOptions = ["Temps de jeu limité", "Joueur de rotation", "Espoir / Prêt potentiel", "Titulaire en jeunes"];
+                        const playtime = playtimeOptions[Math.floor(Math.random() * playtimeOptions.length)];
+                        const targetRating = Math.min(75, 55 + Math.round(yc.prestige / 4));
+
+                        return {
+                            ...yc,
+                            coachName: randomCoachName,
+                            coachVision: randomVision.title,
+                            salary: salary,
+                            playtime: playtime,
+                            targetRating: targetRating
+                        };
+                    });
                 }
 
                 return `
                     <h2>Étape 5 : Offres de Contrat Jeune</h2>
-                    <p class="subtitle">Voici les clubs qui s'intéressent à vous :</p>
+                    <p class="subtitle">Analysez les propositions et choisissez votre point de chute :</p>
                     <div class="grid-youth-clubs">
                         ${this.randomYouthClubs.map(yc => `
                             <div class="card-select club-card ${this.selectedData.youthClub?.name === yc.name ? 'selected' : ''}" data-club-name="${yc.name}">
-                                <div class="club-info">
-                                    <h4>${yc.name}</h4>
-                                    <span class="league-tag">${yc.league} (${yc.country})</span>
+                                <div class="club-header-info">
+                                    <h3>${yc.name}</h3>
+                                    <span class="league-tag">🏆 ${yc.league} (${yc.country})</span>
                                 </div>
-                                <div class="prestige-badge">Prestige : ${yc.prestige}</div>
+                                <div class="contract-details">
+                                    <p><strong>👨‍💼 Entraîneur :</strong> ${yc.coachName} <em>(${yc.coachVision})</em></p>
+                                    <p><strong>💶 Salaire :</strong> ${yc.salary} € / semaine</p>
+                                    <p><strong>⏱️ Temps de jeu :</strong> ${yc.playtime}</p>
+                                    <p><strong>🎯 Objectif / Note visée :</strong> Atteindre ${yc.targetRating} Général en fin de saison</p>
+                                </div>
+                                <div class="prestige-badge">Prestige du club : ${yc.prestige}</div>
                             </div>
                         `).join('')}
                     </div>
@@ -230,12 +254,10 @@ export class UserInterface {
                 card.classList.add('selected');
                 const clubName = card.getAttribute('data-club-name');
                 
-                this.selectedData.youthClub = this.randomYouthClubs.find(yc => yc.name === clubName);
-                
-                // Attribution automatique de la vision et du nom du coach
-                const randomVision = COACH_VISIONS[Math.floor(Math.random() * COACH_VISIONS.length)];
-                this.selectedData.coachVision = randomVision.title;
-                this.selectedData.coachName = COACH_NAMES[Math.floor(Math.random() * COACH_NAMES.length)];
+                const chosenOffer = this.randomYouthClubs.find(yc => yc.name === clubName);
+                this.selectedData.youthClub = chosenOffer;
+                this.selectedData.coachVision = chosenOffer.coachVision;
+                this.selectedData.coachName = chosenOffer.coachName;
 
                 if(startBtn) startBtn.disabled = !this.isStepValid();
             });
