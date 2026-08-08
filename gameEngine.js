@@ -3,13 +3,14 @@ import { UserInterface } from './ui.js';
 import { MatchBlockManager } from './matchBlock.js';
 import { EconomyManager } from './economy.js';
 import { SocialSystem } from './social.js';
-import { MediaSystem } from './media.js'; // 1. Import du module média
+import { MediaSystem } from './media.js';
+import { EventEngine } from './events.js'; // 1. Import du module d'événements
 
 export class GameEngine {
     constructor() {
         this.state = null;
         this.socialSystem = new SocialSystem(this);
-        this.mediaSystem = new MediaSystem(this); // 2. Initialisation du système média
+        this.mediaSystem = new MediaSystem(this);
         this.ui = new UserInterface(this);
     }
 
@@ -61,7 +62,7 @@ export class GameEngine {
             },
             // Données sociales
             social: this.socialSystem.initSocialData(selectedData.coachName),
-            // 3. Ajout des données média et réseaux sociaux initiales dans le state
+            // Données média et réseaux sociaux initiales
             media: this.mediaSystem.initMediaData(),
             career: {
                 balance: contract.signingBonus || 1500
@@ -98,11 +99,18 @@ export class GameEngine {
         // Le MatchBlockManager s'occupe de simuler et de mettre à jour les stats globales/économie
         const report = MatchBlockManager.simulateBlock(this.state);
 
-        // 4. Mise à jour du cycle social à chaque fin de mois
+        // Mise à jour du cycle social à chaque fin de mois
         this.socialSystem.updateSocialCycle(this.state);
 
-        // 5. Génération des posts, de la hype et des dilemmes médias basés sur le rapport du bloc
+        // Génération des posts, de la hype et des dilemmes médias basés sur le rapport du bloc
         this.mediaSystem.generatePostAfterBlock(this.state, report);
+
+        // 2. Vérification et tirage au sort d'un événement aléatoire pondéré pour ce bloc
+        const triggeredEvent = EventEngine.checkAndTriggerEvent(this.state);
+        if (triggeredEvent) {
+            console.log("⚡ Événement déclenché :", triggeredEvent.titre);
+            this.state.pendingEvent = triggeredEvent; // Stocke l'événement dans le state si besoin
+        }
 
         // Avancer d'un mois dans le calendrier
         const cal = this.state.calendar;
@@ -120,7 +128,8 @@ export class GameEngine {
             calendar: {
                 month: cal.currentMonth - 1,
                 period: cal.currentPeriod
-            }
+            },
+            event: triggeredEvent || null
         };
     }
 
