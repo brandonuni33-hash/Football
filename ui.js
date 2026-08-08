@@ -82,6 +82,9 @@ export class UserInterface {
                     </div>
                 `;
             case 2:
+                // Retrouver la description de l'origine actuellement sélectionnée
+                const selectedOriginObj = Object.values(ORIGINS).find(o => o.id === this.selectedData.origin);
+                
                 return `
                     <h2>Étape 2 : Origine</h2>
                     <p class="subtitle">Comment avez-vous façonné votre jeu ?</p>
@@ -104,6 +107,9 @@ export class UserInterface {
                                 </div>
                             `;
                         }).join('')}
+                    </div>
+                    <div class="origin-description-box" style="margin-top: 15px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 12px; min-height: 50px;">
+                        ${selectedOriginObj ? `<p style="margin: 0; font-size: 13px; color: #94a3b8; line-height: 1.4;">📖 ${selectedOriginObj.desc}</p>` : `<p style="margin: 0; font-size: 13px; color: #6b7280; font-style: italic;">👉 Clique sur une origine pour découvrir son histoire et son impact sur ton jeu.</p>`}
                     </div>
                 `;
             case 3:
@@ -224,10 +230,8 @@ export class UserInterface {
 
         document.querySelectorAll('.origin-card-compact').forEach(card => {
             card.addEventListener('click', () => {
-                document.querySelectorAll('.origin-card-compact').forEach(c => c.classList.remove('selected'));
-                card.classList.add('selected');
                 this.selectedData.origin = card.getAttribute('data-origin');
-                if(nextBtn) nextBtn.disabled = !this.isStepValid();
+                this.render(); // Redessine pour afficher instantanément la description dans l'encadré
             });
         });
 
