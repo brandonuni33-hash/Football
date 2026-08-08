@@ -73,11 +73,33 @@ export class UserInterface {
                         <input type="text" id="lastname" value="${this.selectedData.lastname}" placeholder="ex: Mbappé">
                     </div>
                     <div class="form-group">
-                        <label>Poste :</label>
-                        <div class="grid-positions">
-                            ${POSITIONS.map(p => `
-                                <button class="chip ${this.selectedData.position === p.id ? 'selected' : ''}" data-pos="${p.id}">${p.name}</button>
-                            `).join('')}
+                        <label>Choisis ton poste sur le terrain :</label>
+                        <div class="tactical-pitch-container">
+                            <div class="soccer-pitch">
+                                ${POSITIONS.map(p => {
+                                    let coords = { top: '50%', left: '50%' };
+                                    const id = p.id;
+                                    if (id === 'GK') coords = { top: '88%', left: '50%' };
+                                    else if (id === 'DC' || id === 'CB') coords = { top: '72%', left: '50%' };
+                                    else if (id === 'DD' || id === 'RB') coords = { top: '65%', left: '85%' };
+                                    else if (id === 'DG' || id === 'LB') coords = { top: '65%', left: '15%' };
+                                    else if (id === 'MDC' || id === 'CDM') coords = { top: '52%', left: '50%' };
+                                    else if (id === 'MC' || id === 'CM') coords = { top: '42%', left: '50%' };
+                                    else if (id === 'MO' || id === 'CAM') coords = { top: '30%', left: '50%' };
+                                    else if (id === 'AD' || id === 'RW') coords = { top: '22%', left: '80%' };
+                                    else if (id === 'AG' || id === 'LW') coords = { top: '22%', left: '20%' };
+                                    else if (id === 'BU' || id === 'ST') coords = { top: '15%', left: '50%' };
+
+                                    const isSelected = this.selectedData.position === p.id ? 'selected' : '';
+
+                                    return `
+                                        <button class="pitch-node ${isSelected}" data-pos="${p.id}" style="top: ${coords.top}; left: ${coords.left};" title="${p.name}">
+                                            <span class="pos-badge">${p.id}</span>
+                                            <span class="pos-name">${p.name}</span>
+                                        </button>
+                                    `;
+                                }).join('')}
+                            </div>
                         </div>
                     </div>
                 `;
@@ -218,11 +240,13 @@ export class UserInterface {
             });
         }
 
-        document.querySelectorAll('.chip').forEach(btn => {
+        // Écoute des clics sur les nœuds du terrain tactique
+        document.querySelectorAll('.pitch-node').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.chip').forEach(b => b.classList.remove('selected'));
-                e.target.classList.add('selected');
-                this.selectedData.position = e.target.getAttribute('data-pos');
+                document.querySelectorAll('.pitch-node').forEach(b => b.classList.remove('selected'));
+                const targetBtn = e.currentTarget;
+                targetBtn.classList.add('selected');
+                this.selectedData.position = targetBtn.getAttribute('data-pos');
                 if(nextBtn) nextBtn.disabled = !this.isStepValid();
             });
         });
@@ -366,7 +390,6 @@ export class UserInterface {
                         <span>🔥 Niveau de Hype : <strong>${mediaState.hypeLevel}/100</strong></span>
                     </div>
 
-                    <!-- Si un dilemme média est en attente, l'afficher de façon prioritaire -->
                     ${mediaState.recentDilemma ? `
                         <div style="background: rgba(59, 130, 246, 0.15); border: 1px solid #3b82f6; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
                             <h4 style="margin: 0 0 8px 0; color: #60a5fa;">${mediaState.recentDilemma.title}</h4>
@@ -407,13 +430,11 @@ export class UserInterface {
             </div>
         `;
 
-        // Événement pour simuler le mois
         document.getElementById('play-block-btn').addEventListener('click', () => {
             this.engine.playBlock();
             this.renderDashboard();
         });
 
-        // Événements pour résoudre les dilemmes médias s'il y en a
         document.querySelectorAll('.btn-dilemma').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const choiceIdx = parseInt(e.currentTarget.getAttribute('data-choice-idx'));
