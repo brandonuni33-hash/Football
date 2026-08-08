@@ -34,7 +34,7 @@ const ORIGINS = [
   { id: 'athlete', name: 'Athlète Polyvalent', desc: '+15% Vitesse/Puissance, -10% Toucher | Trait: Moteur Hybride', modifiers: { physique: 15, technique: -10 }, trait: 'Moteur Hybride' }
 ];
 
-// --- 2. BASE DE DONNÉES DES CLUBS (5 Grands Championnats & Ligues Inférieures) ---
+// --- 2. BASE DE DONNÉES DES CLUBS ---
 
 const CLUBS_DATABASE = {
   france: [
@@ -104,11 +104,17 @@ const NARRATIVE_ENGINE = {
   ]
 };
 
+// Chargement sécurisé avec vérification de la structure du joueur sauvegardé
+let savedData = JSON.parse(localStorage.getItem('career_rpg_save'));
+if (savedData && !savedData.currentClub) {
+  savedData = null; // Réinitialise si l'ancienne sauvegarde n'a pas les propriétés requises
+}
+
 let state = {
   step: 1,
-  player: JSON.parse(localStorage.getItem('career_rpg_save')) || null,
+  player: savedData,
   activeEvent: null,
-  transferOffersModal: null, // Gère l'affichage des offres de clubs
+  transferOffersModal: null,
   form: {
     firstName: 'Brandon',
     lastName: 'Le Moan',
@@ -124,7 +130,7 @@ function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-// --- 4. GÉNÉRATION DES STATS & GESTION DU MERCATO ---
+// --- 4. GÉNÉRATION DES STATS & GESTION ---
 
 function generatePlayer(formData) {
   let baseOvr = randInt(35, 50);
@@ -174,27 +180,20 @@ function generatePlayer(formData) {
   };
 }
 
-// Générateur d'offres de contrat selon l'OVR actuel du joueur
 function checkTransferOffers() {
   let availableClubs = [];
-  
-  // Parcourir toutes les nations et trouver les clubs adaptés à l'OVR du joueur
   for (let country in CLUBS_DATABASE) {
     CLUBS_DATABASE[country].forEach(club => {
-      // Le joueur reçoit des offres de clubs dont le minOvr est proche ou inférieur à son niveau
       if (state.player.ovr >= club.minOvr && state.player.ovr <= club.minOvr + 12 && club.name !== state.player.currentClub) {
         availableClubs.push(club);
       }
     });
   }
 
-  // Si on trouve des clubs, on en pioche 3 aléatoirement pour les proposer
   if (availableClubs.length > 0) {
-    // Mélange et sélection de 3 max
     let shuffled = availableClubs.sort(() => 0.5 - Math.random());
     state.transferOffersModal = shuffled.slice(0, 3);
   } else {
-    // Offre de secours par défaut si l'OVR est très bas
     state.transferOffersModal = [{ name: 'FC Local (Amateur)', tier: 'Amateur', league: 'Régional 1' }];
   }
   render();
@@ -241,7 +240,6 @@ function resetCareer() {
 function advanceWeek() {
   state.player.week += 1;
 
-  // Tous les 10 semaines, le mercato ouvre et propose de nouveaux contrats
   if (state.player.week % 10 === 0) {
     checkTransferOffers();
     return;
@@ -336,7 +334,6 @@ function render() {
       </div>
     `;
   } else {
-    // Pop-up d'événement narratif
     let eventModalHTML = '';
     if (state.activeEvent) {
       eventModalHTML = `
@@ -361,14 +358,13 @@ function render() {
       `;
     }
 
-    // Pop-up des Offres de Transfert (Mercato)
     let transferModalHTML = '';
     if (state.transferOffersModal) {
       transferModalHTML = `
         <div class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div class="bg-slate-900 border-2 border-yellow-500 p-5 rounded-2xl max-w-lg w-full my-auto space-y-4 shadow-2xl">
             <div>
-              <span class="text-xs font-black uppercase text-yellow-400 tracking-widest bg-yellow-500/10 px-2.5 py-1 rounded-md border border-yellow-500/20">Mercato - Offres de Contrat  mercato 📄</span>
+              <span class="text-xs font-black uppercase text-yellow-400 tracking-widest bg-yellow-500/10 px-2.5 py-1 rounded-md border border-yellow-500/20">Mercato - Offres de Contrat 📄</span>
               <p class="text-white text-sm mt-3 leading-relaxed">Tes performances et ton OVR actuel (${state.player.ovr}) attirent des recruteurs. Choisis ta nouvelle destination :</p>
             </div>
             
@@ -389,7 +385,6 @@ function render() {
       `;
     }
 
-    // Tableau de bord Principal
     app.innerHTML = `
       ${eventModalHTML}
       ${transferModalHTML}
