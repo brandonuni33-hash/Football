@@ -14,7 +14,8 @@ export const PlayerLogic = {
     createPlayerProfile: (formData) => {
         const originData = ORIGINS[formData.originId];
         
-        let baseOvr = PlayerLogic.randomInt(35, 50);
+        // Général de départ fixé entre 35 et 45
+        let baseOvr = PlayerLogic.randomInt(35, 45);
         if (originData.mults.basePenalty) {
             baseOvr += originData.mults.basePenalty;
         }
@@ -46,7 +47,6 @@ export const PlayerLogic = {
         }
 
         // Impact de la morphologie (Taille en cm / Poids en kg)
-        // Un joueur grand (> 185cm) gagne un peu en physique, perd un peu en technique
         const height = parseInt(formData.height) || 178;
         const weight = parseInt(formData.weight) || 72;
 
