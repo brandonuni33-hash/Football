@@ -3,6 +3,7 @@ import { POSITIONS, CONTINENTS, ORIGINS, HEART_CLUBS, YOUTH_CLUBS_POOL, COACH_VI
 import { EventEngine } from './events.js';
 import { TrainingManager } from './entrainement.js';
 import { MatchChoiceManager } from './matchChoices.js';
+import { TransferMarket } from './transferMarket.js';
 
 export class UserInterface {
     constructor(gameEngine) {
@@ -35,6 +36,9 @@ export class UserInterface {
             app.id = 'app';
             document.body.appendChild(app);
         }
+
+        // Rendre l'UI accessible globalement pour les déclenchements externes (comme le GameEngine)
+        window.UI = this;
     }
 
     render() {
@@ -457,6 +461,9 @@ export class UserInterface {
         const history = state.career.seasonHistory || [];
         const attr = state.player.attributes || {};
 
+        // Calcul de la valeur marchande actuelle
+        const marketValue = TransferMarket.calculateMarketValue(state.player);
+
         switch(this.activeApp) {
             case 'career':
                 return `
@@ -467,6 +474,7 @@ export class UserInterface {
                         <p><strong>Saison :</strong> ${state.calendar.currentSeasonYear}/${state.calendar.currentSeasonYear + 1}</p>
                         <p><strong>Période :</strong> ${state.calendar.currentPeriod}</p>
                         <hr class="pane-divider">
+                        <p><strong>Valeur marchande :</strong> 🏷️ ${TransferMarket.formatPrice(marketValue)}</p>
                         <p><strong>Forme physique :</strong> ${state.player.fitness}%</p>
                         <p><strong>Moral :</strong> ${state.player.morale}%</p>
                     </div>
@@ -619,6 +627,16 @@ export class UserInterface {
                 this.afficherModaleMatchDilemma(matchDilemma, (selectedChoice) => {
                     this.engine.playBlock(selectedChoice);
 
+                    // Vérifier si une offre de transfert survient lors de l'avancée
+                    if (Math.random() < 0.15 && !state.activeTransferOffer) {
+                        const offre = TransferMarket.generateTransferOffer(state.player);
+                        if (offre) {
+                            state.activeTransferOffer = offre;
+                            this.afficherOffreTransfert(offre);
+                            return;
+                        }
+                    }
+
                     const eventActuel = EventEngine.checkTriggers ? EventEngine.checkTriggers() : null;
                     if (eventActuel) {
                         this.afficherModaleEvenement(eventActuel);
@@ -664,6 +682,79 @@ export class UserInterface {
                 }
             });
         });
+    }
+
+    /**
+     * Affiche la pop-up d'une offre de transfert d'un club
+     */
+    afficherOffreTransfert(offre) {
+        let modal = document.getElementById('event-modal-container');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'event-modal-container';
+            modal.className = 'event-modal-overlay';
+            document.body.appendChild(modal);
+        }
+
+        modal.innerHTML = `
+            <div class="event-modal-card transfer-card-popup">
+                <span class="event-modal-category">🚨 OFFRE DE TRANSFERT</span>
+                <h3 class="event-modal-title">${offre.club} (${offre.pays})</h3>
+                <p class="event-modal-desc">${offre.message}</p>
+                
+                <div class="transfer-details" style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; margin: 15px 0; text-align: left;">
+                    <p>💰 <strong>Indemnité :</strong> ${TransferMarket.formatPrice(offre.montant)}</p>
+                    <p>💵 <strong>Salaire :</strong> ${TransferMarket.formatPrice(offre.salaireHebdo)} / sem.</p>
+                    <p>⭐ <strong>Rôle promis :</strong> ${offre.rolePropose}</p>
+                </div>
+
+                <div class="event-modal-choices">
+                    <button id="btn-accept-transfer" class="btn-event-choice btn-success">✅ Accepter le challenge</button>
+                    <button id="btn-refuse-transfer" class="btn-event-choice btn-danger">❌ Rester fidèle au club</button>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('btn-accept-transfer').onclick = () => {
+            this.repondreOffre(offre, true);
+            modal.remove();
+            this.renderDashboard();
+        };
+
+        document.getElementById('btn-refuse-transfer').onclick = () => {
+            this.repondreOffre(offre, false);
+            modal.remove();
+            this.renderDashboard();
+        };
+    }
+
+    /**
+     * Traite la réponse à l'offre de transfert
+     */
+    repondreOffre(offre, accepte) {
+        const state = this.engine.state;
+        if (!state) return;
+
+        if (accepte) {
+            const ancienClub = state.player.club;
+            state.player.club = offre.club;
+            state.career.balance += Math.round(offre.montant * 0.05); // Prime à la signature pour le joueur (5% du transfert)
+            
+            // Ajouter un message dans le feed média
+            if (state.media && state.media.feed) {
+                state.media.feed.unshift({
+                    source: "Mercato Live",
+                    date: "Aujourd'hui",
+                    content: `C'est officiel ! ${state.player.firstname} ${state.player.lastname} quitte ${ancienClub} et s'engage avec ${offre.club} pour ${TransferMarket.formatPrice(offre.montant)}.`,
+                    likes: 1240,
+                    commentsCount: 312
+                });
+            }
+            alert(`🎉 Transfert réussi ! Tu rejoins le club de ${offre.club}.`);
+        } else {
+            alert(`🤝 Offre refusée. Tu continues ton aventure avec ${state.player.club}.`);
+        }
+        state.activeTransferOffer = null;
     }
 
     afficherModaleMatchDilemma(dilemma, onChoiceMade) {
