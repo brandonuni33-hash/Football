@@ -1,12 +1,14 @@
 // ui.js
 import { POSITIONS, CONTINENTS, ORIGINS, HEART_CLUBS, YOUTH_CLUBS_POOL, COACH_VISIONS, COACH_NAMES } from './constants.js';
 import { EventEngine } from './events.js';
+import { TrainingManager } from './entrainement.js';
 
 export class UserInterface {
     constructor(gameEngine) {
         this.engine = gameEngine;
         this.currentStep = 1;
         this.activeApp = 'home';
+        this.selectedFocus = 'PHYSIQUE'; // Focus d'entraînement par défaut
         this.selectedData = {
             firstname: '',
             lastname: '',
@@ -392,6 +394,11 @@ export class UserInterface {
                                 <div class="app-logo stats-logo">📊</div>
                                 <span class="app-label">Stats</span>
                             </button>
+
+                            <button class="app-icon" data-app="training">
+                                <div class="app-logo training-logo">🏋️‍♂️</div>
+                                <span class="app-label">Entraînement</span>
+                            </button>
                         </div>
 
                         <button id="play-block-btn" class="btn-play-block">
@@ -536,6 +543,21 @@ export class UserInterface {
                         `}
                     </div>
                 `;
+            case 'training':
+                return `
+                    <div class="app-pane">
+                        <h3 class="pane-title training-color">🏋️‍♂️ Centre d'Entraînement</h3>
+                        <p class="subtitle">Choisis ton axe de travail pour le prochain bloc mensuel :</p>
+                        <div class="grid-focus">
+                            ${Object.entries(TrainingManager.FOCUS_TYPES).map(([key, focusObj]) => `
+                                <div class="card-select training-card ${this.selectedFocus === key ? 'selected' : ''}" data-focus-key="${key}">
+                                    <h4>${focusObj.label}</h4>
+                                    <p>${focusObj.desc}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
             default:
                 return `<p class="fallback-text">Application en cours de développement...</p>`;
         }
@@ -545,7 +567,8 @@ export class UserInterface {
         const playBtn = document.getElementById('play-block-btn');
         if (playBtn) {
             playBtn.addEventListener('click', () => {
-                this.engine.playBlock();
+                // Passe le focus d'entraînement sélectionné lors du lancement du bloc
+                this.engine.playBlock(this.selectedFocus);
                 const eventActuel = EventEngine.checkTriggers();
                 
                 if (eventActuel) {
@@ -576,6 +599,15 @@ export class UserInterface {
                 const choiceIdx = parseInt(e.currentTarget.getAttribute('data-choice-idx'), 10);
                 this.engine.resolveMediaDilemma(choiceIdx);
                 this.renderDashboard();
+            });
+        });
+
+        document.querySelectorAll('.training-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                document.querySelectorAll('.training-card').forEach(c => c.classList.remove('selected'));
+                const cardEl = e.currentTarget;
+                cardEl.classList.add('selected');
+                this.selectedFocus = cardEl.getAttribute('data-focus-key');
             });
         });
     }
