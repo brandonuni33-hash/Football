@@ -362,7 +362,7 @@ export class UserInterface {
                     </div>
                     <div class="phone-home-screen">
                         <div style="background: rgba(255,255,255,0.05); padding: 14px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);">
-                            <div style="font-size: 13px; color: #94a3b8;">📅 ${state.calendar.currentPeriod}</div>
+                            <div style="font-size: 13px; color: #94a3b8;">📅 Saison ${state.calendar.currentSeasonYear}/${state.calendar.currentSeasonYear + 1} — ${state.calendar.currentPeriod}</div>
                             <div style="font-size: 16px; font-weight: bold; color: white; margin-top: 2px;">⭐ ${state.player.firstname} ${state.player.lastname} (${state.player.club})</div>
                             <div style="font-size: 12px; color: #34d399; margin-top: 4px;">OVR : ${state.player.overall} | 💰 ${state.career.balance} €</div>
                         </div>
@@ -430,6 +430,7 @@ export class UserInterface {
         const state = this.engine.state;
         const socialState = state.social || { romance: { unlocked: false }, relationships: [] };
         const mediaState = state.media || { followers: 0, hypeLevel: 0, feed: [], recentDilemma: null };
+        const history = state.career.seasonHistory || [];
 
         switch(this.activeApp) {
             case 'career':
@@ -438,7 +439,8 @@ export class UserInterface {
                         <h3 style="margin-top: 0; color: #60a5fa;">⚽ Gestion Carrière</h3>
                         <p><strong>Club :</strong> ${state.player.club}</p>
                         <p><strong>Poste :</strong> ${state.player.position} | <strong>Âge :</strong> ${state.player.age} ans</p>
-                        <p><strong>Période :</strong> ${state.calendar.currentPeriod} (Mois ${state.calendar.currentMonth} / ${state.calendar.totalMonths})</p>
+                        <p><strong>Saison :</strong> ${state.calendar.currentSeasonYear}/${state.calendar.currentSeasonYear + 1}</p>
+                        <p><strong>Période :</strong> ${state.calendar.currentPeriod}</p>
                         <hr style="border-color: #374151;">
                         <p><strong>Forme physique :</strong> ${state.player.fitness}%</p>
                         <p><strong>Moral :</strong> ${state.player.morale}%</p>
@@ -511,11 +513,28 @@ export class UserInterface {
                 return `
                     <div style="color: white; font-size: 0.9rem;">
                         <h3 style="margin-top: 0; color: #a78bfa;">📊 Statistiques de Saison</h3>
+                        <p><strong>Club actuel :</strong> ${state.player.club}</p>
                         <p><strong>Matchs joués :</strong> ${state.player.stats.matchesPlayed}</p>
                         <p><strong>Buts :</strong> ${state.player.stats.goals}</p>
                         <p><strong>Passes décisives :</strong> ${state.player.stats.assists}</p>
                         <p><strong>Note moyenne :</strong> ${state.player.stats.averageRating}</p>
                         <p><strong>Note globale (OVR) :</strong> ${state.player.overall}</p>
+
+                        <hr style="border-color: #374151; margin: 15px 0;">
+                        <h4 style="color: #a78bfa; margin-bottom: 8px;">📁 Historique des Saisons</h4>
+                        ${history.length === 0 ? '<p style="font-size: 0.8rem; color: #94a3b8; font-style: italic;">Aucune saison archivée pour l\'instant.</p>' : `
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                ${history.map(season => `
+                                    <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); padding: 8px; border-radius: 6px; font-size: 0.8rem;">
+                                        <div style="font-weight: bold; color: #60a5fa; margin-bottom: 2px;">Saison ${season.seasonLabel} — ${season.club}</div>
+                                        <div style="color: #cbd5e1;">Âge : ${season.age} | OVR : ${season.overall}</div>
+                                        <div style="color: #94a3b8; font-size: 0.75rem; margin-top: 4px;">
+                                            Matchs : ${season.stats.matchesPlayed} | Buts : ${season.stats.goals} | Passes : ${season.stats.assists} | Note : ${season.stats.averageRating}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `}
                     </div>
                 `;
             default:
