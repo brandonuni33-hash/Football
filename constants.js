@@ -71,11 +71,74 @@ export const CONTINENTS = {
 };
 
 export const ORIGINS = {
-    CENTRE_FORMATION: { id: 'CENTRE_FORMATION', name: 'Centre de Formation', trait: 'Classique', mults: { mental: 1.10 } },
-    CLUB_AMATEUR: { id: 'CLUB_AMATEUR', name: 'Club Amateur', trait: 'Acharné', mults: { physique: 1.10 } },
-    FUTSAL: { id: 'FUTSAL', name: 'Futsal', trait: 'Dribbleur Fin', mults: { technique: 1.10, physique: 0.85 } },
-    STREET: { id: 'STREET', name: 'Street Football', trait: 'Instinct 1v1', mults: { technique: 1.10, discipline: 0.90 } },
-    ATHLETE: { id: 'ATHLETE', name: 'Athlète Polyvalent', trait: 'Moteur Hybride', mults: { physique: 1.15, technique: 0.90 } },
-    DEBUTANT_TARDIF: { id: 'DEBUTANT_TARDIF', name: 'Débutant Tardif', trait: 'Poulain Brut', mults: { basePenalty: -5 } },
-    FILS_DE_PRO: { id: 'FILS_DE_PRO', name: 'Fils de Pro', trait: 'Héritage Tactique', mults: { technique: 1.10, vitesse: 1.10 } }
+    CENTRE_FORMATION: { 
+        id: 'CENTRE_FORMATION', 
+        name: 'Centre de Formation', 
+        trait: 'Classique', 
+        desc: 'Issu d’une structure professionnelle reconnue. Le joueur bénéficie d’un bagage tactique supérieur et d’une forte attraction naturelle des recruteurs.',
+        mults: { mental: 1.10 } 
+    },
+    CLUB_AMATEUR: { 
+        id: 'CLUB_AMATEUR', 
+        name: 'Club Amateur', 
+        trait: 'Acharné', 
+        desc: 'Formé sur les terrains boueux du football amateur. Un volume de jeu impressionnant et une mentalité de battant, mais un léger retard tactique.',
+        mults: { physique: 1.10 } 
+    },
+    FUTSAL: { 
+        id: 'FUTSAL', 
+        name: 'Futsal', 
+        trait: 'Dribbleur Fin', 
+        desc: 'Maîtrise absolue du ballon dans de petits espaces. Des dribbles et un toucher de balle d’élite, compensant un profil physique moins athlétique au départ.',
+        mults: { technique: 1.10, physique: 0.85 } 
+    },
+    STREET: { 
+        id: 'STREET', 
+        name: 'Street Football', 
+        trait: 'Instinct 1v1', 
+        desc: 'Pur produit du bitume. Une agressivité saine et un sens inné du duel en un contre un, au détriment parfois de la discipline collective.',
+        mults: { technique: 1.10, discipline: 0.90 } 
+    },
+    ATHLETE: { 
+        id: 'ATHLETE', 
+        name: 'Athlète Polyvalent', 
+        trait: 'Moteur Hybride', 
+        desc: 'Un spécimen physique hors norme. Vitesse et puissance au-dessus de la moyenne, demandant un travail accru sur le plan technique.',
+        mults: { physique: 1.15, technique: 0.90 } 
+    },
+    DEBUTANT_TARDIF: { 
+        id: 'DEBUTANT_TARDIF', 
+        name: 'Débutant Tardif', 
+        trait: 'Poulain Brut', 
+        desc: 'Arrivé tardivement dans le milieu compétitif. Des lacunes initiales marquées, mais un potentiel brut insoupçonné et imprévisible.',
+        mults: { basePenalty: -5 } 
+    },
+    FILS_DE_PRO: { 
+        id: 'FILS_DE_PRO', 
+        name: 'Fils de Pro', 
+        trait: 'Héritage Tactique', 
+        desc: 'Baigné dans le milieu professionnel dès le berceau. Avantage de départ notable en réputation, en technique et un héritage financier précieux.',
+        mults: { technique: 1.10, vitesse: 1.10 } 
+    }
+};
+
+export const HEART_CLUBS = {
+    "Premier League (Angleterre)": [
+        { id: 'ARS', name: 'Arsenal' }, { id: 'MCI', name: 'Manchester City' }, 
+        { id: 'LIV', name: 'Liverpool FC' }, { id: 'MUN', name: 'Manchester United' }
+    ],
+    "La Liga (Espagne)": [
+        { id: 'RMA', name: 'Real Madrid' }, { id: 'FCB', name: 'FC Barcelone' }, 
+        { id: 'ATM', name: 'Atlético de Madrid' }
+    ],
+    "Serie A (Italie)": [
+        { id: 'JUV', name: 'Juventus FC' }, { id: 'MIL', name: 'AC Milan' }, 
+        { id: 'INT', name: 'Inter Milan' }
+    ],
+    "Bundesliga (Allemagne)": [
+        { id: 'BAY', name: 'Bayern Munich' }, { id: 'BVB', name: 'Borussia Dortmund' }
+    ],
+    "Ligue 1 (France)": [
+        { id: 'PSG', name: 'Paris Saint-Germain' }, { id: 'OM', name: 'Olympique de Marseille' }
+    ]
 };
