@@ -5,6 +5,7 @@ import { EconomyManager } from './economy.js';
 import { SocialSystem } from './social.js';
 import { MediaSystem } from './media.js';
 import { EventEngine } from './events.js';
+import { TrainingManager } from './entrainement.js'; // Import du manager d'entraînement
 
 export class GameEngine {
     constructor() {
@@ -66,14 +67,16 @@ export class GameEngine {
                     injuryProneness: Math.floor(Math.random() * 10) + 6
                 }
             },
+            // Ajout du focus d'entraînement par défaut dans le state global
+            trainingFocus: 'TECHNIQUE', 
             social: this.socialSystem.initSocialData(selectedData.coachName),
             media: this.mediaSystem.initMediaData(),
             career: {
                 balance: 0,
-                seasonHistory: [] // Tableau pour stocker l'historique des saisons passées
+                seasonHistory: []
             },
             calendar: {
-                currentMonth: 8,     // Mois de départ : Août (1 = Août, ..., 10 = Mai, 11 = Juin, 12 = Juillet)
+                currentMonth: 8,     
                 currentSeasonYear: 2026,
                 totalMonths: 12,
                 currentPeriod: "Reprise & Pré-saison",
@@ -103,7 +106,8 @@ export class GameEngine {
             return;
         }
 
-        const report = MatchBlockManager.simulateBlock(this.state);
+        // On passe le focus d'entraînement actuel stocké dans le state au simulateur
+        const report = MatchBlockManager.simulateBlock(this.state, this.state.trainingFocus);
 
         this.socialSystem.updateSocialCycle(this.state);
         this.mediaSystem.generatePostAfterBlock(this.state, report);
@@ -120,9 +124,8 @@ export class GameEngine {
         if (cal.currentMonth < 12) {
             cal.currentMonth++;
         } else {
-            // Fin du mois de Juillet : Bouclage de l'année civile, on passe à la saison suivante en Août
             this.archiveAndResetSeason();
-            cal.currentMonth = 8; // Retour en Août
+            cal.currentMonth = 8; 
             cal.currentSeasonYear++;
         }
         
@@ -142,13 +145,21 @@ export class GameEngine {
     }
 
     /**
+     * Permet à l'UI de modifier le focus d'entraînement en cours
+     */
+    setTrainingFocus(focusKey) {
+        if (!this.state) return;
+        this.state.trainingFocus = focusKey;
+        console.log(`Focus d'entraînement mis à jour : ${focusKey}`);
+    }
+
+    /**
      * Archive la saison écoulée en juin/juillet et réinitialise les stats de club pour la rentrée d'août
      */
     archiveAndResetSeason() {
         const player = this.state.player;
         const currentYear = this.state.calendar.currentSeasonYear;
 
-        // 1. Sauvegarde des statistiques de la saison dans l'historique
         const seasonSummary = {
             seasonLabel: `${currentYear}/${currentYear + 1}`,
             club: player.club,
@@ -162,10 +173,8 @@ export class GameEngine {
         }
         this.state.career.seasonHistory.push(seasonSummary);
 
-        // 2. Vieillissement du joueur d'un an
         player.age += 1;
 
-        // 3. Réinitialisation des statistiques de match pour la nouvelle saison
         player.stats.matchesPlayed = 0;
         player.stats.goals = 0;
         player.stats.assists = 0;
