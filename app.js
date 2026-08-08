@@ -19,6 +19,7 @@ const POSITIONS = [
   { id: 'ag', label: 'AG' },
   { id: 'moc', label: 'MOC' },
   { id: 'mc', label: 'MC' },
+  { id: 'mdc', label: 'MDC' },
   { id: 'dd', label: 'DD' },
   { id: 'dg', label: 'DG' },
   { id: 'dc', label: 'DC' },
@@ -39,12 +40,48 @@ const NATIONALITIES = [
 ];
 
 const ORIGINS = [
-  { id: 'centre', name: 'Centre de Formation', desc: '+10% Mental/Tactique | Trait: Classique', trait: 'Classique' },
-  { id: 'amateur', name: 'Club Amateur', desc: '+10% Physique, -10% Tactique | Trait: Acharné', trait: 'Acharné' },
-  { id: 'futsal', name: 'Futsal', desc: '+10% Dribble/Technique | Trait: Dribbleur Fin', trait: 'Dribbleur Fin' },
-  { id: 'tardif', name: 'Débutant Tardif', desc: '-5 OVR base | Trait: Poulain Brut', trait: 'Poulain Brut' },
-  { id: 'street', name: 'Street Football', desc: '+10% Dribble | Trait: Instinct 1v1', trait: 'Instinct 1v1' },
-  { id: 'athlete', name: 'Athlète Polyvalent', desc: '+15% Vitesse/Puissance | Trait: Moteur Hybride', trait: 'Moteur Hybride' }
+  { 
+    id: 'centre', 
+    name: 'Centre de Formation', 
+    desc: '+10% Mental/Tactique | Trait: Classique', 
+    trait: 'Classique',
+    longDesc: "Issu des structures professionnelles pré-formatées, tu as bénéficié dès ton plus jeune âge d'un encadrement rigoureux, de terrains parfaits et de conseils tactiques poussés. Ton jeu est propre, académique et respectueux des consignes, mais il manque parfois de folie spontanée."
+  },
+  { 
+    id: 'amateur', 
+    name: 'Club Amateur', 
+    desc: '+10% Physique, -10% Tactique | Trait: Acharné', 
+    trait: 'Acharné',
+    longDesc: "Formé sur des terrains difficiles sous la pluie, les mottes de terre et les tacles appuyés. Tu possèdes une caisse physique hors norme et un mental d'acier forgé dans la difficulté, même si tes premiers pas tactiques au haut niveau demanderont un temps d'adaptation."
+  },
+  { 
+    id: 'futsal', 
+    name: 'Futsal', 
+    desc: '+10% Dribble/Technique | Trait: Dribbleur Fin', 
+    trait: 'Dribbleur Fin',
+    longDesc: "Le rectangle de parquet et le ballon lourd ont sculpté ton toucher de balle. Tu es un maître des espaces réduits, capable de sortir de situations impossibles par des feintes de corps, des contrôles orientés et une vista technique déconcertante."
+  },
+  { 
+    id: 'tardif', 
+    name: 'Débutant Tardif', 
+    desc: '-5 OVR base | Trait: Poulain Brut', 
+    trait: 'Poulain Brut',
+    longDesc: "Repéré tardivement dans les championnats loisirs ou de quartier, tu arrives dans le monde pro avec du retard sur les fondamentaux et un bagage technique brut. En contrepartie, ton potentiel de progression explosif et ta faim de réussite surprennent tous les observateurs."
+  },
+  { 
+    id: 'street', 
+    name: 'Street Football', 
+    desc: '+10% Dribble | Trait: Instinct 1v1', 
+    trait: 'Instinct 1v1',
+    longDesc: "Le bitume, les cages improvisées entre des sweats et les matches de rue permanents t'ont forgé un instinct de duel implacable. Tu n'as peur de personne, provoques sans cesse ton vis-à-vis et possèdes ce brin d'insolence propre aux virtuoses de la rue."
+  },
+  { 
+    id: 'athlete', 
+    name: 'Athlète Polyvalent', 
+    desc: '+15% Vitesse/Puissance | Trait: Moteur Hybride', 
+    trait: 'Moteur Hybride',
+    longDesc: "Doté de dispositions athlétiques hors du commun dès l'adolescence, tu combines vitesse pure et coffre immense. Capable de répéter les efforts haute intensité pendant 90 minutes, tu compenses un placement parfois approximatif par un impact physique total."
+  }
 ];
 
 const BIG_LEAGUES_CLUBS = {
@@ -59,126 +96,167 @@ const BIG_LEAGUES_CLUBS = {
 
 const CITIES_AND_CLUBS = [
   // France - National / R1 / D3 / D4 / Amateurs
-  { name: 'FC Girondins de Bordeaux', league: 'National / R1', tier: 'Amateur', minOvr: 0, coachName: 'Bruno Irles', coachStyle: 'Rigueur tactique et engagement physique total.', weeklySalary: 300 },
-  { name: 'US Lormont', league: 'Régional 1', tier: 'Amateur', minOvr: 0, coachName: 'Mehdi Sabri', coachStyle: 'Jeu direct et transition rapide sur les côtés.', weeklySalary: 150 },
-  { name: 'Stade Bordelais', league: 'National 3', tier: 'Amateur', minOvr: 0, coachName: 'Antoine Verges', coachStyle: 'Bloc bas solide et contre-attaques rapides.', weeklySalary: 200 },
-  { name: 'Aviron Bayonnais', league: 'National 3', tier: 'Amateur', minOvr: 0, coachName: 'Landry Bordagaray', coachStyle: 'Générosité dans l’effort et jeu aérien.', weeklySalary: 180 },
-  { name: 'Bergerac Périgord FC', league: 'National 2', tier: 'Amateur', minOvr: 0, coachName: 'Yassine Azahaf', coachStyle: 'Solidité défensive et percussion sur les ailes.', weeklySalary: 250 },
-  { name: 'Trélissac FC', league: 'National 3', tier: 'Amateur', minOvr: 0, coachName: 'Hervé Loubat', coachStyle: 'Discipline stricte et duels au milieu.', weeklySalary: 160 },
-  { name: 'Stade Montois', league: 'Régional 1', tier: 'Amateur', minOvr: 0, coachName: 'Cédric Pardeilhan', coachStyle: 'Jeu au sol et projection collective.', weeklySalary: 140 },
-  { name: 'Pau FC', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 45, coachName: 'Nicolas Usaï', coachStyle: 'Bloc compact en contre-attaque et solidité.', weeklySalary: 1200 },
-  { name: 'SC Bastia', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 48, coachName: 'Benoît Tavenot', coachStyle: 'Duels agressifs et mental de guerrier.', weeklySalary: 1500 },
-  { name: 'Stade Lavallois', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 42, coachName: 'Olivier Frapolli', coachStyle: 'Solidité défensive et pressing haut.', weeklySalary: 1000 },
-  { name: 'En Avant Guingamp', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 46, coachName: 'Sylvain Ripoll', coachStyle: 'Transition rapide et utilisation de la largeur.', weeklySalary: 1400 },
-  { name: 'Grenoble Foot 38', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 44, coachName: 'Oswald Tanchot', coachStyle: 'Maîtrise tactique et patience dans la construction.', weeklySalary: 1150 },
-  { name: 'Rodez Aveyron Football', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 43, coachName: 'Didier Santini', coachStyle: 'Impact physique et intensité de tous les instants.', weeklySalary: 1100 },
-  { name: 'SM Caen', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 47, coachName: 'Hervé Chanelet', coachStyle: 'Jeu combiné et possession axiale.', weeklySalary: 1600 },
-  { name: 'ESTAC Troyes', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 46, coachName: 'Stéphane Dumont', coachStyle: 'Créativité offensive et redoublements de passes.', weeklySalary: 1350 },
-  { name: 'US Le Mans', league: 'National', tier: 'D3', minOvr: 38, coachName: 'Patrick Videira', coachStyle: 'Fermeté défensive et projections en nombre.', weeklySalary: 750 },
-  { name: 'AS Nancy Lorraine', league: 'National', tier: 'D3', minOvr: 39, coachName: 'Pablo Correa', coachStyle: 'Mentalité de fer, duels et grinta.', weeklySalary: 850 },
-  { name: 'US Orléans', league: 'National', tier: 'D3', minOvr: 37, coachName: 'Hervé Della Maggiore', coachStyle: 'Équilibre et rigueur tactique rigoureuse.', weeklySalary: 700 },
-  { name: 'Valenciennes FC', league: 'National', tier: 'D3', minOvr: 38, coachName: 'Ahmed Kantari', coachStyle: 'Relance propre et pressing coordonné.', weeklySalary: 800 },
-  { name: 'FC Sochaux-Montbéliard', league: 'National', tier: 'D3', minOvr: 40, coachName: 'Karim Mokeddem', coachStyle: 'Jeu technique au sol et percussion offensive.', weeklySalary: 900 },
-  { name: 'Dijon FCO', league: 'National', tier: 'D3', minOvr: 39, coachName: 'Baptiste Ridira', coachStyle: 'Ambitieux, jeu vertical et intensité.', weeklySalary: 820 },
-  { name: 'Aubagne FC', league: 'National', tier: 'D3', minOvr: 36, coachName: 'Maxime D’Ornano', coachStyle: 'Bloc solide et solidarité exemplaire.', weeklySalary: 650 },
-  { name: 'US Concarneau', league: 'National', tier: 'D3', minOvr: 37, coachName: 'Stéphane Le Mignan', coachStyle: 'Discipline collective et contre-éclair.', weeklySalary: 680 },
-  { name: 'Châteauroux', league: 'National', tier: 'D3', minOvr: 36, coachName: 'Patrice Lair', coachStyle: 'Rigidité tactique et duels au sol.', weeklySalary: 660 },
-  { name: 'Quevilly Rouen Métropole', league: 'National', tier: 'D3', minOvr: 37, coachName: 'David Carré', coachStyle: 'Jeu direct et agressivité positive.', weeklySalary: 710 },
+  { name: 'FC Girondins de Bordeaux', league: 'National / R1', tier: 'Amateur', minOvr: 0, coachName: 'Bruno Irles', coachStyle: 'Rigueur tactique et engagement physique total.' },
+  { name: 'US Lormont', league: 'Régional 1', tier: 'Amateur', minOvr: 0, coachName: 'Mehdi Sabri', coachStyle: 'Jeu direct et transition rapide sur les côtés.' },
+  { name: 'Stade Bordelais', league: 'National 3', tier: 'Amateur', minOvr: 0, coachName: 'Antoine Verges', coachStyle: 'Bloc bas solide et contre-attaques rapides.' },
+  { name: 'Aviron Bayonnais', league: 'National 3', tier: 'Amateur', minOvr: 0, coachName: 'Landry Bordagaray', coachStyle: 'Générosité dans l’effort et jeu aérien.' },
+  { name: 'Bergerac Périgord FC', league: 'National 2', tier: 'Amateur', minOvr: 0, coachName: 'Yassine Azahaf', coachStyle: 'Solidité défensive et percussion sur les ailes.' },
+  { name: 'Trélissac FC', league: 'National 3', tier: 'Amateur', minOvr: 0, coachName: 'Hervé Loubat', coachStyle: 'Discipline stricte et duels au milieu.' },
+  { name: 'Stade Montois', league: 'Régional 1', tier: 'Amateur', minOvr: 0, coachName: 'Cédric Pardeilhan', coachStyle: 'Jeu au sol et projection collective.' },
+  { name: 'Pau FC', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 45, coachName: 'Nicolas Usaï', coachStyle: 'Bloc compact en contre-attaque et solidité.' },
+  { name: 'SC Bastia', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 48, coachName: 'Benoît Tavenot', coachStyle: 'Duels agressifs et mental de guerrier.' },
+  { name: 'Stade Lavallois', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 42, coachName: 'Olivier Frapolli', coachStyle: 'Solidité défensive et pressing haut.' },
+  { name: 'En Avant Guingamp', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 46, coachName: 'Sylvain Ripoll', coachStyle: 'Transition rapide et utilisation de la largeur.' },
+  { name: 'Grenoble Foot 38', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 44, coachName: 'Oswald Tanchot', coachStyle: 'Maîtrise tactique et patience dans la construction.' },
+  { name: 'Rodez Aveyron Football', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 43, coachName: 'Didier Santini', coachStyle: 'Impact physique et intensité de tous les instants.' },
+  { name: 'SM Caen', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 47, coachName: 'Hervé Chanelet', coachStyle: 'Jeu combiné et possession axiale.' },
+  { name: 'ESTAC Troyes', league: 'Ligue 2 BKT', tier: 'D2', minOvr: 46, coachName: 'Stéphane Dumont', coachStyle: 'Créativité offensive et redoublements de passes.' },
+  { name: 'US Le Mans', league: 'National', tier: 'D3', minOvr: 38, coachName: 'Patrick Videira', coachStyle: 'Fermeté défensive et projections en nombre.' },
+  { name: 'AS Nancy Lorraine', league: 'National', tier: 'D3', minOvr: 39, coachName: 'Pablo Correa', coachStyle: 'Mentalité de fer, duels et grinta.' },
+  { name: 'US Orléans', league: 'National', tier: 'D3', minOvr: 37, coachName: 'Hervé Della Maggiore', coachStyle: 'Équilibre et rigueur tactique rigoureuse.' },
+  { name: 'Valenciennes FC', league: 'National', tier: 'D3', minOvr: 38, coachName: 'Ahmed Kantari', coachStyle: 'Relance propre et pressing coordonné.' },
+  { name: 'FC Sochaux-Montbéliard', league: 'National', tier: 'D3', minOvr: 40, coachName: 'Karim Mokeddem', coachStyle: 'Jeu technique au sol et percussion offensive.' },
+  { name: 'Dijon FCO', league: 'National', tier: 'D3', minOvr: 39, coachName: 'Baptiste Ridira', coachStyle: 'Ambitieux, jeu vertical et intensité.' },
+  { name: 'Aubagne FC', league: 'National', tier: 'D3', minOvr: 36, coachName: 'Maxime D’Ornano', coachStyle: 'Bloc solide et solidarité exemplaire.' },
+  { name: 'US Concarneau', league: 'National', tier: 'D3', minOvr: 37, coachName: 'Stéphane Le Mignan', coachStyle: 'Discipline collective et contre-éclair.' },
+  { name: 'Châteauroux', league: 'National', tier: 'D3', minOvr: 36, coachName: 'Patrice Lair', coachStyle: 'Rigidité tactique et duels au sol.' },
+  { name: 'Quevilly Rouen Métropole', league: 'National', tier: 'D3', minOvr: 37, coachName: 'David Carré', coachStyle: 'Jeu direct et agressivité positive.' },
 
   // Angleterre - EFL League Two / League One / Non-League
-  { name: 'Bromley FC', league: 'EFL League Two', tier: 'D4', minOvr: 40, coachName: 'Andy Woodman', coachStyle: 'Jeu physique à l’anglaise et duels aériens.', weeklySalary: 800 },
-  { name: 'Salford City', league: 'EFL League Two', tier: 'D4', minOvr: 43, coachName: 'Karl Robinson', coachStyle: 'Possession et projection rapide vers l’avant.', weeklySalary: 950 },
-  { name: 'Notts County', league: 'EFL League Two', tier: 'D4', minOvr: 42, coachName: 'Stuart Maynard', coachStyle: 'Jeu ultra offensif inspiré du tiki-taka bas.', weeklySalary: 900 },
-  { name: 'Wrexham AFC', league: 'EFL League One', tier: 'D3', minOvr: 46, coachName: 'Phil Parkinson', coachStyle: 'Puissance physique, engagement et mentalité de vainqueur.', weeklySalary: 1400 },
-  { name: 'Stockport County', league: 'EFL League One', tier: 'D3', minOvr: 45, coachName: 'Dave Challinor', coachStyle: 'Bloc haut et agressivité dans les transmissions.', weeklySalary: 1250 },
-  { name: 'Mansfield Town', league: 'EFL League One', tier: 'D3', minOvr: 43, coachName: 'Nigel Clough', coachStyle: 'Expérience, pragmatisme et réalisme froid.', weeklySalary: 1100 },
-  { name: 'Chesterfield FC', league: 'EFL League Two', tier: 'D4', minOvr: 41, coachName: 'Paul Cook', coachStyle: 'Attaque placée et mouvements constants.', weeklySalary: 850 },
-  { name: 'Barnet FC', league: 'National League', tier: 'D5', minOvr: 35, coachName: 'Dean Brennan', coachStyle: 'Pressing tout terrain et vitesse sur les ailes.', weeklySalary: 550 },
-  { name: 'Oldham Athletic', league: 'National League', tier: 'D5', minOvr: 35, coachName: 'Micky Mellon', coachStyle: 'Fermeté défensive et engagement total.', weeklySalary: 520 },
-  { name: 'Southend United', league: 'National League', tier: 'D5', minOvr: 34, coachName: 'Kevin Maher', coachStyle: 'Solidité face aux gros et jeu direct.', weeklySalary: 480 },
-  { name: 'York City', league: 'National League', tier: 'D5', minOvr: 35, coachName: 'Adam Hinshelwood', coachStyle: 'Construction propre et audace tactique.', weeklySalary: 500 },
-  { name: 'Gillingham FC', league: 'EFL League Two', tier: 'D4', minOvr: 40, coachName: 'Mark Bonner', coachStyle: 'Bloc hermétique et contres fulgurants.', weeklySalary: 780 },
-  { name: 'Fleetwood Town', league: 'EFL League Two', tier: 'D4', minOvr: 41, coachName: 'Charlie Adam', coachStyle: 'Créativité au milieu et pressing intense.', weeklySalary: 820 },
-  { name: 'Bradford City', league: 'EFL League Two', tier: 'D4', minOvr: 42, coachName: 'Graham Alexander', coachStyle: 'Impact athlétique et ferveur populaire.', weeklySalary: 880 },
-  { name: 'Doncaster Rovers', league: 'EFL League Two', tier: 'D4', minOvr: 42, coachName: 'Grant McCann', coachStyle: 'Jeu léché et redoublement de passes courtes.', weeklySalary: 890 },
-  { name: 'Leyton Orient', league: 'EFL League One', tier: 'D3', minOvr: 44, coachName: 'Richie Wellens', coachStyle: 'Maîtrise du tempo et possession dynamique.', weeklySalary: 1050 },
-  { name: 'Lincoln City', league: 'EFL League One', tier: 'D3', minOvr: 44, coachName: 'Michael Skubala', coachStyle: 'Organisation rigoureuse et transition chirurgicale.', weeklySalary: 1080 },
-  { name: 'Blackpool FC', league: 'EFL League One', tier: 'D3', minOvr: 46, coachName: 'Steve Bruce', coachStyle: 'Expérience tactique et pragmatisme absolu.', weeklySalary: 1300 },
-  { name: 'Charlton Athletic', league: 'EFL League One', tier: 'D3', minOvr: 47, coachName: 'Nathan Jones', coachStyle: 'Intensité physique et duels gagnés.', weeklySalary: 1450 },
-  { name: 'Huddersfield Town', league: 'EFL League One', tier: 'D3', minOvr: 48, coachName: 'Michael Duff', coachStyle: 'Bloc équipe très resserré et discipline de fer.', weeklySalary: 1550 },
+  { name: 'Bromley FC', league: 'EFL League Two', tier: 'D4', minOvr: 40, coachName: 'Andy Woodman', coachStyle: 'Jeu physique à l’anglaise et duels aériens.' },
+  { name: 'Salford City', league: 'EFL League Two', tier: 'D4', minOvr: 43, coachName: 'Karl Robinson', coachStyle: 'Possession et projection rapide vers l’avant.' },
+  { name: 'Notts County', league: 'EFL League Two', tier: 'D4', minOvr: 42, coachName: 'Stuart Maynard', coachStyle: 'Jeu ultra offensif inspiré du tiki-taka bas.' },
+  { name: 'Wrexham AFC', league: 'EFL League One', tier: 'D3', minOvr: 46, coachName: 'Phil Parkinson', coachStyle: 'Puissance physique, engagement et mentalité de vainqueur.' },
+  { name: 'Stockport County', league: 'EFL League One', tier: 'D3', minOvr: 45, coachName: 'Dave Challinor', coachStyle: 'Bloc haut et agressivité dans les transmissions.' },
+  { name: 'Mansfield Town', league: 'EFL League One', tier: 'D3', minOvr: 43, coachName: 'Nigel Clough', coachStyle: 'Expérience, pragmatisme et réalisme froid.' },
+  { name: 'Chesterfield FC', league: 'EFL League Two', tier: 'D4', minOvr: 41, coachName: 'Paul Cook', coachStyle: 'Attaque placée et mouvements constants.' },
+  { name: 'Barnet FC', league: 'National League', tier: 'D5', minOvr: 35, coachName: 'Dean Brennan', coachStyle: 'Pressing tout terrain et vitesse sur les ailes.' },
+  { name: 'Oldham Athletic', league: 'National League', tier: 'D5', minOvr: 35, coachName: 'Micky Mellon', coachStyle: 'Fermeté défensive et engagement total.' },
+  { name: 'Southend United', league: 'National League', tier: 'D5', minOvr: 34, coachName: 'Kevin Maher', coachStyle: 'Solidité face aux gros et jeu direct.' },
+  { name: 'York City', league: 'National League', tier: 'D5', minOvr: 35, coachName: 'Adam Hinshelwood', coachStyle: 'Construction propre et audace tactique.' },
+  { name: 'Gillingham FC', league: 'EFL League Two', tier: 'D4', minOvr: 40, coachName: 'Mark Bonner', coachStyle: 'Bloc hermétique et contres fulgurants.' },
+  { name: 'Fleetwood Town', league: 'EFL League Two', tier: 'D4', minOvr: 41, coachName: 'Charlie Adam', coachStyle: 'Créativité au milieu et pressing intense.' },
+  { name: 'Bradford City', league: 'EFL League Two', tier: 'D4', minOvr: 42, coachName: 'Graham Alexander', coachStyle: 'Impact athlétique et ferveur populaire.' },
+  { name: 'Doncaster Rovers', league: 'EFL League Two', tier: 'D4', minOvr: 42, coachName: 'Grant McCann', coachStyle: 'Jeu léché et redoublement de passes courtes.' },
+  { name: 'Leyton Orient', league: 'EFL League One', tier: 'D3', minOvr: 44, coachName: 'Richie Wellens', coachStyle: 'Maîtrise du tempo et possession dynamique.' },
+  { name: 'Lincoln City', league: 'EFL League One', tier: 'D3', minOvr: 44, coachName: 'Michael Skubala', coachStyle: 'Organisation rigoureuse et transition chirurgicale.' },
+  { name: 'Blackpool FC', league: 'EFL League One', tier: 'D3', minOvr: 46, coachName: 'Steve Bruce', coachStyle: 'Expérience tactique et pragmatisme absolu.' },
+  { name: 'Charlton Athletic', league: 'EFL League One', tier: 'D3', minOvr: 47, coachName: 'Nathan Jones', coachStyle: 'Intensité physique et duels gagnés.' },
+  { name: 'Huddersfield Town', league: 'EFL League One', tier: 'D3', minOvr: 48, coachName: 'Michael Duff', coachStyle: 'Bloc équipe très resserré et discipline de fer.' },
 
   // Espagne - LaLiga Hypermotion & Primera RFEF
-  { name: 'CD Castellón', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 50, coachName: 'Dick Schreuder', coachStyle: 'Possession audacieuse et prise de risque.', weeklySalary: 2500 },
-  { name: 'CD Mirandés', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 44, coachName: 'Alessio Lisci', coachStyle: 'Bloc bas ultra discipliné et contres fulgurants.', weeklySalary: 1400 },
-  { name: 'SD Huesca', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: '45', coachName: 'Antonio Hidalgo', coachStyle: 'Solidité défensive et transitions rapides.', weeklySalary: 1350 },
-  { name: 'Racing de Ferrol', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 43, coachName: 'Cristóbal Parralo', coachStyle: 'Organisation rigoureuse et solidarité.', weeklySalary: 1200 },
-  { name: 'Burgos CF', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 46, coachName: 'Jon Pérez Bolo', coachStyle: 'Muraille défensive et réalisme offensif.', weeklySalary: 1500 },
-  { name: 'Real Zaragoza', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 49, coachName: 'Víctor Fernández', coachStyle: 'Jeu ambitieux tourné vers l’offensive.', weeklySalary: 2100 },
-  { name: 'Sporting de Gijón', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 48, coachName: 'Rubén Albés', coachStyle: 'Verticalité, intensité et ferveur des supporters.', weeklySalary: 1900 },
-  { name: 'Cádiz CF', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 50, coachName: 'Paco López', coachStyle: 'Bloc compact et contre-attaques foudroyantes.', weeklySalary: 2400 },
-  { name: 'Granada CF', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 51, coachName: 'Guille Abascal', coachStyle: 'Domination technique et animation sur les côtés.', weeklySalary: 2600 },
-  { name: 'Albacete Balompié', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 45, coachName: 'Alberto González', coachStyle: 'Audace et liberté créative au milieu.', weeklySalary: 1300 },
-  { name: 'CD Tenerife', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 46, coachName: 'Pepe Mel', coachStyle: 'Expérience, équilibre et solidité à domicile.', weeklySalary: 1600 },
-  { name: 'FC Andorra', league: 'Primera RFEF', tier: 'D3', minOvr: 40, coachName: 'Ferran Costa', coachStyle: 'Tiki-taka inspiré et possession stérile interdite.', weeklySalary: 900 },
-  { name: 'Real Murcia', league: 'Primera RFEF', tier: 'D3', minOvr: 38, coachName: 'Fran Fernández', coachStyle: 'Pression constante et impact physique.', weeklySalary: 800 },
-  { name: 'Cultural Leonesa', league: 'Primera RFEF', tier: 'D3', minOvr: 37, coachName: 'Raúl Llona', coachStyle: 'Jeu combiné et rigueur tactique.', weeklySalary: 750 },
-  { name: 'UD Ibiza', league: 'Primera RFEF', tier: 'D3', minOvr: 39, coachName: 'Josep Alcácer', coachStyle: 'Maîtrise technique et transition rapide.', weeklySalary: 850 },
-  { name: 'Castellón B / Promesas', league: 'Primera RFEF', tier: 'D3', minOvr: 36, coachName: 'Sergi Escobar', coachStyle: 'Jeux de position et dynamisme.', weeklySalary: 700 },
+  { name: 'CD Castellón', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 50, coachName: 'Dick Schreuder', coachStyle: 'Possession audacieuse et prise de risque.' },
+  { name: 'CD Mirandés', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 44, coachName: 'Alessio Lisci', coachStyle: 'Bloc bas ultra discipliné et contres fulgurants.' },
+  { name: 'SD Huesca', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 45, coachName: 'Antonio Hidalgo', coachStyle: 'Solidité défensive et transitions rapides.' },
+  { name: 'Racing de Ferrol', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 43, coachName: 'Cristóbal Parralo', coachStyle: 'Organisation rigoureuse et solidarité.' },
+  { name: 'Burgos CF', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 46, coachName: 'Jon Pérez Bolo', coachStyle: 'Muraille défensive et réalisme offensif.' },
+  { name: 'Real Zaragoza', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 49, coachName: 'Víctor Fernández', coachStyle: 'Jeu ambitieux tourné vers l’offensive.' },
+  { name: 'Sporting de Gijón', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 48, coachName: 'Rubén Albés', coachStyle: 'Verticalité, intensité et ferveur des supporters.' },
+  { name: 'Cádiz CF', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 50, coachName: 'Paco López', coachStyle: 'Bloc compact et contre-attaques foudroyantes.' },
+  { name: 'Granada CF', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 51, coachName: 'Guille Abascal', coachStyle: 'Domination technique et animation sur les côtés.' },
+  { name: 'Albacete Balompié', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 45, coachName: 'Alberto González', coachStyle: 'Audace et liberté créative au milieu.' },
+  { name: 'CD Tenerife', league: 'LaLiga Hypermotion', tier: 'D2', minOvr: 46, coachName: 'Pepe Mel', coachStyle: 'Expérience, équilibre et solidité à domicile.' },
+  { name: 'FC Andorra', league: 'Primera RFEF', tier: 'D3', minOvr: 40, coachName: 'Ferran Costa', coachStyle: 'Tiki-taka inspiré et possession stérile interdite.' },
+  { name: 'Real Murcia', league: 'Primera RFEF', tier: 'D3', minOvr: 38, coachName: 'Fran Fernández', coachStyle: 'Pression constante et impact physique.' },
+  { name: 'Cultural Leonesa', league: 'Primera RFEF', tier: 'D3', minOvr: 37, coachName: 'Raúl Llona', coachStyle: 'Jeu combiné et rigueur tactique.' },
+  { name: 'UD Ibiza', league: 'Primera RFEF', tier: 'D3', minOvr: 39, coachName: 'Josep Alcácer', coachStyle: 'Maîtrise technique et transition rapide.' },
+  { name: 'Castellón B / Promesas', league: 'Primera RFEF', tier: 'D3', minOvr: 36, coachName: 'Sergi Escobar', coachStyle: 'Jeux de position et dynamisme.' },
 
   // Allemagne - 3. Liga & 2. Bundesliga
-  { name: 'Viktoria Köln', league: '3. Liga', tier: 'D3', minOvr: 38, coachName: 'Olaf Janßen', coachStyle: 'Discipline allemande et jeu de transition.', weeklySalary: 700 },
-  { name: 'Dynamo Dresden', league: '3. Liga', tier: 'D3', minOvr: 42, coachName: 'Thomas Stamm', coachStyle: 'Pressing étouffant et intensité maximale.', weeklySalary: 950 },
-  { name: 'Arminia Bielefeld', league: '3. Liga', tier: 'D3', minOvr: 40, coachName: 'Mitch Kniat', coachStyle: 'Solidité défensive et jeu direct.', weeklySalary: 850 },
-  { name: 'FC Ingolstadt 04', league: '3. Liga', tier: 'D3', minOvr: 39, coachName: 'Sabrina Wittmann', coachStyle: 'Rigueur tactique et occupation rationnelle du terrain.', weeklySalary: 800 },
-  { name: 'Hansa Rostock', league: '3. Liga', tier: 'D3', minOvr: 41, coachName: 'Bernd Hollerbach', coachStyle: 'Duels physiques intenses et engagement total.', weeklySalary: 900 },
-  { name: 'TSV 1860 Munich', league: '3. Liga', tier: 'D3', minOvr: 41, coachName: 'Argirios Giannikis', coachStyle: 'Ferveur, mentalité de combat et jeu vertical.', weeklySalary: 920 },
-  { name: 'SV Sandhausen', league: '3. Liga', tier: 'D3', minOvr: 39, coachName: 'Sahr Senesie', coachStyle: 'Bloc bas et efficacité redoutable sur coup de pied arrêté.', weeklySalary: 780 },
-  { name: 'Rot-Weiss Essen', league: '3. Liga', tier: 'D3', minOvr: 38, coachName: 'Christoph Dabrowski', coachStyle: 'Jeu engagé porté par un public bouillant.', weeklySalary: 750 },
-  { name: 'SV Elversberg', league: '2. Bundesliga', tier: 'D2', minOvr: 45, coachName: 'Horst Steffen', coachStyle: 'Football ultra offensif, beau à voir et audacieux.', weeklySalary: 1350 },
-  { name: 'SC Paderborn 07', league: '2. Bundesliga', tier: 'D2', minOvr: 47, coachName: 'Lukas Kwasniok', coachStyle: 'Pressing haut ultra agressif et verticalité folle.', weeklySalary: 1700 },
-  { name: 'SSV Ulm 1846', league: '2. Bundesliga', tier: 'D2', minOvr: 43, coachName: 'Thomas Wörle', coachStyle: 'Solidité collective et esprit de solidarité.', weeklySalary: 1100 },
-  { name: 'Preußen Münster', league: '2. Bundesliga', tier: 'D2', minOvr: 42, coachName: 'Sascha Hildmann', coachStyle: 'Discipline de fer et contre-attaques chirurgicales.', weeklySalary: 1050 },
-  { name: 'Fortuna Düsseldorf', league: '2. Bundesliga', tier: 'D2', minOvr: 50, coachName: 'Daniel Thioune', coachStyle: 'Maîtrise technique et ambition de remontée.', weeklySalary: 2300 },
-  { name: 'Hannover 96', league: '2. Bundesliga', tier: 'D2', minOvr: 49, coachName: 'Stefan Leitl', coachStyle: 'Équilibre parfait entre possession et rigueur.', weeklySalary: 2150 },
-  { name: '1. FC Nürnberg', league: '2. Bundesliga', tier: 'D2', minOvr: 48, coachName: 'Miroslav Klose', coachStyle: 'Précision dans la zone de vérité et jeu combiné.', weeklySalary: 2000 },
+  { name: 'Viktoria Köln', league: '3. Liga', tier: 'D3', minOvr: 38, coachName: 'Olaf Janßen', coachStyle: 'Discipline allemande et jeu de transition.' },
+  { name: 'Dynamo Dresden', league: '3. Liga', tier: 'D3', minOvr: 42, coachName: 'Thomas Stamm', coachStyle: 'Pressing étouffant et intensité maximale.' },
+  { name: 'Arminia Bielefeld', league: '3. Liga', tier: 'D3', minOvr: 40, coachName: 'Mitch Kniat', coachStyle: 'Solidité défensive et jeu direct.' },
+  { name: 'FC Ingolstadt 04', league: '3. Liga', tier: 'D3', minOvr: 39, coachName: 'Sabrina Wittmann', coachStyle: 'Rigueur tactique et occupation rationnelle du terrain.' },
+  { name: 'Hansa Rostock', league: '3. Liga', tier: 'D3', minOvr: 41, coachName: 'Bernd Hollerbach', coachStyle: 'Duels physiques intenses et engagement total.' },
+  { name: 'TSV 1860 Munich', league: '3. Liga', tier: 'D3', minOvr: 41, coachName: 'Argirios Giannikis', coachStyle: 'Ferveur, mentalité de combat et jeu vertical.' },
+  { name: 'SV Sandhausen', league: '3. Liga', tier: 'D3', minOvr: 39, coachName: 'Sahr Senesie', coachStyle: 'Bloc bas et efficacité redoutable sur coup de pied arrêté.' },
+  { name: 'Rot-Weiss Essen', league: '3. Liga', tier: 'D3', minOvr: 38, coachName: 'Christoph Dabrowski', coachStyle: 'Jeu engagé porté par un public bouillant.' },
+  { name: 'SV Elversberg', league: '2. Bundesliga', tier: 'D2', minOvr: 45, coachName: 'Horst Steffen', coachStyle: 'Football ultra offensif, beau à voir et audacieux.' },
+  { name: 'SC Paderborn 07', league: '2. Bundesliga', tier: 'D2', minOvr: 47, coachName: 'Lukas Kwasniok', coachStyle: 'Pressing haut ultra agressif et verticalité folle.' },
+  { name: 'SSV Ulm 1846', league: '2. Bundesliga', tier: 'D2', minOvr: 43, coachName: 'Thomas Wörle', coachStyle: 'Solidité collective et esprit de solidarité.' },
+  { name: 'Preußen Münster', league: '2. Bundesliga', tier: 'D2', minOvr: 42, coachName: 'Sascha Hildmann', coachStyle: 'Discipline de fer et contre-attaques chirurgicales.' },
+  { name: 'Fortuna Düsseldorf', league: '2. Bundesliga', tier: 'D2', minOvr: 50, coachName: 'Daniel Thioune', coachStyle: 'Maîtrise technique et ambition de remontée.' },
+  { name: 'Hannover 96', league: '2. Bundesliga', tier: 'D2', minOvr: 49, coachName: 'Stefan Leitl', coachStyle: 'Équilibre parfait entre possession et rigueur.' },
+  { name: '1. FC Nürnberg', league: '2. Bundesliga', tier: 'D2', minOvr: 48, coachName: 'Miroslav Klose', coachStyle: 'Précision dans la zone de vérité et jeu combiné.' },
 
   // Italie - Serie B & Serie C
-  { name: 'US Salernitana', league: 'Serie B', tier: 'D2', minOvr: 48, coachName: 'Giovanni Martusciello', coachStyle: 'Ferveur du Sud, intensité et créativité technique.', weeklySalary: 1900 },
-  { name: 'Sassuolo Calcio', league: 'Serie B', tier: 'D2', minOvr: 51, coachName: 'Fabio Grosso', coachStyle: 'Jeu de possession léché et domination territoriale.', weeklySalary: 2700 },
-  { name: 'Spezia Calcio', league: 'Serie B', tier: 'D2', minOvr: 46, coachName: 'Luca D’Angelo', coachStyle: 'Bloc compact, agressivité et contres rapides.', weeklySalary: 1500 },
-  { name: 'Pisa SC', league: 'Serie B', tier: 'D2', minOvr: 47, coachName: 'Filippo Inzaghi', coachStyle: 'réalisme offensif, grinta et opportunisme.', weeklySalary: 1750 },
-  { name: 'Brescia Calcio', league: 'Serie B', tier: 'D2', minOvr: 46, coachName: 'Rolando Maran', coachStyle: 'Catenaccio moderne et rigueur tactique italienne.', weeklySalary: 1600 },
-  { name: 'AC Reggiana', league: 'Serie B', tier: 'D2', minOvr: 44, coachName: 'William Viali', coachStyle: 'Organisation rigoureuse et solidarité défensive.', weeklySalary: 1250 },
-  { name: 'FC Südtirol', league: 'Serie B', tier: 'D2', minOvr: 43, coachName: 'Federico Valente', coachStyle: 'Discipline autrichienne, bloc bas et efficacité.', weeklySalary: 1150 },
-  { name: 'Modena FC', league: 'Serie B', tier: 'D2', minOvr: 45, coachName: 'Pierpaolo Bisoli', coachStyle: 'Agressivité saine, duels et verticalité.', weeklySalary: 1350 },
-  { name: 'Calcio Padova', league: 'Serie C', tier: 'D3', minOvr: 39, coachName: 'Matteo Andreoletti', coachStyle: 'Équilibre, rigueur et ambition de montée.', weeklySalary: 800 },
-  { name: 'Vicenza Calcio', league: 'Serie C', tier: 'D3', minOvr: 39, coachName: 'Stefano Vecchi', coachStyle: 'Jeu direct, impact physique et expérience.', weeklySalary: 820 },
-  { name: 'Catania FC', league: 'Serie C', tier: 'D3', minOvr: 40, coachName: 'Domenico Toscano', coachStyle: 'Pression populaire, grinta et solidité.', weeklySalary: 900 },
-  { name: 'Benevento Calcio', league: 'Serie C', tier: 'D3', minOvr: 41, coachName: 'Gaetano Auteri', coachStyle: 'Offensif, audacieux et jeu court.', weeklySalary: 950 },
+  { name: 'US Salernitana', league: 'Serie B', tier: 'D2', minOvr: 48, coachName: 'Giovanni Martusciello', coachStyle: 'Ferveur du Sud, intensité et créativité technique.' },
+  { name: 'Sassuolo Calcio', league: 'Serie B', tier: 'D2', minOvr: 51, coachName: 'Fabio Grosso', coachStyle: 'Jeu de possession léché et domination territoriale.' },
+  { name: 'Spezia Calcio', league: 'Serie B', tier: 'D2', minOvr: 46, coachName: 'Luca D’Angelo', coachStyle: 'Bloc compact, agressivité et contres rapides.' },
+  { name: 'Pisa SC', league: 'Serie B', tier: 'D2', minOvr: 47, coachName: 'Filippo Inzaghi', coachStyle: 'réalisme offensif, grinta et opportunisme.' },
+  { name: 'Brescia Calcio', league: 'Serie B', tier: 'D2', minOvr: 46, coachName: 'Rolando Maran', coachStyle: 'Catenaccio moderne et rigueur tactique italienne.' },
+  { name: 'AC Reggiana', league: 'Serie B', tier: 'D2', minOvr: 44, coachName: 'William Viali', coachStyle: 'Organisation rigoureuse et solidarité défensive.' },
+  { name: 'FC Südtirol', league: 'Serie B', tier: 'D2', minOvr: 43, coachName: 'Federico Valente', coachStyle: 'Discipline autrichienne, bloc bas et efficacité.' },
+  { name: 'Modena FC', league: 'Serie B', tier: 'D2', minOvr: 45, coachName: 'Pierpaolo Bisoli', coachStyle: 'Agressivité saine, duels et verticalité.' },
+  { name: 'Calcio Padova', league: 'Serie C', tier: 'D3', minOvr: 39, coachName: 'Matteo Andreoletti', coachStyle: 'Équilibre, rigueur et ambition de montée.' },
+  { name: 'Vicenza Calcio', league: 'Serie C', tier: 'D3', minOvr: 39, coachName: 'Stefano Vecchi', coachStyle: 'Jeu direct, impact physique et expérience.' },
+  { name: 'Catania FC', league: 'Serie C', tier: 'D3', minOvr: 40, coachName: 'Domenico Toscano', coachStyle: 'Pression populaire, grinta et solidité.' },
+  { name: 'Benevento Calcio', league: 'Serie C', tier: 'D3', minOvr: 41, coachName: 'Gaetano Auteri', coachStyle: 'Offensif, audacieux et jeu court.' },
 
   // Autres championnats Européens / Divers exotiques et compétitifs
-  { name: 'FC Lausanne-Sport', league: 'Super League (Suisse)', tier: 'D1', minOvr: 46, coachName: 'Ludovic Magnin', coachStyle: 'Intensité physique et transition rapide vers l’avant.', weeklySalary: 1600 },
-  { name: 'FC St. Gallen', league: 'Super League (Suisse)', tier: 'D1', minOvr: 47, coachName: 'Enrico Maassen', coachStyle: 'Pressing haut ultra intense et spectacle offensif.', weeklySalary: 1800 },
-  { name: 'Standard de Liège', league: 'Jupiler Pro League (Belgique)', tier: 'D1', minOvr: 49, coachName: 'Ivan Leko', coachStyle: 'Rugueux, agressif dans les duels et mentalité de feu.', weeklySalary: 2200 },
-  { name: 'Charleroi SC', league: 'Jupiler Pro League (Belgique)', tier: 'D1', minOvr: 47, coachName: 'Rik De Mil', coachStyle: 'Bloc compact et contre-attaques foudroyantes.', weeklySalary: 1700 },
-  { name: 'Westerlo', league: 'Jupiler Pro League (Belgique)', tier: 'D1', minOvr: 46, coachName: 'Timmy Simons', coachStyle: 'Discipline tactique et rigueur au milieu de terrain.', weeklySalary: 1550 },
-  { name: 'FC Groningen', league: 'Eredivisie (Pays-Bas)', tier: 'D1', minOvr: 48, coachName: 'Dick Lukkien', coachStyle: 'Formation de jeunes, audace et jeu au sol.', weeklySalary: 1850 },
-  { name: 'NEC Nijmegen', league: 'Eredivisie (Pays-Bas)', tier: 'D1', minOvr: 49, coachName: 'Rogier Meijer', coachStyle: 'Organisation rigoureuse et transitions propres.', weeklySalary: 1950 },
-  { name: 'FC Utrecht', league: 'Eredivisie (Pays-Bas)', tier: 'D1', minOvr: 50, coachName: 'Ron Jans', coachStyle: 'Expérience, solidité et percussion offensive.', weeklySalary: 2300 }
+  { name: 'FC Lausanne-Sport', league: 'Super League (Suisse)', tier: 'D1', minOvr: 46, coachName: 'Ludovic Magnin', coachStyle: 'Intensité physique et transition rapide vers l’avant.' },
+  { name: 'FC St. Gallen', league: 'Super League (Suisse)', tier: 'D1', minOvr: 47, coachName: 'Enrico Maassen', coachStyle: 'Pressing haut ultra intense et spectacle offensif.' },
+  { name: 'Standard de Liège', league: 'Jupiler Pro League (Belgique)', tier: 'D1', minOvr: 49, coachName: 'Ivan Leko', coachStyle: 'Rugueux, agressif dans les duels et mentalité de feu.' },
+  { name: 'Charleroi SC', league: 'Jupiler Pro League (Belgique)', tier: 'D1', minOvr: 47, coachName: 'Rik De Mil', coachStyle: 'Bloc compact et contre-attaques foudroyantes.' },
+  { name: 'Westerlo', league: 'Jupiler Pro League (Belgique)', tier: 'D1', minOvr: 46, coachName: 'Timmy Simons', coachStyle: 'Discipline tactique et rigueur au milieu de terrain.' },
+  { name: 'FC Groningen', league: 'Eredivisie (Pays-Bas)', tier: 'D1', minOvr: 48, coachName: 'Dick Lukkien', coachStyle: 'Formation de jeunes, audace et jeu au sol.' },
+  { name: 'NEC Nijmegen', league: 'Eredivisie (Pays-Bas)', tier: 'D1', minOvr: 49, coachName: 'Rogier Meijer', coachStyle: 'Organisation rigoureuse et transitions propres.' },
+  { name: 'FC Utrecht', league: 'Eredivisie (Pays-Bas)', tier: 'D1', minOvr: 50, coachName: 'Ron Jans', coachStyle: 'Expérience, solidité et percussion offensive.' }
 ];
 
 // Fonction pour générer une sélection aléatoire de 4 clubs parmi toute la liste massive
 function getRandomStarterClubs() {
   let shuffled = [...CITIES_AND_CLUBS].sort(() => 0.5 - Math.random());
-  return shuffled.slice(0, 4).map(club => ({
-    ...club,
-    expectations: { goals: randInt(5, 12), assists: randInt(3, 8), cleanSheets: 0 },
-    boardExpectation: "S'imposer dans l'effectif et répondre aux attentes du coach."
-  }));
+  return shuffled.slice(0, 4);
 }
 
 // Variable globale dynamique pour les clubs de départ de la session actuelle
 let dynamicStarterClubs = getRandomStarterClubs();
+
+// --- FONCTION DE GÉNÉRATION DYNAMIQUE DES OBJECTIFS & CONTRAT JEUNE ---
+
+function getYouthCategoryAndExpectations(ovr, position, tier) {
+  // Détermination de la catégorie jeune selon l'OVR
+  let category = "U16";
+  if (ovr >= 44 && ovr < 49) category = "U17";
+  else if (ovr >= 49) category = "U19";
+
+  // Ajustement de la difficulté selon le tier du club
+  let multiplier = 1;
+  if (tier === 'D2') multiplier = 1.3;
+  if (tier === 'D1') multiplier = 1.6;
+
+  let expectations = { goals: 0, assists: 0, cleanSheets: 0 };
+  let boardExpectation = "";
+
+  const pos = position.toLowerCase();
+
+  if (['bu', 'ad', 'ag', 'moc'].includes(pos)) {
+    let baseGoals = pos === 'bu' ? randInt(6, 12) : randInt(4, 9);
+    let baseAssists = pos === 'bu' ? randInt(3, 7) : randInt(5, 10);
+    expectations.goals = Math.round(baseGoals * multiplier);
+    expectations.assists = Math.round(baseAssists * multiplier);
+    boardExpectation = `S'imposer comme un élément clé de l'attaque en ${category} et être décisif dans les 30 derniers mètres.`;
+  } else if (['mc', 'mdc'].includes(pos)) {
+    expectations.goals = Math.round(randInt(2, 5) * multiplier);
+    expectations.assists = Math.round(randInt(4, 8) * multiplier);
+    boardExpectation = `Assurer l'équilibre de l'entrejeu en ${category}, couper les transmissions adverses et orienter le tempo.`;
+  } else if (['dd', 'dg', 'dc'].includes(pos)) {
+    expectations.goals = Math.round(randInt(1, 3) * multiplier);
+    expectations.cleanSheets = Math.round(randInt(4, 9) * multiplier);
+    boardExpectation = `Maintenir la rigueur défensive de la arrière-garde en ${category} et limiter les erreurs de relance.`;
+  } else if (pos === 'gk') {
+    expectations.cleanSheets = Math.round(randInt(6, 12) * multiplier);
+    boardExpectation = `Verrouiller sa cage en ${category}, diriger sa ligne défensive et rassurer sur les ballons aériens.`;
+  }
+
+  return {
+    category,
+    expectations,
+    boardExpectation,
+    contractText: `Contrat jeune (Formation ${category}) - Pas encore de contrat professionnel.`
+  };
+}
 
 // --- ÉCONOMIE DU STAFF PRIVÉ ---
 
@@ -310,7 +388,7 @@ let state = {
   player: savedData,
   activeEvent: null,
   activeTab: 'dashboard',
-  creationStep: 1, // Étape actuelle du wizard de création (1 à 6)
+  creationStep: 1, // Étape actuelle du wizard de création (1 à 6, page par page)
   form: {
     firstName: 'Brandon',
     lastName: 'Le Moan',
@@ -346,6 +424,9 @@ function generatePlayer(formData, selectedStarterClub) {
     vestiaire: 50
   };
 
+  // Calcul dynamique des objectifs et du contrat jeune selon l'OVR, le poste et le tier du club
+  const youthData = getYouthCategoryAndExpectations(baseOvr, formData.position, selectedStarterClub.tier);
+
   return {
     firstName: formData.firstName,
     lastName: formData.lastName,
@@ -361,14 +442,16 @@ function generatePlayer(formData, selectedStarterClub) {
     traits: [formData.origin.trait],
     week: 1,
     currentClub: selectedStarterClub.name,
-    weeklySalary: selectedStarterClub.weeklySalary,
-    balance: 500,
+    weeklySalary: selectedStarterClub.weeklySalary || 150,
+    balance: 300,
     fame: 10,
     coach: {
       name: selectedStarterClub.coachName,
       style: selectedStarterClub.coachStyle,
-      expectations: { ...selectedStarterClub.expectations },
-      boardExpectation: selectedStarterClub.boardExpectation,
+      category: youthData.category,
+      expectations: youthData.expectations,
+      boardExpectation: youthData.boardExpectation,
+      contractText: youthData.contractText,
       currentGoals: 0,
       currentAssists: 0,
       currentCleanSheets: 0
@@ -470,8 +553,14 @@ async function advanceWeek() {
     if (['bu', 'ad', 'ag', 'moc'].includes(state.player.position)) {
       if (Math.random() > 0.5) state.player.coach.currentGoals += 1;
       else state.player.coach.currentAssists += 1;
-    } else {
+    } else if (['mc', 'mdc'].includes(state.player.position)) {
+      if (Math.random() > 0.7) state.player.coach.currentGoals += 1;
+      else state.player.coach.currentAssists += 1;
+    } else if (state.player.position === 'gk') {
       state.player.coach.currentCleanSheets += 1;
+    } else {
+      if (Math.random() > 0.6) state.player.coach.currentGoals += 1;
+      else state.player.coach.currentCleanSheets += 1;
     }
   }
 
@@ -607,12 +696,14 @@ function render() {
           <div class="text-center">
             <span class="text-xs text-emerald-400 font-bold uppercase tracking-wider">Étape 4 / 6</span>
             <h3 class="text-base font-bold text-white mt-1">Style d'Origine</h3>
+            <p class="text-[11px] text-slate-400">Sélectionne ton parcours formative initial :</p>
           </div>
-          <div class="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
+          <div class="space-y-2 max-h-52 overflow-y-auto pr-1">
             ${ORIGINS.map(o => `
               <div onclick="selectOrigin('${o.id}')" class="p-3 rounded-xl border cursor-pointer text-xs transition-all ${state.form.origin.id === o.id ? 'bg-emerald-500/10 border-emerald-500 text-emerald-300' : 'bg-slate-950 border-slate-800 text-slate-400'}">
-                <span class="font-bold text-white block">${o.name}</span>
-                <span class="text-[10px] text-slate-400 mt-1 block">${o.desc}</span>
+                <span class="font-bold text-white block text-sm">${o.name}</span>
+                <span class="text-[10px] text-emerald-400 font-semibold block mt-0.5">${o.desc}</span>
+                <p class="text-[11px] text-slate-300 mt-1 italic">${o.longDesc}</p>
               </div>
             `).join('')}
           </div>
@@ -667,24 +758,31 @@ function render() {
             <p class="text-[11px] text-slate-400">Choisis ton point de chute parmi notre sélection aléatoire :</p>
           </div>
           <div class="space-y-2.5 max-h-60 overflow-y-auto pr-1">
-            ${dynamicStarterClubs.map((club, index) => `
-              <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
-                <div class="flex justify-between items-center">
-                  <div>
-                    <span class="font-bold text-white text-sm">${club.name}</span>
-                    <span class="text-[10px] text-slate-400 block">${club.league} (${club.tier}) • Salaire: $${club.weeklySalary}/sem</span>
+            ${dynamicStarterClubs.map((club, index) => {
+              // Aperçu simulé des objectifs et du contrat jeune pour ce club
+              let simOvr = 42;
+              if (state.form.origin.id === 'tardif') simOvr -= 5;
+              const previewData = getYouthCategoryAndExpectations(simOvr, state.form.position, club.tier);
+              
+              return `
+                <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+                  <div class="flex justify-between items-center">
+                    <div>
+                      <span class="font-bold text-white text-sm">${club.name}</span>
+                      <span class="text-[10px] text-slate-400 block">${club.league} (${club.tier})</span>
+                    </div>
+                    <button onclick="submitCreation(${index})" class="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-bold rounded-lg text-xs transition-colors">
+                      Choisir ✍️
+                    </button>
                   </div>
-                  <button onclick="submitCreation(${index})" class="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-bold rounded-lg text-xs transition-colors">
-                    Choisir ✍️
-                  </button>
+                  <div class="text-[11px] text-slate-300 bg-slate-900 p-2 rounded border border-slate-800/60 space-y-1">
+                    <div class="text-emerald-400 font-bold">📄 ${previewData.contractText}</div>
+                    <div>👨‍🏫 Entraîneur : <span class="text-slate-200 font-semibold">${club.coachName}</span> (${previewData.category})</div>
+                    <div>🎯 Objectifs : <span class="text-yellow-300">${previewData.expectations.goals > 0 ? previewData.expectations.goals + ' Buts' : ''} ${previewData.expectations.assists > 0 ? previewData.expectations.assists + ' Passes D' : ''} ${previewData.expectations.cleanSheets > 0 ? previewData.expectations.cleanSheets + ' Clean Sheets' : ''}</span></div>
+                  </div>
                 </div>
-                <div class="text-[11px] text-slate-300 bg-slate-900 p-2 rounded border border-slate-800/60 space-y-1">
-                  <div>👨‍🏫 Entraîneur : <span class="text-emerald-400 font-semibold">${club.coachName}</span></div>
-                  <div>📋 Style : <span class="italic text-slate-400">${club.coachStyle}</span></div>
-                  <div>🎯 Objectifs : <span class="text-yellow-300">${club.expectations.goals} Buts</span> | <span class="text-yellow-300">${club.expectations.assists} Passes D</span></div>
-                </div>
-              </div>
-            `).join('')}
+              `;
+            }).join('')}
           </div>
           <div>
             <button onclick="prevStep()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-colors">
@@ -743,18 +841,24 @@ function render() {
 
       tabContent = `
         ${feedbackHtml}
-        <div class="text-xs text-slate-300 space-y-2 bg-slate-950 p-3 rounded-xl border border-slate-800">
+        <div class="text-xs text-slate-300 space-y-2.5 bg-slate-950 p-3 rounded-xl border border-slate-800">
           <div class="flex justify-between items-center">
             <span>Club actuel : <span class="text-yellow-400 font-bold">${state.player.currentClub}</span></span>
             <span class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-2 py-0.5 rounded font-bold">Âge : ${state.player.age || 14} ans • Semaine ${state.player.week}</span>
           </div>
           <div>❤️ Club de cœur : <span class="text-pink-400 font-bold">${state.player.heartClub}</span></div>
-          <div class="border-t border-slate-800 pt-2 space-y-1">
-            <div>👨‍🏫 Entraîneur : <span class="text-emerald-400 font-bold">${state.player.coach.name}</span></div>
-            <div>📋 Tactique : <span class="text-slate-400 italic">${state.player.coach.style}</span></div>
-            <div class="flex justify-between pt-1">
-              <span>Objectif Buts : <b class="text-white">${state.player.coach.currentGoals} / ${state.player.coach.expectations.goals}</b></span>
-              <span>Objectif Passes D : <b class="text-white">${state.player.coach.currentAssists} / ${state.player.coach.expectations.assists}</b></span>
+          <div class="border-t border-slate-800 pt-2 space-y-1.5">
+            <div class="text-emerald-400 font-bold">📄 ${state.player.coach.contractText}</div>
+            <div>👨‍🏫 Entraîneur : <span class="text-slate-200 font-bold">${state.player.coach.name}</span> (Équipe <span class="text-yellow-400 font-bold">${state.player.coach.category}</span>)</div>
+            <div>📋 Style : <span class="text-slate-400 italic">${state.player.coach.style}</span></div>
+            <div class="text-slate-300 bg-slate-900 p-2 rounded border border-slate-800/60 mt-1">
+              <span class="font-semibold text-white block mb-0.5">Attentes du coach :</span>
+              <span class="text-slate-400 italic">${state.player.coach.boardExpectation}</span>
+            </div>
+            <div class="flex justify-between pt-1 font-semibold">
+              ${state.player.coach.expectations.goals !== undefined ? `<span>Buts : <b class="text-white">${state.player.coach.currentGoals} / ${state.player.coach.expectations.goals}</b></span>` : ''}
+              ${state.player.coach.expectations.assists !== undefined ? `<span>Passes D : <b class="text-white">${state.player.coach.currentAssists} / ${state.player.coach.expectations.assists}</b></span>` : ''}
+              ${state.player.coach.expectations.cleanSheets !== undefined ? `<span>Clean Sheets : <b class="text-white">${state.player.coach.currentCleanSheets} / ${state.player.coach.expectations.cleanSheets}</b></span>` : ''}
             </div>
           </div>
         </div>
@@ -830,7 +934,7 @@ function render() {
             <span class="font-bold text-yellow-400">$${state.player.balance.toLocaleString()}</span>
           </div>
           <div class="flex justify-between p-2 bg-slate-900 rounded border border-slate-800">
-            <span>Salaire Hebdomadaire :</span>
+            <span>Allocation / Bourse Jeune :</span>
             <span class="font-bold text-emerald-400">+$${state.player.weeklySalary.toLocaleString()} / sem</span>
           </div>
           <div class="flex justify-between p-2 bg-slate-900 rounded border border-slate-800">
