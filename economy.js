@@ -23,58 +23,99 @@ export const EconomyManager = {
         };
     },
 
-    // 3. Gestion de la paie hebdomadaire + Primes de match potentielles
-    processWeeklyFinances(state, matchPerformance = null) {
+    // 3. Gestion de la paie de fin de bloc + Primes de performance globales
+    processBlockFinances(state, matchPerformance = null) {
         if (!state.player || !state.career) return;
 
-        let weeklyIncome = state.player.salary || 0;
+        // On considère qu'un bloc représente l'équivalent de 4 semaines (ou un cycle de paie)
+        const blockSalary = (state.player.salary || 0) * 4;
         let matchBonus = 0;
 
-        // Si le joueur a joué un match cette semaine, on calcule les primes de performance
+        // Si le joueur a joué un bloc, on calcule les primes cumulées sur les 4 matchs
         if (matchPerformance) {
-            if (matchPerformance.rating >= 7.5) matchBonus += 250; // Prime bon match
-            if (matchPerformance.goals > 0) matchBonus += matchPerformance.goals * 500; // Prime par but
-            if (matchPerformance.assists > 0) matchBonus += matchPerformance.assists * 300; // Prime par passe dé
+            if (matchPerformance.rating >= 7.5) matchBonus += 1000; // Prime de régularité sur le bloc
+            if (matchPerformance.goals > 0) matchBonus += matchPerformance.goals * 400; // Prime par but
+            if (matchPerformance.assists > 0) matchBonus += matchPerformance.assists * 250; // Prime par passe dé
         }
 
-        const totalIncome = weeklyIncome + matchBonus;
+        const totalIncome = blockSalary + matchBonus;
         state.career.balance += totalIncome;
 
         // Événements publicitaires selon la popularité (fame)
         let eventMessage = null;
-        if (Math.random() < 0.05 && state.player.fame > 40) {
-            const sponsorBonus = state.player.fame * 80;
+        if (Math.random() < 0.08 && (state.player.fame || 10) > 30) {
+            const sponsorBonus = (state.player.fame || 10) * 100;
             state.career.balance += sponsorBonus;
-            eventMessage = `Contrat publicitaire local signé ! +${sponsorBonus} €`;
+            eventMessage = `Contrat publicitaire local signé grâce à votre notoriété ! +${sponsorBonus} €`;
         }
 
         return {
-            weeklyIncome,
+            blockSalary,
             matchBonus,
+            totalIncome,
             eventMessage
         };
     },
 
-    // 4. Gestion du train de vie (Choix de dépenses personnelles)
+    // 4. Gestion du train de vie (Dépenses, Moral, Fitness, Notoriété et Attributs cachés)
     applyLifestyleChoice(state, choiceType) {
-        // Choix de train de vie qui impactent le compte en banque, le moral ou la forme
         const costs = {
-            'modeste': { cost: 0, moraleEffect: 0, fitnessEffect: 0, label: "Logement du centre de formation (Standard)" },
-            'appartement': { cost: 1500, moraleEffect: 5, fitnessEffect: 2, label: "Appartement indépendant proche du stade" },
-            'voiture_luxe': { cost: 5000, moraleEffect: 10, fitnessEffect: -2, label: "Achat d'une berline de sport (Attention aux sorties)" }
+            'modeste': { 
+                cost: 0, 
+                moraleEffect: 0, 
+                fitnessEffect: 0, 
+                fameEffect: 0,
+                label: "Logement du centre de formation (Standard)" 
+            },
+            'appartement': { 
+                cost: 2500, 
+                moraleEffect: 6, 
+                fitnessEffect: 3, 
+                fameEffect: 2,
+                label: "Appartement indépendant proche du stade" 
+            },
+            'preparateur_perso': { 
+                cost: 6000, 
+                moraleEffect: 4, 
+                fitnessEffect: 8, 
+                fameEffect: 1,
+                attributeBonus: { type: 'injuryProneness', value: 1 }, // Améliore la résistance aux blessures !
+                label: "Investissement : Préparateur physique & nutritionniste personnel" 
+            },
+            'voiture_luxe': { 
+                cost: 12000, 
+                moraleEffect: 15, 
+                fitnessEffect: -3, 
+                fameEffect: 8, // Booste la popularité
+                label: "Achat d'une berline de sport (Gros boost de moral, attention aux excès)" 
+            }
         };
 
         const choice = costs[choiceType];
-        if (!choice) return false;
+        if (!choice) return { success: false, message: "Choix invalide." };
 
         if (state.career.balance >= choice.cost) {
             state.career.balance -= choice.cost;
-            state.player.morale = Math.min(100, (state.player.morale || 50) + choice.moraleEffect);
-            state.player.fitness = Math.min(100, (state.player.fitness || 80) + choice.fitnessEffect);
-            return { success: true, message: `Choix validé : ${choice.label} (-${choice.cost} €)` };
+            
+            // Application des effets visibles
+            state.player.morale = Math.min(100, Math.max(0, (state.player.morale || 50) + choice.moraleEffect));
+            state.player.fitness = Math.min(100, Math.max(0, (state.player.fitness || 80) + choice.fitnessEffect));
+            state.player.fame = Math.max(0, (state.player.fame || 10) + choice.fameEffect);
+
+            // Application de l'impact sur les attributs cachés (si présent)
+            if (choice.attributeBonus && state.player.attributes) {
+                const attrKey = choice.attributeBonus.type;
+                if (state.player.attributes[attrKey] < 20) {
+                    state.player.attributes[attrKey] += choice.attributeBonus.value;
+                }
+            }
+
+            return { 
+                success: true, 
+                message: `Validé : ${choice.label} (-${choice.cost} €)` 
+            };
         } else {
             return { success: false, message: "Fonds insuffisants pour ce train de vie !" };
         }
     }
 };
-
