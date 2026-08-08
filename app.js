@@ -214,7 +214,6 @@ async function generateAIEvents(playerState) {
   const apiKey = getApiKey();
   if (!apiKey) return null;
 
-  // On récupère les derniers événements de l'historique pour éviter les répétitions (si disponibles)
   const recentHistory = playerState.history && playerState.history.length > 0 
     ? playerState.history.slice(-5).map(h => h.context).join(", ") 
     : "Aucun historique récent";
@@ -280,7 +279,6 @@ async function generateAIEvents(playerState) {
     const rawText = data.candidates[0].content.parts[0].text;
     const parsedEvent = JSON.parse(rawText);
 
-    // On enregistre le contexte dans l'historique du joueur pour alimenter la mémoire anti-répétition
     if (!playerState.history) playerState.history = [];
     playerState.history.push({ context: parsedEvent.context });
 
@@ -312,6 +310,7 @@ let state = {
   player: savedData,
   activeEvent: null,
   activeTab: 'dashboard',
+  creationStep: 1, // Étape actuelle du wizard de création (1 à 6)
   form: {
     firstName: 'Brandon',
     lastName: 'Le Moan',
@@ -397,6 +396,18 @@ function updateFormInput() {
   if (wInput) state.form.weight = parseInt(wInput.value);
 }
 
+function nextStep() {
+  updateFormInput();
+  state.creationStep += 1;
+  render();
+}
+
+function prevStep() {
+  updateFormInput();
+  state.creationStep -= 1;
+  render();
+}
+
 function setPos(p) { updateFormInput(); state.form.position = p; render(); }
 function selectOrigin(id) { updateFormInput(); state.form.origin = ORIGINS.find(o => o.id === id); render(); }
 function setNat(name) { updateFormInput(); state.form.nationality = NATIONALITIES.find(n => n.name === name); render(); }
@@ -429,6 +440,7 @@ function resetCareer() {
   localStorage.removeItem('career_rpg_save');
   state.player = null;
   state.activeEvent = null;
+  state.creationStep = 1;
   lastChoiceFeedback = null;
   dynamicStarterClubs = getRandomStarterClubs();
   render();
@@ -512,73 +524,149 @@ function render() {
   if (!app) return;
 
   if (!state.player) {
-    app.innerHTML = `
-      <div class="max-w-xl mx-auto my-6 p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 text-white shadow-xl">
-        <h1 class="text-xl font-black text-center text-emerald-400 uppercase tracking-wider">Création du Joueur & Carrière (Gemini Sécurisé)</h1>
-        
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="text-xs text-slate-400 font-bold">Prénom</label>
-            <input id="inp-fn" type="text" value="${state.form.firstName}" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-sm text-white mt-1"/>
-          </div>
-          <div>
-            <label class="text-xs text-slate-400 font-bold">Nom</label>
-            <input id="inp-ln" type="text" value="${state.form.lastName}" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-sm text-white mt-1"/>
-          </div>
-        </div>
+    let stepContent = '';
 
-        <div>
-          <label class="text-xs text-slate-400 font-bold">Nationalité</label>
-          <select onchange="setNat(this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-sm text-white mt-1">
-            ${NATIONALITIES.map(n => `<option value="${n.name}" ${state.form.nationality.name === n.name ? 'selected' : ''}>${n.flag} ${n.name}</option>`).join('')}
-          </select>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="text-xs text-slate-400 font-bold">Taille : <span id="val-h">${state.form.height}</span>cm</label>
-            <input id="inp-h" type="range" min="160" max="205" value="${state.form.height}" oninput="document.getElementById('val-h').innerText=this.value" class="w-full mt-2 accent-emerald-400"/>
+    if (state.creationStep === 1) {
+      stepContent = `
+        <div class="space-y-4">
+          <div class="text-center">
+            <span class="text-xs text-emerald-400 font-bold uppercase tracking-wider">Étape 1 / 6</span>
+            <h3 class="text-base font-bold text-white mt-1">Identité & Nationalité</h3>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs text-slate-400 font-bold">Prénom</label>
+              <input id="inp-fn" type="text" value="${state.form.firstName}" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-sm text-white mt-1"/>
+            </div>
+            <div>
+              <label class="text-xs text-slate-400 font-bold">Nom</label>
+              <input id="inp-ln" type="text" value="${state.form.lastName}" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-sm text-white mt-1"/>
+            </div>
           </div>
           <div>
-            <label class="text-xs text-slate-400 font-bold">Poids : <span id="val-w">${state.form.weight}</span>kg</label>
-            <input id="inp-w" type="range" min="55" max="100" value="${state.form.weight}" oninput="document.getElementById('val-w').innerText=this.value" class="w-full mt-2 accent-emerald-400"/>
+            <label class="text-xs text-slate-400 font-bold">Nationalité</label>
+            <select onchange="setNat(this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-sm text-white mt-1">
+              ${NATIONALITIES.map(n => `<option value="${n.name}" ${state.form.nationality.name === n.name ? 'selected' : ''}>${n.flag} ${n.name}</option>`).join('')}
+            </select>
+          </div>
+          <button onclick="nextStep()" class="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs uppercase tracking-wider transition-colors">
+            Suivant ➡️
+          </button>
+        </div>
+      `;
+    } else if (state.creationStep === 2) {
+      stepContent = `
+        <div class="space-y-4">
+          <div class="text-center">
+            <span class="text-xs text-emerald-400 font-bold uppercase tracking-wider">Étape 2 / 6</span>
+            <h3 class="text-base font-bold text-white mt-1">Morphologie</h3>
+          </div>
+          <div class="space-y-3">
+            <div>
+              <label class="text-xs text-slate-400 font-bold">Taille : <span id="val-h">${state.form.height}</span>cm</label>
+              <input id="inp-h" type="range" min="160" max="205" value="${state.form.height}" oninput="document.getElementById('val-h').innerText=this.value" class="w-full mt-2 accent-emerald-400"/>
+            </div>
+            <div>
+              <label class="text-xs text-slate-400 font-bold">Poids : <span id="val-w">${state.form.weight}</span>kg</label>
+              <input id="inp-w" type="range" min="55" max="100" value="${state.form.weight}" oninput="document.getElementById('val-w').innerText=this.value" class="w-full mt-2 accent-emerald-400"/>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="prevStep()" class="w-1/3 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-colors">
+              ⬅️ Précédent
+            </button>
+            <button onclick="nextStep()" class="w-2/3 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs uppercase tracking-wider transition-colors">
+              Suivant ➡️
+            </button>
           </div>
         </div>
-
-        <div>
-          <label class="text-xs text-slate-400 font-bold uppercase">Poste</label>
-          <div class="grid grid-cols-5 gap-1.5 mt-1">
-            ${POSITIONS.map(p => `<button type="button" onclick="setPos('${p.id}')" class="p-2 rounded border text-xs font-bold transition-all ${state.form.position === p.id ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' : 'bg-slate-950 border-slate-800 text-slate-300'}">${p.label}</button>`).join('')}
+      `;
+    } else if (state.creationStep === 3) {
+      stepContent = `
+        <div class="space-y-4">
+          <div class="text-center">
+            <span class="text-xs text-emerald-400 font-bold uppercase tracking-wider">Étape 3 / 6</span>
+            <h3 class="text-base font-bold text-white mt-1">Poste sur le Terrain</h3>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            ${POSITIONS.map(p => `<button type="button" onclick="setPos('${p.id}')" class="p-3 rounded-xl border text-xs font-bold transition-all ${state.form.position === p.id ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' : 'bg-slate-950 border-slate-800 text-slate-300'}">${p.label}</button>`).join('')}
+          </div>
+          <div class="flex gap-2">
+            <button onclick="prevStep()" class="w-1/3 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-colors">
+              ⬅️ Précédent
+            </button>
+            <button onclick="nextStep()" class="w-2/3 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs uppercase tracking-wider transition-colors">
+              Suivant ➡️
+            </button>
           </div>
         </div>
-
-        <div>
-          <label class="text-xs text-slate-400 font-bold uppercase">Style d'Origine</label>
-          <div class="grid grid-cols-2 gap-1.5 mt-1">
+      `;
+    } else if (state.creationStep === 4) {
+      stepContent = `
+        <div class="space-y-4">
+          <div class="text-center">
+            <span class="text-xs text-emerald-400 font-bold uppercase tracking-wider">Étape 4 / 6</span>
+            <h3 class="text-base font-bold text-white mt-1">Style d'Origine</h3>
+          </div>
+          <div class="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
             ${ORIGINS.map(o => `
-              <div onclick="selectOrigin('${o.id}')" class="p-2.5 rounded-xl border cursor-pointer text-xs transition-all ${state.form.origin.id === o.id ? 'bg-emerald-500/10 border-emerald-500 text-emerald-300' : 'bg-slate-950 border-slate-800 text-slate-400'}">
+              <div onclick="selectOrigin('${o.id}')" class="p-3 rounded-xl border cursor-pointer text-xs transition-all ${state.form.origin.id === o.id ? 'bg-emerald-500/10 border-emerald-500 text-emerald-300' : 'bg-slate-950 border-slate-800 text-slate-400'}">
                 <span class="font-bold text-white block">${o.name}</span>
-                <span class="text-[10px] text-slate-400">${o.desc}</span>
+                <span class="text-[10px] text-slate-400 mt-1 block">${o.desc}</span>
               </div>
             `).join('')}
           </div>
-        </div>
-
-        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
-          <label class="text-xs text-pink-400 font-bold uppercase tracking-wider block">❤️ Choix du Club de Cœur (Bonus de Mental)</label>
-          <div class="grid grid-cols-2 gap-2">
-            <select onchange="setHeartLeague(this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white">
-              ${Object.keys(BIG_LEAGUES_CLUBS).map(l => `<option value="${l}" ${state.form.heartClubLeague === l ? 'selected' : ''}>${l}</option>`).join('')}
-            </select>
-            <select onchange="setHeartClub(this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white">
-              ${BIG_LEAGUES_CLUBS[state.form.heartClubLeague].map(c => `<option value="${c}" ${state.form.heartClubName === c ? 'selected' : ''}>${c}</option>`).join('')}
-            </select>
+          <div class="flex gap-2">
+            <button onclick="prevStep()" class="w-1/3 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-colors">
+              ⬅️ Précédent
+            </button>
+            <button onclick="nextStep()" class="w-2/3 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs uppercase tracking-wider transition-colors">
+              Suivant ➡️
+            </button>
           </div>
         </div>
-
-        <div>
-          <label class="text-xs text-yellow-400 font-bold uppercase tracking-wider block mb-2">🏟️ Choisis ton Club de Départ & ton Entraîneur (Aléatoire parmi +100 clubs) :</label>
-          <div class="space-y-3 max-h-60 overflow-y-auto pr-1">
+      `;
+    } else if (state.creationStep === 5) {
+      stepContent = `
+        <div class="space-y-4">
+          <div class="text-center">
+            <span class="text-xs text-pink-400 font-bold uppercase tracking-wider">Étape 5 / 6</span>
+            <h3 class="text-base font-bold text-white mt-1">❤️ Club de Cœur</h3>
+            <p class="text-[11px] text-slate-400">Bonus de mental si tu y signes plus tard.</p>
+          </div>
+          <div class="space-y-3 bg-slate-950 p-3 rounded-xl border border-slate-800">
+            <div>
+              <label class="text-xs text-slate-400 font-bold">Championnat</label>
+              <select onchange="setHeartLeague(this.value)" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white mt-1">
+                ${Object.keys(BIG_LEAGUES_CLUBS).map(l => `<option value="${l}" ${state.form.heartClubLeague === l ? 'selected' : ''}>${l}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-slate-400 font-bold">Club</label>
+              <select onchange="setHeartClub(this.value)" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white mt-1">
+                ${BIG_LEAGUES_CLUBS[state.form.heartClubLeague].map(c => `<option value="${c}" ${state.form.heartClubName === c ? 'selected' : ''}>${c}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="prevStep()" class="w-1/3 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-colors">
+              ⬅️ Précédent
+            </button>
+            <button onclick="nextStep()" class="w-2/3 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs uppercase tracking-wider transition-colors">
+              Suivant ➡️
+            </button>
+          </div>
+        </div>
+      `;
+    } else if (state.creationStep === 6) {
+      stepContent = `
+        <div class="space-y-4">
+          <div class="text-center">
+            <span class="text-xs text-yellow-400 font-bold uppercase tracking-wider">Étape 6 / 6</span>
+            <h3 class="text-base font-bold text-white mt-1">🏟️ Club de Départ</h3>
+            <p class="text-[11px] text-slate-400">Choisis ton point de chute parmi notre sélection aléatoire :</p>
+          </div>
+          <div class="space-y-2.5 max-h-60 overflow-y-auto pr-1">
             ${dynamicStarterClubs.map((club, index) => `
               <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
                 <div class="flex justify-between items-center">
@@ -593,12 +681,24 @@ function render() {
                 <div class="text-[11px] text-slate-300 bg-slate-900 p-2 rounded border border-slate-800/60 space-y-1">
                   <div>👨‍🏫 Entraîneur : <span class="text-emerald-400 font-semibold">${club.coachName}</span></div>
                   <div>📋 Style : <span class="italic text-slate-400">${club.coachStyle}</span></div>
-                  <div>🎯 Objectifs saison : <span class="text-yellow-300">${club.expectations.goals} Buts</span> | <span class="text-yellow-300">${club.expectations.assists} Passes D</span></div>
+                  <div>🎯 Objectifs : <span class="text-yellow-300">${club.expectations.goals} Buts</span> | <span class="text-yellow-300">${club.expectations.assists} Passes D</span></div>
                 </div>
               </div>
             `).join('')}
           </div>
+          <div>
+            <button onclick="prevStep()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-colors">
+              ⬅️ Précédent
+            </button>
+          </div>
         </div>
+      `;
+    }
+
+    app.innerHTML = `
+      <div class="max-w-xl mx-auto my-6 p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4 text-white shadow-xl">
+        <h1 class="text-lg font-black text-center text-emerald-400 uppercase tracking-wider">Création du Joueur & Carrière</h1>
+        ${stepContent}
       </div>
     `;
   } else {
