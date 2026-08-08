@@ -8,12 +8,12 @@ export const EconomyManager = {
         return Math.round(baseValue * ageMultiplier);
     },
 
-    // 2. Offre de contrat initiale (basée sur le prestige du club de l'étape 5)
+    // 2. Offre de contrat initiale (Corrigée pour respecter 100-300€)
     calculateContractOffer(club, player) {
-        const prestigeFactor = club.prestige / 50;
-        const ovrFactor = Math.max(1, player.overall - 50);
+        // Salaire forcé entre 100 et 300€ pour le jeune joueur
+        const weeklySalary = Math.round(100 + (Math.random() * 200));
         
-        const weeklySalary = Math.round(ovrFactor * prestigeFactor * 400 + (Math.random() * 200));
+        // Prime à la signature basée sur la valeur estimée
         const signingBonus = Math.round(this.calculateMarketValue(player) * 0.05);
 
         return {
@@ -23,72 +23,40 @@ export const EconomyManager = {
         };
     },
 
-    // 3. Gestion de la paie de fin de bloc + Primes de performance globales
+    // 3. Gestion de la paie de fin de bloc + Primes de performance
     processBlockFinances(state, matchPerformance = null) {
         if (!state.player || !state.career) return;
 
-        // On considère qu'un bloc représente l'équivalent de 4 semaines (ou un cycle de paie)
         const blockSalary = (state.player.salary || 0) * 4;
         let matchBonus = 0;
 
-        // Si le joueur a joué un bloc, on calcule les primes cumulées sur les 4 matchs
         if (matchPerformance) {
-            if (matchPerformance.rating >= 7.5) matchBonus += 1000; // Prime de régularité sur le bloc
-            if (matchPerformance.goals > 0) matchBonus += matchPerformance.goals * 400; // Prime par but
-            if (matchPerformance.assists > 0) matchBonus += matchPerformance.assists * 250; // Prime par passe dé
+            // Note : on utilise matchPerformance.rating, goals, assists
+            if (matchPerformance.rating >= 7.5) matchBonus += 1000;
+            if (matchPerformance.goals > 0) matchBonus += matchPerformance.goals * 400;
+            if (matchPerformance.assists > 0) matchBonus += matchPerformance.assists * 250;
         }
 
         const totalIncome = blockSalary + matchBonus;
         state.career.balance += totalIncome;
 
-        // Événements publicitaires selon la popularité (fame)
         let eventMessage = null;
         if (Math.random() < 0.08 && (state.player.fame || 10) > 30) {
             const sponsorBonus = (state.player.fame || 10) * 100;
             state.career.balance += sponsorBonus;
-            eventMessage = `Contrat publicitaire local signé grâce à votre notoriété ! +${sponsorBonus} €`;
+            eventMessage = `Contrat publicitaire local signé : +${sponsorBonus} €`;
         }
 
-        return {
-            blockSalary,
-            matchBonus,
-            totalIncome,
-            eventMessage
-        };
+        return { blockSalary, matchBonus, totalIncome, eventMessage };
     },
 
-    // 4. Gestion du train de vie (Dépenses, Moral, Fitness, Notoriété et Attributs cachés)
+    // 4. Gestion du train de vie
     applyLifestyleChoice(state, choiceType) {
         const costs = {
-            'modeste': { 
-                cost: 0, 
-                moraleEffect: 0, 
-                fitnessEffect: 0, 
-                fameEffect: 0,
-                label: "Logement du centre de formation (Standard)" 
-            },
-            'appartement': { 
-                cost: 2500, 
-                moraleEffect: 6, 
-                fitnessEffect: 3, 
-                fameEffect: 2,
-                label: "Appartement indépendant proche du stade" 
-            },
-            'preparateur_perso': { 
-                cost: 6000, 
-                moraleEffect: 4, 
-                fitnessEffect: 8, 
-                fameEffect: 1,
-                attributeBonus: { type: 'injuryProneness', value: 1 }, // Améliore la résistance aux blessures !
-                label: "Investissement : Préparateur physique & nutritionniste personnel" 
-            },
-            'voiture_luxe': { 
-                cost: 12000, 
-                moraleEffect: 15, 
-                fitnessEffect: -3, 
-                fameEffect: 8, // Booste la popularité
-                label: "Achat d'une berline de sport (Gros boost de moral, attention aux excès)" 
-            }
+            'modeste': { cost: 0, moraleEffect: 0, fitnessEffect: 0, fameEffect: 0, label: "Logement du centre de formation" },
+            'appartement': { cost: 2500, moraleEffect: 6, fitnessEffect: 3, fameEffect: 2, label: "Appartement indépendant" },
+            'preparateur_perso': { cost: 6000, moraleEffect: 4, fitnessEffect: 8, fameEffect: 1, attributeBonus: { type: 'injuryProneness', value: 1 }, label: "Préparateur physique personnel" },
+            'voiture_luxe': { cost: 12000, moraleEffect: 15, fitnessEffect: -3, fameEffect: 8, label: "Berline de sport" }
         };
 
         const choice = costs[choiceType];
@@ -96,26 +64,18 @@ export const EconomyManager = {
 
         if (state.career.balance >= choice.cost) {
             state.career.balance -= choice.cost;
-            
-            // Application des effets visibles
             state.player.morale = Math.min(100, Math.max(0, (state.player.morale || 50) + choice.moraleEffect));
             state.player.fitness = Math.min(100, Math.max(0, (state.player.fitness || 80) + choice.fitnessEffect));
             state.player.fame = Math.max(0, (state.player.fame || 10) + choice.fameEffect);
 
-            // Application de l'impact sur les attributs cachés (si présent)
             if (choice.attributeBonus && state.player.attributes) {
                 const attrKey = choice.attributeBonus.type;
-                if (state.player.attributes[attrKey] < 20) {
-                    state.player.attributes[attrKey] += choice.attributeBonus.value;
-                }
+                if (state.player.attributes[attrKey] < 20) state.player.attributes[attrKey] += choice.attributeBonus.value;
             }
 
-            return { 
-                success: true, 
-                message: `Validé : ${choice.label} (-${choice.cost} €)` 
-            };
+            return { success: true, message: `Validé : ${choice.label} (-${choice.cost} €)` };
         } else {
-            return { success: false, message: "Fonds insuffisants pour ce train de vie !" };
+            return { success: false, message: "Fonds insuffisants !" };
         }
     }
 };
