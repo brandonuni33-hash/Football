@@ -2,6 +2,7 @@
 import { POSITIONS, CONTINENTS, ORIGINS, HEART_CLUBS, YOUTH_CLUBS_POOL, COACH_VISIONS, COACH_NAMES } from './constants.js';
 import { EventEngine } from './events.js';
 import { TrainingManager } from './entrainement.js';
+import { MatchChoiceManager } from './matchChoices.js'; // Import du gestionnaire de choix de match
 
 export class UserInterface {
     constructor(gameEngine) {
@@ -609,15 +610,25 @@ export class UserInterface {
                     return;
                 }
 
-                // Le GameEngine utilise directement this.state.trainingFocus mis à jour en temps réel
-                this.engine.playBlock();
-                const eventActuel = EventEngine.checkTriggers ? EventEngine.checkTriggers() : null;
+                // Détermination du type de match (ex: Fin de saison en mai = finale, ou aléatoire/rival)
+                const isFinalPeriod = state.calendar.currentMonth === 5; 
+                const matchType = isFinalPeriod ? 'final' : (Math.random() < 0.25 ? 'rival' : 'standard');
                 
-                if (eventActuel) {
-                    this.afficherModaleEvenement(eventActuel);
-                } else {
-                    this.renderDashboard();
-                }
+                // Récupération du dilemme d'avant-match
+                const matchDilemma = MatchChoiceManager.getMatchDilemma(matchType, "l'adversaire direct");
+
+                // Affichage de la modale de choix tactique avant de simuler le bloc
+                this.afficherModaleMatchDilemma(matchDilemma, (selectedChoice) => {
+                    // Une fois le choix fait, on lance le bloc en passant le bonus choisi
+                    this.engine.playBlock(selectedChoice);
+
+                    const eventActuel = EventEngine.checkTriggers ? EventEngine.checkTriggers() : null;
+                    if (eventActuel) {
+                        this.afficherModaleEvenement(eventActuel);
+                    } else {
+                        this.renderDashboard();
+                    }
+                });
             });
         }
 
@@ -654,6 +665,51 @@ export class UserInterface {
                 // Synchronisation immédiate avec le GameEngine
                 if (typeof this.engine.setTrainingFocus === 'function') {
                     this.engine.setTrainingFocus(focusKey);
+                }
+            });
+        });
+    }
+
+    afficherModaleMatchDilemma(dilemma, onChoiceMade) {
+        let modal = document.getElementById('event-modal-container');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'event-modal-container';
+            modal.className = 'event-modal-overlay';
+            document.body.appendChild(modal);
+        }
+
+        modal.innerHTML = `
+            <div class="event-modal-card">
+                <span class="event-modal-category">⚡ CONSIGNE TACTIQUE & MATCH CLÉ</span>
+                <h3 class="event-modal-title">${dilemma.title}</h3>
+                <p class="event-modal-desc">${dilemma.description}</p>
+                
+                <div class="event-modal-choices">
+                    ${dilemma.choices.map((choix, index) => `
+                        <button class="btn-event-choice" data-choice-index="${index}">
+                            👉 ${choix.texte}
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+
+        modal.querySelectorAll('.btn-event-choice').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const choiceIndex = parseInt(e.currentTarget.getAttribute('data-choice-index'), 10);
+                const choixSelectionne = dilemma.choices[choiceIndex];
+
+                // Appliquer les impacts directs (ex: moral, physique, etc.)
+                if (choixSelectionne.impacts) {
+                    this.appliquerImpactsChoix(choixSelectionne.impacts);
+                }
+
+                modal.remove();
+                
+                // Exécuter le callback avec les bonus du match
+                if (typeof onChoiceMade === 'function') {
+                    onChoiceMade(choixSelectionne);
                 }
             });
         });
