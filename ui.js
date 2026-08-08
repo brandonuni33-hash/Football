@@ -17,7 +17,7 @@ export class UserInterface {
             coachVision: null,
             coachName: null
         };
-        this.randomYouthClubs = []; // Stocke les offres détaillées tirées au sort pour cette partie
+        this.randomYouthClubs = []; 
         
         this.initDOM();
         this.render();
@@ -33,6 +33,12 @@ export class UserInterface {
     }
 
     render() {
+        // Si le jeu a commencé, on affiche le Dashboard au lieu des étapes de création
+        if (this.engine.state) {
+            this.renderDashboard();
+            return;
+        }
+
         const app = document.getElementById('app');
         app.innerHTML = `
             <div class="career-container">
@@ -134,7 +140,7 @@ export class UserInterface {
             case 5:
                 if (this.randomYouthClubs.length === 0) {
                     const shuffled = [...YOUTH_CLUBS_POOL].sort(() => 0.5 - Math.random());
-                    const count = Math.floor(Math.random() * 3) + 4; // Entre 4 et 6 clubs
+                    const count = Math.floor(Math.random() * 3) + 4; 
                     
                     this.randomYouthClubs = shuffled.slice(0, count).map(yc => {
                         const randomVision = COACH_VISIONS[Math.floor(Math.random() * COACH_VISIONS.length)];
@@ -284,7 +290,10 @@ export class UserInterface {
         if (startBtn) {
             startBtn.addEventListener('click', () => {
                 if (typeof this.engine.startCareer === 'function') {
+                    // 1. Lance la carrière dans le GameEngine
                     this.engine.startCareer(this.selectedData);
+                    // 2. Met à jour l'affichage pour afficher le Dashboard
+                    this.renderDashboard();
                 } else {
                     console.error("La méthode startCareer n'existe pas dans le moteur.");
                 }
@@ -308,6 +317,53 @@ export class UserInterface {
                 return this.selectedData.youthClub !== null;
             default:
                 return false;
+        }
+    }
+
+    /**
+     * Affiche le tableau de bord principal une fois la carrière lancée
+     */
+    renderDashboard() {
+        const state = this.engine.state;
+        if (!state) return;
+
+        const app = document.getElementById('app');
+        app.innerHTML = `
+            <div class="dashboard-container" style="padding: 20px; color: white; font-family: sans-serif;">
+                <header style="border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 20px;">
+                    <h1>⭐ ${state.player.firstname} ${state.player.lastname}</h1>
+                    <p>Club : <strong>${state.player.club}</strong> | Poste : <strong>${state.player.position}</strong> | OVR : <strong>${state.player.overall}</strong></p>
+                    <p>📅 Période : <strong>${state.calendar.currentPeriod}</strong> (Mois ${state.calendar.currentMonth} / ${state.calendar.totalMonths})</p>
+                </header>
+
+                <section class="stats-overview" style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <h3>📊 Statistiques de la saison</h3>
+                    <p>Matchs joués : ${state.player.stats.matchesPlayed}</p>
+                    <p>Buts : ${state.player.stats.goals} | Passes décisives : ${state.player.stats.assists}</p>
+                    <p>Note moyenne : ${state.player.stats.averageRating}</p>
+                    <p>💰 Solde bancaire : ${state.career.balance} €</p>
+                    <p>❤️ Moral : ${state.player.morale}% | ⚡ Forme : ${state.player.fitness}%</p>
+                    ${state.player.isInjured ? '<p style="color: red; font-weight: bold;">🚑 JOUEUR BLESSÉ !</p>' : ''}
+                </section>
+
+                <div class="action-panel">
+                    <button id="play-block-btn" class="btn-primary" style="padding: 12px 24px; font-size: 16px; background: #22c55e; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        ▶️ Jouer le mois (Bloc de 4 matchs)
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // Écouteur pour lancer le bloc de matchs
+        const playBtn = document.getElementById('play-block-btn');
+        if (playBtn) {
+            playBtn.addEventListener('click', () => {
+                const report = this.engine.playBlock();
+                if (report) {
+                    // Rafraîchit le dashboard pour afficher les nouvelles stats mises à jour
+                    this.renderDashboard();
+                }
+            });
         }
     }
 }
