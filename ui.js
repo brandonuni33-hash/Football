@@ -1,5 +1,6 @@
 // ui.js
 import { POSITIONS, CONTINENTS, ORIGINS, HEART_CLUBS, YOUTH_CLUBS_POOL, COACH_VISIONS, COACH_NAMES } from './constants.js';
+import { EventEngine } from './events.js';
 
 export class UserInterface {
     constructor(gameEngine) {
@@ -526,8 +527,17 @@ export class UserInterface {
         const playBtn = document.getElementById('play-block-btn');
         if (playBtn) {
             playBtn.addEventListener('click', () => {
+                // 1. Avancer dans le jeu
                 this.engine.playBlock();
-                this.renderDashboard();
+
+                // 2. Vérifier si un événement se déclenche via l'EventEngine
+                const eventActuel = EventEngine.checkTriggers();
+                
+                if (eventActuel) {
+                    this.afficherModaleEvenement(eventActuel);
+                } else {
+                    this.renderDashboard();
+                }
             });
         }
 
@@ -553,5 +563,62 @@ export class UserInterface {
                 this.renderDashboard();
             });
         });
+    }
+
+    afficherModaleEvenement(event) {
+        let modal = document.getElementById('event-modal-container');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'event-modal-container';
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0, 0, 0, 0.8); display: flex; justify-content: center;
+                align-items: center; z-index: 9999;
+            `;
+            document.body.appendChild(modal);
+        }
+
+        modal.innerHTML = `
+            <div style="background: #1e293b; border: 1px solid #334155; padding: 20px; border-radius: 12px; width: 90%; max-width: 400px; color: white; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+                <span style="font-size: 11px; text-transform: uppercase; background: #3b82f6; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${event.categorie}</span>
+                <h3 style="margin: 10px 0 5px 0; font-size: 18px; color: #f8fafc;">${event.titre}</h3>
+                <p style="font-size: 13px; color: #94a3b8; line-height: 1.4; margin-bottom: 20px;">${event.description}</p>
+                
+                <div style="display: flex; flex-direction: column; gap: 10px;" id="event-choices-container">
+                    ${event.choix.map((choix, index) => `
+                        <button class="btn-event-choice" data-choice-index="${index}" style="background: #334155; color: white; border: 1px solid #475569; padding: 10px 14px; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px; transition: background 0.2s;">
+                            👉 ${choix.texte}
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+
+        modal.querySelectorAll('.btn-event-choice').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const choiceIndex = parseInt(e.currentTarget.getAttribute('data-choice-index'));
+                const choixSelectionne = event.choix[choiceIndex];
+
+                this.appliquerImpactsChoix(choixSelectionne.impacts);
+
+                modal.remove();
+                this.renderDashboard();
+            });
+        });
+    }
+
+    appliquerImpactsChoix(impacts) {
+        const state = this.engine.state;
+        if (!state) return;
+
+        for (const [stat, valeur] of Object.entries(impacts)) {
+            if (state.player && state.player[stat] !== undefined) {
+                state.player[stat] += valeur;
+            } else if (state.career && state.career[stat] !== undefined) {
+                state.career[stat] += valeur;
+            } else {
+                console.warn(`Statistique "${stat}" non trouvée dans le state.`);
+            }
+        }
     }
 }
