@@ -272,6 +272,22 @@ const STAFF_DATA = {
     { id: 2, name: 'Chef Étoilé Personnel', unlock: (p) => p.fame >= 75, cost: 10000, desc: 'Haute gastronomie sportive', effect: 'Fatigue cumulative -30%' }
   ]
 };
+// --- MODULE 2: GESTION DES OFFRES DE TRANSFERT ---
+const TRANSFER_MODULE = {
+  checkOffer: (player) => {
+    // Le joueur reçoit une offre si sa réputation est suffisante ou son OVR en progression
+    if (player.fame > 20 && Math.random() > 0.7) {
+      const targetClub = CITIES_AND_CLUBS[Math.floor(Math.random() * CITIES_AND_CLUBS.length)];
+      return {
+        club: targetClub.name,
+        salary: player.weeklySalary * 1.5,
+        bonus: player.balance * 0.1,
+        message: `Le club de ${targetClub.name} s'intéresse à ton profil. Ils proposent un salaire hebdomadaire de $${Math.round(player.weeklySalary * 1.5)}.`
+      };
+    }
+    return null;
+  }
+};
 
 async function generateAIEvents(playerState, seasonPhase) {
   const apiKey = getApiKey();
@@ -459,6 +475,10 @@ function generatePlayer(formData, selectedStarterClub) {
     history: []
   };
 }
+// ... restes des propriétés
+  pendingOffer: null, 
+  // ...
+};
 
 function updateFormInput() {
   const fnInput = document.getElementById('inp-fn');
@@ -526,6 +546,16 @@ function hireStaff(category, level) {
   localStorage.setItem('career_rpg_save', JSON.stringify(state.player));
   render();
 }
+function respondToTransfer(accept) {
+  if (accept && state.player.pendingOffer) {
+    state.player.currentClub = state.player.pendingOffer.club;
+    state.player.weeklySalary = state.player.pendingOffer.salary;
+    state.player.balance += state.player.pendingOffer.bonus;
+    alert(`Transfert accepté ! Tu rejoins ${state.player.currentClub}.`);
+  }
+  state.player.pendingOffer = null;
+  render();
+}
 
 async function advancePeriod() {
   if (state.player.eventIndex === undefined) state.player.eventIndex = 0;
@@ -534,7 +564,12 @@ async function advancePeriod() {
   if (state.player.eventIndex % 4 === 0) {
     state.player.age += 1;
   }
+  if (!state.player.pendingOffer) {
+    state.player.pendingOffer = TRANSFER_MODULE.checkOffer(state.player);
+  }
 
+  // ... (fin de la fonction)
+}
   state.player.balance += (state.player.weeklySalary * 4);
   lastChoiceFeedback = null;
   lastDeltaMessage = null;
@@ -624,7 +659,18 @@ function render() {
 
   if (!state.player) {
     let stepContent = '';
-
+    
+  if (state.player.pendingOffer) {
+  tabContent += `
+    <div class="bg-yellow-500/20 border border-yellow-500 p-4 rounded-xl mt-4 text-xs space-y-3">
+      <h3 class="font-bold text-yellow-400">📩 OFFRE DE TRANSFERT</h3>
+      <p>${state.player.pendingOffer.message}</p>
+      <div class="flex gap-2">
+        <button onclick="respondToTransfer(true)" class="flex-1 bg-emerald-500 py-2 rounded font-bold">Accepter</button>
+        <button onclick="respondToTransfer(false)" class="flex-1 bg-red-500 py-2 rounded font-bold">Refuser</button>
+      </div>
+    </div>
+  
     if (state.creationStep === 1) {
       stepContent = `
         <div class="space-y-4">
