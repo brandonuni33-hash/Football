@@ -106,3 +106,42 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     border-color: #10b981;
     background-color: #064e3b;
 }
+.club-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-align: left;
+}
+
+.club-header-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #374151;
+    padding-bottom: 6px;
+}
+
+.club-header-info h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #f3f4f6;
+}
+
+.contract-details {
+    font-size: 0.85rem;
+    color: #9ca3af;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.contract-details strong {
+    color: #d1d5db;
+}
+
+.prestige-badge {
+    align-self: flex-end;
+    font-size: 0.8rem;
+    color: #34d399;
+    font-weight: bold;
+}
