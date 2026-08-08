@@ -366,9 +366,9 @@ export class UserInterface {
                         <div class="player-widget-enhanced">
                             <div class="widget-subtitle">📅 Saison ${state.calendar.currentSeasonYear}/${state.calendar.currentSeasonYear + 1} — ${state.calendar.currentPeriod}</div>
                             
-                            <div class="player-card-banner">
-                                <div class="player-jersey-badge">
-                                    <span class="jersey-icon">👕</span>
+                                                        <div class="player-card-banner">
+                                <div class="player-image-badge">
+                                    <img src="assets/IMG_8758.jpg" alt="Avatar">
                                     <span class="jersey-number">99</span>
                                 </div>
                                 <div class="player-main-info">
@@ -376,6 +376,7 @@ export class UserInterface {
                                     <div class="player-club-sub">📍 ${state.player.club} (${state.player.position})</div>
                                 </div>
                             </div>
+
 
                             <div class="widget-stats-grid">
                                 <div class="stat-pill">⚡ OVR : <strong>${state.player.overall}</strong></div>
