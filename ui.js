@@ -6,7 +6,7 @@ export class UserInterface {
     constructor(gameEngine) {
         this.engine = gameEngine;
         this.currentStep = 1;
-        this.activeApp = 'home'; // Gère l'application ouverte dans le smartphone ('home', 'career', 'social', 'messages', 'bank', 'stats')
+        this.activeApp = 'home';
         this.selectedData = {
             firstname: '',
             lastname: '',
@@ -67,11 +67,11 @@ export class UserInterface {
                 return `
                     <h2>Étape 1 : Identité & Poste</h2>
                     <div class="form-group">
-                        <label>Prénom :</label>
+                        <label for="firstname">Prénom :</label>
                         <input type="text" id="firstname" value="${this.selectedData.firstname}" placeholder="ex: Kylian">
                     </div>
                     <div class="form-group">
-                        <label>Nom :</label>
+                        <label for="lastname">Nom :</label>
                         <input type="text" id="lastname" value="${this.selectedData.lastname}" placeholder="ex: Mbappé">
                     </div>
                     <div class="form-group">
@@ -82,15 +82,15 @@ export class UserInterface {
                                     let coords = { top: '50%', left: '50%' };
                                     const id = p.id;
                                     if (id === 'GK') coords = { top: '86%', left: '50%' };
-                                    else if (id === 'DC' || id === 'CB') coords = { top: '70%', left: '50%' };
-                                    else if (id === 'DD' || id === 'RB') coords = { top: '65%', left: '85%' };
-                                    else if (id === 'DG' || id === 'LB') coords = { top: '65%', left: '15%' };
-                                    else if (id === 'MDC' || id === 'CDM') coords = { top: '50%', left: '50%' };
-                                    else if (id === 'MC' || id === 'CM') coords = { top: '40%', left: '50%' };
-                                    else if (id === 'MO' || id === 'CAM') coords = { top: '28%', left: '50%' };
-                                    else if (id === 'AD' || id === 'RW') coords = { top: '22%', left: '80%' };
-                                    else if (id === 'AG' || id === 'LW') coords = { top: '22%', left: '20%' };
-                                    else if (id === 'BU' || id === 'ST') coords = { top: '12%', left: '50%' };
+                                    else if (['DC', 'CB'].includes(id)) coords = { top: '70%', left: '50%' };
+                                    else if (['DD', 'RB'].includes(id)) coords = { top: '65%', left: '85%' };
+                                    else if (['DG', 'LB'].includes(id)) coords = { top: '65%', left: '15%' };
+                                    else if (['MDC', 'CDM'].includes(id)) coords = { top: '50%', left: '50%' };
+                                    else if (['MC', 'CM'].includes(id)) coords = { top: '40%', left: '50%' };
+                                    else if (['MO', 'CAM'].includes(id)) coords = { top: '28%', left: '50%' };
+                                    else if (['AD', 'RW'].includes(id)) coords = { top: '22%', left: '80%' };
+                                    else if (['AG', 'LW'].includes(id)) coords = { top: '22%', left: '20%' };
+                                    else if (['BU', 'ST'].includes(id)) coords = { top: '12%', left: '50%' };
 
                                     const isSelected = this.selectedData.position === p.id ? 'selected' : '';
 
@@ -131,8 +131,8 @@ export class UserInterface {
                             `;
                         }).join('')}
                     </div>
-                    <div class="origin-description-box" style="margin-top: 15px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 12px; min-height: 50px;">
-                        ${selectedOriginObj ? `<p style="margin: 0; font-size: 13px; color: #94a3b8; line-height: 1.4;">📖 ${selectedOriginObj.desc}</p>` : `<p style="margin: 0; font-size: 13px; color: #6b7280; font-style: italic;">👉 Clique sur une origine pour découvrir son histoire et son impact sur ton jeu.</p>`}
+                    <div class="origin-description-box">
+                        ${selectedOriginObj ? `<p>📖 ${selectedOriginObj.desc}</p>` : `<p class="placeholder-text">👉 Clique sur une origine pour découvrir son histoire et son impact sur ton jeu.</p>`}
                     </div>
                 `;
             case 3:
@@ -156,7 +156,7 @@ export class UserInterface {
                 return `
                     <h2>Étape 4 : Club de Cœur</h2>
                     <div class="form-group">
-                        <label>Club de cœur :</label>
+                        <label for="heart-club-select">Club de cœur :</label>
                         <select id="heart-club-select">
                             <option value="">-- Choisir un club --</option>
                             ${Object.entries(HEART_CLUBS).map(([league, clubs]) => `
@@ -175,9 +175,7 @@ export class UserInterface {
                     this.randomYouthClubs = shuffled.slice(0, count).map(yc => {
                         const randomVision = COACH_VISIONS[Math.floor(Math.random() * COACH_VISIONS.length)];
                         const randomCoachName = COACH_NAMES[Math.floor(Math.random() * COACH_NAMES.length)];
-                        
                         const salary = Math.round(100 + (Math.random() * 200));
-                        
                         const playtimeOptions = ["Temps de jeu limité", "Joueur de rotation", "Espoir / Prêt potentiel", "Titulaire en jeunes"];
                         const playtime = playtimeOptions[Math.floor(Math.random() * playtimeOptions.length)];
                         const targetRating = Math.min(75, 55 + Math.round(yc.prestige / 4));
@@ -186,9 +184,9 @@ export class UserInterface {
                             ...yc,
                             coachName: randomCoachName,
                             coachVision: randomVision.title,
-                            salary: salary,
-                            playtime: playtime,
-                            targetRating: targetRating
+                            salary,
+                            playtime,
+                            targetRating
                         };
                     });
                 }
@@ -229,16 +227,17 @@ export class UserInterface {
 
         const firstnameInput = document.getElementById('firstname');
         const lastnameInput = document.getElementById('lastname');
+        
         if (firstnameInput) {
             firstnameInput.addEventListener('input', (e) => {
                 this.selectedData.firstname = e.target.value.trim();
-                if(nextBtn) nextBtn.disabled = !this.isStepValid();
+                if (nextBtn) nextBtn.disabled = !this.isStepValid();
             });
         }
         if (lastnameInput) {
             lastnameInput.addEventListener('input', (e) => {
                 this.selectedData.lastname = e.target.value.trim();
-                if(nextBtn) nextBtn.disabled = !this.isStepValid();
+                if (nextBtn) nextBtn.disabled = !this.isStepValid();
             });
         }
 
@@ -248,7 +247,7 @@ export class UserInterface {
                 const targetBtn = e.currentTarget;
                 targetBtn.classList.add('selected');
                 this.selectedData.position = targetBtn.getAttribute('data-pos');
-                if(nextBtn) nextBtn.disabled = !this.isStepValid();
+                if (nextBtn) nextBtn.disabled = !this.isStepValid();
             });
         });
 
@@ -272,7 +271,7 @@ export class UserInterface {
                 document.querySelectorAll('.chip-country').forEach(b => b.classList.remove('selected'));
                 e.target.classList.add('selected');
                 this.selectedData.country = e.target.getAttribute('data-country');
-                if(nextBtn) nextBtn.disabled = !this.isStepValid();
+                if (nextBtn) nextBtn.disabled = !this.isStepValid();
             });
         });
 
@@ -280,7 +279,7 @@ export class UserInterface {
         if (heartSelect) {
             heartSelect.addEventListener('change', (e) => {
                 this.selectedData.heartClub = e.target.value;
-                if(nextBtn) nextBtn.disabled = !this.isStepValid();
+                if (nextBtn) nextBtn.disabled = !this.isStepValid();
             });
         }
 
@@ -295,7 +294,7 @@ export class UserInterface {
                 this.selectedData.coachVision = chosenOffer.coachVision;
                 this.selectedData.coachName = chosenOffer.coachName;
 
-                if(startBtn) startBtn.disabled = !this.isStepValid();
+                if (startBtn) startBtn.disabled = !this.isStepValid();
             });
         });
 
@@ -361,41 +360,41 @@ export class UserInterface {
                         <span>🔋 100%</span>
                     </div>
                     <div class="phone-home-screen">
-                        <div style="background: rgba(255,255,255,0.05); padding: 14px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);">
-                            <div style="font-size: 13px; color: #94a3b8;">📅 Saison ${state.calendar.currentSeasonYear}/${state.calendar.currentSeasonYear + 1} — ${state.calendar.currentPeriod}</div>
-                            <div style="font-size: 16px; font-weight: bold; color: white; margin-top: 2px;">⭐ ${state.player.firstname} ${state.player.lastname} (${state.player.club})</div>
-                            <div style="font-size: 12px; color: #34d399; margin-top: 4px;">OVR : ${state.player.overall} | 💰 ${state.career.balance} €</div>
+                        <div class="player-widget">
+                            <div class="widget-subtitle">📅 Saison ${state.calendar.currentSeasonYear}/${state.calendar.currentSeasonYear + 1} — ${state.calendar.currentPeriod}</div>
+                            <div class="widget-title">⭐ ${state.player.firstname} ${state.player.lastname} (${state.player.club})</div>
+                            <div class="widget-stats">OVR : ${state.player.overall} | 💰 ${state.career.balance} €</div>
                         </div>
 
                         <div class="apps-grid">
                             <button class="app-icon" data-app="career">
-                                <div class="app-logo" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">⚽</div>
+                                <div class="app-logo career-logo">⚽</div>
                                 <span class="app-label">Carrière</span>
                             </button>
 
                             <button class="app-icon" data-app="social">
-                                <div class="app-logo" style="background: linear-gradient(135deg, #ec4899, #be185d);">📱</div>
+                                <div class="app-logo social-logo">📱</div>
                                 <span class="app-label">Instafoot</span>
                                 ${state.media.recentDilemma ? '<span class="notification-badge">1</span>' : ''}
                             </button>
 
                             <button class="app-icon" data-app="messages">
-                                <div class="app-logo" style="background: linear-gradient(135deg, #10b981, #047857);">💬</div>
+                                <div class="app-logo messages-logo">💬</div>
                                 <span class="app-label">Messages</span>
                             </button>
 
                             <button class="app-icon" data-app="bank">
-                                <div class="app-logo" style="background: linear-gradient(135deg, #f59e0b, #b45309);">🏦</div>
+                                <div class="app-logo bank-logo">🏦</div>
                                 <span class="app-label">Banque</span>
                             </button>
 
                             <button class="app-icon" data-app="stats">
-                                <div class="app-logo" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9);">📊</div>
+                                <div class="app-logo stats-logo">📊</div>
                                 <span class="app-label">Stats</span>
                             </button>
                         </div>
 
-                        <button id="play-block-btn" style="background: #22c55e; color: white; border: none; padding: 14px; border-radius: 14px; font-weight: bold; font-size: 14px; cursor: pointer; box-shadow: 0 4px 12px rgba(34,197,94,0.3);">
+                        <button id="play-block-btn" class="btn-play-block">
                             ▶️ Lancer le prochain bloc
                         </button>
                     </div>
@@ -412,10 +411,10 @@ export class UserInterface {
                     <div class="phone-app-view">
                         <div class="app-header-bar">
                             <button class="btn-back-home" id="back-home-btn">⬅️ Accueil</button>
-                            <span style="font-weight: bold; color: white; text-transform: uppercase; font-size: 13px;">${this.activeApp}</span>
+                            <span class="app-title-header">${this.activeApp}</span>
                             <span></span>
                         </div>
-                        <div id="app-content-body" style="flex: 1; overflow-y: auto;">
+                        <div id="app-content-body" class="app-content-body">
                             ${this.renderSpecificAppContent()}
                         </div>
                     </div>
@@ -435,33 +434,33 @@ export class UserInterface {
         switch(this.activeApp) {
             case 'career':
                 return `
-                    <div style="color: white; font-size: 0.9rem;">
-                        <h3 style="margin-top: 0; color: #60a5fa;">⚽ Gestion Carrière</h3>
+                    <div class="app-pane">
+                        <h3 class="pane-title career-color">⚽ Gestion Carrière</h3>
                         <p><strong>Club :</strong> ${state.player.club}</p>
                         <p><strong>Poste :</strong> ${state.player.position} | <strong>Âge :</strong> ${state.player.age} ans</p>
                         <p><strong>Saison :</strong> ${state.calendar.currentSeasonYear}/${state.calendar.currentSeasonYear + 1}</p>
                         <p><strong>Période :</strong> ${state.calendar.currentPeriod}</p>
-                        <hr style="border-color: #374151;">
+                        <hr class="pane-divider">
                         <p><strong>Forme physique :</strong> ${state.player.fitness}%</p>
                         <p><strong>Moral :</strong> ${state.player.morale}%</p>
                     </div>
                 `;
             case 'social':
                 return `
-                    <div style="color: white; font-size: 0.9rem;">
-                        <h3 style="margin-top: 0; color: #f472b6;">📱 Instafoot & Médias</h3>
-                        <div style="display: flex; gap: 15px; margin-bottom: 12px; font-size: 0.85rem;">
+                    <div class="app-pane">
+                        <h3 class="pane-title social-color">📱 Instafoot & Médias</h3>
+                        <div class="social-stats-row">
                             <span>👥 Abonnés : <strong>${mediaState.followers.toLocaleString()}</strong></span>
                             <span>🔥 Hype : <strong>${mediaState.hypeLevel}/100</strong></span>
                         </div>
 
                         ${mediaState.recentDilemma ? `
-                            <div style="background: rgba(59, 130, 246, 0.15); border: 1px solid #3b82f6; padding: 10px; border-radius: 6px; margin-bottom: 12px;">
-                                <h4 style="margin: 0 0 6px 0; color: #60a5fa; font-size: 0.95rem;">${mediaState.recentDilemma.title}</h4>
-                                <p style="font-size: 0.85rem; margin: 0 0 8px 0;">${mediaState.recentDilemma.description}</p>
-                                <div style="display: flex; flex-direction: column; gap: 6px;">
+                            <div class="dilemma-box">
+                                <h4 class="dilemma-title">${mediaState.recentDilemma.title}</h4>
+                                <p class="dilemma-desc">${mediaState.recentDilemma.description}</p>
+                                <div class="dilemma-choices">
                                     ${mediaState.recentDilemma.choices.map((choice, idx) => `
-                                        <button class="btn-dilemma" data-choice-idx="${idx}" style="background: #2563eb; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; text-align: left; font-size: 0.8rem;">
+                                        <button class="btn-dilemma" data-choice-idx="${idx}">
                                             👉 ${choice.text}
                                         </button>
                                     `).join('')}
@@ -469,15 +468,15 @@ export class UserInterface {
                             </div>
                         ` : ''}
 
-                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div class="feed-list">
                             ${mediaState.feed.map(post => `
-                                <div style="background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; font-size: 0.8rem;">
-                                    <div style="display: flex; justify-content: space-between; color: #94a3b8; font-size: 0.7rem; margin-bottom: 2px;">
+                                <div class="feed-item">
+                                    <div class="feed-item-header">
                                         <span>📢 ${post.source}</span>
                                         <span>${post.date}</span>
                                     </div>
-                                    <p style="margin: 0; color: #e2e8f0;">${post.content}</p>
-                                    <div style="display: flex; gap: 10px; margin-top: 4px; color: #94a3b8; font-size: 0.7rem;">
+                                    <p class="feed-item-content">${post.content}</p>
+                                    <div class="feed-item-footer">
                                         <span>❤️ ${post.likes}</span>
                                         <span>💬 ${post.commentsCount}</span>
                                     </div>
@@ -488,31 +487,31 @@ export class UserInterface {
                 `;
             case 'messages':
                 return `
-                    <div style="color: white; font-size: 0.9rem;">
-                        <h3 style="margin-top: 0; color: #34d399;">💬 Messages & Vestiaire</h3>
+                    <div class="app-pane">
+                        <h3 class="pane-title messages-color">💬 Messages & Vestiaire</h3>
                         <p><strong>Situation amoureuse :</strong> ${socialState.romance.unlocked ? (socialState.romance.partnerName ? `${socialState.romance.partnerName} (${socialState.romance.status} - ${socialState.romance.affection}%)` : 'Célibataire') : '🔒 Disponible à 18 ans'}</p>
-                        <hr style="border-color: #374151;">
-                        <p style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 6px;">Relations clés :</p>
-                        <ul style="padding-left: 15px; margin: 0; font-size: 0.85rem; color: #cbd5e1;">
+                        <hr class="pane-divider">
+                        <p class="relations-subtitle">Relations clés :</p>
+                        <ul class="relations-list">
                             ${socialState.relationships.map(rel => `<li>${rel.role} (${rel.name}) : ${rel.score}/100 [${rel.status}]</li>`).join('')}
                         </ul>
                     </div>
                 `;
             case 'bank':
                 return `
-                    <div style="color: white; font-size: 0.9rem;">
-                        <h3 style="margin-top: 0; color: #fbbf24;">🏦 Banque & Finances</h3>
-                        <div style="background: rgba(255,255,255,0.04); padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 15px;">
-                            <span style="font-size: 12px; color: #94a3b8;">Solde actuel</span>
-                            <div style="font-size: 22px; font-weight: bold; color: #34d399; margin-top: 4px;">${state.career.balance} €</div>
+                    <div class="app-pane">
+                        <h3 class="pane-title bank-color">🏦 Banque & Finances</h3>
+                        <div class="bank-card-balance">
+                            <span class="balance-label">Solde actuel</span>
+                            <div class="balance-amount">${state.career.balance} €</div>
                         </div>
-                        <p style="font-size: 0.85rem; color: #94a3b8;">Revenus hebdomadaires basés sur ton contrat en cours avec ${state.player.club}.</p>
+                        <p class="bank-info-text">Revenus hebdomadaires basés sur ton contrat en cours avec ${state.player.club}.</p>
                     </div>
                 `;
             case 'stats':
                 return `
-                    <div style="color: white; font-size: 0.9rem;">
-                        <h3 style="margin-top: 0; color: #a78bfa;">📊 Statistiques de Saison</h3>
+                    <div class="app-pane">
+                        <h3 class="pane-title stats-color">📊 Statistiques de Saison</h3>
                         <p><strong>Club actuel :</strong> ${state.player.club}</p>
                         <p><strong>Matchs joués :</strong> ${state.player.stats.matchesPlayed}</p>
                         <p><strong>Buts :</strong> ${state.player.stats.goals}</p>
@@ -520,15 +519,15 @@ export class UserInterface {
                         <p><strong>Note moyenne :</strong> ${state.player.stats.averageRating}</p>
                         <p><strong>Note globale (OVR) :</strong> ${state.player.overall}</p>
 
-                        <hr style="border-color: #374151; margin: 15px 0;">
-                        <h4 style="color: #a78bfa; margin-bottom: 8px;">📁 Historique des Saisons</h4>
-                        ${history.length === 0 ? '<p style="font-size: 0.8rem; color: #94a3b8; font-style: italic;">Aucune saison archivée pour l\'instant.</p>' : `
-                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <hr class="pane-divider-large">
+                        <h4 class="history-section-title">📁 Historique des Saisons</h4>
+                        ${history.length === 0 ? '<p class="empty-history">Aucune saison archivée pour l\'instant.</p>' : `
+                            <div class="history-list">
                                 ${history.map(season => `
-                                    <div style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); padding: 8px; border-radius: 6px; font-size: 0.8rem;">
-                                        <div style="font-weight: bold; color: #60a5fa; margin-bottom: 2px;">Saison ${season.seasonLabel} — ${season.club}</div>
-                                        <div style="color: #cbd5e1;">Âge : ${season.age} | OVR : ${season.overall}</div>
-                                        <div style="color: #94a3b8; font-size: 0.75rem; margin-top: 4px;">
+                                    <div class="history-item">
+                                        <div class="history-item-title">Saison ${season.seasonLabel} — ${season.club}</div>
+                                        <div class="history-item-sub">Âge : ${season.age} | OVR : ${season.overall}</div>
+                                        <div class="history-item-details">
                                             Matchs : ${season.stats.matchesPlayed} | Buts : ${season.stats.goals} | Passes : ${season.stats.assists} | Note : ${season.stats.averageRating}
                                         </div>
                                     </div>
@@ -538,7 +537,7 @@ export class UserInterface {
                     </div>
                 `;
             default:
-                return `<p style="color: white;">Application en cours de développement...</p>`;
+                return `<p class="fallback-text">Application en cours de développement...</p>`;
         }
     }
 
@@ -546,10 +545,7 @@ export class UserInterface {
         const playBtn = document.getElementById('play-block-btn');
         if (playBtn) {
             playBtn.addEventListener('click', () => {
-                // 1. Avancer dans le jeu
                 this.engine.playBlock();
-
-                // 2. Vérifier si un événement se déclenche via l'EventEngine
                 const eventActuel = EventEngine.checkTriggers();
                 
                 if (eventActuel) {
@@ -577,7 +573,7 @@ export class UserInterface {
 
         document.querySelectorAll('.btn-dilemma').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const choiceIdx = parseInt(e.currentTarget.getAttribute('data-choice-idx'));
+                const choiceIdx = parseInt(e.currentTarget.getAttribute('data-choice-idx'), 10);
                 this.engine.resolveMediaDilemma(choiceIdx);
                 this.renderDashboard();
             });
@@ -589,23 +585,19 @@ export class UserInterface {
         if (!modal) {
             modal = document.createElement('div');
             modal.id = 'event-modal-container';
-            modal.style.cssText = `
-                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                background: rgba(0, 0, 0, 0.8); display: flex; justify-content: center;
-                align-items: center; z-index: 9999;
-            `;
+            modal.className = 'event-modal-overlay';
             document.body.appendChild(modal);
         }
 
         modal.innerHTML = `
-            <div style="background: #1e293b; border: 1px solid #334155; padding: 20px; border-radius: 12px; width: 90%; max-width: 400px; color: white; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
-                <span style="font-size: 11px; text-transform: uppercase; background: #3b82f6; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${event.categorie}</span>
-                <h3 style="margin: 10px 0 5px 0; font-size: 18px; color: #f8fafc;">${event.titre}</h3>
-                <p style="font-size: 13px; color: #94a3b8; line-height: 1.4; margin-bottom: 20px;">${event.description}</p>
+            <div class="event-modal-card">
+                <span class="event-modal-category">${event.categorie}</span>
+                <h3 class="event-modal-title">${event.titre}</h3>
+                <p class="event-modal-desc">${event.description}</p>
                 
-                <div style="display: flex; flex-direction: column; gap: 10px;" id="event-choices-container">
+                <div class="event-modal-choices">
                     ${event.choix.map((choix, index) => `
-                        <button class="btn-event-choice" data-choice-index="${index}" style="background: #334155; color: white; border: 1px solid #475569; padding: 10px 14px; border-radius: 8px; cursor: pointer; text-align: left; font-size: 13px; transition: background 0.2s;">
+                        <button class="btn-event-choice" data-choice-index="${index}">
                             👉 ${choix.texte}
                         </button>
                     `).join('')}
@@ -615,7 +607,7 @@ export class UserInterface {
 
         modal.querySelectorAll('.btn-event-choice').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const choiceIndex = parseInt(e.currentTarget.getAttribute('data-choice-index'));
+                const choiceIndex = parseInt(e.currentTarget.getAttribute('data-choice-index'), 10);
                 const choixSelectionne = event.choix[choiceIndex];
 
                 this.appliquerImpactsChoix(choixSelectionne.impacts);
