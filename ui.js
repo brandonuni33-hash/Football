@@ -27,12 +27,10 @@ export class UserInterface {
         this.randomYouthClubs = []; 
         
         this.initDOM();
-        // ⚠️ SUPPRIMÉ : Plus de render() ici dans le constructeur pour éviter l'écran noir
     }
 
-    // Nouvelle méthode d'initialisation propre appelée par main.js
     init() {
-        console.log("Initialisation de l'interface utilisateur...");
+        console.log("Initialisation et rendu forcé de l'interface utilisateur...");
         this.render();
     }
 
@@ -43,17 +41,18 @@ export class UserInterface {
             app.id = 'app';
             document.body.appendChild(app);
         }
-
         window.UI = this;
+        return app;
     }
 
     render() {
+        const app = this.initDOM(); // Sécurisation absolue de l'élément app
+
         if (this.engine.state) {
             this.renderDashboard();
             return;
         }
 
-        const app = document.getElementById('app');
         app.innerHTML = `
             <div class="career-container">
                 <header class="career-header">
@@ -362,7 +361,7 @@ export class UserInterface {
         const state = this.engine.state;
         if (!state) return;
 
-        const app = document.getElementById('app');
+        const app = this.initDOM();
 
         if (!this.activeApp || this.activeApp === 'home') {
             app.innerHTML = `
