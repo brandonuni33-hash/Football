@@ -1,4 +1,7 @@
+
 // coachSystem.js
+
+import { ConsequenceSystem } from './consequenceSystem.js';
 
 export class CoachSystem {
     /**
@@ -216,40 +219,47 @@ export class CoachSystem {
      * Résout le choix du joueur et met à jour les stats et l'opinion du coach de façon sécurisée
      */
     static resolveCoachChoice(state, choiceIndex, eventData) {
-        if (!state || !eventData || !eventData.choices || !eventData.choices[choiceIndex]) return null;
+        if (!state?.player || !eventData?.choices?.[choiceIndex]) return null;
 
         const choice = eventData.choices[choiceIndex];
-        const player = state.player;
         const coachState = state.social?.coachData;
 
-        if (choice.impacts && coachState) {
-            for (const [statKey, val] of Object.entries(choice.impacts)) {
-                if (statKey === 'relationCoach') {
-                    coachState.relation = Math.min(100, Math.max(0, coachState.relation + val));
-                    if (player.stats) player.stats.relationCoach = coachState.relation;
-                } else if (player.attributes && player.attributes[statKey] !== undefined) {
-                    player.attributes[statKey] = Math.min(99, Math.max(1, player.attributes[statKey] + val));
-                } else if (player[statKey] !== undefined) {
-                    player[statKey] = Math.min(100, Math.max(0, player[statKey] + val));
-                } else if (player.stats && player.stats[statKey] !== undefined) {
-                    player.stats[statKey] = Math.min(100, Math.max(0, player.stats[statKey] + val));
-                } else {
-                    // Fallback par défaut si la stat n'existe nulle part pour éviter les plantages
-                    player[statKey] = Math.min(100, Math.max(0, (player[statKey] || 50) + val));
-                }
-            }
-        }
+        const result = ConsequenceSystem.applyCoachChoice(
+            state,
+            choice
+        );
 
         if (choice.opinionChange && coachState) {
             coachState.opinion = choice.opinionChange;
         }
 
+        if (coachState) {
+            // relationCoach est synchronisée par ConsequenceSystem.
+            coachState.relation = Math.min(
+                100,
+                Math.max(
+                    0,
+                    Number(
+                        state.player.stats?.relationCoach ??
+                        state.player.relationCoach ??
+                        coachState.relation ??
+                        50
+                    )
+                )
+            );
+
+            state.player.stats ||= {};
+            state.player.stats.relationCoach = coachState.relation;
+        }
+
         return {
+            ...result,
             responseText: choice.response,
             newRelation: coachState ? coachState.relation : 50,
-            newOpinion: coachState ? coachState.opinion : "Neutre"
+            newOpinion: coachState ? coachState.opinion : 'Neutre'
         };
     }
+
 
     /**
      * Récupère les données formatées du coach pour l'affichage UI
