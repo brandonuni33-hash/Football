@@ -1,5 +1,6 @@
 // entrainement.js
 import { PlayerLogic } from './player.js';
+import { PotentialSystem } from './potentialSystem.js';
 
 export const TrainingManager = {
     FOCUS_TYPES: {
@@ -79,11 +80,14 @@ export const TrainingManager = {
             repartition: effect.repartition
         });
 
-        return {
+        const report = {
             ...effect,
             progressionResult,
             fitness: player.fitness,
             overall: player.overall
         };
+
+        PotentialSystem.recordTraining(player, report);
+        return report;
     }
 };
