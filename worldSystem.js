@@ -121,9 +121,25 @@ export const WorldSystem = {
 
     normalizeCareerClub(player) {
         if (!player) return null;
+
+        // Les U15/U16/U17-U19 ne doivent pas être convertis en club senior.
+        // Leur centre est un choix de carrière à part entière et peut ne pas
+        // avoir de correspondance 1:1 dans la base senior.
+        if (Number(player.age) < 18 || player.isYouthPlayer === true) {
+            player.isYouthPlayer = true;
+            return null;
+        }
+
         let club = this.getClub(player.clubId || player.club);
-        if (!club && player.club) club = this.findYouthDestination({ name: player.club, country: player.clubCountry || player.country });
+        if (!club && player.club) {
+            club = this.findYouthDestination({
+                name: player.club,
+                country: player.clubCountry || player.country,
+                prestige: player.careerProfile?.centerStars ? player.careerProfile.centerStars * 20 : 50
+            });
+        }
         if (!club) club = this.getClubs(countryTop[player.country] || 'FR_L1')[0] || CLUBS[0];
+
         player.clubId = club.id;
         player.club = club.name;
         player.clubCountry = club.country;
@@ -131,6 +147,7 @@ export const WorldSystem = {
         player.leagueId = club.leagueId;
         player.clubPrestige = club.prestige;
         player.centerStars = club.centerStars;
+        player.isYouthPlayer = false;
         return club;
     },
 
@@ -152,7 +169,7 @@ export const WorldSystem = {
                 state.world.leagues[league.id].seasonYear = Number(state.calendar?.currentSeasonYear) || state.world.leagues[league.id].seasonYear;
             }
         }
-        if (state.player) this.normalizeCareerClub(state.player);
+        if (state.player && Number(state.player.age) >= 18) this.normalizeCareerClub(state.player);
         return state.world;
     },
 
