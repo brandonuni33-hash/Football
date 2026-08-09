@@ -791,7 +791,7 @@ export class UserInterface {
                             </div>
 
                             <div class="widget-secret-tag">
-                                🚀 Développement : Peak à ${state.player?.peakAge || 24} ans (secret)
+                                🚀 Développement : fenêtre d'explosion inconnue
                             </div>
                         </div>
 
@@ -893,7 +893,7 @@ export class UserInterface {
                         <p><strong>Valeur estimée :</strong> 🏷️ ${TransferMarket.formatPrice(marketValue)}</p>
                         <p><strong>Condition physique :</strong> ${state.player?.fitness || 90}%</p>
                         <p><strong>Moral du joueur :</strong> ${state.player?.morale || 80}%</p>
-                        <p><strong>Pic de forme secret :</strong> ${state.player?.peakAge || 24} ans</p>
+                        <p><strong>Pic de développement :</strong> Inconnu</p>
                         
                         ${coachInfo ? `
                             <hr style="border-color: var(--border-glass); margin: 12px 0;">
