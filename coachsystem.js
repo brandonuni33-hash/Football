@@ -5,9 +5,18 @@ export class CoachSystem {
      * Vérifie et déclenche une interaction avec l'entraîneur formateur selon l'origine et le contexte
      */
     static checkCoachInteraction(state) {
+        if (!state || !state.player) return null;
+
         const player = state.player;
-        const coachName = state.social?.coachData?.name || state.social?.formativeCoach || "le coach";
-        const origin = state.player.origin || 'academy'; // Récupère l'origine du joueur
+        const coachName = state.social?.coachData?.name || state.social?.formativeCoach || "l'entraîneur";
+        
+        // Sécurisation de la récupération de l'origine (minuscules et valeur par défaut)
+        const rawOrigin = player.origin || state.selectedData?.origin || 'academy';
+        const origin = typeof rawOrigin === 'string' ? rawOrigin.toLowerCase() : 'academy';
+
+        if (!state.social) {
+            state.social = {};
+        }
 
         if (!state.social.coachData) {
             state.social.coachData = {
@@ -25,11 +34,11 @@ export class CoachSystem {
         if (!hasTransferred && Math.random() < 0.35) {
             
             // --- ORIGINE : FUTSAL ---
-            if (origin === 'futsal') {
+            if (origin.includes('futsal')) {
                 return {
                     id: 'coach_origin_futsal',
                     title: `💬 Remontrance de ${coachState.name} : Les réflexes de salle`,
-                    description: `À l'entraînement, après un énième dribble superflu dans l'axe qui a failli coûter un contre, ${coachState.name} t'arrête net : "${player.firstname}! Ici on est sur grand terrain, pas au futsal ! La technique en pivot ne fait pas tout, il faut lâcher ton ballon plus vite et penser collectif !"`,
+                    description: `À l'entraînement, après un énième dribble superflu dans l'axe qui a failli coûter un contre, ${coachState.name} t'arrête net : "${player.firstname || 'Le joueur'}! Ici on est sur grand terrain, pas au futsal ! La technique en pivot ne fait pas tout, il faut lâcher ton ballon plus vite et penser collectif !"`,
                     choices: [
                         {
                             text: "Comprendre sa critique : 'Désolé Coach, j'essaie de trop porter la balle comme avant.'",
@@ -60,11 +69,11 @@ export class CoachSystem {
             } 
             
             // --- ORIGINE : STREET (FOOT DE RUE) ---
-            else if (origin === 'street') {
+            else if (origin.includes('street') || origin.includes('rue') || origin.includes('quartier')) {
                 return {
                     id: 'coach_origin_street',
                     title: `💬 Rappel à l'ordre de ${coachState.name} : L'esprit de quartier`,
-                    description: `Après une intervention un peu trop virulente à l'entraînement, ${coachState.name} te convoque : "${player.firstname}, tu as la grinta de la rue, c'est bien, mais tes réactions épidermiques et ton manque de discipline tactique vont te valoir des cartons rouges en match officiel."`,
+                    description: `Après une intervention un peu trop virulente à l'entraînement, ${coachState.name} te convoque : "${player.firstname || 'Le joueur'}, tu as la grinta de la rue, c'est bien, mais tes réactions épidermiques et ton manque de discipline tactique vont te valoir des cartons rouges en match officiel."`,
                     choices: [
                         {
                             text: "S'excuser platement : 'Vous avez raison Coach, j'ai du mal à canaliser mon agressivité.'",
@@ -95,11 +104,11 @@ export class CoachSystem {
             } 
             
             // --- ORIGINE : ACADÉMIE / CENTRE DE FORMATION CLASSIQUE ---
-            else if (origin === 'academy' || origin === 'centre_formation') {
+            else {
                 return {
                     id: 'coach_origin_academy',
                     title: `💬 Point de ${coachState.name} : Trop stéréotypé`,
-                    description: `Le coach t'appelle après la séance vidéo : "${player.firstname}, tu appliques la tactique à la lettre, c'est propre, c'est scolaire... mais tu manques cruellement de folie ! Tu joues trop en sécurité, prends des risques."`,
+                    description: `Le coach t'appelle après la séance vidéo : "${player.firstname || 'Le joueur'}, tu appliques la tactique à la lettre, c'est propre, c'est scolaire... mais tu manques cruellement de folie ! Tu joues trop en sécurité, prends des risques."`,
                     choices: [
                         {
                             text: "Écouter le conseil : 'Je vais essayer de tenter davantage de passes risquées et de percuter.'",
@@ -130,12 +139,12 @@ export class CoachSystem {
             }
         }
 
-        // 2. SCÉNARIO APRÈS UN TRANSFERT (Si tu as quitté son club)
+        // 2. SCÉNARIO APRÈS UN TRANSFERT
         if (hasTransferred && Math.random() < 0.3) {
             return {
                 id: 'coach_post_transfer',
                 title: `📱 Nouvelles de ${coachState.name}`,
-                description: `Quelques semaines après ton départ, ton téléphone vibre : "${player.firstname}, je vois tes matchs dans ta nouvelle équipe. J'espère que tu montres enfin de quoi tu es capable, sans t'éparpiller."`,
+                description: `Quelques semaines après ton départ, ton téléphone vibre : "${player.firstname || 'Le joueur'}, je vois tes matchs dans ta nouvelle équipe. J'espère que tu montres enfin de quoi tu es capable, sans t'éparpiller."`,
                 choices: [
                     {
                         text: "Le remercier chaleureusement : 'Je n'oublie pas vos exigences, Coach, c'est grâce à votre rigueur.'",
@@ -170,7 +179,7 @@ export class CoachSystem {
             return {
                 id: 'coach_fatigue_warning',
                 title: `💬 L'avertissement de ${coachState.name}`,
-                description: `À la fin de la séance, ${coachState.name} t'isole dans son bureau : "${player.firstname}, tu tires sur la corde physiquement. À force de vouloir tout faire, tu vas te blesser."`,
+                description: `À la fin de la séance, ${coachState.name} t'isole dans son bureau : "${player.firstname || 'Le joueur'}, tu tires sur la corde physiquement. À force de vouloir tout faire, tu vas te blesser."`,
                 choices: [
                     {
                         text: "Accepter de lever le pied : 'Vous avez raison Coach, j'ai besoin de souffler.'",
@@ -204,16 +213,16 @@ export class CoachSystem {
     }
 
     /**
-     * Résout le choix du joueur et met à jour les stats et l'opinion du coach
+     * Résout le choix du joueur et met à jour les stats et l'opinion du coach de façon sécurisée
      */
     static resolveCoachChoice(state, choiceIndex, eventData) {
+        if (!state || !eventData || !eventData.choices || !eventData.choices[choiceIndex]) return null;
+
         const choice = eventData.choices[choiceIndex];
-        if (!choice) return null;
-
         const player = state.player;
-        const coachState = state.social.coachData;
+        const coachState = state.social?.coachData;
 
-        if (choice.impacts) {
+        if (choice.impacts && coachState) {
             for (const [statKey, val] of Object.entries(choice.impacts)) {
                 if (statKey === 'relationCoach') {
                     coachState.relation = Math.min(100, Math.max(0, coachState.relation + val));
@@ -222,18 +231,23 @@ export class CoachSystem {
                     player[statKey] = Math.min(100, Math.max(0, player[statKey] + val));
                 } else if (player.stats && player.stats[statKey] !== undefined) {
                     player.stats[statKey] = Math.min(100, Math.max(0, player.stats[statKey] + val));
+                } else if (player.attributes && player.attributes[statKey] !== undefined) {
+                    player.attributes[statKey] = Math.min(100, Math.max(0, player.attributes[statKey] + val));
+                } else {
+                    // Fallback par défaut si la stat n'existe nulle part pour éviter les plantages
+                    player[statKey] = Math.min(100, Math.max(0, (player[statKey] || 50) + val));
                 }
             }
         }
 
-        if (choice.opinionChange) {
+        if (choice.opinionChange && coachState) {
             coachState.opinion = choice.opinionChange;
         }
 
         return {
             responseText: choice.response,
-            newRelation: coachState.relation,
-            newOpinion: coachState.opinion
+            newRelation: coachState ? coachState.relation : 50,
+            newOpinion: coachState ? coachState.opinion : "Neutre"
         };
     }
 
