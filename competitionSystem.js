@@ -404,4 +404,3 @@ export const CompetitionSystem = {
 };
 
 export default CompetitionSystem;
-
