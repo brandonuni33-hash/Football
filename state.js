@@ -78,6 +78,8 @@ function migrate(raw) {
         state.player.stats.vestiaire = Number.isFinite(Number(state.player.stats.vestiaire)) ? Number(state.player.stats.vestiaire) : 50;
         state.player.canRetire = state.player.age >= 34;
         state.player.careerEnded = state.player.age >= 42;
+        state.pendingPositionProposal ||= null;
+        state.careerStructure ||= state.player?.careerProfile || null;
     }
 
     return state;
