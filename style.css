@@ -627,26 +627,46 @@ button:focus-visible,
    FIN CONSEQUENCE SYSTEM
    ========================================================= */
 /* =========================================================
-   CADRAGE AVATAR / PORTRAIT JOUEUR (ASSETS)
+   WIDGET JOUEUR & BADGE IMAGE (HOME SCREEN)
    ========================================================= */
 
-/* Limite la taille du conteneur pour éviter l'effet géant */
-.player-avatar {
-    width: 130px;               /* Largeur du bloc avatar */
-    height: 130px;              /* Hauteur du bloc avatar */
-    margin: 16px auto;          /* Centre le bloc dans la page */
-    border-radius: 12px;        /* Coins arrondis (ou 50% pour un cercle) */
-    overflow: hidden;           /* Coupe l'image qui dépasse */
-    border: 2px solid #374151;  /* BORDURE assortie à votre thème sombre */
-    background-color: #1f2937;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+.player-card-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 10px;
 }
 
-/* Force l'image IMG_8758.jpg à s'adapter parfaitement */
-.player-avatar img {
+/* Conteneur de l'image du joueur */
+.player-image-badge {
+    position: relative;
+    width: 80px;                /* Largeur souhaitée pour la photo */
+    height: 80px;               /* Hauteur souhaitée pour la photo */
+    min-width: 80px;            /* Empêche l'image d'être écrasée en Flexbox */
+    border-radius: 12px;        /* Coins arrondis */
+    overflow: hidden;           /* Coupe le surplus de l'image */
+    border: 2px solid #374151;  /* Bordure sombre */
+    background-color: #1f2937;
+}
+
+/* L'image elle-même */
+.player-image-badge img {
     width: 100%;
     height: 100%;
-    object-fit: cover;          /* Remplit le bloc sans déformer le ratio */
-    object-position: top;       /* Reste aligné sur le haut (visage) */
+    object-fit: cover;          /* Recadre proprement sans déformer */
+    object-position: top;       /* Garde le visage visible */
     display: block;
+}
+
+/* Badge du numéro de maillot par-dessus l'image */
+.jersey-number {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    background: rgba(0, 0, 0, 0.75);
+    color: #10b981;             /* Vert thème */
+    font-size: 0.75rem;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 4px;
 }
