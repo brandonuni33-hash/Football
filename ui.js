@@ -7,7 +7,7 @@ import { TransferMarket as _TransferMarket } from './transferMarket.js';
 import { CoachSystem as _CoachSystem } from './coachSystem.js';
 import { ConsequenceSystem as _ConsequenceSystem } from './consequenceSystem.js';
 
-// Sécurisation absolue (transformation en tableaux si les imports sont des objets)
+// Sécurisation des données importées
 const POSITIONS = Array.isArray(_POSITIONS) ? _POSITIONS : Object.values(_POSITIONS || {});
 const CONTINENTS = _CONTINENTS || {};
 const ORIGINS = _ORIGINS || {};
@@ -17,21 +17,21 @@ const COACH_VISIONS = _COACH_VISIONS || [{ title: 'Équilibré' }];
 const COACH_NAMES = _COACH_NAMES || ['Thomas Tuchel', 'Pep Guardiola'];
 
 const EventEngine = _EventEngine || { checkAndTriggerEvent: () => null };
-const TrainingManager = _TrainingManager || { FOCUS_TYPES: { TECHNIQUE: { name: 'Technique', description: 'Améliore la technique pure' } } };
+const TrainingManager = _TrainingManager || { FOCUS_TYPES: { TECHNIQUE: { name: 'Technique', description: 'Améliore la maîtrise globale du ballon' } } };
 const MatchChoiceManager = _MatchChoiceManager || {
     shouldTriggerDilemma: () => true,
     getMatchDilemma: (type = 'standard', opponent = '') => ({
-        title: 'Match important',
-        description: `Affrontez ${opponent || "l'adversaire"}.`,
+        title: 'Match sous Haute Tension',
+        description: `Face à ${opponent || "l'adversaire"}, chaque décision comptera.`,
         choices: [
-            { texte: 'Jouer prudemment', impacts: {} },
-            { texte: 'Aller à fond', impacts: {} }
+            { texte: '🛡️ Analyse & Rigueur', impacts: {} },
+            { texte: '⚡ Offensive Totale', impacts: {} }
         ]
     })
 };
 const TransferMarket = _TransferMarket || {
     calculateMarketValue: () => 100000,
-    formatPrice: (p) => `${p || 0} €`,
+    formatPrice: (p) => `${(p || 0).toLocaleString('fr-FR')} €`,
     generateTransferOffer: () => null
 };
 const ConsequenceSystem = _ConsequenceSystem || { preview: () => ({ effects: [] }) };
@@ -59,13 +59,301 @@ export class UserInterface {
             coachName: null
         };
         this.randomYouthClubs = [];
-
+        this.injectStyles();
         this.initDOM();
     }
 
     init() {
-        console.log("Initialisation et rendu de l'interface utilisateur...");
         this.render();
+    }
+
+    injectStyles() {
+        if (document.getElementById('pro-ui-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'pro-ui-styles';
+        style.innerHTML = `
+            :root {
+                --bg-glass: rgba(15, 23, 42, 0.75);
+                --bg-card: rgba(30, 41, 59, 0.7);
+                --border-glass: rgba(255, 255, 255, 0.12);
+                --accent-green: #10b981;
+                --accent-blue: #3b82f6;
+                --accent-purple: #8b5cf6;
+                --accent-gold: #f59e0b;
+                --text-main: #f8fafc;
+                --text-sub: #94a3b8;
+            }
+
+            .phone-frame {
+                width: 100%;
+                max-width: 430px;
+                height: 92vh;
+                max-height: 880px;
+                margin: 0 auto;
+                border-radius: 44px;
+                background: linear-gradient(180deg, #0f172a 0%, #020617 100%);
+                border: 2px solid var(--border-glass);
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+                position: relative;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                color: var(--text-main);
+            }
+
+            .phone-status-bar {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 14px 24px 8px;
+                font-size: 0.8rem;
+                font-weight: 600;
+                letter-spacing: -0.2px;
+                color: #e2e8f0;
+                background: rgba(15, 23, 42, 0.4);
+                backdrop-filter: blur(10px);
+                z-index: 10;
+            }
+
+            .phone-home-screen, .app-content-body {
+                flex: 1;
+                overflow-y: auto;
+                padding: 16px;
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+                scrollbar-width: thin;
+                scrollbar-color: rgba(255,255,255,0.2) transparent;
+            }
+
+            /* Widget Hero Joueur */
+            .player-widget-enhanced {
+                background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9));
+                border: 1px solid var(--border-glass);
+                border-radius: 28px;
+                padding: 20px;
+                backdrop-filter: blur(16px);
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            }
+
+            .widget-subtitle {
+                font-size: 0.75rem;
+                text-transform: uppercase;
+                letter-spacing: 0.8px;
+                color: var(--accent-blue);
+                font-weight: 700;
+                margin-bottom: 12px;
+            }
+
+            .player-card-banner {
+                display: flex;
+                align-items: center;
+                gap: 14px;
+                margin-bottom: 16px;
+            }
+
+            .player-image-badge {
+                width: 56px;
+                height: 56px;
+                border-radius: 20px;
+                background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+            }
+
+            .jersey-number {
+                font-size: 1.3rem;
+                font-weight: 900;
+                color: #fff;
+            }
+
+            .player-main-info .widget-title {
+                font-weight: 800;
+                font-size: 1.25rem;
+                letter-spacing: -0.3px;
+            }
+
+            .player-club-sub {
+                font-size: 0.85rem;
+                color: var(--text-sub);
+                margin-top: 2px;
+            }
+
+            .widget-stats-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+
+            .stat-pill {
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 16px;
+                padding: 10px 12px;
+                font-size: 0.82rem;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+
+            .stat-pill strong {
+                font-size: 0.95rem;
+                color: #fff;
+            }
+
+            /* Grille d'Applications iOS */
+            .apps-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 16px;
+                margin-top: 8px;
+            }
+
+            .app-icon {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                background: transparent;
+                border: none;
+                cursor: pointer;
+                position: relative;
+                transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            }
+
+            .app-icon:active {
+                transform: scale(0.9);
+            }
+
+            .app-logo {
+                width: 62px;
+                height: 62px;
+                border-radius: 18px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.7rem;
+                background: rgba(255, 255, 255, 0.08);
+                backdrop-filter: blur(12px);
+                border: 1px solid var(--border-glass);
+                box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+                margin-bottom: 6px;
+            }
+
+            .app-label {
+                font-size: 0.75rem;
+                font-weight: 500;
+                color: var(--text-main);
+            }
+
+            .notification-badge {
+                position: absolute;
+                top: -2px;
+                right: 12px;
+                background: #ef4444;
+                color: white;
+                font-size: 0.7rem;
+                font-weight: 800;
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border: 2px solid #0f172a;
+            }
+
+            /* Actions Principales */
+            .btn-play-block {
+                width: 100%;
+                padding: 16px;
+                border-radius: 20px;
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                color: #fff;
+                font-weight: 800;
+                font-size: 1rem;
+                border: none;
+                cursor: pointer;
+                box-shadow: 0 10px 20px -5px rgba(16, 185, 129, 0.4);
+                transition: transform 0.15s ease, box-shadow 0.15s ease;
+            }
+
+            .btn-play-block:active {
+                transform: scale(0.98);
+            }
+
+            /* Modales et Overlays */
+            .event-modal-overlay {
+                position: absolute;
+                inset: 0;
+                background: rgba(2, 6, 23, 0.85);
+                backdrop-filter: blur(16px);
+                z-index: 100;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+                animation: fadeIn 0.25s ease-out;
+            }
+
+            .event-modal-card {
+                background: var(--bg-card);
+                border: 1px solid var(--border-glass);
+                border-radius: 28px;
+                padding: 24px;
+                width: 100%;
+                max-width: 360px;
+                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            }
+
+            .event-modal-category {
+                font-size: 0.7rem;
+                font-weight: 800;
+                letter-spacing: 1px;
+                color: var(--accent-gold);
+                text-transform: uppercase;
+            }
+
+            .event-modal-title {
+                font-size: 1.25rem;
+                font-weight: 800;
+                margin: 6px 0 12px;
+            }
+
+            .event-modal-desc {
+                font-size: 0.9rem;
+                color: var(--text-sub);
+                line-height: 1.5;
+                margin-bottom: 20px;
+            }
+
+            .btn-event-choice {
+                width: 100%;
+                padding: 14px;
+                border-radius: 16px;
+                background: rgba(255, 255, 255, 0.08);
+                border: 1px solid var(--border-glass);
+                color: var(--text-main);
+                font-weight: 600;
+                font-size: 0.9rem;
+                margin-bottom: 8px;
+                cursor: pointer;
+                text-align: left;
+                transition: background 0.2s ease;
+            }
+
+            .btn-event-choice:hover {
+                background: rgba(255, 255, 255, 0.15);
+            }
+
+            @keyframes fadeIn {
+                from { opacity: 0; transform: scale(0.95); }
+                to { opacity: 1; transform: scale(1); }
+            }
+        `;
+        document.head.appendChild(style);
     }
 
     initDOM() {
@@ -109,15 +397,7 @@ export class UserInterface {
             `;
             this.bindStepEvents();
         } catch (error) {
-            console.error("💥 CRASH CRITIQUE DANS RENDER() :", error);
-            const app = document.getElementById('app');
-            if (app) {
-                app.innerHTML = `<div style="padding: 20px; color: white; background: red; border-radius: 8px;">
-                    <h3>⚠️ Erreur d'interface</h3>
-                    <p>${error.message}</p>
-                    <p style="font-size: 12px; margin-top: 10px;">Vérifie la console Eruda pour plus de détails.</p>
-                </div>`;
-            }
+            console.error("💥 Erreur lors du rendu UI :", error);
         }
     }
 
@@ -431,65 +711,62 @@ export class UserInterface {
                 <div class="phone-frame">
                     <div class="phone-status-bar">
                         <span>9:41</span>
-                        <span>⚽️ Street to Pro</span>
+                        <span>⚡ Street to Pro</span>
                         <span>🔋 100%</span>
                     </div>
                     <div class="phone-home-screen">
                         <div class="player-widget-enhanced">
-                            <div class="widget-subtitle">📅 Saison ${state.calendar?.currentSeasonYear || 2026}/${(state.calendar?.currentSeasonYear || 2026) + 1} — ${state.calendar?.currentPeriod || ''}</div>
+                            <div class="widget-subtitle">📅 Saison ${state.calendar?.currentSeasonYear || 2026}/${(state.calendar?.currentSeasonYear || 2026) + 1} — ${state.calendar?.currentPeriod || 'Pré-saison'}</div>
                             
                             <div class="player-card-banner">
                                 <div class="player-image-badge">
                                     <span class="jersey-number">33</span>
                                 </div>
                                 <div class="player-main-info">
-                                    <div class="widget-title">⭐ ${state.player?.firstname || ''} ${state.player?.lastname || ''}</div>
-                                    <div class="player-club-sub">📍 ${state.player?.club || 'Sans club'} (${state.player?.position || ''})</div>
+                                    <div class="widget-title">${state.player?.firstname || 'Joueur'} ${state.player?.lastname || ''}</div>
+                                    <div class="player-club-sub">📍 ${state.player?.club || 'Libre'} (${state.player?.position || 'BU'})</div>
                                 </div>
                             </div>
 
                             <div class="widget-stats-grid">
-                                <div class="stat-pill">⚡ OVR : <strong>${state.player?.overall || 50}</strong></div>
-                                <div class="stat-pill">✨ Pot : <strong>${state.player?.potential || 75}</strong></div>
-                                <div class="stat-pill">🔋 Forme : <strong>${state.player?.fitness || 100}%</strong></div>
-                                <div class="stat-pill">❤️ Moral : <strong>${state.player?.morale || 100}%</strong></div>
-                                <div class="stat-pill">🎂 Âge : <strong>${state.player?.age || 14}</strong> ans</div>
-                                <div class="stat-pill">💰 <strong>${state.career?.balance || 0} €</strong></div>
-                            </div>
-                            <div class="stat-pill" style="margin-top:8px;">
-                                ${state.player?.careerEnded ? '🏁 Carrière terminée' : state.player?.canRetire ? '🏁 Retraite disponible' : `🚀 Développement : ${state.player?.potentialProfile?.peakAge || '??'} ans (secret)`}
+                                <div class="stat-pill"><span>⚡ OVR</span><strong>${state.player?.overall || 50}</strong></div>
+                                <div class="stat-pill"><span>✨ Pot</span><strong>${state.player?.potential || 75}</strong></div>
+                                <div class="stat-pill"><span>🔋 Forme</span><strong>${state.player?.fitness || 100}%</strong></div>
+                                <div class="stat-pill"><span>❤️ Moral</span><strong>${state.player?.morale || 100}%</strong></div>
+                                <div class="stat-pill"><span>🎂 Âge</span><strong>${state.player?.age || 14} ans</strong></div>
+                                <div class="stat-pill"><span>💰 Solde</span><strong>${(state.career?.balance || 0).toLocaleString('fr-FR')} €</strong></div>
                             </div>
                         </div>
 
                         <div class="apps-grid">
                             <button class="app-icon" data-app="career">
-                                <div class="app-logo career-logo">⚽</div>
+                                <div class="app-logo">⚽</div>
                                 <span class="app-label">Carrière</span>
                             </button>
 
                             <button class="app-icon" data-app="social">
-                                <div class="app-logo social-logo">📱</div>
+                                <div class="app-logo">📱</div>
                                 <span class="app-label">Instafoot</span>
                                 ${state.media?.recentDilemma ? '<span class="notification-badge">1</span>' : ''}
                             </button>
 
                             <button class="app-icon" data-app="messages">
-                                <div class="app-logo messages-logo">💬</div>
+                                <div class="app-logo">💬</div>
                                 <span class="app-label">Messages</span>
                             </button>
 
                             <button class="app-icon" data-app="bank">
-                                <div class="app-logo bank-logo">🏦</div>
+                                <div class="app-logo">🏦</div>
                                 <span class="app-label">Banque</span>
                             </button>
 
                             <button class="app-icon" data-app="stats">
-                                <div class="app-logo stats-logo">📊</div>
+                                <div class="app-logo">📊</div>
                                 <span class="app-label">Stats</span>
                             </button>
 
                             <button class="app-icon" data-app="training">
-                                <div class="app-logo training-logo">🏋️‍♂️</div>
+                                <div class="app-logo">🏋️‍♂️</div>
                                 <span class="app-label">Entraînement</span>
                             </button>
                         </div>
@@ -501,8 +778,8 @@ export class UserInterface {
                         <button id="retire-career-btn" class="btn-secondary" style="margin-top:8px;">
                             🏁 Prendre sa retraite à ${state.player.age} ans
                         </button>` : ''}
-                        <button id="reset-career-btn" class="btn-secondary" style="margin-top:8px;">
-                            🗑️ Nouvelle carrière
+                        <button id="reset-career-btn" class="btn-secondary" style="margin-top:8px; opacity:0.6;">
+                            🗑️ Recommencer
                         </button>
                     </div>
                 </div>
@@ -516,10 +793,10 @@ export class UserInterface {
                         <span>🔋 100%</span>
                     </div>
                     <div class="phone-app-view">
-                        <div class="app-header-bar">
-                            <button class="btn-back-home" id="back-home-btn">⬅️ Accueil</button>
-                            <span class="app-title-header">${this.activeApp}</span>
-                            <span></span>
+                        <div class="app-header-bar" style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-glass);">
+                            <button class="btn-back-home" id="back-home-btn" style="background: none; border: none; color: var(--accent-blue); font-weight: 600; cursor: pointer;">⬅️ Accueil</button>
+                            <span class="app-title-header" style="font-weight: 700; text-transform: capitalize;">${this.activeApp}</span>
+                            <span style="width: 40px;"></span>
                         </div>
                         <div id="app-content-body" class="app-content-body">
                             ${this.renderSpecificAppContent()}
@@ -550,13 +827,13 @@ export class UserInterface {
                         <p><strong>Poste :</strong> ${state.player?.position || ''} | <strong>Âge :</strong> ${state.player?.age || 17} ans</p>
                         <p><strong>Saison :</strong> ${state.calendar?.currentSeasonYear || 2026}</p>
                         <p><strong>Période :</strong> ${state.calendar?.currentPeriod || ''}</p>
-                        <hr class="pane-divider">
+                        <hr class="pane-divider" style="border-color: var(--border-glass); margin: 12px 0;">
                         <p><strong>Valeur marchande :</strong> 🏷️ ${TransferMarket.formatPrice(marketValue)}</p>
                         <p><strong>Forme physique :</strong> ${state.player?.fitness || 100}%</p>
                         <p><strong>Moral :</strong> ${state.player?.morale || 100}%</p>
                         
                         ${coachInfo ? `
-                            <hr class="pane-divider">
+                            <hr class="pane-divider" style="border-color: var(--border-glass); margin: 12px 0;">
                             <h4 class="history-section-title">👨‍💼 Entraîneur : ${coachInfo.name || ''}</h4>
                             <p><strong>Vision :</strong> ${coachInfo.vision || ''}</p>
                             <p><strong>Relation :</strong> ${coachInfo.relationshipScore || 50}/100</p>
@@ -567,18 +844,18 @@ export class UserInterface {
                 return `
                     <div class="app-pane">
                         <h3 class="pane-title social-color">📱 Instafoot & Médias</h3>
-                        <div class="social-stats-row">
+                        <div class="social-stats-row" style="display:flex; justify-space-between; margin-bottom:12px;">
                             <span>👥 Abonnés : <strong>${(mediaState.followers || 0).toLocaleString()}</strong></span>
                             <span>🔥 Hype : <strong>${mediaState.hypeLevel || 0}/100</strong></span>
                         </div>
 
                         ${mediaState.recentDilemma ? `
-                            <div class="dilemma-box">
-                                <h4 class="dilemma-title">${mediaState.recentDilemma.title || ''}</h4>
-                                <p class="dilemma-desc">${mediaState.recentDilemma.description || ''}</p>
-                                <div class="dilemma-choices">
+                            <div class="dilemma-box" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius:16px; padding:12px; margin-bottom:12px;">
+                                <h4 class="dilemma-title" style="color: #ef4444;">${mediaState.recentDilemma.title || ''}</h4>
+                                <p class="dilemma-desc" style="font-size:0.85rem;">${mediaState.recentDilemma.description || ''}</p>
+                                <div class="dilemma-choices" style="margin-top:8px;">
                                     ${(mediaState.recentDilemma.choices || []).map((choice, idx) => `
-                                        <button class="btn-dilemma" data-choice-idx="${idx}">
+                                        <button class="btn-dilemma" data-choice-idx="${idx}" style="width:100%; padding:8px; margin-top:4px; border-radius:8px; background: rgba(255,255,255,0.1); border:none; color:#fff; cursor:pointer;">
                                             👉 ${choice?.text || choice?.texte || ''}
                                         </button>
                                     `).join('')}
@@ -588,13 +865,13 @@ export class UserInterface {
                         
                         <div class="feed-list">
                             ${(mediaState.feed || []).map(post => `
-                                <div class="feed-item">
-                                    <div class="feed-item-header">
+                                <div class="feed-item" style="background: var(--bg-card); border-radius:12px; padding:10px; margin-bottom:8px;">
+                                    <div class="feed-item-header" style="display:flex; justify-content:space-between; font-size:0.75rem; color: var(--text-sub);">
                                         <span>📢 ${post?.source || ''}</span>
                                         <span>${post?.date || ''}</span>
                                     </div>
-                                    <p class="feed-item-content">${post?.content || ''}</p>
-                                    <div class="feed-item-footer">
+                                    <p class="feed-item-content" style="font-size:0.85rem; margin:6px 0;">${post?.content || ''}</p>
+                                    <div class="feed-item-footer" style="font-size:0.75rem; display:flex; gap:12px;">
                                         <span>❤️ ${post?.likes || 0}</span>
                                         <span>💬 ${post?.commentsCount || 0}</span>
                                     </div>
@@ -608,10 +885,10 @@ export class UserInterface {
                     <div class="app-pane">
                         <h3 class="pane-title messages-color">💬 Messages & Vestiaire</h3>
                         <p><strong>Situation :</strong> ${socialState.romance?.unlocked ? (socialState.romance.partnerName || 'En couple') : 'Célibataire'}</p>
-                        <hr class="pane-divider">
+                        <hr class="pane-divider" style="border-color: var(--border-glass); margin: 12px 0;">
                         <p class="relations-subtitle">Relations clés :</p>
-                        <ul class="relations-list">
-                            ${(socialState.relationships || []).map(rel => `<li>${rel?.role || ''} (${rel?.name || ''}) : ${rel?.score || 50}/100</li>`).join('')}
+                        <ul class="relations-list" style="list-style:none; padding:0;">
+                            ${(socialState.relationships || []).map(rel => `<li style="padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.05);">${rel?.role || ''} (${rel?.name || ''}) : <strong>${rel?.score || 50}/100</strong></li>`).join('')}
                         </ul>
                     </div>
                 `;
@@ -619,9 +896,9 @@ export class UserInterface {
                 return `
                     <div class="app-pane">
                         <h3 class="pane-title bank-color">🏦 Banque & Finances</h3>
-                        <div class="bank-card-balance">
-                            <span class="balance-label">Solde actuel</span>
-                            <div class="balance-amount">${state.career?.balance || 0} €</div>
+                        <div class="bank-card-balance" style="background: linear-gradient(135deg, #10b981, #047857); padding:20px; border-radius:20px; text-align:center;">
+                            <span class="balance-label" style="font-size:0.8rem; text-transform:uppercase;">Solde Actuel</span>
+                            <div class="balance-amount" style="font-size:1.8rem; font-weight:900; margin-top:4px;">${(state.career?.balance || 0).toLocaleString('fr-FR')} €</div>
                         </div>
                     </div>
                 `;
@@ -629,10 +906,10 @@ export class UserInterface {
                 return `
                     <div class="app-pane">
                         <h3 class="pane-title stats-color">📊 Statistiques & Attributs</h3>
-                        <p><strong>Matchs :</strong> ${state.player?.stats?.matchesPlayed || 0} | <strong>Buts :</strong> ${state.player?.stats?.goals || 0}</p>
-                        <hr class="pane-divider">
-                        <h4 class="history-section-title">⚡ Attributs (OVR : ${state.player?.overall || 50})</h4>
-                        <div class="attributes-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 0.9rem;">
+                        <p><strong>Matchs Joués :</strong> ${state.player?.stats?.matchesPlayed || 0} | <strong>Buts :</strong> ${state.player?.stats?.goals || 0}</p>
+                        <hr class="pane-divider" style="border-color: var(--border-glass); margin: 12px 0;">
+                        <h4 class="history-section-title">⚡ Profil Général (${state.player?.overall || 50})</h4>
+                        <div class="attributes-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85rem;">
                             <div class="stat-pill">🏃‍♂️ Vitesse : <strong>${attr.vitesse || 50}</strong></div>
                             <div class="stat-pill">🎯 Tir : <strong>${attr.tir || 50}</strong></div>
                             <div class="stat-pill">🎯 Passe : <strong>${attr.passe || 50}</strong></div>
@@ -645,13 +922,13 @@ export class UserInterface {
             case 'training':
                 return `
                     <div class="app-pane">
-                        <h3 class="pane-title training-color">🏋️‍♂️ Centre d'Entraînement</h3>
-                        <p class="subtitle">Choisis ton axe de travail :</p>
-                        <div class="grid-focus">
+                        <h3 class="pane-title training-color">🏋️‍♂️ Programme d'Entraînement</h3>
+                        <p class="subtitle" style="font-size:0.85rem; color: var(--text-sub); margin-bottom:12px;">Définis la priorité du staff technique :</p>
+                        <div class="grid-focus" style="display:flex; flex-direction:column; gap:8px;">
                             ${Object.entries(TrainingManager.FOCUS_TYPES || {}).map(([key, focusObj]) => `
-                                <div class="card-select training-card ${state.trainingFocus === key ? 'selected' : ''}" data-focus-key="${key}">
-                                    <h4>${focusObj?.name || key}</h4>
-                                    <p>${focusObj?.description || ''}</p>
+                                <div class="card-select training-card ${state.trainingFocus === key ? 'selected' : ''}" data-focus-key="${key}" style="background: var(--bg-card); border: 1px solid var(--border-glass); padding:12px; border-radius:16px; cursor:pointer;">
+                                    <h4 style="margin:0; font-size:0.95rem;">${focusObj?.name || key}</h4>
+                                    <p style="margin:4px 0 0; font-size:0.8rem; color: var(--text-sub);">${focusObj?.description || ''}</p>
                                 </div>
                             `).join('')}
                         </div>
@@ -681,10 +958,7 @@ export class UserInterface {
                 const shouldAsk = MatchChoiceManager.shouldTriggerDilemma(matchType);
 
                 if (shouldAsk) {
-                    const dilemma = MatchChoiceManager.getMatchDilemma(
-                        matchType,
-                        "l'adversaire"
-                    );
+                    const dilemma = MatchChoiceManager.getMatchDilemma(matchType, "l'adversaire");
 
                     this.afficherModaleMatchDilemma(dilemma, (selectedChoice) => {
                         const result = this.engine.playBlock(selectedChoice);
@@ -710,7 +984,7 @@ export class UserInterface {
         const resetCareerBtn = document.getElementById('reset-career-btn');
         if (resetCareerBtn) {
             resetCareerBtn.addEventListener('click', () => {
-                if (window.confirm('Supprimer la carrière actuelle et recommencer ?')) {
+                if (window.confirm('Réinitialiser la carrière et recommencer à zéro ?')) {
                     this.engine.resetCareer();
                 }
             });
@@ -762,8 +1036,8 @@ export class UserInterface {
 
         if (result.recoveryOnly) {
             this.afficherMessageModal(
-                '🏥 Récupération',
-                'Ton joueur est encore en récupération. Le bloc est consacré au retour en forme.'
+                '🏥 Récupération Médicale',
+                'Période dédiée aux soins intensifs et à la rééducation.'
             );
             return;
         }
@@ -845,11 +1119,11 @@ export class UserInterface {
 
     afficherModaleEvent(event, onChoiceMade) {
         this.afficherModaleMatchDilemma({
-            title: event?.titre || 'Événement',
+            title: event?.titre || 'Événement Carrière',
             description: event?.description || '',
             choices: (event?.choix || []).map(choice => ({
                 ...choice,
-                text: choice?.texte || 'Continuer'
+                text: choice?.texte || 'Valider'
             }))
         }, (_, index) => {
             const choices = event?.choix || [];
@@ -860,7 +1134,7 @@ export class UserInterface {
 
     afficherModaleCoach(event, onChoiceMade) {
         this.afficherModaleMatchDilemma({
-            title: event?.title || 'Discussion avec le coach',
+            title: event?.title || 'Entretien avec le Coach',
             description: event?.description || '',
             choices: event?.choices || []
         }, (choice, index) => {
@@ -881,15 +1155,17 @@ export class UserInterface {
 
         modal.innerHTML = `
             <div class="event-modal-card">
-                <span class="event-modal-category">🔄 MERCATO</span>
-                <h3 class="event-modal-title">Offre de ${offer?.club || 'nouveau club'}</h3>
-                <p class="event-modal-desc">${offer?.message || ''}</p>
-                <p><strong>Rôle :</strong> ${offer?.rolePropose || 'Rotation'}</p>
-                <p><strong>Salaire :</strong> ${(offer?.salaireHebdo || 0).toLocaleString('fr-FR')} € / semaine</p>
-                <p><strong>Indemnité :</strong> ${(offer?.montant || 0).toLocaleString('fr-FR')} €</p>
+                <span class="event-modal-category">🔄 OFFRE DE TRANSFERT</span>
+                <h3 class="event-modal-title">${offer?.club || 'Club intéressé'}</h3>
+                <p class="event-modal-desc">${offer?.message || 'Une offre ferme a été déposée sur la table des négociations.'}</p>
+                <div style="background: rgba(255,255,255,0.05); padding:12px; border-radius:12px; margin-bottom:16px; font-size:0.85rem;">
+                    <p style="margin:4px 0;"><strong>Rôle proposé :</strong> ${offer?.rolePropose || 'Titulaire'}</p>
+                    <p style="margin:4px 0;"><strong>Salaire :</strong> ${(offer?.salaireHebdo || 0).toLocaleString('fr-FR')} € / sem.</p>
+                    <p style="margin:4px 0;"><strong>Indemnité :</strong> ${(offer?.montant || 0).toLocaleString('fr-FR')} €</p>
+                </div>
                 <div class="event-modal-choices">
-                    <button class="btn-event-choice" data-transfer="accept">✅ Accepter</button>
-                    <button class="btn-event-choice" data-transfer="reject">❌ Refuser</button>
+                    <button class="btn-event-choice" data-transfer="accept">✅ Accepter l'Offre</button>
+                    <button class="btn-event-choice" data-transfer="reject" style="opacity:0.7;">❌ Refuser</button>
                 </div>
             </div>
         `;
@@ -899,9 +1175,9 @@ export class UserInterface {
             modal.remove();
             this.renderDashboard();
             this.afficherMessageModal(
-                '✈️ Nouveau chapitre',
+                '✈️ Transfert Bouclé !',
                 result
-                    ? `Tu rejoins ${result.newClub}. Nouveau salaire : ${result.salary.toLocaleString('fr-FR')} € / semaine.`
+                    ? `Nouveau club : ${result.newClub}. Ton nouveau salaire est fixé à ${result.salary.toLocaleString('fr-FR')} € / semaine.`
                     : 'Transfert accepté.'
             );
         });
@@ -941,7 +1217,7 @@ export class UserInterface {
 
         if (result?.xp) {
             effects.push({
-                label: 'XP',
+                label: 'XP Gagné',
                 delta: result.xp,
                 type: 'xp'
             });
@@ -955,11 +1231,11 @@ export class UserInterface {
                 : `${sign}${effect.delta}`;
 
             const duration = effect.type === 'temporary'
-                ? `<small> · ${effect.duration} match${effect.duration > 1 ? 's' : ''}</small>`
+                ? `<small style="opacity:0.6;"> · ${effect.duration} match(s)</small>`
                 : '';
 
             return `
-                <div class="consequence-result-row ${positive ? 'positive' : 'negative'}">
+                <div class="consequence-result-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size:0.85rem; color: ${positive ? '#10b981' : '#ef4444'};">
                     <span>${positive ? '▲' : '▼'} ${effect.label}</span>
                     <strong>${value}${duration}</strong>
                 </div>
@@ -967,15 +1243,15 @@ export class UserInterface {
         }).join('');
 
         modal.innerHTML = `
-            <div class="event-modal-card consequence-result-card">
-                <span class="event-modal-category">📊 CONSÉQUENCES</span>
-                <h3 class="event-modal-title">${result?.title || 'Conséquences'}</h3>
+            <div class="event-modal-card">
+                <span class="event-modal-category">📊 IMPACT & BILAN</span>
+                <h3 class="event-modal-title">${result?.title || 'Résultats'}</h3>
                 ${result?.message ? `<p class="event-modal-desc">${result.message}</p>` : ''}
-                <div class="consequence-result-list">
-                    ${html || '<p class="consequence-empty">Aucune modification directe.</p>'}
+                <div class="consequence-result-list" style="margin-bottom:16px;">
+                    ${html || '<p style="font-size:0.85rem; color:var(--text-sub);">Aucun changement direct sur vos statistiques.</p>'}
                 </div>
                 <div class="event-modal-choices">
-                    <button class="btn-event-choice consequence-continue">Continuer</button>
+                    <button class="btn-event-choice consequence-continue" style="text-align:center;">Continuer</button>
                 </div>
             </div>
         `;
@@ -1000,16 +1276,14 @@ export class UserInterface {
 
         modal.innerHTML = `
             <div class="event-modal-card">
-                <span class="event-modal-category">⚡ MATCH CLÉ</span>
-                <h3 class="event-modal-title">${dilemma?.title || 'Match'}</h3>
+                <span class="event-modal-category">⚡ ÉVÉNEMENT & TACTIQUE</span>
+                <h3 class="event-modal-title">${dilemma?.title || 'Decision'}</h3>
                 <p class="event-modal-desc">${dilemma?.description || ''}</p>
 
                 <div class="event-modal-choices">
                     ${(dilemma?.choices || []).map((choix, index) => `
                         <button class="btn-event-choice" data-choice-index="${index}" type="button">
-                            <span class="choice-main-text">
-                                👉 ${choix?.texte || choix?.text || choix?.label || 'Continuer'}
-                            </span>
+                            👉 ${choix?.texte || choix?.text || choix?.label || 'Valider'}
                         </button>
                     `).join('')}
                 </div>
