@@ -247,6 +247,3 @@ export class GameEngine {
         this.mediaSystem.resolveDilemma(this.state, choiceIndex);
     }
 }
-
-// Lancement automatique du jeu au chargement de la page
-});
