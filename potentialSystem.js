@@ -1,17 +1,7 @@
 // potentialSystem.js
-// Moteur de potentiel vivant : le potentiel de départ est une base cachée,
-// puis évolue une seule fois par saison selon la carrière réelle du joueur.
-//
-// Règles principales :
-// - départ : 75–80 ;
-// - variation normale : jusqu'à base +15 ;
-// - plancher de carrière : 69 ;
-// - 95+ est une zone légendaire accessible à toutes les bases, mais seulement
-//   après une excellente trajectoire et une fenêtre d'explosion bien exploitée ;
-// - âge d'explosion individuel : 15–28 ans ;
-// - l'explosion accélère la conversion du momentum en potentiel, elle ne
-//   donne jamais directement des points d'OVR ;
-// - les signaux sont accumulés pendant la saison, puis consommés au bilan.
+// Moteur de potentiel vivant : une seule évolution du potentiel au bilan
+// de saison. Le potentiel reste une valeur cachée et n'est jamais une récompense
+// automatique pour une bonne série de matchs.
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const n = (value, fallback = 0) => {
@@ -26,37 +16,29 @@ export const POTENTIAL_RULES = {
     ABSOLUTE_MIN: 69,
     EXCEPTIONAL_MAX: 99,
     SEASON_CHANGE_MIN: -3,
-    SEASON_CHANGE_MAX: 3,
+    SEASON_CHANGE_MAX: 2,
     PEAK_MIN_AGE: 15,
     PEAK_MAX_AGE: 28,
     RETIREMENT_AVAILABLE_AGE: 34,
     CAREER_END_AGE: 42,
     MOMENTUM_MIN: -24,
     MOMENTUM_MAX: 24,
-    EXCEPTIONAL_THRESHOLD: 14,
-    LEGENDARY_THRESHOLD: 18
+    EXCEPTIONAL_THRESHOLD: 4,
+    LEGENDARY_THRESHOLD: 3
 };
 
-function randomInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
 function weightedInitialPotential() {
-    // Centre de gravité 77–78, tout en gardant 75 et 80 possibles.
     const roll = Math.random();
-    if (roll < 0.18) return 75;
-    if (roll < 0.36) return 76;
-    if (roll < 0.56) return 77;
-    if (roll < 0.74) return 78;
-    if (roll < 0.90) return 79;
+    if (roll < 0.16) return 75;
+    if (roll < 0.34) return 76;
+    if (roll < 0.55) return 77;
+    if (roll < 0.75) return 78;
+    if (roll < 0.92) return 79;
     return 80;
 }
 
 function generatePeakAge() {
-    // Tous les âges 15–28 sont possibles, mais les extrêmes sont plus rares.
-    const weights = [
-        10, 9, 9, 9, 9, 9, 9, 9, 8, 8, 7, 6, 5, 3
-    ];
+    const weights = [10, 9, 9, 9, 9, 9, 9, 9, 8, 8, 7, 6, 5, 3];
     const total = weights.reduce((sum, value) => sum + value, 0);
     let roll = Math.random() * total;
     for (let i = 0; i < weights.length; i += 1) {
@@ -67,8 +49,6 @@ function generatePeakAge() {
 }
 
 function generatePeakStrength() {
-    // La force du pic reste modérée : elle modifie surtout la vitesse de
-    // développement autour du pic, pas le potentiel directement.
     return Number((0.88 + Math.random() * 0.30).toFixed(2));
 }
 
@@ -83,7 +63,7 @@ export function createPotentialProfile(base = null) {
         base: initial,
         current: initial,
         min: Math.max(POTENTIAL_RULES.ABSOLUTE_MIN, initial - POTENTIAL_RULES.DELTA_LIMIT),
-        max: initial + POTENTIAL_RULES.DELTA_LIMIT,
+        max: Math.min(initial + POTENTIAL_RULES.DELTA_LIMIT, POTENTIAL_RULES.EXCEPTIONAL_MAX),
         exceptionalMax: POTENTIAL_RULES.EXCEPTIONAL_MAX,
         peakAge: generatePeakAge(),
         peakStrength: generatePeakStrength(),
@@ -123,21 +103,22 @@ function ensureSignals(profile) {
 }
 
 function syncProgressionCeilings(player) {
-    if (!player?.progression) return;
-    const model = player.progression;
-    const currentPotential = n(player.potentialProfile?.current, player.potential);
-    const deltas = model?.origine && model?.origineDeltas ? model.origineDeltas : null;
+    const model = player?.progression;
+    if (!model) return;
 
-    // On conserve les plafonds déjà calculés quand l'origine n'est plus
-    // disponible dans une ancienne sauvegarde. Sinon, on les recalcule autour
-    // du nouveau potentiel sans jamais faire redescendre une stat existante.
+    const currentPotential = n(player.potentialProfile?.current, player.potential);
+    const deltas = model.origineDeltas || model.origine?.deltas || null;
     model.plafondsStats ||= {};
+
     const attrs = ['vitesse', 'tir', 'passes', 'dribble', 'defense', 'physique', 'tete'];
     for (const attr of attrs) {
         const oldCap = n(model.plafondsStats[attr], currentPotential);
         const nuance = deltas ? Math.round(n(deltas[attr]) / 3) : 0;
         const desired = clamp(Math.round(currentPotential + nuance), 35, 99);
         const currentStat = n(model.stats?.[attr], 1);
+
+        // Une baisse du potentiel ne retire jamais un point déjà acquis.
+        // Elle réduit seulement la marge future.
         model.plafondsStats[attr] = Math.max(currentStat, desired, Math.min(oldCap, currentStat));
     }
 }
@@ -155,35 +136,44 @@ export const PotentialSystem = {
         const numericPotential = Number(player.potential);
         if (!player.potentialProfile) {
             const legacyBase = Number.isFinite(numericPotential)
-                ? clamp(Math.round(numericPotential), 75, 80)
+                ? clamp(Math.round(numericPotential), POTENTIAL_RULES.START_MIN, POTENTIAL_RULES.START_MAX)
                 : null;
             player.potentialProfile = createPotentialProfile(legacyBase);
+            if (Number.isFinite(numericPotential)) {
+                // Migration sans perte : une ancienne sauvegarde à 90+ conserve
+                // son potentiel au lieu d'être ramenée artificiellement à 75–80.
+                player.potentialProfile.current = clamp(
+                    Math.round(numericPotential),
+                    POTENTIAL_RULES.ABSOLUTE_MIN,
+                    POTENTIAL_RULES.EXCEPTIONAL_MAX
+                );
+            }
         }
 
         const profile = player.potentialProfile;
         profile.base = clamp(Math.round(n(profile.base, 78)), 75, 80);
-
-        // Les bornes sont recalculées AVANT de normaliser current.
-        // Cela évite qu'une ancienne sauvegarde conserve des min/max incohérents.
-        profile.min = Math.max(
-            POTENTIAL_RULES.ABSOLUTE_MIN,
-            profile.base - POTENTIAL_RULES.DELTA_LIMIT
-        );
-        profile.max = Math.min(
-            profile.base + POTENTIAL_RULES.DELTA_LIMIT,
-            POTENTIAL_RULES.EXCEPTIONAL_MAX
-        );
+        profile.min = Math.max(POTENTIAL_RULES.ABSOLUTE_MIN, profile.base - POTENTIAL_RULES.DELTA_LIMIT);
+        profile.max = Math.min(profile.base + POTENTIAL_RULES.DELTA_LIMIT, POTENTIAL_RULES.EXCEPTIONAL_MAX);
         profile.exceptionalMax = clamp(
             n(profile.exceptionalMax, POTENTIAL_RULES.EXCEPTIONAL_MAX),
             profile.max,
             POTENTIAL_RULES.EXCEPTIONAL_MAX
         );
 
+        const current = Math.round(n(profile.current, n(player.potential, profile.base)));
+        // Le potentiel reste la limite de carrière : une ancienne sauvegarde
+        // dont l'OVR dépasse ce plafond est réparée en ramenant l'OVR au potentiel,
+        // jamais en gonflant artificiellement le potentiel.
         profile.current = clamp(
-            Math.round(n(profile.current, n(player.potential, profile.base))),
+            current,
             profile.min,
             profile.exceptionalMax
         );
+        if (player.overall !== undefined && n(player.overall) > profile.current) {
+            player.overall = profile.current;
+            if (player.progression) player.progression.general = profile.current;
+        }
+
         profile.peakAge = clamp(Math.round(n(profile.peakAge, 22)), 15, 28);
         profile.peakStrength = clamp(n(profile.peakStrength, 1), 0.75, 1.25);
         profile.careerMomentum = clamp(n(profile.careerMomentum), -24, 24);
@@ -193,8 +183,6 @@ export const PotentialSystem = {
         profile.history ||= [];
         ensureSignals(profile);
 
-        // Compatibilité avec l'ancien modèle : le jeu continue à lire
-        // player.potential comme une valeur numérique.
         player.potential = profile.current;
         if (player.progression) {
             player.progression.potentielMax = profile.current;
@@ -214,6 +202,7 @@ export const PotentialSystem = {
             POTENTIAL_RULES.MOMENTUM_MIN,
             POTENTIAL_RULES.MOMENTUM_MAX
         );
+        if (profile.seasonSignals[category] === undefined) category = 'decisions';
         profile.seasonSignals[category] = n(profile.seasonSignals[category]) + value;
         return profile.careerMomentum;
     },
@@ -225,17 +214,17 @@ export const PotentialSystem = {
         if (!games) return;
 
         const rating = n(summary.rating, 6);
-        const ratingSignal = clamp((rating - 6.2) * games * 0.55, -4, 4);
-        const goalSignal = clamp(n(summary.goals) * 0.65, 0, 2.5);
-        const assistSignal = clamp(n(summary.assists) * 0.45, 0, 2);
-        const cardPenalty = clamp(n(summary.yellowCards) * 0.35, 0, 1.5);
+        // Les performances alimentent le momentum sans transformer une saison
+        // correcte en saison exceptionnelle.
+        const ratingSignal = clamp((rating - 6.2) * games * 0.07, -1.0, 1.0);
+        const goalSignal = clamp(n(summary.goals) * 0.10, 0, 0.6);
+        const assistSignal = clamp(n(summary.assists) * 0.07, 0, 0.5);
+        const cardPenalty = clamp(n(summary.yellowCards) * 0.12, 0, 0.5);
 
         this.addMomentum(player, ratingSignal + goalSignal + assistSignal - cardPenalty, 'performance');
-        profile.seasonSignals.playingTime += clamp(games * 0.22, 0, 1.5);
+        profile.seasonSignals.playingTime += clamp(games * 0.10, 0, 1.0);
 
-        if (summary.injured) {
-            this.addMomentum(player, -1.5, 'health');
-        }
+        if (summary.injured) this.addMomentum(player, -1.5, 'health');
     },
 
     recordTraining(player, trainingReport = {}) {
@@ -243,16 +232,12 @@ export const PotentialSystem = {
         const xp = n(trainingReport.xp, 0);
         const fitnessCost = n(trainingReport.fitnessCost, 0);
 
-        // Le repos récupère la forme mais ne doit jamais être interprété comme
-        // une bonne performance de développement du potentiel.
-        if (fitnessCost < 0 || trainingReport.name === 'Repos') {
-            return;
-        }
+        if (fitnessCost < 0 || trainingReport.name === 'Repos') return;
 
-        const quality = clamp((xp - 80) / 120, -0.5, 1)
-            - clamp(fitnessCost / 40, 0, 0.35);
+        const quality = clamp((xp - 120) / 300, -0.4, 0.8)
+            - clamp(fitnessCost / 60, 0, 0.25);
 
-        this.addMomentum(player, quality * 0.35, 'training');
+        this.addMomentum(player, quality * 0.20, 'training');
     },
 
     recordConsequenceChanges(player, changes = []) {
@@ -264,15 +249,15 @@ export const PotentialSystem = {
             const stat = String(change.stat || '');
             if (!delta) continue;
 
-            if (stat === 'morale') signal += delta * 0.10;
-            else if (stat === 'discipline') signal += delta * 0.16;
-            else if (stat === 'relationCoach') signal += delta * 0.12;
-            else if (stat === 'fitness') signal += delta * 0.06;
-            else if (stat === 'fame' || stat === 'reputation') signal += delta * 0.05;
-            else if (stat.startsWith('attributes.')) signal += delta * 0.08;
+            if (stat === 'morale') signal += delta * 0.06;
+            else if (stat === 'discipline') signal += delta * 0.10;
+            else if (stat === 'relationCoach') signal += delta * 0.08;
+            else if (stat === 'fitness') signal += delta * 0.03;
+            else if (stat === 'fame' || stat === 'reputation') signal += delta * 0.03;
+            else if (stat.startsWith('attributes.')) signal += delta * 0.05;
         }
 
-        this.addMomentum(player, clamp(signal, -2, 2), 'decisions');
+        this.addMomentum(player, clamp(signal, -1.2, 1.2), 'decisions');
     },
 
     getPeakMultiplier(player) {
@@ -281,12 +266,11 @@ export const PotentialSystem = {
 
         const age = n(player.age, 14);
         const distance = Math.abs(age - profile.peakAge);
-        const gaussian = Math.exp(-(distance * distance) / (2 * 2.4 * 2.4));
-        const raw = 0.86 + gaussian * 0.38 * profile.peakStrength;
-
-        // Le joueur peut déjà développer avant son pic et après son pic,
-        // mais la fenêtre d'explosion augmente clairement le rendement.
-        return clamp(raw, 0.78, 1.28);
+        const gaussian = Math.exp(-(distance * distance) / (2 * 2.6 * 2.6));
+        const ageFactor = age < profile.peakAge
+            ? 0.90 + gaussian * 0.20
+            : 0.82 + gaussian * 0.32;
+        return clamp(ageFactor * profile.peakStrength, 0.72, 1.20);
     },
 
     getPeakState(player) {
@@ -301,113 +285,91 @@ export const PotentialSystem = {
 
     calculateSeasonMomentum(player) {
         const profile = this.ensure(player);
-        if (!profile) return 0;
-        ensureSignals(profile);
-
-        // careerMomentum est la valeur agrégée ; seasonSignals ne sert qu'à
-        // expliquer le bilan et ne doit surtout pas être additionné une seconde fois.
-        return clamp(n(profile.careerMomentum), -24, 24);
+        return profile ? clamp(n(profile.careerMomentum), -24, 24) : 0;
     },
 
     momentumToPotentialChange(player, momentum) {
         const profile = this.ensure(player);
         if (!profile) return 0;
 
-        const peakMultiplier = this.getPeakMultiplier(player);
-        const adjusted = momentum * peakMultiplier;
+        const adjusted = momentum * this.getPeakMultiplier(player);
         const current = profile.current;
 
-        // Une saison moyenne ne donne rien automatiquement.
-        // Une bonne saison donne +1/+2, une excellente +3.
-        // Le seuil monte légèrement après 84 pour conserver la rareté du haut
-        // potentiel sans rendre 85+ frustrant.
         if (adjusted <= -5) profile.badSeasonStreak += 1;
-        else if (adjusted >= 0) profile.badSeasonStreak = 0;
+        else if (adjusted >= 1) profile.badSeasonStreak = 0;
 
-        // Une seule mauvaise saison ne doit pas faire s'effondrer le potentiel.
-        // Les vraies baisses apparaissent surtout lorsque la mauvaise trajectoire
-        // se répète.
-        if (profile.badSeasonStreak >= 7 && adjusted <= -18) return Math.random() < 0.65 ? -3 : -2;
-        if (profile.badSeasonStreak >= 5 && adjusted <= -10) return Math.random() < 0.55 ? -2 : -1;
-        if (profile.badSeasonStreak >= 3 && adjusted <= -5) return Math.random() < 0.45 ? -1 : 0;
+        if (profile.badSeasonStreak >= 6 && adjusted <= -12) return Math.random() < 0.55 ? -2 : -1;
+        if (profile.badSeasonStreak >= 4 && adjusted <= -7) return Math.random() < 0.50 ? -1 : 0;
+        if (profile.badSeasonStreak >= 2 && adjusted <= -5) return Math.random() < 0.50 ? -1 : 0;
 
         if (current < 82) {
-            if (adjusted < 2) return 0;
-            if (adjusted < 6) return 1;
-            if (adjusted < 11) return 2;
-            return 3;
-        }
-
-        // 82–83 : le joueur peut encore atteindre 84 normalement, mais le
-        // rendement commence à ralentir.
-        if (current < 84) {
-            if (adjusted < 3) return 0;
+            if (adjusted < 4) return 0;
             if (adjusted < 8) return 1;
-            if (adjusted < 14) return 2;
-            return 3;
+            return 2;
         }
 
-        // 84 est une zone de maîtrise : le premier passage à 85+ demande
-        // une percée, puis le joueur peut de nouveau progresser normalement.
+        if (current < 85) {
+            if (adjusted < 3.5) return 0;
+            if (adjusted < 8) return 1;
+            return 2;
+        }
+
         if (current < 90) {
             if (adjusted < 4) return 0;
-            if (adjusted < 9) return 1;
-            if (adjusted < 15) return 2;
-            return 3;
+            if (adjusted < 8) return 1;
+            return 2;
         }
 
-        // Au-dessus de 90, chaque point supplémentaire demande une saison
-        // d'élite, ce qui protège la rareté du 95+.
-        if (adjusted < 5) return 0;
+        if (adjusted < 6) return 0;
         if (adjusted < 10) return 1;
-        if (adjusted < 16) return 2;
-        return 3;
+        return 2;
     },
 
     exceptionalUpgradeChance(player, momentum) {
         const profile = this.ensure(player);
         if (!profile) return 0;
 
-        if (profile.current < 84 || momentum < POTENTIAL_RULES.EXCEPTIONAL_THRESHOLD) {
-            return 0;
-        }
-
         const state = this.getPeakState(player);
+        const current = profile.current;
 
-        if (profile.current < 90) {
-            // On ne donne que quelques véritables occasions de franchir 84.
-            // Cela évite qu'une carrière devienne mécaniquement exceptionnelle
-            // simplement parce qu'elle dure longtemps.
-            if (profile.breakthroughAttempts >= 4) return 0;
-            if (state !== 'pic' && state !== 'fenetre_explosion' && momentum < 20) {
-                return 0;
-            }
+        // 84 -> 85+ : la percée est possible, mais seulement sur une vraie
+        // saison d'élite, idéalement autour du pic individuel.
+        if (current === 84) {
+            if (momentum < POTENTIAL_RULES.EXCEPTIONAL_THRESHOLD) return 0;
+            if (profile.breakthroughAttempts >= 6) return 0;
 
-            let chance = 0.45;
-            if (state === 'pic') chance += 0.20;
-            else if (state === 'fenetre_explosion') chance += 0.10;
-            if (momentum >= 20) chance += 0.10;
-            return clamp(chance, 0, 0.75);
+            let chance = 0.03;
+            if (state === 'pic') chance += 0.06;
+            else if (state === 'fenetre_explosion') chance += 0.03;
+            if (momentum >= 10) chance += 0.03;
+            return clamp(chance, 0, 0.17);
         }
 
-        // Une fois à 90+, la fenêtre légendaire dispose de davantage d'essais,
-        // mais le franchissement de 95 reste une vraie rareté.
-        if (profile.legendaryAttempts >= 8) return 0;
+        // 85–89 : progresser est possible normalement, mais dépasser le plafond
+        // individuel demande encore une percée rare.
+        if (current < 90) {
+            if (momentum < 4 || profile.breakthroughAttempts >= 9) return 0;
+            let chance = 0.42;
+            if (state === 'pic') chance += 0.10;
+            else if (state === 'fenetre_explosion') chance += 0.05;
+            if (momentum >= 10) chance += 0.03;
+            return clamp(chance, 0, 0.55);
+        }
 
-        let chance = 0.78;
-        if (state === 'pic') chance += 0.08;
-        else if (state === 'fenetre_explosion') chance += 0.05;
-        if (momentum >= 20) chance += 0.05;
-        if (profile.current >= 93) chance += 0.03;
-        if (profile.current >= 95) chance += 0.02;
-
-        return clamp(chance, 0, 0.30);
+        // 90+ : zone légendaire. Le 95+ doit rester rare, même avec plusieurs
+        // années de haut niveau.
+        if (momentum < 3 || profile.legendaryAttempts >= 18) return 0;
+        let chance = 0.35;
+        if (state === 'pic') chance += 0.05;
+        else if (state === 'fenetre_explosion') chance += 0.025;
+        if (momentum >= 10) chance += 0.03;
+        if (current >= 94) chance += 0.04;
+        return clamp(chance, 0.20, 0.44);
     },
 
     refreshProgressionCaps(player) {
         const profile = this.ensure(player);
         if (!profile || !player.progression) return;
-
         player.progression.potentielMax = profile.current;
         syncProgressionCeilings(player);
     },
@@ -417,51 +379,38 @@ export const PotentialSystem = {
         const profile = this.ensure(player);
         const momentum = this.calculateSeasonMomentum(player);
         const oldPotential = profile.current;
-        let change = this.momentumToPotentialChange(player, momentum);
+        let change = clamp(
+            this.momentumToPotentialChange(player, momentum),
+            POTENTIAL_RULES.SEASON_CHANGE_MIN,
+            POTENTIAL_RULES.SEASON_CHANGE_MAX
+        );
 
         let target = oldPotential + change;
 
-        // 84 est le plafond souple des carrières normales. Un joueur ne peut
-        // pas passer directement de 83 à 86 avec un simple +3 : le franchissement
-        // de 84 doit toujours passer par la mécanique de percée.
-        if (oldPotential < 84) {
-            target = Math.min(target, 84);
-        }
+        // La zone 85+ ne doit pas être atteinte automatiquement depuis 83 :
+        // 84 est le dernier palier normal avant une vraie percée.
+        if (oldPotential < 84) target = Math.min(target, 84);
 
-        target = clamp(target, profile.min, profile.max);
-
-        // Dépassement du plafond normal : uniquement dans une saison d'élite.
-        // Une percée donne 1 point, exceptionnellement 2, afin d'éviter les
-        // bonds artificiels vers 95+.
-        const needsBreakthrough =
-            oldPotential === 84 &&
-            change > 0;
-
-        const reachesNormalCap =
-            change > 0 &&
-            target >= profile.max &&
-            oldPotential >= profile.max - 1;
+        const needsBreakthrough = oldPotential === 84 && change > 0;
+        const reachesNormalCap = change > 0 && oldPotential >= profile.max - 1;
 
         if (needsBreakthrough || reachesNormalCap) {
             const chance = this.exceptionalUpgradeChance(player, momentum);
-
             if (oldPotential < 90) profile.breakthroughAttempts += 1;
             else profile.legendaryAttempts += 1;
 
             if (Math.random() <= chance) {
-                const breakthrough = Math.random() < 0.10 ? 2 : 1;
-                target = Math.min(oldPotential + breakthrough, profile.exceptionalMax);
-            } else if (oldPotential >= 84 && oldPotential < profile.max) {
-                // Échec d'une tentative de percée : on reste stable, on ne
-                // punit pas artificiellement une bonne carrière.
+                // +1 presque toujours ; +2 seulement dans une saison vraiment
+                // exceptionnelle et autour du pic.
+                const doubleJump = oldPotential >= 90 && momentum >= 8 && Math.random() < 0.50;
+                target = oldPotential + (doubleJump ? 2 : 1);
+            } else if (oldPotential >= 84) {
                 target = oldPotential;
             }
         }
 
-        // Une saison catastrophique pendant la fenêtre d'explosion peut faire
-        // rater une partie du développement ; une excellente saison permet au
-        // contraire de profiter davantage du pic.
         profile.current = clamp(target, profile.min, profile.exceptionalMax);
+
         player.potential = profile.current;
         this.refreshProgressionCaps(player);
 
