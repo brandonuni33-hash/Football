@@ -1,51 +1,70 @@
-const TrainingSystem = {
-    // Définition des types d'entraînement et de leurs impacts sur les statistiques et la forme
+export const TrainingManager = {
+    // Définition des types d'entraînement et de leurs impacts
     programs: {
-        technique: {
+        TECHNIQUE: {
             name: "Technique & Agilité",
             fitnessCost: 15,
+            ratingBonus: 0.2,
+            goalBonus: 0.05,
+            assistBonus: 0.05,
             primaryStats: ["dribble", "controle", "passes"],
             secondaryStats: ["agilite", "acceleration"]
         },
-        physique: {
+        PHYSIQUE: {
             name: "Renforcement Physique",
             fitnessCost: 25,
+            ratingBonus: 0.0,
+            goalBonus: 0.0,
+            assistBonus: 0.0,
             primaryStats: ["endurance", "force", "vitesse"],
             secondaryStats: ["detente", "agilite"]
         },
-        tir: {
+        TIR: {
             name: "Finition & Attaque",
             fitnessCost: 20,
+            ratingBonus: 0.1,
+            goalBonus: 0.1,
+            assistBonus: 0.0,
             primaryStats: ["finition", "tirs_de_loin", "placement"],
-            secondaryStats: ["puissance", "volants"]
+            secondaryStats: ["puissance"]
         },
-        defensif: {
+        DEFENSIF: {
             name: "Bouclier Défensif",
             fitnessCost: 20,
+            ratingBonus: 0.1,
+            goalBonus: 0.0,
+            assistBonus: 0.0,
             primaryStats: ["tacle", "marquage", "agressivite"],
             secondaryStats: ["interception", "force"]
         },
-        repos: {
+        REPOS: {
             name: "Récupération Active",
-            fitnessCost: -30, // Restaure de la forme
+            fitnessCost: -30,
+            ratingBonus: 0.0,
+            goalBonus: 0.0,
+            assistBonus: 0.0,
             primaryStats: [],
             secondaryStats: []
         }
     },
 
-    // Fonction principale pour exécuter un entraînement
-    executeTraining(player, programKey) {
-        const effect = this.programs[programKey];
-        if (!effect) {
-            return { success: false, message: "Programme d'entraînement inconnu." };
-        }
+    // Méthode appelée par matchBlock.js
+    getEffect(focusKey) {
+        // Sécurité si la clé est en minuscules ou inconnue
+        const key = (focusKey || 'TECHNIQUE').toUpperCase();
+        return this.programs[key] || this.programs.TECHNIQUE;
+    },
 
-        // 1. Gestion de la forme physique (fitness)
+    // Fonction principale pour exécuter un entraînement manuel si besoin
+    executeTraining(player, programKey) {
+        const effect = this.getEffect(programKey);
+
+        // 1. Gestion de la forme physique
         player.fitness = Math.max(0, Math.min(100, (player.fitness || 80) - effect.fitnessCost));
 
-        // Si c'est un repos, on applique uniquement la récupération
-        if (programKey === 'repos') {
+        if (programKey === 'REPOS' || programKey === 'repos') {
             return {
+                success: true,
                 focus: effect.name,
                 fitnessChange: -effect.fitnessCost,
                 statIncreases: {},
@@ -66,13 +85,11 @@ const TrainingSystem = {
             }
         };
 
-        // Appliquer les gains pour les stats primaires (hausse de 1 à 2 points)
         effect.primaryStats.forEach(stat => {
             const gain = Math.random() < 0.7 ? 1 : 2;
             increaseStat(stat, gain);
         });
 
-        // Appliquer les gains pour les stats secondaires (hausse de 1 point avec 50% de chance)
         effect.secondaryStats.forEach(stat => {
             if (Math.random() < 0.5) {
                 increaseStat(stat, 1);
@@ -80,7 +97,7 @@ const TrainingSystem = {
         });
 
         // 3. Recalcul de l'OVR général du joueur
-        const statValues = Object.values(player.stats);
+        const statValues = Object.values(player.stats).filter(val => typeof val === 'number');
         if (statValues.length > 0) {
             const sum = statValues.reduce((a, b) => a + b, 0);
             player.overall = Math.round(sum / statValues.length);
@@ -95,6 +112,3 @@ const TrainingSystem = {
         };
     }
 };
-
-// Export si tu utilises des modules Node.js / ES6
-// export default TrainingSystem;
