@@ -99,7 +99,7 @@ export class CoachSystem {
                 return {
                     id: 'coach_origin_academy',
                     title: `💬 Point de ${coachState.name} : Trop stéréotypé`,
-                    description: `Le coach t'appelle après la séance vidéo : "${player.firstname}, tu appliques la tactique à la lettre, c'est propre, c'est scolaire... mais tu manques cruellement de folie ! Tu joui trop en sécurité, prends des risques."`,
+                    description: `Le coach t'appelle après la séance vidéo : "${player.firstname}, tu appliques la tactique à la lettre, c'est propre, c'est scolaire... mais tu manques cruellement de folie ! Tu joues trop en sécurité, prends des risques."`,
                     choices: [
                         {
                             text: "Écouter le conseil : 'Je vais essayer de tenter davantage de passes risquées et de percuter.'",
@@ -234,6 +234,32 @@ export class CoachSystem {
             responseText: choice.response,
             newRelation: coachState.relation,
             newOpinion: coachState.opinion
+        };
+    }
+
+    /**
+     * Récupère les données formatées du coach pour l'affichage UI
+     */
+    static getCoachData(state) {
+        if (!state || !state.social) return null;
+        const coachState = state.social.coachData || {
+            name: state.social.formativeCoach || "l'entraîneur",
+            relation: state.social.relationCoach || 50,
+            opinion: "Neutre",
+            hasLeftClub: false
+        };
+
+        let relationshipStatus = "Neutre";
+        if (coachState.relation >= 75) relationshipStatus = "Fier / Excellent";
+        else if (coachState.relation >= 60) relationshipStatus = "Satisfait";
+        else if (coachState.relation <= 30) relationshipStatus = "Fâché / Déçu";
+
+        return {
+            name: coachState.name,
+            vision: state.social.coachVision || "Équilibré",
+            relationshipScore: coachState.relation,
+            relationshipStatus: relationshipStatus,
+            opinion: coachState.opinion
         };
     }
 }
