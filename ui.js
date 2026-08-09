@@ -6,6 +6,7 @@ import { MatchChoiceManager as _MatchChoiceManager } from './matchChoices.js';
 import { TransferMarket as _TransferMarket } from './transferMarket.js';
 import { CoachSystem as _CoachSystem } from './coachSystem.js';
 import { ConsequenceSystem as _ConsequenceSystem } from './consequenceSystem.js';
+import { CareerSystem as _CareerSystem } from './careerSystem.js';
 
 // Sécurisation des données importées
 const POSITIONS = Array.isArray(_POSITIONS) ? _POSITIONS : Object.values(_POSITIONS || {});
@@ -35,6 +36,7 @@ const TransferMarket = _TransferMarket || {
     generateTransferOffer: () => null
 };
 const ConsequenceSystem = _ConsequenceSystem || { preview: () => ({ effects: [] }) };
+const CareerSystem = _CareerSystem || { getStage: age => age < 16 ? 'academy' : age < 18 ? 'semi_pro' : 'professional', positionName: id => id };
 const CoachSystem = _CoachSystem || {
     getCoachData: () => null,
     checkCoachInteraction: () => null,
@@ -778,6 +780,8 @@ export class UserInterface {
                                         <span style="font-size:0.85rem; opacity:0.9;">⭐ ${state.player?.workRates || 'H H'}</span>
                                     </div>
                                     <div class="player-club-sub">📍 ${state.player?.club || 'Bayer Leverkusen U19'} (${state.player?.position || 'BU'})</div>
+                            <div style="margin-top:6px; font-size:0.78rem; color:#cbd5e1;">🎓 ${state.player?.careerProfile?.youthCategory || ''} · ${state.player?.contract?.label || 'Contrat jeune'} · 🏟️ Centre ${'⭐'.repeat(state.player?.careerProfile?.centerStars || 1)}</div>
+                            ${state.player?.careerProfile?.role ? `<div style="margin-top:4px; font-size:0.78rem; color:#fbbf24;">🎯 Rôle : ${state.player.careerProfile.role}</div>` : ''}
                                 </div>
                             </div>
 
@@ -888,6 +892,8 @@ export class UserInterface {
                         <p><strong>Joueur :</strong> ${state.player?.firstname || ''} ${state.player?.lastname || ''} (#${state.player?.number || 33})</p>
                         <p><strong>Club :</strong> ${state.player?.club || 'Libre'}</p>
                         <p><strong>Poste :</strong> ${state.player?.position || ''} | <strong>Rendement :</strong> ⭐ ${state.player?.workRates || 'H H'}</p>
+                        <p><strong>Parcours :</strong> ${state.player?.careerProfile?.youthCategory || 'U15'} · ${state.player?.contract?.label || 'Contrat jeune'}</p>
+                        <p><strong>Centre :</strong> ${'⭐'.repeat(state.player?.careerProfile?.centerStars || 1)} · <strong>Rôle :</strong> ${state.player?.careerProfile?.role || 'Profil encore en développement'}</p>
                         <p><strong>Saison :</strong> ${state.calendar?.currentSeasonYear || 2026} (${state.calendar?.currentPeriod || 'Pré-saison'})</p>
                         <hr style="border-color: var(--border-glass); margin: 12px 0;">
                         <p><strong>Valeur estimée :</strong> 🏷️ ${TransferMarket.formatPrice(marketValue)}</p>
@@ -1210,6 +1216,23 @@ export class UserInterface {
     handlePostInteraction() {
         const state = this.engine?.state;
         if (!state) return;
+
+        if (state.pendingPositionProposal) {
+            const proposal = state.pendingPositionProposal;
+            this.afficherModaleMatchDilemma({
+                title: '🧠 Le coach vous voit autrement',
+                description: proposal.message,
+                choices: [
+                    { text: `✅ Essayer ${CareerSystem.positionName(proposal.to)}`, impacts: {} },
+                    { text: '❌ Rester à mon poste', impacts: {} }
+                ]
+            }, (choice) => {
+                this.engine.resolvePositionProposal(choice === 0);
+                this.renderDashboard();
+                this.handlePostInteraction();
+            });
+            return;
+        }
 
         if (state.pendingTransferOffer) {
             this.afficherModaleTransfer(state.pendingTransferOffer);
