@@ -61,7 +61,8 @@ const LEGACY_ATTRIBUTE_MAP = {
     defense: 'defense',
     physique: 'physique',
     mental: 'mental',
-    tete: 'mental'
+    tete: 'mental',
+    mental: 'mental'
 };
 
 const MATCH_BONUS_LABELS = {
@@ -146,6 +147,24 @@ function readValue(player, key) {
 }
 
 function writeValue(player, key, delta) {
+    if (key === 'technique') {
+        const beforePasses = num(player.attributes?.passe);
+        const beforeDribble = num(player.attributes?.dribble);
+        if (player.attributes?.passe === undefined || player.attributes?.dribble === undefined) return null;
+
+        const half = num(delta) / 2;
+        player.attributes.passe = clamp(beforePasses + half, 1, 99);
+        player.attributes.dribble = clamp(beforeDribble + half, 1, 99);
+
+        return {
+            stat: key,
+            label: LABELS[key],
+            before: Number(((beforePasses + beforeDribble) / 2).toFixed(2)),
+            after: Number(((player.attributes.passe + player.attributes.dribble) / 2).toFixed(2)),
+            delta: num(delta)
+        };
+    }
+
     if (key === 'careerMomentum') {
         const before = n(player.potentialProfile?.careerMomentum);
         const after = PotentialSystem.addMomentum(player, n(delta), 'decisions');
