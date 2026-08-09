@@ -97,8 +97,11 @@ export class GameEngine {
         this.state.calendar ||= {
             currentMonth: 8,
             currentSeasonYear: 2026,
-            currentPeriod: 'Pré-saison & Début de championnat'
+            currentPeriod: 'Pré-saison & reprise',
+            seasonSchedule: null,
+            seasonMatchCursor: 0
         };
+        CompetitionSystem.ensureSeasonSchedule(this.state);
         this.state.social ||= this.socialSystem.initSocialData(
             this.state.player.coachName || 'l’entraîneur'
         );
@@ -181,8 +184,10 @@ export class GameEngine {
             calendar: {
                 currentMonth: 8,
                 currentSeasonYear: new Date().getFullYear(),
-                currentPeriod: 'Pré-saison & Début de championnat',
-                totalMonths: 12
+                currentPeriod: 'Pré-saison & reprise',
+                totalMonths: 12,
+                seasonSchedule: null,
+                seasonMatchCursor: 0
             },
             seasonPhase: 'pre_season',
             pendingEvent: null,
@@ -326,10 +331,13 @@ export class GameEngine {
         if (calendar.currentMonth === 8) {
             this.archiveAndResetSeason();
             calendar.currentSeasonYear += 1;
+            calendar.seasonSchedule = null;
+            calendar.seasonMatchCursor = 0;
             seasonChanged = true;
         }
 
-        calendar.currentPeriod = this.getPeriodName(calendar.currentMonth);
+        calendar.currentPeriod = CompetitionSystem.getPeriodName(calendar.currentMonth);
+        CompetitionSystem.ensureSeasonSchedule(this.state);
 
         return {
             month: calendar.currentMonth,
@@ -340,12 +348,7 @@ export class GameEngine {
     }
 
     getPeriodName(month) {
-        if (month === 8) return 'Pré-saison & Début de championnat';
-        if (month >= 9 && month <= 11) return 'Première partie de saison';
-        if (month === 12) return 'Mercato hivernal & Trêve';
-        if (month >= 1 && month <= 4) return 'Seconde partie de saison';
-        if (month === 5) return 'Sprint final & Bilan de saison';
-        return 'Trêve estivale & Bilan';
+        return CompetitionSystem.getPeriodName(month);
     }
 
     setTrainingFocus(focusKey) {
