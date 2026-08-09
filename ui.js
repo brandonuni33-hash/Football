@@ -4,7 +4,7 @@ import { EventEngine } from './events.js';
 import { TrainingManager } from './entrainement.js';
 import { MatchChoiceManager } from './matchChoices.js';
 import { TransferMarket } from './transferMarket.js';
-import { CoachSystem } from './coachSystem.js';
+import { CoachSystem } from './coachSystem.js'; // Rintégration du module CoachSystem
 
 export class UserInterface {
     constructor(gameEngine) {
@@ -405,7 +405,6 @@ export class UserInterface {
                             <button class="app-icon" data-app="messages">
                                 <div class="app-logo messages-logo">💬</div>
                                 <span class="app-label">Messages</span>
-                                ${state.pendingCoachEvent ? '<span class="notification-badge">!</span>' : ''}
                             </button>
 
                             <button class="app-icon" data-app="bank">
@@ -464,6 +463,9 @@ export class UserInterface {
 
         const marketValue = TransferMarket.calculateMarketValue(state.player);
 
+        // Récupération des données du Coach via CoachSystem si dispo
+        const coachInfo = CoachSystem && typeof CoachSystem.getCoachData === 'function' ? CoachSystem.getCoachData(state) : null;
+
         switch(this.activeApp) {
             case 'career':
                 return `
@@ -477,6 +479,13 @@ export class UserInterface {
                         <p><strong>Valeur marchande :</strong> 🏷️ ${TransferMarket.formatPrice(marketValue)}</p>
                         <p><strong>Forme physique :</strong> ${state.player.fitness}%</p>
                         <p><strong>Moral :</strong> ${state.player.morale}%</p>
+                        
+                        ${coachInfo ? `
+                            <hr class="pane-divider">
+                            <h4 class="history-section-title">👨‍💼 Entraîneur : ${coachInfo.name}</h4>
+                            <p><strong>Vision :</strong> ${coachInfo.vision}</p>
+                            <p><strong>Relation avec le coach :</strong> ${coachInfo.relationshipScore}/100 (${coachInfo.relationshipStatus || 'Neutre'})</p>
+                        ` : ''}
                     </div>
                 `;
             case 'social':
@@ -523,21 +532,6 @@ export class UserInterface {
                 return `
                     <div class="app-pane">
                         <h3 class="pane-title messages-color">💬 Messages & Vestiaire</h3>
-                        
-                        ${state.pendingCoachEvent ? `
-                            <div class="coach-event-box" style="background: rgba(255, 152, 0, 0.15); border: 1px solid #ff9800; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
-                                <h4 style="color: #ff9800; margin-bottom: 6px;">💬 ${state.pendingCoachEvent.title}</h4>
-                                <p style="font-size: 0.9rem; margin-bottom: 12px;">${state.pendingCoachEvent.description}</p>
-                                <div class="coach-choices-grid" style="display: flex; flex-direction: column; gap: 8px;">
-                                    ${state.pendingCoachEvent.choices.map((choice, idx) => `
-                                        <button class="btn-coach-choice btn-event-choice" data-coach-choice-idx="${idx}" style="text-align: left; font-size: 0.85rem;">
-                                            👉 ${choice.text}
-                                        </button>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        ` : ''}
-
                         <p><strong>Situation amoureuse :</strong> ${socialState.romance.unlocked ? (socialState.romance.partnerName ? `${socialState.romance.partnerName} (${socialState.romance.status} - ${socialState.romance.affection}%)` : 'Célibataire') : '🔒 Disponible à 18 ans'}</p>
                         <hr class="pane-divider">
                         <p class="relations-subtitle">Relations clés :</p>
@@ -635,20 +629,17 @@ export class UserInterface {
                     return;
                 }
 
-                // Si un événement de coach est en attente, forcer à le traiter d'abord
-                if (state && state.pendingCoachEvent) {
-                    alert("💬 Ton entraîneur formateur t'attend dans tes messages pour faire un point ! Lis son message avant de lancer un nouveau bloc.");
-                    this.activeApp = 'messages';
-                    this.renderDashboard();
-                    return;
-                }
-
                 const isFinalPeriod = state.calendar.currentMonth === 5; 
                 const matchType = isFinalPeriod ? 'final' : (Math.random() < 0.25 ? 'rival' : 'standard');
                 const matchDilemma = MatchChoiceManager.getMatchDilemma(matchType, "l'adversaire direct");
 
                 this.afficherModaleMatchDilemma(matchDilemma, (selectedChoice) => {
                     this.engine.playBlock(selectedChoice);
+
+                    // Vérification des retombées de l'entraîneur après le bloc si applicable
+                    if (CoachSystem && typeof CoachSystem.checkPostMatchInteractions === 'function') {
+                        CoachSystem.checkPostMatchInteractions(state);
+                    }
 
                     if (Math.random() < 0.15 && !state.activeTransferOffer) {
                         const offre = TransferMarket.generateTransferOffer(state.player);
@@ -689,18 +680,6 @@ export class UserInterface {
                 const choiceIdx = parseInt(e.currentTarget.getAttribute('data-choice-idx'), 10);
                 this.engine.resolveMediaDilemma(choiceIdx);
                 this.renderDashboard();
-            });
-        });
-
-        // Gestion des choix de l'entraîneur dans l'onglet messages
-        document.querySelectorAll('.btn-coach-choice').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const choiceIdx = parseInt(e.currentTarget.getAttribute('data-coach-choice-idx'), 10);
-                const result = this.engine.resolveCoachChoice(choiceIdx);
-                if (result) {
-                    alert(result.responseText);
-                    this.renderDashboard();
-                }
             });
         });
 
