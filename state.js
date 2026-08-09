@@ -2,7 +2,7 @@
 // Persistence centralisée et tolérante aux anciennes sauvegardes.
 
 const STORAGE_KEY = 'street_to_pro_save_v3';
-const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 const DEFAULT_STATE = {
     schemaVersion: SCHEMA_VERSION,
@@ -53,6 +53,8 @@ function mergeDeep(base, source) {
 function migrate(raw) {
     const state = mergeDeep(cloneDefault(), raw || {});
     state.schemaVersion = SCHEMA_VERSION;
+    state.social ||= null;
+    state.media ||= null;
 
     // Compatibilité avec les anciennes sauvegardes.
     if (!state.career) state.career = cloneDefault().career;
@@ -70,6 +72,10 @@ function migrate(raw) {
 
         state.player.age = Math.max(14, Number(state.player.age) || 14);
         state.player.potentialProfile ||= null;
+        state.player.progression ||= null;
+        state.player.hidden ||= {};
+        state.player.stats.relationCoach = Number.isFinite(Number(state.player.stats.relationCoach)) ? Number(state.player.stats.relationCoach) : 50;
+        state.player.stats.vestiaire = Number.isFinite(Number(state.player.stats.vestiaire)) ? Number(state.player.stats.vestiaire) : 50;
         state.player.canRetire = state.player.age >= 34;
         state.player.careerEnded = state.player.age >= 42;
     }
