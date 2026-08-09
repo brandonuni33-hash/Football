@@ -16,7 +16,7 @@ const COACH_VISIONS = _COACH_VISIONS || [{ title: 'Équilibré' }];
 const COACH_NAMES = _COACH_NAMES || ['Thomas Tuchel', 'Pep Guardiola'];
 
 const EventEngine = _EventEngine || { checkAndTriggerEvent: () => null };
-const TrainingManager = _TrainingManager || { FOCUS_TYPES: { TECHNIQUE: { name: 'Technique', description: 'Améliore la technique pure' } } };
+const TrainingManager = _TrainingManager || { programs: { TECHNIQUE: { name: 'Technique & Agilité', fitnessCost: 15, primaryStats: ['dribble', 'controle', 'passes'], secondaryStats: ['agilite', 'acceleration'] } } };
 const MatchChoiceManager = _MatchChoiceManager || {
     getMatchDilemma: (type = 'standard', opponent = '') => ({
         title: 'Match important',
@@ -119,7 +119,6 @@ export class UserInterface {
     }
 
     renderStepContent() {
-        // Ajout des blocs { } pour chaque case afin de protéger le scope des variables (const/let)
         switch(this.currentStep) {
             case 1: {
                 return `
@@ -636,10 +635,10 @@ export class UserInterface {
                         <h3 class="pane-title training-color">🏋️‍♂️ Centre d'Entraînement</h3>
                         <p class="subtitle">Choisis ton axe de travail :</p>
                         <div class="grid-focus">
-                            ${Object.entries(TrainingManager.FOCUS_TYPES || {}).map(([key, focusObj]) => `
+                            ${Object.entries(TrainingManager.programs || {}).map(([key, focusObj]) => `
                                 <div class="card-select training-card ${state.trainingFocus === key ? 'selected' : ''}" data-focus-key="${key}">
                                     <h4>${focusObj?.name || key}</h4>
-                                    <p>${focusObj?.description || ''}</p>
+                                    <p>${focusObj?.description || (focusObj.primaryStats ? `Cible : ${focusObj.primaryStats.join(', ')}` : '')}</p>
                                 </div>
                             `).join('')}
                         </div>
