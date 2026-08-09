@@ -1,457 +1,279 @@
+
 // gameEngine.js
 import { UserInterface } from './ui.js';
-import { MatchBlockManager } from './matchBlock.js';
-import { EconomyManager } from './economy.js';
-import { SocialSystem } from './social.js';
-import { MediaSystem } from './media.js';
-import { EventEngine } from './events.js';
-import { CoachSystem } from './coachSystem.js';
-import { TransferMarket } from './transferMarket.js';
-import { TrainingManager } from './entrainement.js';
-import { PlayerLogic } from './player.js';
-import { StateManager } from './state.js';
+
+// Importations sécurisées avec fallbacks par défaut pour éviter tout crash au démarrage
+import { MatchBlockManager as _MatchBlockManager } from './matchBlock.js';
+import { EconomyManager as _EconomyManager } from './economy.js';
+import { SocialSystem as _SocialSystem } from './social.js';
+import { MediaSystem as _MediaSystem } from './media.js';
+import { EventEngine as _EventEngine } from './events.js';
+import { CoachSystem as _CoachSystem } from './coachsystem.js';
+import { ConsequenceSystem } from './consequenceSystem.js';
+
+const MatchBlockManager = _MatchBlockManager || { simulateBlock: () => ({}) };
+const EconomyManager = _EconomyManager || { calculateContractOffer: () => ({ weeklySalary: 150 }) };
+const SocialSystem = _SocialSystem || class { 
+    constructor() {} 
+    initSocialData() { return {}; } 
+    updateSocialCycle() {} 
+};
+const MediaSystem = _MediaSystem || class { 
+    constructor() {} 
+    initMediaData() { return { followers: 0, hypeLevel: 0, feed: [] }; } 
+    generatePostAfterBlock() {} 
+    resolveDilemma() {} 
+};
+const EventEngine = _EventEngine || { checkAndTriggerEvent: () => null };
+const CoachSystem = _CoachSystem || { checkCoachInteraction: () => null, resolveCoachChoice: () => null };
 
 export class GameEngine {
     constructor() {
-        this.state = StateManager.load();
+        this.state = null;
         this.socialSystem = new SocialSystem(this);
         this.mediaSystem = new MediaSystem(this);
-
-        if (this.state?.player) {
-            this.migrateLoadedState();
-        }
-
         this.ui = new UserInterface(this);
     }
 
-    migrateLoadedState() {
-        const player = this.state.player;
+    startCareer(selectedData) {
+        const initialOvr = selectedData?.ovr || Math.floor(Math.random() * 11) + 35;
+        const potentialOvr = selectedData?.pot || initialOvr + Math.floor(Math.random() * 25) + 15;
+        
+        const tempPlayerForEconomy = { overall: initialOvr, age: 16 };
+        const contract = EconomyManager.calculateContractOffer(selectedData?.youthClub, tempPlayerForEconomy);
 
-        // Migration des sauvegardes v2 : le nouveau système utilise un modèle
-        // de progression unique, mais conserve les statistiques historiques.
-        if (!player.progression) {
-            const migrated = PlayerLogic.createPlayerProfile({
-                firstname: player.firstname || player.firstName,
-                lastname: player.lastname || player.lastName,
-                nationality: player.nationality || player.country,
-                country: player.country || player.nationality,
-                position: player.position || 'BU',
-                origin: player.origin || 'CENTRE_FORMATION',
-                heartClub: player.heartClub
-            });
-
-            if (player.attributes) {
-                migrated.attributes = {
-                    ...migrated.attributes,
-                    ...Object.fromEntries(
-                        ['vitesse', 'tir', 'passe', 'dribble', 'defense', 'physique', 'mental']
-                            .filter(key => player.attributes[key] !== undefined)
-                            .map(key => [key, player.attributes[key]])
-                    )
-                };
-            }
-
-            migrated.overall = player.overall ?? migrated.overall;
-            migrated.potential = player.potential ?? migrated.potential;
-            migrated.age = player.age ?? migrated.age;
-            migrated.club = player.club ?? null;
-            migrated.salary = player.salary ?? 0;
-            migrated.fame = player.fame ?? 10;
-            migrated.morale = player.morale ?? 80;
-            migrated.fitness = player.fitness ?? 90;
-            migrated.isInjured = !!player.isInjured;
-            migrated.injuryDuration = player.injuryDuration ?? 0;
-            migrated.stats = {
-                ...migrated.stats,
-                ...(player.stats || {})
-            };
-            migrated.hidden = {
-                ...migrated.hidden,
-                ...(player.hidden || {})
-            };
-
-            PlayerLogic.syncProgressionFromCanonical(migrated);
-            this.state.player = migrated;
-        }
-
-        this.state.trainingFocus ||= 'TECHNIQUE';
-        this.state.career ||= { balance: 0, seasonHistory: [], totalCareerIncome: 0 };
-        this.state.calendar ||= {
-            currentMonth: 8,
-            currentSeasonYear: 2026,
-            currentPeriod: 'Pré-saison & Début de championnat'
-        };
-        this.state.social ||= this.socialSystem.initSocialData(
-            this.state.player.coachName || 'l’entraîneur'
-        );
-        this.state.media ||= this.mediaSystem.initMediaData();
-
-        this.state.social.coachData ||= {
-            name: this.state.player.coachName || 'l’entraîneur',
-            relation: this.state.player.stats?.relationCoach ?? 50,
-            opinion: 'Neutre',
-            hasLeftClub: false
-        };
-    }
-
-    startCareer(selectedData = {}) {
-        const player = PlayerLogic.createPlayerProfile({
-            ...selectedData,
-            firstname: selectedData.firstname,
-            lastname: selectedData.lastname,
-            firstName: selectedData.firstname,
-            lastName: selectedData.lastname,
-            country: selectedData.country,
-            nationality: selectedData.country,
-            position: selectedData.position,
-            origin: selectedData.origin,
-            heartClub: selectedData.heartClub
-        });
-
-        const youthClub = selectedData.youthClub || null;
-        const youthClubName = youthClub?.name || 'Centre de Formation';
-        const coachName = selectedData.coachName || 'l’entraîneur';
-        const coachVision = selectedData.coachVision || 'Formateur Patient';
-
-        const contract = EconomyManager.calculateContractOffer(
-            youthClub,
-            player
-        );
-
-        player.club = youthClubName;
-        player.salary = Number(
-            youthClub?.salary ??
-            youthClub?.weeklySalary ??
-            contract.weeklySalary ??
-            150
-        );
-        player.coachName = coachName;
-        player.coachVision = coachVision;
-
-        const social = this.socialSystem.initSocialData(coachName);
-        social.coachVision = coachVision;
-        social.youthClubName = youthClubName;
-        social.coachData = {
-            name: coachName,
-            relation: 50,
-            opinion: 'Neutre',
-            hasLeftClub: false
-        };
+        const coachName = selectedData?.coachName || "l'entraîneur";
+        const youthClubName = selectedData?.youthClub?.name || "Centre de Formation";
 
         this.state = {
-            schemaVersion: 3,
-            player,
+            player: {
+                firstname: selectedData?.firstName || selectedData?.firstname || 'Joueur',
+                lastname: selectedData?.lastName || selectedData?.lastname || 'Inconnu',
+                position: selectedData?.position || 'BU',
+                age: 16,
+                club: youthClubName,
+                salary: contract?.weeklySalary || 150,
+                overall: initialOvr,
+                fame: selectedData?.stats?.reputation || 10,
+                morale: 80,
+                fitness: 90,
+                isInjured: false,
+                injuryDuration: 0,
+                stats: selectedData?.stats || {
+                    technique: initialOvr,
+                    physique: initialOvr,
+                    mental: initialOvr,
+                    charisme: 50,
+                    reputation: 10,
+                    discipline: 50,
+                    relationCoach: 50,
+                    vestiaire: 50,
+                    matchesPlayed: 0,
+                    goals: 0,
+                    assists: 0,
+                    successfulPasses: 0,
+                    tackles: 0,
+                    averageRating: 0.0
+                },
+                potential: potentialOvr,
+                attributes: {
+                    vitesse: initialOvr,
+                    tir: initialOvr,
+                    passe: initialOvr,
+                    dribble: initialOvr,
+                    defense: initialOvr,
+                    physique: initialOvr,
+                    mental: initialOvr
+                }
+            },
             trainingFocus: 'TECHNIQUE',
-            social,
+            social: {
+                ...this.socialSystem.initSocialData(coachName),
+                coachData: {
+                    name: coachName,
+                    relation: 50,
+                    opinion: "Neutre",
+                    hasLeftClub: false
+                },
+                youthClubName: youthClubName
+            },
             media: this.mediaSystem.initMediaData(),
             career: {
-                balance: contract.signingBonus || 0,
-                seasonHistory: [],
-                totalCareerIncome: contract.signingBonus || 0
-            },
-            contract: {
-                weeklySalary: player.salary,
-                signingBonus: contract.signingBonus || 0,
-                durationYears: contract.durationYears || 2
+                balance: 0,
+                seasonHistory: []
             },
             calendar: {
-                currentMonth: 8,
-                currentSeasonYear: new Date().getFullYear(),
-                currentPeriod: 'Pré-saison & Début de championnat',
-                totalMonths: 12
+                currentMonth: 8, // Début en Août
+                currentSeasonYear: 2026,
+                totalMonths: 12,
+                currentPeriod: "Pré-saison & Début de championnat"
             },
             seasonPhase: 'pre_season',
-            pendingEvent: null,
-            pendingCoachEvent: null,
-            pendingMediaDilemma: null,
-            pendingTransferOffer: null
+            pendingMatchDilemma: null,
+            pendingCoachEvent: null
         };
 
-        StateManager.save(this.state);
-        console.log('Carrière créée :', this.state);
+        ConsequenceSystem.initialize(this.state.player);
 
-        return this.state;
+        console.log("Carrière lancée avec succès (Août) !", this.state);
     }
 
     playBlock(selectedChoice = null) {
-        if (!this.state?.player) return null;
+        if (!this.state) return;
 
-        const player = this.state.player;
-
-        // Une blessure bloque le mois courant : récupération puis calendrier.
-        if (player.isInjured) {
-            if (player.injuryDuration > 0) player.injuryDuration--;
-
-            player.fitness = Math.min(100, (player.fitness || 50) + 12);
-
-            if (player.injuryDuration <= 0) {
-                player.isInjured = false;
-                player.injuryDuration = 0;
+        // 1. Gestion des blessures
+        if (this.state.player.isInjured) {
+            if (this.state.player.injuryDuration > 0) this.state.player.injuryDuration--;
+            if (this.state.player.injuryDuration <= 0) {
+                this.state.player.isInjured = false;
+                this.state.player.injuryDuration = 0;
             }
-
-            const calendar = this.advanceCalendar();
-            StateManager.save(this.state);
-
-            return {
-                recoveryOnly: true,
-                report: {
-                    summary: {
-                        rating: 0,
-                        goals: 0,
-                        assists: 0,
-                        passes: 0,
-                        tackles: 0,
-                        yellowCards: 0,
-                        finance: null
-                    }
-                },
-                calendar,
-                event: null,
-                coachEvent: null
-            };
         }
 
-        // 1. Entraînement : le seul endroit où l'XP d'entraînement est attribuée.
-        const trainingReport = TrainingManager.applyTraining(
-            player,
-            this.state.trainingFocus
-        );
+        // 2. Simulation du bloc de matchs et progression
+        const report = MatchBlockManager.simulateBlock(this.state, this.state.trainingFocus, selectedChoice);
+        this.state.pendingMatchDilemma = null;
 
-        // 2. Simulation du mois.
-        const report = MatchBlockManager.simulateBlock(
-            this.state,
-            this.state.trainingFocus,
-            selectedChoice
-        );
-
-        // 3. Systèmes annexes alimentés par le même rapport.
-        this.socialSystem.updateSocialCycle(this.state);
-
+        if (typeof this.socialSystem.updateSocialCycle === 'function') {
+            this.socialSystem.updateSocialCycle(this.state);
+        }
         if (typeof this.mediaSystem.generatePostAfterBlock === 'function') {
-            this.mediaSystem.generatePostAfterBlock(
-                this.state,
-                report.summary
-            );
+            this.mediaSystem.generatePostAfterBlock(this.state, report);
         }
 
-        // 4. Événements en attente : un seul événement bloquant à la fois.
-        this.state.pendingEvent = EventEngine.checkAndTriggerEvent(this.state);
-        this.state.pendingCoachEvent = this.state.pendingEvent
-            ? null
-            : CoachSystem.checkCoachInteraction(this.state);
+        // 3. Déclenchement des événements aléatoires
+        const triggeredEvent = EventEngine.checkAndTriggerEvent ? EventEngine.checkAndTriggerEvent(this.state) : null;
+        if (triggeredEvent) this.state.pendingEvent = triggeredEvent;
 
-        // 5. Offre de transfert occasionnelle.
-        this.state.pendingTransferOffer = null;
-        if (
-            player.age >= 17 &&
-            !player.isInjured &&
-            Math.random() < 0.12
-        ) {
-            this.state.pendingTransferOffer =
-                TransferMarket.generateTransferOffer(player);
+        const coachEvent = CoachSystem.checkCoachInteraction ? CoachSystem.checkCoachInteraction(this.state) : null;
+        if (coachEvent) this.state.pendingCoachEvent = coachEvent;
+
+        // 4. Avancement CORRECT du Calendrier 
+        const cal = this.state.calendar;
+        cal.currentMonth++;
+
+        // Passage à la nouvelle année civile (Janvier)
+        if (cal.currentMonth > 12) {
+            cal.currentMonth = 1;
         }
 
-        const calendar = this.advanceCalendar();
-
-        StateManager.save(this.state);
-
-        return {
-            report: {
-                ...report,
-                training: trainingReport
-            },
-            calendar,
-            event: this.state.pendingEvent,
-            coachEvent: this.state.pendingCoachEvent,
-            transferOffer: this.state.pendingTransferOffer,
-            mediaDilemma: this.state.media?.recentDilemma || null
-        };
-    }
-
-    advanceCalendar() {
-        const calendar = this.state.calendar;
-        calendar.currentMonth += 1;
-
-        if (calendar.currentMonth > 12) {
-            calendar.currentMonth = 1;
-        }
-
-        let seasonChanged = false;
-
-        if (calendar.currentMonth === 8) {
+        // Si on revient en Août, c'est le début d'une nouvelle saison
+        if (cal.currentMonth === 8) {
             this.archiveAndResetSeason();
-            calendar.currentSeasonYear += 1;
-            seasonChanged = true;
+            cal.currentSeasonYear++; // On incrémente l'année de la saison (ex: 2026 -> 2027)
         }
 
-        calendar.currentPeriod = this.getPeriodName(calendar.currentMonth);
+        cal.currentPeriod = this.getPeriodName(cal.currentMonth);
 
         return {
-            month: calendar.currentMonth,
-            year: calendar.currentSeasonYear,
-            period: calendar.currentPeriod,
-            seasonChanged
+            report,
+            calendar: { month: cal.currentMonth, year: cal.currentSeasonYear, period: cal.currentPeriod },
+            event: triggeredEvent || null,
+            coachEvent: coachEvent || null
         };
     }
 
     getPeriodName(month) {
-        if (month === 8) return 'Pré-saison & Début de championnat';
-        if (month >= 9 && month <= 11) return 'Première partie de saison';
-        if (month === 12) return 'Mercato hivernal & Trêve';
-        if (month >= 1 && month <= 4) return 'Seconde partie de saison';
-        if (month === 5) return 'Sprint final & Bilan de saison';
-        return 'Trêve estivale & Bilan';
+        if (month === 8) return "Pré-saison & Début de championnat";
+        if (month >= 9 && month <= 11) return "Première partie de saison";
+        if (month === 12) return "Mercato hivernal & Trêve";
+        if (month >= 1 && month <= 4) return "Seconde partie de saison";
+        if (month === 5) return "Sprint final & Bilan de saison";
+        // Ajout explicite pour Juin (6) et Juillet (7) pour éviter un undefined
+        return "Trêve estivale & Bilan"; 
     }
 
     setTrainingFocus(focusKey) {
-        if (!this.state?.player) return false;
-
-        if (!TrainingManager.FOCUS_TYPES[focusKey]) {
-            return false;
-        }
-
+        if (!this.state) return;
         this.state.trainingFocus = focusKey;
-        StateManager.save(this.state);
-        return true;
-    }
-
-    resolveEventChoice(choiceIndex) {
-        if (!this.state?.pendingEvent) return null;
-
-        const event = this.state.pendingEvent;
-        const result = EventEngine.resolveChoice(
-            this.state,
-            event.id,
-            choiceIndex
-        );
-
-        this.state.pendingEvent = null;
-        PlayerLogic.syncProgressionFromCanonical(this.state.player);
-        StateManager.save(this.state);
-
-        return result;
     }
 
     resolveCoachChoice(choiceIndex) {
-        if (!this.state?.pendingCoachEvent) return null;
+        if (
+            !this.state ||
+            !this.state.pendingCoachEvent
+        ) {
+            return null;
+        }
 
-        const event = this.state.pendingCoachEvent;
-        const result = CoachSystem.resolveCoachChoice(
-            this.state,
-            choiceIndex,
-            event
-        );
+        const event =
+            this.state.pendingCoachEvent;
 
-        this.state.pendingCoachEvent = null;
-        PlayerLogic.syncProgressionFromCanonical(this.state.player);
-        StateManager.save(this.state);
+        const result =
+            CoachSystem.resolveCoachChoice(
+                this.state,
+                choiceIndex,
+                event
+            );
+
+        if (result) {
+            this.state.pendingCoachEvent = null;
+        }
 
         return result;
     }
 
-    resolveMediaDilemma(choiceIndex) {
-        if (!this.state?.media?.recentDilemma) return null;
+    resolveEventChoice(choiceIndex) {
+        if (
+            !this.state ||
+            !this.state.pendingEvent
+        ) {
+            return null;
+        }
 
-        const result = this.mediaSystem.resolveDilemma(
-            this.state,
-            choiceIndex
-        );
+        const event =
+            this.state.pendingEvent;
 
-        StateManager.save(this.state);
+        const result =
+            EventEngine.resolveChoice(
+                this.state,
+                event.id,
+                choiceIndex
+            );
+
+        if (result) {
+            this.state.pendingEvent = null;
+        }
+
         return result;
-    }
-
-    acceptTransferOffer() {
-        const offer = this.state?.pendingTransferOffer;
-        if (!offer) return null;
-
-        const player = this.state.player;
-        const oldClub = player.club;
-
-        player.club = offer.club;
-        player.salary = offer.salaireHebdo;
-        this.state.social.coachData.hasLeftClub = true;
-        this.state.social.coachData.previousClub = oldClub;
-        this.state.pendingTransferOffer = null;
-
-        StateManager.save(this.state);
-
-        return {
-            accepted: true,
-            oldClub,
-            newClub: offer.club,
-            salary: offer.salaireHebdo
-        };
-    }
-
-    rejectTransferOffer() {
-        if (!this.state?.pendingTransferOffer) return false;
-        this.state.pendingTransferOffer = null;
-        StateManager.save(this.state);
-        return true;
     }
 
     archiveAndResetSeason() {
         const player = this.state.player;
         const currentYear = this.state.calendar.currentSeasonYear;
 
-        this.state.career.seasonHistory ||= [];
-        this.state.career.seasonHistory.push({
+        const seasonSummary = {
             seasonLabel: `${currentYear}/${currentYear + 1}`,
             club: player.club,
             overall: player.overall,
             age: player.age,
-            matches: player.stats?.matchesPlayed || 0,
-            goals: player.stats?.goals || 0,
-            assists: player.stats?.assists || 0,
-            averageRating: player.stats?.averageRating || 0
-        });
+            stats: { ...player.stats }
+        };
 
-        // Une seule source de vérité pour le vieillissement + déclin.
-        PlayerLogic.applyProgression(player, {
-            xp: 0,
-            type: 'finSaison',
-            vieillirDUnAn: true
-        });
+        if (!this.state.career.seasonHistory) {
+            this.state.career.seasonHistory = [];
+        }
+        this.state.career.seasonHistory.push(seasonSummary);
 
-        // Réinitialisation des statistiques de saison.
+        if (this.state.social?.coachData && player.club !== this.state.social.youthClubName) {
+            this.state.social.coachData.hasLeftClub = true;
+        }
+
+        player.age += 1;
+        
+        // Reset des stats annuelles
         player.stats.matchesPlayed = 0;
         player.stats.goals = 0;
         player.stats.assists = 0;
         player.stats.successfulPasses = 0;
         player.stats.tackles = 0;
-        player.stats.yellowCards = 0;
-        player.stats.averageRating = 0;
-
-        player.fitness = Math.min(100, (player.fitness || 60) + 20);
-        player.isInjured = false;
-        player.injuryDuration = 0;
-
-        if (
-            this.state.social?.coachData &&
-            player.club !== this.state.social.youthClubName
-        ) {
-            this.state.social.coachData.hasLeftClub = true;
-        }
+        player.stats.averageRating = 0.0;
     }
 
-    resetCareer() {
-        StateManager.clear();
-        this.state = null;
-        this.ui.activeApp = 'home';
-        this.ui.currentStep = 1;
-        this.ui.selectedData = {
-            firstname: '',
-            lastname: '',
-            position: null,
-            continent: null,
-            country: null,
-            origin: null,
-            heartClub: null,
-            youthClub: null,
-            coachVision: null,
-            coachName: null
-        };
-        this.ui.render();
+    resolveMediaDilemma(choiceIndex) {
+        if (!this.state) return;
+        if (typeof this.mediaSystem.resolveDilemma === 'function') {
+            this.mediaSystem.resolveDilemma(this.state, choiceIndex);
+        }
     }
 }
