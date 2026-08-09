@@ -19,6 +19,7 @@ const COACH_NAMES = _COACH_NAMES || ['Thomas Tuchel', 'Pep Guardiola'];
 const EventEngine = _EventEngine || { checkAndTriggerEvent: () => null };
 const TrainingManager = _TrainingManager || { FOCUS_TYPES: { TECHNIQUE: { name: 'Technique', description: 'Améliore la technique pure' } } };
 const MatchChoiceManager = _MatchChoiceManager || {
+    shouldTriggerDilemma: () => true,
     getMatchDilemma: (type = 'standard', opponent = '') => ({
         title: 'Match important',
         description: `Affrontez ${opponent || "l'adversaire"}.`,
@@ -121,7 +122,6 @@ export class UserInterface {
     }
 
     renderStepContent() {
-        // Ajout des blocs { } pour chaque case afin de protéger le scope des variables (const/let)
         switch(this.currentStep) {
             case 1: {
                 return `
@@ -440,7 +440,6 @@ export class UserInterface {
                             
                             <div class="player-card-banner">
                                 <div class="player-image-badge">
-                                    <img src="assets/IMG_8758.jpg" alt="Avatar" onerror="this.style.display='none'">
                                     <span class="jersey-number">33</span>
                                 </div>
                                 <div class="player-main-info">
@@ -679,7 +678,6 @@ export class UserInterface {
                 const isFinalPeriod = state.calendar?.currentMonth === 5;
                 const matchType = isFinalPeriod ? 'final' : 'standard';
 
-                // Les dilemmes classiques sont réellement optionnels.
                 const shouldAsk = MatchChoiceManager.shouldTriggerDilemma(matchType);
 
                 if (shouldAsk) {
@@ -854,7 +852,6 @@ export class UserInterface {
                 text: choice?.texte || 'Continuer'
             }))
         }, (_, index) => {
-            // afficherModaleMatchDilemma transmet l'objet choisi ; retrouver son index.
             const choices = event?.choix || [];
             const selectedIndex = choices.findIndex(choice => choice === _);
             onChoiceMade(selectedIndex >= 0 ? selectedIndex : index);
@@ -1001,15 +998,6 @@ export class UserInterface {
             document.body.appendChild(modal);
         }
 
-        /*
-         * IMPORTANT : les conséquences sont volontairement
-         * cachées avant le choix. Le joueur doit décider
-         * sans connaître les bonus/malus exacts.
-         *
-         * Elles seront affichées ensuite par
-         * afficherModaleConsequences(), après résolution
-         * du choix par le GameEngine.
-         */
         modal.innerHTML = `
             <div class="event-modal-card">
                 <span class="event-modal-category">⚡ MATCH CLÉ</span>
