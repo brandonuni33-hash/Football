@@ -1,1003 +1,605 @@
 /**
  * consequenceSystem.js
- * Centralise les conséquences des choix :
- * - bonus / malus permanents
- * - bonus / malus temporaires
- * - XP
- * - confiance
- * - discipline
- * - réputation
- * - relation coach
- * - vestiaire
- * - aperçu des conséquences pour l'UI
+ * Point central des conséquences des choix du jeu.
  *
- * Philosophie d'équilibrage :
- * - les choix ne donnent presque jamais directement de l'OVR ;
- * - les petits choix restent autour de ±1 / ±2 ;
- * - les bonus de performance sont temporaires ;
- * - les valeurs sont bornées ;
- * - les effets temporaires expirent automatiquement.
+ * Compatible avec les anciens formats :
+ *   impacts: { morale: +2, fitness: -5, 'attributes.physique': +1 }
+ *   impacts: { stats: {...}, matchBonuses: {...} }
+ *
+ * Et avec le nouveau format :
+ *   consequences: {
+ *      permanent: {...},
+ *      temporary: [...],
+ *      xp: 10
+ *   }
  */
 
 const LIMITS = {
-    confidence: [0, 100],
+    morale: [0, 100],
+    fitness: [0, 100],
+    fame: [0, 100],
     discipline: [0, 100],
-    reputation: [0, 100],
+    mental: [0, 100],
     relationCoach: [0, 100],
     vestiaire: [0, 100],
-    form: [0, 100],
-    fitness: [0, 100],
-    mental: [0, 100]
+    confidence: [0, 100],
+    reputation: [0, 100],
+    balance: [-Infinity, Infinity]
 };
 
 const LABELS = {
-    confidence: "Confiance",
-    discipline: "Discipline",
-    reputation: "Réputation",
-    relationCoach: "Relation coach",
-    vestiaire: "Vestiaire",
-    form: "Forme",
-    fitness: "Condition physique",
-    mental: "Mental",
-    technique: "Technique",
-    physique: "Physique",
-    passe: "Passe",
-    defense: "Défense",
-    dribble: "Dribble",
-    tir: "Tir"
+    morale: 'Moral',
+    fitness: 'Forme',
+    fame: 'Réputation',
+    discipline: 'Discipline',
+    mental: 'Mental',
+    relationCoach: 'Relation coach',
+    vestiaire: 'Vestiaire',
+    confidence: 'Confiance',
+    reputation: 'Réputation',
+    balance: 'Finances',
+    vitesse: 'Vitesse',
+    tir: 'Tir',
+    passe: 'Passe',
+    dribble: 'Dribble',
+    defense: 'Défense',
+    physique: 'Physique',
+    technique: 'Technique',
+    charisme: 'Charisme'
 };
 
-const clamp = (value, min, max) => {
-    return Math.min(max, Math.max(min, value));
+const MATCH_BONUS_LABELS = {
+    ratingBonus: 'Note de match',
+    ratingBoost: 'Note de match',
+    goalChance: 'Chance de but',
+    assistChance: 'Chance de passe décisive',
+    duelBonus: 'Duels',
+    fatigueRisk: 'Fatigue',
+    cardRisk: 'Risque de carton',
+    passAccuracy: 'Précision de passe',
+    teamBoost: 'Impact collectif'
 };
 
-const num = (value, fallback = 0) => {
-    return Number.isFinite(Number(value))
-        ? Number(value)
-        : fallback;
-};
+const clamp = (value, min, max) =>
+    Math.min(max, Math.max(min, value));
+
+const num = (value, fallback = 0) =>
+    Number.isFinite(Number(value)) ? Number(value) : fallback;
+
+function clone(value) {
+    if (typeof structuredClone === 'function') return structuredClone(value);
+    return JSON.parse(JSON.stringify(value));
+}
+
+function normalizeDuration(value) {
+    return clamp(Math.round(num(value, 1)), 1, 3);
+}
 
 function ensurePlayer(player) {
-    if (!player) {
-        throw new Error(
-            "ConsequenceSystem : joueur manquant."
-        );
-    }
+    if (!player) throw new Error('ConsequenceSystem : joueur manquant.');
 
     player.stats ||= {};
     player.attributes ||= {};
     player.temporaryEffects ||= [];
 
+    // Ne crée les nouvelles stats que si elles n'existent pas déjà.
+    // Les stats historiques (morale, fame, etc.) restent la référence.
     const defaults = {
-        confidence: 50,
+        morale: 50,
+        fitness: 80,
+        fame: 10,
         discipline: 50,
-        reputation: 20,
-        relationCoach: 50,
-        vestiaire: 50,
-        mental: 50
+        mental: 50,
+        relationCoach: 50
     };
 
     for (const [key, value] of Object.entries(defaults)) {
-        if (player.stats[key] === undefined) {
-            player.stats[key] = value;
+        if (player[key] === undefined && player.stats[key] === undefined) {
+            player[key] = value;
         }
     }
 
-    if (player.form === undefined) {
-        player.form = 75;
-    }
-
-    if (player.fitness === undefined) {
-        player.fitness = 100;
-    }
-
-    if (player.xp === undefined) {
-        player.xp = 0;
-    }
+    if (player.xp === undefined) player.xp = 0;
 
     return player;
 }
 
-function getContainer(player, stat) {
-    if (
-        LIMITS[stat] ||
-        Object.prototype.hasOwnProperty.call(
-            player.stats,
-            stat
-        )
-    ) {
-        return player.stats;
+function readValue(player, key) {
+    if (key.startsWith('attributes.')) {
+        return num(player.attributes?.[key.slice(11)]);
     }
 
-    if (
-        Object.prototype.hasOwnProperty.call(
-            player.attributes,
-            stat
-        )
-    ) {
-        return player.attributes;
-    }
+    if (player[key] !== undefined) return num(player[key]);
+    if (player.stats?.[key] !== undefined) return num(player.stats[key]);
+    if (player.attributes?.[key] !== undefined) return num(player.attributes[key]);
 
-    return player.stats;
+    return 0;
 }
 
-function applyPermanent(player, stat, delta) {
-    const container = getContainer(player, stat);
+function writeValue(player, key, delta) {
+    if (key.startsWith('attributes.')) {
+        const attr = key.slice(11);
+        const before = num(player.attributes?.[attr]);
 
-    const before = num(container[stat]);
-    const rawAfter = before + num(delta);
+        if (player.attributes?.[attr] === undefined) {
+            return null;
+        }
 
-    const limits = LIMITS[stat];
+        player.attributes[attr] = clamp(
+            before + num(delta),
+            1,
+            Math.min(99, num(player.potential, 99))
+        );
 
-    container[stat] = limits
-        ? clamp(
-            rawAfter,
+        return {
+            stat: key,
+            label: LABELS[attr] || LABELS[key] || attr,
+            before,
+            after: player.attributes[attr],
+            delta: player.attributes[attr] - before
+        };
+    }
+
+    if (player[key] !== undefined) {
+        const before = num(player[key]);
+        const limits = LIMITS[key] || [0, 100];
+
+        player[key] = clamp(
+            before + num(delta),
             limits[0],
             limits[1]
-        )
-        : Math.max(0, rawAfter);
+        );
+
+        return {
+            stat: key,
+            label: LABELS[key] || key,
+            before,
+            after: player[key],
+            delta: player[key] - before
+        };
+    }
+
+    if (player.stats?.[key] !== undefined) {
+        const before = num(player.stats[key]);
+        const limits = LIMITS[key] || [0, 100];
+
+        player.stats[key] = clamp(
+            before + num(delta),
+            limits[0],
+            limits[1]
+        );
+
+        return {
+            stat: key,
+            label: LABELS[key] || key,
+            before,
+            after: player.stats[key],
+            delta: player.stats[key] - before
+        };
+    }
+
+    if (player.attributes?.[key] !== undefined) {
+        const before = num(player.attributes[key]);
+
+        player.attributes[key] = clamp(
+            before + num(delta),
+            1,
+            Math.min(99, num(player.potential, 99))
+        );
+
+        return {
+            stat: key,
+            label: LABELS[key] || key,
+            before,
+            after: player.attributes[key],
+            delta: player.attributes[key] - before
+        };
+    }
+
+    // Une stat secondaire absente ne doit pas provoquer de undefined.
+    // On la place dans stats afin de garder le système extensible.
+    const before = 50;
+    player.stats[key] = clamp(before + num(delta), 0, 100);
 
     return {
-        type: "permanent",
-        stat,
-        label: LABELS[stat] || stat,
+        stat: key,
+        label: LABELS[key] || key,
         before,
-        after: container[stat],
-        delta: container[stat] - before
+        after: player.stats[key],
+        delta: player.stats[key] - before
     };
 }
 
 function normalizeTemporary(effect) {
-    if (!effect || !effect.stat) {
-        return null;
-    }
+    if (!effect?.stat) return null;
 
-    const duration = clamp(
-        Math.round(
-            num(effect.duration, 1)
-        ),
-        1,
-        3
-    );
+    const duration = normalizeDuration(effect.duration);
 
     return {
-        id:
-            effect.id ||
-            `effect_${Date.now()}_${Math.random()
-                .toString(36)
-                .slice(2, 7)}`,
-
+        id: effect.id ||
+            `effect_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
         stat: effect.stat,
-
         value: num(effect.value),
-
         duration,
-
         remainingMatches: duration,
+        source: effect.source || 'Choix',
+        label: effect.label || LABELS[effect.stat] || effect.stat,
+        description: effect.description || null
+    };
+}
 
-        source: effect.source || "Choix",
+function flattenLegacyImpacts(impacts = {}) {
+    const permanent = {};
+    const temporary = [];
 
-        label:
-            effect.label ||
-            LABELS[effect.stat] ||
-            effect.stat,
+    for (const [key, value] of Object.entries(impacts || {})) {
+        if (key === 'stats' || key === 'matchBonuses') continue;
 
-        description:
-            effect.description || null
+        if (typeof value === 'number') {
+            permanent[key] = value;
+        }
+    }
+
+    for (const [key, value] of Object.entries(impacts.stats || {})) {
+        if (typeof value === 'number') {
+            permanent[key] = (permanent[key] || 0) + value;
+        }
+    }
+
+    // Les matchBonuses restent temporaires et sont consommés par matchBlock.js.
+    for (const [key, value] of Object.entries(impacts.matchBonuses || {})) {
+        if (typeof value !== 'number' || value === 0) continue;
+
+        temporary.push({
+            stat: `matchBonus.${key}`,
+            value,
+            duration: 1,
+            label: MATCH_BONUS_LABELS[key] || key
+        });
+    }
+
+    return { permanent, temporary };
+}
+
+function normalizeChoice(choice = {}) {
+    const hasExplicitConsequences =
+        !!choice &&
+        typeof choice.consequences === 'object' &&
+        choice.consequences !== null;
+
+    const explicit = hasExplicitConsequences
+        ? choice.consequences
+        : {};
+
+    const legacy = choice.impacts || (
+        hasExplicitConsequences
+            ? {}
+            : choice
+    );
+
+    const permanent = {
+        ...(explicit.permanent || {}),
+        ...(explicit.stats || {})
+    };
+
+    // Format historique : impacts: { fitness, morale, stats, matchBonuses }.
+    const legacyFlattened = flattenLegacyImpacts(legacy);
+
+    for (const [key, value] of Object.entries(legacyFlattened.permanent)) {
+        // Ne pas doubler un champ lorsque le même objet est déjà fourni
+        // sous explicit.permanent / explicit.stats.
+        if (permanent[key] === undefined) {
+            permanent[key] = num(value);
+        } else if (!hasExplicitConsequences) {
+            permanent[key] = num(value);
+        }
+    }
+
+    const temporary = [
+        ...(explicit.temporary || explicit.buffs || explicit.effects || []),
+        ...legacyFlattened.temporary
+    ];
+
+    return {
+        title:
+            explicit.title ||
+            choice.title ||
+            null,
+
+        message:
+            explicit.message ||
+            choice.message ||
+            null,
+
+        permanent,
+        temporary,
+
+        xp: num(
+            explicit.xp ??
+            explicit.experience,
+            0
+        )
     };
 }
 
 export const ConsequenceSystem = {
-
     LIMITS,
-
     LABELS,
+    MATCH_BONUS_LABELS,
 
-    /**
-     * Initialise les structures nécessaires.
-     */
     initialize(player) {
         return ensurePlayer(player);
     },
 
+    normalizeChoice,
+
     /**
-     * Applique une conséquence.
-     *
-     * Exemple :
-     *
-     * {
-     *     permanent: {
-     *         relationCoach: 2,
-     *         confidence: -1
-     *     },
-     *
-     *     temporary: [
-     *         {
-     *             stat: "matchPerformance",
-     *             value: 0.03,
-     *             duration: 2
-     *         }
-     *     ],
-     *
-     *     xp: 10
-     * }
+     * Applique des conséquences directement au joueur.
      */
-    apply(
-        player,
-        consequence = {},
-        options = {}
-    ) {
+    apply(player, consequence = {}, options = {}) {
         ensurePlayer(player);
 
-        const permanent =
-            consequence.permanent ||
-            consequence.stats ||
-            {};
-
-        const temporary =
-            consequence.temporary ||
-            consequence.buffs ||
-            consequence.effects ||
-            [];
-
+        const normalized = normalizeChoice(consequence);
         const changes = [];
-        const addedEffects = [];
+        const temporary = [];
 
-        /*
-         * BONUS / MALUS PERMANENTS
-         */
-        for (
-            const [stat, delta]
-            of Object.entries(permanent)
-        ) {
-            if (num(delta) !== 0) {
-                changes.push(
-                    applyPermanent(
-                        player,
-                        stat,
-                        delta
-                    )
-                );
+        for (const [stat, delta] of Object.entries(normalized.permanent)) {
+            if (!Number.isFinite(Number(delta)) || num(delta) === 0) continue;
+
+            const change = writeValue(player, stat, delta);
+            if (change) {
+                changes.push({
+                    ...change,
+                    type: 'permanent'
+                });
             }
         }
 
-        /*
-         * BONUS / MALUS TEMPORAIRES
-         */
-        for (const rawEffect of temporary) {
-            const effect =
-                normalizeTemporary(rawEffect);
+        for (const rawEffect of normalized.temporary) {
+            const effect = normalizeTemporary({
+                ...rawEffect,
+                source: rawEffect.source || options.source || 'Choix'
+            });
 
-            if (!effect || effect.value === 0) {
-                continue;
-            }
+            if (!effect || effect.value === 0) continue;
 
-            /*
-             * On évite d'empiler une infinité
-             * de bonus temporaires.
-             */
-            if (
-                player.temporaryEffects.length >= 5
-            ) {
+            // Les matchBonus sont des données de bloc et ne doivent pas
+            // s'accumuler dans le joueur : matchBlock les consomme directement.
+            if (effect.stat.startsWith('matchBonus.')) continue;
+
+            if (player.temporaryEffects.length >= 8) {
                 player.temporaryEffects.shift();
             }
 
             player.temporaryEffects.push(effect);
-
-            addedEffects.push(effect);
+            temporary.push(effect);
         }
 
-        /*
-         * XP
-         *
-         * Un seul choix ne peut pas donner
-         * plus de 30 XP.
-         */
-        const xp = clamp(
-            Math.round(
-                num(
-                    consequence.xp ??
-                    consequence.experience,
-                    0
-                )
-            ),
-            0,
-            30
-        );
-
-        player.xp += xp;
+        const xp = clamp(Math.round(normalized.xp), 0, 30);
+        if (xp > 0) player.xp += xp;
 
         return {
-            title:
-                consequence.title ||
-                "Conséquences",
-
-            message:
-                consequence.message ||
-                null,
-
-            source:
-                options.source ||
-                consequence.source ||
-                "Choix",
-
+            title: normalized.title || 'Conséquences',
+            message: normalized.message,
+            source: options.source || 'Choix',
             changes,
-
-            temporary:
-                addedEffects,
-
+            temporary,
             xp
         };
     },
 
     /**
-     * Applique les conséquences d'un choix
-     * du coach.
+     * Applique une conséquence à l'état complet.
+     * Gère notamment balance/finances et les anciennes sauvegardes.
      */
-    applyCoachChoice(
-        player,
-        choice = {}
-    ) {
-        return this.apply(
-            player,
-            choice.consequences ||
-            choice.impacts ||
-            choice,
-            {
-                source: "Coach"
+    applyToState(state, choice = {}, options = {}) {
+        if (!state?.player) return null;
+
+        ensurePlayer(state.player);
+
+        const normalized = normalizeChoice(choice);
+        const changes = [];
+        const temporary = [];
+
+        for (const [stat, delta] of Object.entries(normalized.permanent)) {
+            if (!Number.isFinite(Number(delta)) || num(delta) === 0) continue;
+
+            if (stat === 'balance') {
+                state.career ||= { balance: 0 };
+                state.career.balance = num(state.career.balance) + num(delta);
+
+                changes.push({
+                    type: 'permanent',
+                    stat,
+                    label: LABELS.balance,
+                    before: state.career.balance - num(delta),
+                    after: state.career.balance,
+                    delta: num(delta)
+                });
+
+                continue;
             }
-        );
+
+            const change = writeValue(state.player, stat, delta);
+            if (change) {
+                changes.push({
+                    ...change,
+                    type: 'permanent'
+                });
+            }
+        }
+
+        for (const rawEffect of normalized.temporary) {
+            const effect = normalizeTemporary({
+                ...rawEffect,
+                source: rawEffect.source || options.source || 'Choix'
+            });
+
+            if (!effect || effect.value === 0) continue;
+            if (effect.stat.startsWith('matchBonus.')) continue;
+
+            if (state.player.temporaryEffects.length >= 8) {
+                state.player.temporaryEffects.shift();
+            }
+
+            state.player.temporaryEffects.push(effect);
+            temporary.push(effect);
+        }
+
+        const xp = clamp(Math.round(normalized.xp), 0, 30);
+        if (xp > 0) state.player.xp += xp;
+
+        return {
+            title: normalized.title || 'Conséquences',
+            message: normalized.message,
+            source: options.source || 'Choix',
+            changes,
+            temporary,
+            xp
+        };
+    },
+
+    applyCoachChoice(state, choice = {}) {
+        return this.applyToState(state, choice, { source: 'Coach' });
+    },
+
+    applyEventChoice(state, choice = {}) {
+        return this.applyToState(state, choice, { source: 'Événement' });
+    },
+
+    applyMatchChoice(player, choice = {}) {
+        return this.apply(player, choice, { source: 'Match' });
     },
 
     /**
-     * Applique les conséquences d'un choix
-     * pendant un match.
+     * Retourne les bonus temporaires hors match.
      */
-    applyMatchChoice(
-        player,
-        choice = {}
-    ) {
-        return this.apply(
-            player,
-            choice.consequences ||
-            choice.impacts ||
-            choice,
-            {
-                source: "Match"
-            }
-        );
-    },
-
-    /**
-     * Applique les conséquences d'un événement.
-     */
-    applyEventChoice(
-        player,
-        choice = {}
-    ) {
-        return this.apply(
-            player,
-            choice.consequences ||
-            choice.impacts ||
-            choice,
-            {
-                source: "Événement"
-            }
-        );
-    },
-
-    /**
-     * Retourne le bonus/malus temporaire
-     * cumulé pour une caractéristique.
-     *
-     * Exemple :
-     *
-     * getTemporaryModifier(
-     *     player,
-     *     "matchPerformance"
-     * )
-     *
-     * → 0.05
-     */
-    getTemporaryModifier(
-        player,
-        stat
-    ) {
+    getTemporaryModifier(player, stat) {
         ensurePlayer(player);
 
         return player.temporaryEffects
-            .filter(
-                effect =>
-                    effect.stat === stat
-            )
-            .reduce(
-                (total, effect) =>
-                    total +
-                    num(effect.value),
-                0
-            );
+            .filter(effect => effect.stat === stat)
+            .reduce((total, effect) => total + num(effect.value), 0);
     },
 
-    /**
-     * Retourne tous les bonus/malus actifs.
-     *
-     * Exemple :
-     *
-     * {
-     *     matchPerformance: 0.05,
-     *     mediaPressure: -0.03
-     * }
-     */
     getActiveModifiers(player) {
         ensurePlayer(player);
 
-        return player.temporaryEffects
-            .reduce(
-                (result, effect) => {
-
-                    result[effect.stat] =
-                        (
-                            result[effect.stat] ||
-                            0
-                        ) +
-                        num(effect.value);
-
-                    return result;
-                },
-                {}
-            );
+        return player.temporaryEffects.reduce((result, effect) => {
+            result[effect.stat] = (result[effect.stat] || 0) + num(effect.value);
+            return result;
+        }, {});
     },
 
     /**
-     * À appeler après chaque match.
-     *
-     * Chaque match réduit la durée restante
-     * des effets temporaires.
+     * À appeler après chaque bloc de matchs.
      */
     advanceMatch(player) {
         ensurePlayer(player);
 
         const expired = [];
 
-        player.temporaryEffects =
-            player.temporaryEffects.filter(
-                effect => {
+        player.temporaryEffects = player.temporaryEffects.filter(effect => {
+            effect.remainingMatches =
+                num(effect.remainingMatches, effect.duration) - 1;
 
-                    effect.remainingMatches =
-                        num(
-                            effect.remainingMatches,
-                            effect.duration
-                        ) - 1;
+            if (effect.remainingMatches <= 0) {
+                expired.push(effect);
+                return false;
+            }
 
-                    if (
-                        effect.remainingMatches <= 0
-                    ) {
-                        expired.push(effect);
-
-                        return false;
-                    }
-
-                    return true;
-                }
-            );
+            return true;
+        });
 
         return expired;
     },
 
     /**
-     * Prévisualise les conséquences
-     * SANS modifier le joueur.
-     *
-     * Cette méthode est destinée à l'UI.
+     * Prévisualise sans modifier le joueur.
+     * Comprend les anciens impacts et le nouveau format.
      */
-    preview(consequence = {}) {
-
-        const permanent =
-            consequence.permanent ||
-            consequence.stats ||
-            {};
-
-        const temporary =
-            consequence.temporary ||
-            consequence.buffs ||
-            consequence.effects ||
-            [];
-
+    preview(choice = {}) {
+        const normalized = normalizeChoice(choice);
         const effects = [];
 
-        /*
-         * Effets permanents
-         */
-        for (
-            const [stat, rawDelta]
-            of Object.entries(permanent)
-        ) {
+        for (const [stat, rawDelta] of Object.entries(normalized.permanent)) {
             const delta = num(rawDelta);
-
-            if (!delta) {
-                continue;
-            }
+            if (!delta) continue;
 
             effects.push({
-                type: "permanent",
-
+                type: 'permanent',
                 stat,
-
-                label:
-                    LABELS[stat] ||
-                    stat,
-
+                label: LABELS[stat] || stat.replace('attributes.', ''),
                 delta,
-
-                direction:
-                    delta > 0
-                        ? "positive"
-                        : "negative"
+                direction: delta > 0 ? 'positive' : 'negative'
             });
         }
 
-        /*
-         * Effets temporaires
-         */
-        for (
-            const rawEffect
-            of temporary
-        ) {
-            const effect =
-                normalizeTemporary(
-                    rawEffect
-                );
-
-            if (
-                !effect ||
-                !effect.value
-            ) {
-                continue;
-            }
+        for (const rawEffect of normalized.temporary) {
+            const effect = normalizeTemporary(rawEffect);
+            if (!effect || !effect.value) continue;
 
             effects.push({
-                type: "temporary",
-
+                type: 'temporary',
                 stat: effect.stat,
-
                 label: effect.label,
-
                 delta: effect.value,
-
-                duration:
-                    effect.duration,
-
-                direction:
-                    effect.value > 0
-                        ? "positive"
-                        : "negative",
-
-                description:
-                    effect.description
+                duration: effect.duration,
+                direction: effect.value > 0 ? 'positive' : 'negative',
+                description: effect.description
             });
         }
 
-        /*
-         * XP
-         */
-        const xp = clamp(
-            Math.round(
-                num(
-                    consequence.xp ??
-                    consequence.experience,
-                    0
-                )
-            ),
-            0,
-            30
-        );
-
-        if (xp > 0) {
+        if (normalized.xp > 0) {
             effects.push({
-                type: "xp",
-
-                stat: "xp",
-
-                label: "XP",
-
-                delta: xp,
-
-                direction: "positive"
+                type: 'xp',
+                stat: 'xp',
+                label: 'XP',
+                delta: Math.min(30, Math.round(normalized.xp)),
+                direction: 'positive'
             });
         }
 
         return {
-            title:
-                consequence.title ||
-                "Conséquences",
-
-            message:
-                consequence.message ||
-                null,
-
+            title: normalized.title || 'Conséquences',
+            message: normalized.message || null,
             effects
         };
     },
 
     /**
-     * Garde-fou d'équilibrage.
-     *
-     * Empêche un contenu mal configuré
-     * de donner des bonus énormes.
-     *
-     * Permanent :
-     *      maximum ±3
-     *
-     * XP :
-     *      maximum 30
-     *
-     * Bonus temporaires :
-     *      maximum ±6%
-     *      maximum 3 matchs
+     * Garde-fou pour le nouveau contenu.
+     * Le format historique n'est pas altéré ici : ses valeurs ont
+     * déjà leur propre équilibre dans les fichiers de contenu.
      */
-    sanitize(
-        consequence = {}
-    ) {
+    sanitize(consequence = {}) {
+        const cloneValue = clone(consequence);
 
-        const clone =
-            JSON.parse(
-                JSON.stringify(
-                    consequence
-                )
-            );
-
-        const permanent =
-            clone.permanent ||
-            clone.stats ||
-            {};
-
-        for (
-            const stat
-            of Object.keys(permanent)
-        ) {
-            permanent[stat] =
-                clamp(
-                    num(
-                        permanent[stat]
-                    ),
-                    -3,
-                    3
-                );
+        const permanent = cloneValue.permanent || cloneValue.stats || {};
+        for (const stat of Object.keys(permanent)) {
+            permanent[stat] = clamp(num(permanent[stat]), -3, 3);
         }
 
         const xpKey =
-            clone.xp !== undefined
-                ? "xp"
-                : "experience";
+            cloneValue.xp !== undefined ? 'xp' : 'experience';
 
-        if (
-            clone[xpKey] !== undefined
-        ) {
-            clone[xpKey] =
-                clamp(
-                    Math.round(
-                        num(
-                            clone[xpKey]
-                        )
-                    ),
-                    0,
-                    30
-                );
+        if (cloneValue[xpKey] !== undefined) {
+            cloneValue[xpKey] =
+                clamp(Math.round(num(cloneValue[xpKey])), 0, 30);
         }
 
         const temporary =
-            clone.temporary ||
-            clone.buffs ||
-            clone.effects ||
+            cloneValue.temporary ||
+            cloneValue.buffs ||
+            cloneValue.effects ||
             [];
 
-        for (
-            const effect
-            of temporary
-        ) {
-
-            effect.value =
-                clamp(
-                    num(
-                        effect.value
-                    ),
-                    -0.06,
-                    0.06
-                );
-
-            effect.duration =
-                clamp(
-                    Math.round(
-                        num(
-                            effect.duration,
-                            1
-                        )
-                    ),
-                    1,
-                    3
-                );
+        for (const effect of temporary) {
+            effect.value = clamp(num(effect.value), -0.06, 0.06);
+            effect.duration = normalizeDuration(effect.duration);
         }
 
-        return clone;
-    },
-
-    /*
-     * PRESETS
-     *
-     * Ces exemples servent de référence
-     * pour construire les futurs choix.
-     */
-    presets: {
-
-        coach: {
-
-            travaillerPlus: {
-
-                title:
-                    "Le coach remarque ton implication",
-
-                message:
-                    "Ton investissement est apprécié, mais l'effort supplémentaire te fatigue.",
-
-                permanent: {
-                    relationCoach: 2,
-                    discipline: 1
-                },
-
-                temporary: [
-                    {
-                        stat:
-                            "matchPerformance",
-
-                        value:
-                            0.02,
-
-                        duration:
-                            2,
-
-                        label:
-                            "Performance en match"
-                    }
-                ],
-
-                xp:
-                    8
-            },
-
-            repondreAvecConfiance: {
-
-                title:
-                    "Une réponse ambitieuse",
-
-                message:
-                    "Le coach apprécie ta confiance et attend maintenant des résultats.",
-
-                permanent: {
-                    confidence: 2,
-                    relationCoach: 1
-                },
-
-                temporary: [
-                    {
-                        stat:
-                            "matchPerformance",
-
-                        value:
-                            0.03,
-
-                        duration:
-                            1,
-
-                        label:
-                            "Confiance"
-                    }
-                ],
-
-                xp:
-                    6
-            },
-
-            resterHumble: {
-
-                title:
-                    "Une attitude mature",
-
-                message:
-                    "Le coach apprécie ton humilité et ton sérieux.",
-
-                permanent: {
-                    relationCoach: 2,
-                    discipline: 1
-                },
-
-                temporary: [
-                    {
-                        stat:
-                            "coachTrust",
-
-                        value:
-                            0.03,
-
-                        duration:
-                            2,
-
-                        label:
-                            "Confiance du coach"
-                    }
-                ],
-
-                xp:
-                    6
-            }
-        },
-
-        match: {
-
-            prendreRisques: {
-
-                title:
-                    "Tu prends des risques",
-
-                message:
-                    "Tu peux faire la différence, mais ton effort te coûtera physiquement.",
-
-                permanent: {
-                    confidence: 1
-                },
-
-                temporary: [
-                    {
-                        stat:
-                            "matchPerformance",
-
-                        value:
-                            0.05,
-
-                        duration:
-                            1,
-
-                        label:
-                            "Performance offensive"
-                    }
-                ],
-
-                xp:
-                    5
-            },
-
-            jouerSimple: {
-
-                title:
-                    "Tu joues simple et propre",
-
-                message:
-                    "Une décision sûre qui favorise la régularité.",
-
-                permanent: {
-                    discipline: 1
-                },
-
-                temporary: [
-                    {
-                        stat:
-                            "matchPerformance",
-
-                        value:
-                            0.02,
-
-                        duration:
-                            1,
-
-                        label:
-                            "Régularité"
-                    }
-                ],
-
-                xp:
-                    5
-            },
-
-            assurerDefensivement: {
-
-                title:
-                    "Tu sécurises ton côté",
-
-                message:
-                    "Moins de risques offensifs, mais une meilleure maîtrise défensive.",
-
-                permanent: {
-                    discipline: 1
-                },
-
-                temporary: [
-                    {
-                        stat:
-                            "defensivePerformance",
-
-                        value:
-                            0.05,
-
-                        duration:
-                            1,
-
-                        label:
-                            "Solidité défensive"
-                    }
-                ],
-
-                xp:
-                    5
-            }
-        },
-
-        event: {
-
-            ambition: {
-
-                title:
-                    "Tu assumes tes ambitions",
-
-                message:
-                    "Ton ambition est remarquée. À toi maintenant de l'assumer sur le terrain.",
-
-                permanent: {
-                    confidence: 2,
-                    reputation: 1
-                },
-
-                temporary: [
-                    {
-                        stat:
-                            "matchPerformance",
-
-                        value:
-                            0.02,
-
-                        duration:
-                            2,
-
-                        label:
-                            "Confiance"
-                    }
-                ],
-
-                xp:
-                    8
-            },
-
-            prudence: {
-
-                title:
-                    "Tu préfères rester concentré",
-
-                message:
-                    "Tu évites la pression médiatique et conserves une bonne image auprès du staff.",
-
-                permanent: {
-                    relationCoach: 1,
-                    discipline: 1
-                },
-
-                temporary: [
-                    {
-                        stat:
-                            "mediaPressure",
-
-                        value:
-                            -0.03,
-
-                        duration:
-                            2,
-
-                        label:
-                            "Pression médiatique"
-                    }
-                ],
-
-                xp:
-                    6
-            }
-        }
+        return cloneValue;
     }
 };
 
