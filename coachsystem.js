@@ -2,18 +2,18 @@
 
 export class CoachSystem {
     /**
-     * Vérifie et déclenche une interaction avec l'entraîneur formateur selon le contexte (club actuel ou après transfert)
+     * Vérifie et déclenche une interaction avec l'entraîneur formateur selon l'origine et le contexte
      */
     static checkCoachInteraction(state) {
         const player = state.player;
-        const coachName = state.social?.formativeCoach || "le coach";
-        
-        // Initialisation des données de l'entraîneur si elles n'existent pas encore
+        const coachName = state.social?.coachData?.name || state.social?.formativeCoach || "le coach";
+        const origin = state.player.origin || 'academy'; // Récupère l'origine du joueur
+
         if (!state.social.coachData) {
             state.social.coachData = {
                 name: coachName,
                 relation: player.stats?.relationCoach || 50,
-                opinion: "Neutre", // "Fier", "Neutre", "Déçu", "Fâché"
+                opinion: "Neutre",
                 hasLeftClub: false
             };
         }
@@ -21,106 +21,180 @@ export class CoachSystem {
         const coachState = state.social.coachData;
         const hasTransferred = coachState.hasLeftClub || (player.club !== state.social?.youthClubName);
 
-        // 1. SCÉNARIO APRÈS UN TRANSFERT (Si tu as quitté son club)
+        // 1. SCÉNARIOS SPÉCIFIQUES LIÉS À L'ORIGINE DU JOUEUR
+        if (!hasTransferred && Math.random() < 0.35) {
+            
+            // --- ORIGINE : FUTSAL ---
+            if (origin === 'futsal') {
+                return {
+                    id: 'coach_origin_futsal',
+                    title: `💬 Remontrance de ${coachState.name} : Les réflexes de salle`,
+                    description: `À l'entraînement, après un énième dribble superflu dans l'axe qui a failli coûter un contre, ${coachState.name} t'arrête net : "${player.firstname}! Ici on est sur grand terrain, pas au futsal ! La technique en pivot ne fait pas tout, il faut lâcher ton ballon plus vite et penser collectif !"`,
+                    choices: [
+                        {
+                            text: "Comprendre sa critique : 'Désolé Coach, j'essaie de trop porter la balle comme avant.'",
+                            impacts: { technique: +1, mental: +2, relationCoach: +8 },
+                            opinionChange: "Fier",
+                            response: `"${coachState.name} tape dans ses mains : 'Voilà. Garde ta créativité, mais mets-la au service de l'équipe, pas pour le spectacle.'"`
+                        },
+                        {
+                            text: "Défendre ton style : 'C'est ma force d'éliminer dans les petits espaces, je ne vais pas changer.'",
+                            impacts: { charisme: +2, relationCoach: -6, discipline: -2 },
+                            opinionChange: "Neutre",
+                            response: `"${coachState.name} soupire : 'Ton dribble de salon ne te sauvera pas sur un tacle glissé de 40 mètres. Adapte-toi.'"`
+                        },
+                        {
+                            text: "Provoquer légèrement : 'Pourtant, c'est bien ce qui fait lever les foules.'",
+                            impacts: { morale: +3, relationCoach: -12, discipline: -5 },
+                            opinionChange: "Déçu",
+                            response: `"${coachState.name} hausse le ton : 'Ici on cherche des joueurs de foot à 11, pas des circassiens. Au travail !'"`
+                        },
+                        {
+                            text: "Baisser la tête en silence et battre en retraite",
+                            impacts: { discipline: +2, relationCoach: +3 },
+                            opinionChange: "Neutre",
+                            response: `*(Le coach te regarde repartir en espérant que la leçon portera ses fruits pour le prochain match).*`
+                        }
+                    ]
+                };
+            } 
+            
+            // --- ORIGINE : STREET (FOOT DE RUE) ---
+            else if (origin === 'street') {
+                return {
+                    id: 'coach_origin_street',
+                    title: `💬 Rappel à l'ordre de ${coachState.name} : L'esprit de quartier`,
+                    description: `Après une intervention un peu trop virulente à l'entraînement, ${coachState.name} te convoque : "${player.firstname}, tu as la grinta de la rue, c'est bien, mais tes réactions épidermiques et ton manque de discipline tactique vont te valoir des cartons rouges en match officiel."`,
+                    choices: [
+                        {
+                            text: "S'excuser platement : 'Vous avez raison Coach, j'ai du mal à canaliser mon agressivité.'",
+                            impacts: { discipline: +4, relationCoach: +8, mental: +2 },
+                            opinionChange: "Fier",
+                            response: `"${coachState.name} hoche la tête : 'Canalise cette rage contre l'adversaire le week-end, pas à l'entraînement.'"`
+                        },
+                        {
+                            text: "Minimiser : 'C'est le terrain qui veut ça, on ne va pas se laisser marcher dessus.'",
+                            impacts: { physique: +1, relationCoach: -5 },
+                            opinionChange: "Neutre",
+                            response: `"${coachState.name} fronce les sourcils : 'Ici, tu défends avec ton cerveau autant qu'avec tes muscles.'"`
+                        },
+                        {
+                            text: "Répondre agressivement : 'Laissez-moi m'exprimer comme je suis, c'est ce qui fait ma force.'",
+                            impacts: { discipline: -8, relationCoach: -15, morale: -3 },
+                            opinionChange: "Fâché",
+                            response: `"${coachState.name} s'emporte : 'Ta rue, elle ne paiera pas tes factures si tu te fais virer du club. Redescends d'un étage.'"`
+                        },
+                        {
+                            text: "Ignorer sa remarque et faire profil bas",
+                            impacts: { mental: +1, relationCoach: -2 },
+                            opinionChange: "Neutre",
+                            response: `*(Le coach te fixe du regard, attendant de voir un vrai changement de comportement).*`
+                        }
+                    ]
+                };
+            } 
+            
+            // --- ORIGINE : ACADÉMIE / CENTRE DE FORMATION CLASSIQUE ---
+            else if (origin === 'academy' || origin === 'centre_formation') {
+                return {
+                    id: 'coach_origin_academy',
+                    title: `💬 Point de ${coachState.name} : Trop stéréotypé`,
+                    description: `Le coach t'appelle après la séance vidéo : "${player.firstname}, tu appliques la tactique à la lettre, c'est propre, c'est scolaire... mais tu manques cruellement de folie ! Tu joui trop en sécurité, prends des risques."`,
+                    choices: [
+                        {
+                            text: "Écouter le conseil : 'Je vais essayer de tenter davantage de passes risquées et de percuter.'",
+                            impacts: { technique: +2, relationCoach: +8, mental: +1 },
+                            opinionChange: "Fier",
+                            response: `"${coachState.name} sourit : 'Voilà. On veut un joueur intelligent, pas un robot sur un pré-carré.'"`
+                        },
+                        {
+                            text: "Justifier son jeu : 'Je préfère assurer mes transmissions pour ne pas déséquilibrer l'équipe.'",
+                            impacts: { discipline: +2, relationCoach: -3 },
+                            opinionChange: "Neutre",
+                            response: `"${coachState.name} soupire : 'La sécurité ne fait pas gagner de trophées majeurs. Ose un peu !'"`
+                        },
+                        {
+                            text: "Lui rejeter la faute : 'C'est votre système de jeu rigide qui nous bride sur le terrain.'",
+                            impacts: { charisme: +2, relationCoach: -12, discipline: -4 },
+                            opinionChange: "Déçu",
+                            response: `"${coachState.name} hausse le ton : 'Ne rejette pas ta frilosité sur mes consignes tactiques ! Remets-toi en question.'"`
+                        },
+                        {
+                            text: "Opiner du chef sans conviction",
+                            impacts: { mental: -1, relationCoach: +1 },
+                            opinionChange: "Neutre",
+                            response: `*(Le coach te regarde dubitatif, espérant voir plus de mordant lors du prochain match).*`
+                        }
+                    ]
+                };
+            }
+        }
+
+        // 2. SCÉNARIO APRÈS UN TRANSFERT (Si tu as quitté son club)
         if (hasTransferred && Math.random() < 0.3) {
             return {
                 id: 'coach_post_transfer',
                 title: `📱 Nouvelles de ${coachState.name}`,
-                description: `Quelques semaines après ton départ pour ton nouveau club, ton téléphone vibre. Cp'est un message de ton ancien formateur : "${player.firstname}, je vois tes matchs dans ta nouvelle équipe. C'est un autre monde... J'espère que tu gardes les pieds sur terre."`,
+                description: `Quelques semaines après ton départ, ton téléphone vibre : "${player.firstname}, je vois tes matchs dans ta nouvelle équipe. J'espère que tu montres enfin de quoi tu es capable, sans t'éparpiller."`,
                 choices: [
                     {
-                        text: "Lui répondre avec respect : 'Je n'oublie rien de vos leçons, Coach, c'est grâce à vous.'",
+                        text: "Le remercier chaleureusement : 'Je n'oublie pas vos exigences, Coach, c'est grâce à votre rigueur.'",
                         impacts: { relationCoach: +12, morale: +5, fame: +2 },
                         opinionChange: "Fier",
-                        response: `"${coachState.name} sourit à travers l'écran : 'Heureux de l'entendre. Continue de bosser dur, gamin.'"`
+                        response: `"${coachState.name} sourit : 'Heureux de voir que le travail finit par payer. Bonne route à toi.'"`
                     },
                     {
-                        text: "Lui lancer un pique : 'J'ai surtout franchi un palier et découvert des structures professionnelles.'",
+                        text: "Lui lancer un pique : 'Ici, on me laisse enfin exprimer tout mon potentiel sans bridage.'",
                         impacts: { relationCoach: -15, discipline: -3, fame: +5 },
                         opinionChange: "Déçu",
-                        response: `"${coachState.name} fronce les sourcils : 'Déjà la grosse tête... Le talent ne fait pas tout, retiens bien ça.'"`
+                        response: `"${coachState.name} répond sec : 'Le talent sans discipline ne dure qu'un temps. On en reparlera.'"`
                     },
                     {
-                        text: "Être pragmatique : 'C'est le football moderne, il faut savoir saisir les opportunités de carrière.'",
-                        impacts: { relationCoach: -5, mental: +3 },
+                        text: "Répondre sobrement : 'Je fais mon travail, le niveau est exigeant mais je m'accroche.'",
+                        impacts: { relationCoach: -2, mental: +3 },
                         opinionChange: "Neutre",
-                        response: `"${coachState.name} hoche la tête : 'Business avant tout, hein ? Ne perds pas ton football en route.'"`
+                        response: `"${coachState.name} : 'Accroche-toi bien, c'est là que tout commence.'"`
                     },
                     {
-                        text: "Ignorer purement et simplement son message.",
+                        text: "Ne pas donner suite à son message",
                         impacts: { relationCoach: -20, morale: -2 },
                         opinionChange: "Fâché",
-                        response: `*(Il ne reçoit aucune réponse. Dans la presse locale, il déclarera plus tard que tu as brûlé les étapes un peu trop vite).*`
+                        response: `*(Pas de réponse de ta part. Le lien se distend définitivement entre vous).*`
                     }
                 ]
             };
         }
 
-        // 2. SCÉNARIO QUAND TU ES DANS SON CLUB (Baisse de forme / Fatigué)
+        // 3. SCÉNARIO CLASSIQUE : Gestion de la forme et de la fatigue
         if (!hasTransferred && player.fitness < 65 && Math.random() < 0.35) {
             return {
                 id: 'coach_fatigue_warning',
-                title: `💬 L'avertissement du mentor (${coachState.name})`,
-                description: `À la fin de la séance, ${coachState.name} t'isole dans son bureau. Ton carnet de notes sous les yeux, il te fixe : "${player.firstname}, tu es cramé physiquement. À force de tirer sur la corde, tu vas te blesser bêtement. Je dois te ménager."`,
+                title: `💬 L'avertissement de ${coachState.name}`,
+                description: `À la fin de la séance, ${coachState.name} t'isole dans son bureau : "${player.firstname}, tu tires sur la corde physiquement. À force de vouloir tout faire, tu vas te blesser."`,
                 choices: [
                     {
-                        text: "Baisser la tête et accepter ses conseils : 'Vous avez raison Coach, j'ai besoin de souffler.'",
+                        text: "Accepter de lever le pied : 'Vous avez raison Coach, j'ai besoin de souffler.'",
                         impacts: { fitness: +15, relationCoach: +10, morale: +3 },
                         opinionChange: "Fier",
-                        response: `"${coachState.name} pose sa main sur ton épaule : 'La sagesse commence ici. Repose-toi, on a besoin de toi à 100%.'"`
+                        response: `"${coachState.name} pose sa main sur ton épaule : 'Sage décision. Repose-toi, le groupe a besoin de toi à 100%.'"`
                     },
                     {
-                        text: "Insister pour jouer : 'Je me sens bien, j'ai faim de ballon, ne me mettez pas sur le banc !'",
+                        text: "Insister pour en faire plus : 'Je me sens bien, ne me mettez pas au repos !'",
                         impacts: { morale: +5, fitness: -5, relationCoach: -5 },
                         opinionChange: "Neutre",
-                        response: `"${coachState.name} soupire : 'Ta fougue te perdra. Je te surveille de près lors du prochain décrassage.'"`
+                        response: `"${coachState.name} soupire : 'Ta fougue te perdra. Je te surveille de près.'"`
                     },
                     {
-                        text: "Protester ouvertement : 'Les autres s'entraînent autant, pourquoi c'est toujours moi qu'on pointe du doigt ?'",
+                        text: "Protester : 'Les autres en font moins que moi et vous ne dites rien !'",
                         impacts: { morale: -5, relationCoach: -15, discipline: -5 },
                         opinionChange: "Déçu",
-                        response: `"${coachState.name} s'emporte : 'Parce que c'est toi le plus grand potentiel ici, et que tu ganches tout ! Au boulot, silence radio !'"`
+                        response: `"${coachState.name} s'emporte : 'Parce que c'est toi qu'on attend au tournant ! Au boulot, silence radio !'"`
                     },
                     {
-                        text: "Jouer la carte de l'autonomie : 'Laissez-moi gérer ma récupération en solo, je connais mon corps.'",
+                        text: "Gérer en solo : 'Laissez-moi gérer ma récupération, je connais mon corps.'",
                         impacts: { mental: +3, relationCoach: -8, discipline: -2 },
                         opinionChange: "Déçu",
-                        response: `"${coachState.name} croise les bras : 'On en repartera à l'infirmerie si tu te déchires les ischios.'"`
-                    }
-                ]
-            };
-        }
-
-        // 3. SCÉNARIO GÉNÉRAL : Bilan de progression ou recadrage tactique
-        if (!hasTransferred && Math.random() < 0.25) {
-            return {
-                id: 'coach_tactical_review',
-                title: `📋 Point tactique individuel avec ${coachState.name}`,
-                description: `Le coach t'appelle pour analyser ton volume de jeu des dernières semaines. Il cherche à savoir si tu es réceptif à sa vision du jeu collectif.`,
-                choices: [
-                    {
-                        text: "Boire ses paroles et lui demander des axes de progression précis",
-                        impacts: { technique: +2, relationCoach: +8, mental: +2 },
-                        opinionChange: "Fier",
-                        response: `"${coachState.name} sourit, ravi de voir ton implication : 'Voilà l'attitude d'un vrai pro. On va bosser tes transmissions.'"`
-                    },
-                    {
-                        text: "Mettre en avant tes stats personnelles : 'Mes chiffres parlent pour moi, je suis décisif.'",
-                        impacts: { charisme: +3, relationCoach: -6, vestiaire: +2 },
-                        opinionChange: "Neutre",
-                        response: `"${coachState.name} te recadre sec : 'Le football se joue à onze, pas tout seul sur ta feuille de stats.'"`
-                    },
-                    {
-                        text: "Proposer de changer de rôle tactique sur le terrain pour exprimer ton plein potentiel",
-                        impacts: { mental: +3, technique: +1, relationCoach: +2 },
-                        opinionChange: "Neutre",
-                        response: `"${coachState.name} réfléchit : 'Intéressant... Tu as du culot, voyons si tu arrives à l'assumer en match.'"`
-                    },
-                    {
-                        text: "Montrer un désintérêt total et bâcler l'entretien",
-                        impacts: { morale: -5, relationCoach: -12, discipline: -8 },
-                        opinionChange: "Fâché",
-                        response: `"${coachState.name} encaisse mal ton attitude : 'Sors de mon bureau. Si tu joues perso sur le terrain, tu finiras sur le banc.'"`
+                        response: `"${coachState.name} croise les bras : 'On en reparlera à l'infirmerie.'"`
                     }
                 ]
             };
@@ -130,7 +204,7 @@ export class CoachSystem {
     }
 
     /**
-     * Permet de résoudre le choix du joueur et d'appliquer l'impact sur l'entraîneur
+     * Résout le choix du joueur et met à jour les stats et l'opinion du coach
      */
     static resolveCoachChoice(state, choiceIndex, eventData) {
         const choice = eventData.choices[choiceIndex];
@@ -139,12 +213,10 @@ export class CoachSystem {
         const player = state.player;
         const coachState = state.social.coachData;
 
-        // 1. Appliquer les impacts sur les stats du joueur
         if (choice.impacts) {
             for (const [statKey, val] of Object.entries(choice.impacts)) {
                 if (statKey === 'relationCoach') {
                     coachState.relation = Math.min(100, Math.max(0, coachState.relation + val));
-                    // Synchroniser avec player.stats si présent
                     if (player.stats) player.stats.relationCoach = coachState.relation;
                 } else if (player[statKey] !== undefined) {
                     player[statKey] = Math.min(100, Math.max(0, player[statKey] + val));
@@ -154,7 +226,6 @@ export class CoachSystem {
             }
         }
 
-        // 2. Mettre à jour son opinion globale
         if (choice.opinionChange) {
             coachState.opinion = choice.opinionChange;
         }
