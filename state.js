@@ -2,7 +2,7 @@
 // Persistence centralisée et tolérante aux anciennes sauvegardes.
 
 const STORAGE_KEY = 'street_to_pro_save_v3';
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 const DEFAULT_STATE = {
     schemaVersion: SCHEMA_VERSION,
@@ -18,7 +18,9 @@ const DEFAULT_STATE = {
     calendar: {
         currentMonth: 8,
         currentSeasonYear: 2026,
-        currentPeriod: 'Pré-saison & Début de championnat'
+        currentPeriod: 'Pré-saison & reprise',
+        seasonSchedule: null,
+        seasonMatchCursor: 0
     },
     seasonPhase: 'pre_season',
     pendingEvent: null,
@@ -60,6 +62,10 @@ function migrate(raw) {
     if (!state.career) state.career = cloneDefault().career;
     if (!Array.isArray(state.career.seasonHistory)) state.career.seasonHistory = [];
     if (!state.calendar) state.calendar = cloneDefault().calendar;
+    state.calendar.seasonSchedule ||= null;
+    state.calendar.seasonMatchCursor = Number.isFinite(Number(state.calendar.seasonMatchCursor))
+        ? Number(state.calendar.seasonMatchCursor)
+        : 0;
 
     // Migration des sauvegardes vers le système de conséquences.
     if (state.player) {
