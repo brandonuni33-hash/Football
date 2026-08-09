@@ -14,6 +14,7 @@ import { ConsequenceSystem } from './consequenceSystem.js';
 import { PotentialSystem } from './potentialSystem.js';
 import { CareerSystem } from './careerSystem.js';
 import { CompetitionSystem } from './competitionSystem.js';
+import { WorldSystem } from './worldSystem.js';
 
 export class GameEngine {
     constructor() {
@@ -26,6 +27,7 @@ export class GameEngine {
             ConsequenceSystem.initialize(this.state.player);
             PotentialSystem.ensure(this.state.player);
             CareerSystem.refreshStage(this.state.player);
+            WorldSystem.ensureWorld(this.state);
         }
 
         this.ui = new UserInterface(this);
@@ -89,6 +91,7 @@ export class GameEngine {
             });
         } else {
             CareerSystem.refreshStage(this.state.player);
+            WorldSystem.ensureWorld(this.state);
         }
 
         this.state.careerStructure = this.state.player.careerProfile;
@@ -144,7 +147,8 @@ export class GameEngine {
         player.club = youthClubName;
         player.clubCountry = youthClub?.country || player.clubCountry || player.country || 'France';
         player.clubLevel = Number(youthClub?.tier) || player.clubLevel || 1;
-        CareerSystem.initialize(player, youthClub);
+        WorldSystem.normalizeCareerClub(player);
+        CareerSystem.initialize(player, youthClub || WorldSystem.getClub(player.clubId));
         player.contract = { ...player.contract, ...contract };
         player.salary = Number(
             youthClub?.salary ??
@@ -195,6 +199,7 @@ export class GameEngine {
             pendingMediaDilemma: null,
             pendingTransferOffer: null,
             pendingPositionProposal: null,
+            world: { version: 1, leagues: {}, lastSeasonFinalized: null },
             careerStructure: player.careerProfile || null
         };
 
@@ -202,6 +207,7 @@ export class GameEngine {
         ConsequenceSystem.initialize(this.state.player);
         PotentialSystem.ensure(this.state.player);
         CareerSystem.refreshStage(this.state.player);
+        WorldSystem.ensureWorld(this.state);
         this.state.careerStructure = this.state.player.careerProfile || null;
         StateManager.save(this.state);
         console.log('Carrière créée :', this.state);
@@ -267,6 +273,13 @@ export class GameEngine {
             selectedChoice
         );
 
+        // Le club du joueur alimente aussi le classement réel de sa division.
+        WorldSystem.recordPlayerMatches(
+            this.state,
+            report.summary?.scheduledMatches || [],
+            report.summary || {}
+        );
+
         // 3. Systèmes annexes alimentés par le même rapport.
         this.socialSystem.updateSocialCycle(this.state);
 
@@ -320,6 +333,14 @@ export class GameEngine {
 
     advanceCalendar() {
         const calendar = this.state.calendar;
+
+        // Les autres clubs jouent aussi : le monde évolue même lorsque le joueur
+        // ne regarde pas tous les matchs.
+        const playerLeague = WorldSystem.getLeagueForClub(this.state.player?.clubId || this.state.player?.club);
+        if (playerLeague && !WorldSystem.isOffSeason?.(calendar.currentMonth)) {
+            WorldSystem.simulateLeagueMonth(this.state, playerLeague.id, Number(calendar.currentSeasonYear) + Number(calendar.currentMonth));
+        }
+
         calendar.currentMonth += 1;
 
         if (calendar.currentMonth > 12) {
@@ -329,10 +350,12 @@ export class GameEngine {
         let seasonChanged = false;
 
         if (calendar.currentMonth === 8) {
+            WorldSystem.finalizeSeason(this.state);
             this.archiveAndResetSeason();
             calendar.currentSeasonYear += 1;
             calendar.seasonSchedule = null;
             calendar.seasonMatchCursor = 0;
+            WorldSystem.resetSeasonTables(this.state, calendar.currentSeasonYear);
             seasonChanged = true;
         }
 
@@ -427,7 +450,14 @@ export class GameEngine {
         const player = this.state.player;
         const oldClub = player.club;
 
+        const newClub = WorldSystem.getClub(offer.club);
         player.club = offer.club;
+        player.clubId = newClub?.id || player.clubId || null;
+        player.clubCountry = newClub?.country || player.clubCountry;
+        player.clubLevel = newClub?.tier || player.clubLevel || 1;
+        player.leagueId = newClub?.leagueId || player.leagueId;
+        player.clubPrestige = newClub?.prestige || player.clubPrestige;
+        player.centerStars = newClub?.centerStars || player.centerStars;
         player.salary = offer.salaireHebdo;
         this.state.social.coachData.hasLeftClub = true;
         this.state.social.coachData.previousClub = oldClub;
