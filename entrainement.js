@@ -1,114 +1,89 @@
+// entrainement.js
+import { PlayerLogic } from './player.js';
+
 export const TrainingManager = {
-    // Définition des types d'entraînement et de leurs impacts
-    programs: {
-        TECHNIQUE: {
-            name: "Technique & Agilité",
-            fitnessCost: 15,
-            ratingBonus: 0.2,
-            goalBonus: 0.05,
-            assistBonus: 0.05,
-            primaryStats: ["dribble", "controle", "passes"],
-            secondaryStats: ["agilite", "acceleration"]
-        },
+    FOCUS_TYPES: {
         PHYSIQUE: {
-            name: "Renforcement Physique",
-            fitnessCost: 25,
-            ratingBonus: 0.0,
-            goalBonus: 0.0,
-            assistBonus: 0.0,
-            primaryStats: ["endurance", "force", "vitesse"],
-            secondaryStats: ["detente", "agilite"]
+            name: 'Physique',
+            description: 'Développe l’endurance, la vitesse et la robustesse.',
+            fitnessCost: 8,
+            ratingBonus: 0.2,
+            injuryRisk: 1.15,
+            xp: 160,
+            repartition: {
+                vitesse: 0.30, physique: 0.45, defense: 0.15, tete: 0.10
+            }
         },
-        TIR: {
-            name: "Finition & Attaque",
-            fitnessCost: 20,
-            ratingBonus: 0.1,
-            goalBonus: 0.1,
-            assistBonus: 0.0,
-            primaryStats: ["finition", "tirs_de_loin", "placement"],
-            secondaryStats: ["puissance"]
+        TECHNIQUE: {
+            name: 'Technique',
+            description: 'Améliore le toucher, la passe, le dribble et la finition.',
+            fitnessCost: 4,
+            ratingBonus: 0.4,
+            injuryRisk: 1.0,
+            xp: 180,
+            repartition: {
+                passes: 0.35, dribble: 0.30, tir: 0.20, vitesse: 0.05, physique: 0.05, defense: 0.05
+            }
+        },
+        OFFENSIF: {
+            name: 'Finition & Attaque',
+            description: 'Travaille les tirs, appels et actions offensives.',
+            fitnessCost: 6,
+            ratingBonus: 0.5,
+            injuryRisk: 1.05,
+            xp: 170,
+            repartition: {
+                tir: 0.40, vitesse: 0.20, dribble: 0.25, passes: 0.10, tete: 0.05
+            }
         },
         DEFENSIF: {
-            name: "Bouclier Défensif",
-            fitnessCost: 20,
-            ratingBonus: 0.1,
-            goalBonus: 0.0,
-            assistBonus: 0.0,
-            primaryStats: ["tacle", "marquage", "agressivite"],
-            secondaryStats: ["interception", "force"]
+            name: 'Tactique & Défense',
+            description: 'Renforce le placement, les duels et la rigueur.',
+            fitnessCost: 5,
+            ratingBonus: 0.3,
+            injuryRisk: 1.0,
+            xp: 170,
+            repartition: {
+                defense: 0.40, physique: 0.20, passes: 0.15, vitesse: 0.10, tete: 0.15
+            }
         },
         REPOS: {
-            name: "Récupération Active",
-            fitnessCost: -30,
-            ratingBonus: 0.0,
-            goalBonus: 0.0,
-            assistBonus: 0.0,
-            primaryStats: [],
-            secondaryStats: []
+            name: 'Repos',
+            description: 'Récupère de la forme et réduit le risque de blessure.',
+            fitnessCost: -15,
+            ratingBonus: -0.3,
+            injuryRisk: 0.8,
+            xp: 40,
+            repartition: {}
         }
     },
 
-    // Méthode appelée par matchBlock.js
     getEffect(focusKey) {
-        // Sécurité si la clé est en minuscules ou inconnue
-        const key = (focusKey || 'TECHNIQUE').toUpperCase();
-        return this.programs[key] || this.programs.TECHNIQUE;
+        return this.FOCUS_TYPES[focusKey] || this.FOCUS_TYPES.TECHNIQUE;
     },
 
-    // Fonction principale pour exécuter un entraînement manuel si besoin
-    executeTraining(player, programKey) {
-        const effect = this.getEffect(programKey);
+    applyTraining(player, focusKey = 'TECHNIQUE') {
+        if (!player) return null;
 
-        // 1. Gestion de la forme physique
-        player.fitness = Math.max(0, Math.min(100, (player.fitness || 80) - effect.fitnessCost));
+        const effect = this.getEffect(focusKey);
 
-        if (programKey === 'REPOS' || programKey === 'repos') {
-            return {
-                success: true,
-                focus: effect.name,
-                fitnessChange: -effect.fitnessCost,
-                statIncreases: {},
-                message: `Séance de "${effect.name}" effectuée avec succès.`
-            };
-        }
+        // La forme est appliquée ici UNE seule fois.
+        player.fitness = Math.max(
+            0,
+            Math.min(100, (player.fitness ?? 80) - effect.fitnessCost)
+        );
 
-        // 2. Progression des statistiques cibles
-        const statIncreases = {};
-        
-        const increaseStat = (statName, amount) => {
-            if (!player.stats) player.stats = {};
-            const current = player.stats[statName] || 40;
-            const maxVal = player.potential || 99;
-            if (current < maxVal) {
-                player.stats[statName] = Math.min(maxVal, current + amount);
-                statIncreases[statName] = (statIncreases[statName] || 0) + amount;
-            }
-        };
-
-        effect.primaryStats.forEach(stat => {
-            const gain = Math.random() < 0.7 ? 1 : 2;
-            increaseStat(stat, gain);
+        const progressionResult = PlayerLogic.applyProgression(player, {
+            xp: effect.xp,
+            type: 'entrainement',
+            repartition: effect.repartition
         });
-
-        effect.secondaryStats.forEach(stat => {
-            if (Math.random() < 0.5) {
-                increaseStat(stat, 1);
-            }
-        });
-
-        // 3. Recalcul de l'OVR général du joueur
-        const statValues = Object.values(player.stats).filter(val => typeof val === 'number');
-        if (statValues.length > 0) {
-            const sum = statValues.reduce((a, b) => a + b, 0);
-            player.overall = Math.round(sum / statValues.length);
-        }
 
         return {
-            success: true,
-            focus: effect.name,
-            fitnessChange: -effect.fitnessCost,
-            statIncreases,
-            message: `Entraînement "${effect.name}" effectué avec succès.`
+            ...effect,
+            progressionResult,
+            fitness: player.fitness,
+            overall: player.overall
         };
     }
 };
