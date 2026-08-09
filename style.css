@@ -1,421 +1,628 @@
-/* ==========================================================================
-   STREET TO PRO - SYSTEME DE DESIGN & STYLES PRINCIPAUX
-   ========================================================================== */
+/* =========================================================
+   STREET TO PRO — STYLE.CSS
+   ========================================================= */
 
-/* --------------------------------------------------------------------------
-   1. VARIABLES CSS & THEME GLOBAL
-   -------------------------------------------------------------------------- */
-:root {
-  /* Palette de couleurs */
-  --bg-primary: #0d1117;
-  --bg-secondary: #161b22;
-  --bg-card: #21262d;
-  --bg-card-hover: #282e33;
-  --border-color: #30363d;
-  
-  --text-primary: #f0f6fc;
-  --text-secondary: #8b949e;
-  --text-muted: #6e7681;
-
-  /* Couleurs d'accentuation */
-  --accent-green: #238636;
-  --accent-green-hover: #2ea043;
-  --accent-blue: #1f6beb;
-  --accent-blue-hover: #388bfd;
-  --accent-gold: #d29922;
-  --accent-red: #da3633;
-  --accent-purple: #8957e5;
-
-  /* Formats & Spacements */
-  --radius-sm: 6px;
-  --radius-md: 12px;
-  --radius-lg: 20px;
-  --radius-full: 9999px;
-  
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
-
-  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --transition: all 0.2s ease-in-out;
+body {
+    background-color: #111827;
+    color: #f3f4f6;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
 }
 
-/* --------------------------------------------------------------------------
-   2. RESET & BASE
-   -------------------------------------------------------------------------- */
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  -webkit-tap-highlight-color: transparent;
+.career-container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 16px;
 }
 
-html, body {
-  width: 100%;
-  height: 100%;
-  background-color: #010409;
-  color: var(--text-primary);
-  font-family: var(--font-family);
-  font-size: 15px;
-  line-height: 1.5;
-  overflow: hidden;
-  user-select: none;
+.career-header h1 {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 8px;
 }
 
-/* --------------------------------------------------------------------------
-   3. CONTENEUR PRINCIPAL & ERGONOMIE MOBILE (#app)
-   -------------------------------------------------------------------------- */
-#app {
-  width: 100%;
-  max-width: 480px; /* Contrainte de taille type smartphone */
-  height: 100vh;
-  margin: 0 auto;
-  background-color: var(--bg-primary);
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+.progress-bar {
+    background-color: #374151;
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 24px;
 }
 
-@media (min-width: 481px) {
-  #app {
-    height: 92vh;
-    margin: 4vh auto;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-color);
-  }
+.progress {
+    background-color: #10b981;
+    height: 100%;
+    transition: width 0.3s ease;
 }
 
-/* --------------------------------------------------------------------------
-   4. EN-TÊTE (HEADER & STATS JOUEUR)
-   -------------------------------------------------------------------------- */
-.header-bar {
-  background-color: var(--bg-secondary);
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border-color);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  z-index: 10;
+.form-group {
+    margin-bottom: 16px;
 }
 
-.player-identity {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
 }
 
-.player-avatar {
-  width: 42px;
-  height: 42px;
-  border-radius: var(--radius-full);
-  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  font-size: 1.1rem;
-  border: 2px solid var(--text-primary);
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 10px;
+    background-color: #1f2937;
+    border: 1px solid #374151;
+    color: white;
+    border-radius: 6px;
+    box-sizing: border-box;
 }
 
-.player-info .name {
-  font-weight: 700;
-  font-size: 0.95rem;
-  color: var(--text-primary);
+.grid-positions,
+.grid-countries,
+.grid-continents {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
-.player-info .details {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
+.chip,
+.chip-continent,
+.chip-country {
+    background-color: #1f2937;
+    border: 1px solid #374151;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
 }
 
-.player-ovr-badge {
-  background: var(--accent-gold);
-  color: #000;
-  font-weight: 800;
-  font-size: 1.1rem;
-  padding: 4px 10px;
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-sm);
+.chip.selected,
+.chip-continent.selected,
+.chip-country.selected {
+    background-color: #10b981;
+    border-color: #10b981;
 }
 
-/* --------------------------------------------------------------------------
-   5. CONTENU PRINCIPAL DE L'APPLICATION (ZONE DE JEU)
-   -------------------------------------------------------------------------- */
-.main-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  -webkit-overflow-scrolling: touch;
+.career-footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 24px;
 }
 
-.main-content::-webkit-scrollbar {
-  width: 4px;
-}
-
-.main-content::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: var(--radius-full);
-}
-
-/* --------------------------------------------------------------------------
-   6. CARTES & COMPOSANTS
-   -------------------------------------------------------------------------- */
-.card {
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 16px;
-  box-shadow: var(--shadow-sm);
-}
-
-.card-title {
-  font-size: 1rem;
-  font-weight: 600;
-  margin-bottom: 12px;
-  color: var(--text-primary);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-/* Grille de statistiques du joueur */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-}
-
-.stat-item {
-  background: var(--bg-secondary);
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.stat-label {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  text-transform: capitalize;
-}
-
-.stat-value {
-  font-weight: 700;
-  font-size: 0.95rem;
-}
-
-/* --------------------------------------------------------------------------
-   7. BARS DE PROGRESSION & NIVEAUX
-   -------------------------------------------------------------------------- */
-.progress-bar-container {
-  width: 100%;
-  background-color: var(--bg-secondary);
-  height: 8px;
-  border-radius: var(--radius-full);
-  overflow: hidden;
-  margin-top: 6px;
-}
-
-.progress-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--accent-blue), var(--accent-green));
-  border-radius: var(--radius-full);
-  transition: width 0.3s ease;
-}
-
-/* --------------------------------------------------------------------------
-   8. BOUTONS & ACTIONS
-   -------------------------------------------------------------------------- */
-.btn {
-  width: 100%;
-  padding: 12px 16px;
-  border-radius: var(--radius-md);
-  border: none;
-  font-weight: 600;
-  font-size: 0.95rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: var(--transition);
+.btn-primary,
+.btn-secondary,
+.btn-success {
+    padding: 10px 20px;
+    border-radius: 6px;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
 }
 
 .btn-primary {
-  background-color: var(--accent-green);
-  color: #fff;
-}
-.btn-primary:active {
-  background-color: var(--accent-green-hover);
-  transform: scale(0.98);
+    background-color: #3b82f6;
+    color: white;
 }
 
 .btn-secondary {
-  background-color: var(--bg-card);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-}
-.btn-secondary:active {
-  background-color: var(--bg-card-hover);
-  transform: scale(0.98);
+    background-color: #4b5563;
+    color: white;
 }
 
-.btn-danger {
-  background-color: var(--accent-red);
-  color: #fff;
+.btn-success {
+    background-color: #10b981;
+    color: white;
 }
 
-/* --------------------------------------------------------------------------
-   9. FEED MEDIAS & RESEAUX SOCIAUX (media.js)
-   -------------------------------------------------------------------------- */
-.social-feed {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
-.feed-item {
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 12px;
+.card-select {
+    background-color: #1f2937;
+    border: 1px solid #374151;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    cursor: pointer;
 }
 
-.feed-header {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  margin-bottom: 6px;
+.card-select.selected {
+    border-color: #10b981;
+    background-color: #064e3b;
 }
 
-.feed-author {
-  font-weight: 600;
-  color: var(--accent-blue);
+.club-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-align: left;
 }
 
-.feed-content {
-  font-size: 0.88rem;
-  line-height: 1.4;
-  margin-bottom: 8px;
+.club-header-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #374151;
+    padding-bottom: 6px;
 }
 
-.feed-footer {
-  display: flex;
-  gap: 12px;
-  font-size: 0.75rem;
-  color: var(--text-muted);
+.club-header-info h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #f3f4f6;
 }
 
-/* --------------------------------------------------------------------------
-   10. MODALES & DILEMMES (coachSystem.js & matchChoices.js)
-   -------------------------------------------------------------------------- */
-.modal-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  z-index: 100;
-  animation: fadeIn 0.2s ease;
+.contract-details {
+    font-size: 0.85rem;
+    color: #9ca3af;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
-.modal-card {
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 20px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: var(--shadow-lg);
+.contract-details strong {
+    color: #d1d5db;
 }
 
-.modal-title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  margin-bottom: 10px;
-  color: var(--accent-gold);
+.prestige-badge {
+    align-self: flex-end;
+    font-size: 0.8rem;
+    color: #34d399;
+    font-weight: bold;
 }
 
-.modal-description {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  margin-bottom: 16px;
+
+/* =========================================================
+   STYLE MODERNE POUR LA GRILLE D'ORIGINE
+   ========================================================= */
+
+.grid-origins-modern {
+    display: grid;
+    grid-template-columns: repeat(
+        auto-fit,
+        minmax(240px, 1fr)
+    );
+    gap: 12px;
+    margin-top: 20px;
 }
 
-.choice-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.origin-card-modern {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    transition: all 0.2s ease;
 }
 
-.choice-btn {
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
-  padding: 12px;
-  border-radius: var(--radius-md);
-  text-align: left;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: var(--transition);
+.origin-card-modern:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
 }
 
-.choice-btn:hover, .choice-btn:active {
-  border-color: var(--accent-blue);
-  background-color: var(--bg-card-hover);
+.origin-card-modern.selected {
+    background: rgba(37, 99, 235, 0.15);
+    border-color: #2563eb;
+    box-shadow:
+        0 0 15px rgba(37, 99, 235, 0.3);
 }
 
-/* --------------------------------------------------------------------------
-   11. BARRE DE NAVIGATION INFÉRIEURE (NAVIGATION APPS)
-   -------------------------------------------------------------------------- */
-.bottom-nav {
-  background-color: var(--bg-secondary);
-  border-top: 1px solid var(--border-color);
-  display: flex;
-  justify-content: space-around;
-  padding: 8px 0;
+.origin-icon {
+    font-size: 24px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.nav-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  color: var(--text-secondary);
-  font-size: 0.7rem;
-  text-decoration: none;
-  cursor: pointer;
-  background: none;
-  border: none;
-  width: 20%;
+.origin-info h3 {
+    margin: 0 0 4px 0;
+    font-size: 16px;
+    color: #fff;
 }
 
-.nav-item.active {
-  color: var(--accent-blue);
+.trait-tag {
+    display: inline-block;
+    font-size: 11px;
+    background: rgba(250, 204, 21, 0.1);
+    color: #facc15;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+    font-weight: 500;
 }
 
-.nav-icon {
-  font-size: 1.2rem;
+.origin-info p {
+    margin: 0;
+    font-size: 12px;
+    color: #94a3b8;
+    line-height: 1.4;
 }
 
-/* --------------------------------------------------------------------------
-   12. ANIMATIONS
-   -------------------------------------------------------------------------- */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+
+/* =========================================================
+   CONSEQUENCE SYSTEM
+   ========================================================= */
+
+/*
+ * ---------------------------------------------------------
+ * CHOIX AVANT VALIDATION
+ * ---------------------------------------------------------
+ *
+ * IMPORTANT :
+ * Les conséquences ne doivent PAS être visibles
+ * lorsque le joueur doit encore choisir.
+ *
+ * Même si le JavaScript génère un aperçu,
+ * celui-ci est masqué visuellement.
+ */
+
+.choice-consequences {
+    display: none !important;
 }
+
+.consequence-chip {
+    display: none !important;
+}
+
+
+/*
+ * Texte principal du choix
+ */
+
+.choice-main-text {
+    display: block;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+
+/*
+ * Si une ancienne version du HTML place
+ * les conséquences directement dans le bouton,
+ * on masque également les éléments connus.
+ */
+
+.choice-button .consequence-chip,
+.choice-card .consequence-chip,
+.choice-option .consequence-chip,
+.match-choice .consequence-chip {
+    display: none !important;
+}
+
+
+/* =========================================================
+   PANNEAU DES CONSÉQUENCES APRÈS LE CHOIX
+   ========================================================= */
+
+.consequence-result-card {
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+}
+
+
+/*
+ * Titre
+ */
+
+.consequence-result-card h3 {
+    margin: 0 0 8px 0;
+}
+
+
+/*
+ * Message explicatif
+ */
+
+.consequence-result-card p {
+    line-height: 1.5;
+}
+
+
+/*
+ * Liste
+ */
+
+.consequence-result-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 18px;
+    margin-bottom: 18px;
+}
+
+
+/*
+ * Une conséquence
+ */
+
+.consequence-result-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 12px;
+
+    padding: 11px 14px;
+
+    border-radius: 10px;
+
+    font-size: 0.95rem;
+    line-height: 1.3;
+
+    background: rgba(255, 255, 255, 0.055);
+
+    border: 1px solid rgba(
+        255,
+        255,
+        255,
+        0.08
+    );
+
+    animation:
+        consequenceAppear
+        0.25s
+        ease-out
+        both;
+}
+
+
+/*
+ * Texte de la conséquence
+ */
+
+.consequence-result-row span {
+    font-weight: 600;
+}
+
+
+/*
+ * Valeur
+ */
+
+.consequence-result-row strong {
+    white-space: nowrap;
+    font-weight: 800;
+}
+
+
+/*
+ * BONUS
+ */
+
+.consequence-result-row.positive {
+    color: #69e6a7;
+
+    background:
+        rgba(16, 185, 129, 0.09);
+
+    border-color:
+        rgba(16, 185, 129, 0.22);
+}
+
+
+/*
+ * MALUS
+ */
+
+.consequence-result-row.negative {
+    color: #ff8792;
+
+    background:
+        rgba(239, 68, 68, 0.08);
+
+    border-color:
+        rgba(239, 68, 68, 0.22);
+}
+
+
+/*
+ * Effet temporaire
+ */
+
+.consequence-result-row.temporary {
+    border-style: dashed;
+}
+
+
+/*
+ * Durée de l'effet
+ */
+
+.consequence-result-row small {
+    font-size: 0.75rem;
+    opacity: 0.72;
+    font-weight: 500;
+}
+
+
+/*
+ * Aucun changement
+ */
+
+.consequence-empty {
+    margin: 12px 0 4px;
+
+    text-align: center;
+
+    color: #94a3b8;
+
+    font-size: 0.9rem;
+}
+
+
+/* =========================================================
+   ANIMATION DES CONSÉQUENCES
+   ========================================================= */
+
+.consequence-result-row:nth-child(2) {
+    animation-delay: 0.04s;
+}
+
+.consequence-result-row:nth-child(3) {
+    animation-delay: 0.08s;
+}
+
+.consequence-result-row:nth-child(4) {
+    animation-delay: 0.12s;
+}
+
+.consequence-result-row:nth-child(5) {
+    animation-delay: 0.16s;
+}
+
+.consequence-result-row:nth-child(6) {
+    animation-delay: 0.20s;
+}
+
+@keyframes consequenceAppear {
+
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+/* =========================================================
+   BOUTON CONTINUER
+   ========================================================= */
+
+.consequence-continue {
+    width: 100%;
+    margin-top: 8px;
+}
+
+
+/*
+ * Si le bouton est généré avec une classe
+ * différente mais contient ce rôle.
+ */
+
+.consequence-result-card button {
+    transition:
+        transform 0.15s ease,
+        opacity 0.15s ease;
+}
+
+.consequence-result-card button:hover {
+    transform: translateY(-1px);
+}
+
+.consequence-result-card button:active {
+    transform: translateY(0);
+}
+
+
+/* =========================================================
+   EFFETS TEMPORAIRES ACTIFS
+   ========================================================= */
+
+.active-consequences {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.active-consequence {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 10px;
+
+    padding: 9px 12px;
+
+    border-radius: 9px;
+
+    background:
+        rgba(255, 255, 255, 0.045);
+
+    border:
+        1px solid rgba(
+            255,
+            255,
+            255,
+            0.08
+        );
+}
+
+.active-consequence.positive {
+    border-color:
+        rgba(16, 185, 129, 0.2);
+}
+
+.active-consequence.negative {
+    border-color:
+        rgba(239, 68, 68, 0.2);
+}
+
+
+/* =========================================================
+   RESPONSIVE MOBILE
+   ========================================================= */
+
+@media (max-width: 600px) {
+
+    .career-container {
+        padding: 12px;
+    }
+
+    .consequence-result-card {
+        width: 100%;
+        max-width: none;
+    }
+
+    .consequence-result-row {
+        padding: 10px 12px;
+        font-size: 0.9rem;
+    }
+
+    .consequence-result-row strong {
+        font-size: 0.9rem;
+    }
+
+    .consequence-result-row small {
+        font-size: 0.7rem;
+    }
+
+    .choice-main-text {
+        line-height: 1.4;
+    }
+}
+
+
+/* =========================================================
+   ACCESSIBILITÉ
+   ========================================================= */
+
+button:focus-visible,
+.chip:focus-visible,
+.chip-continent:focus-visible,
+.chip-country:focus-visible,
+.card-select:focus-visible {
+    outline: 2px solid #60a5fa;
+    outline-offset: 2px;
+}
+
+
+/* =========================================================
+   FIN CONSEQUENCE SYSTEM
+   ========================================================= */
