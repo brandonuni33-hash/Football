@@ -73,46 +73,46 @@ export class UserInterface {
         style.id = 'pro-ui-styles';
         style.innerHTML = `
             :root {
-                --bg-glass: rgba(15, 23, 42, 0.75);
-                --bg-card: rgba(30, 41, 59, 0.7);
-                --border-glass: rgba(255, 255, 255, 0.12);
+                --bg-glass: rgba(15, 23, 42, 0.85);
+                --bg-card: rgba(30, 41, 59, 0.9);
+                --border-glass: rgba(255, 255, 255, 0.25);
                 --accent-green: #10b981;
                 --accent-blue: #3b82f6;
                 --accent-purple: #8b5cf6;
                 --accent-gold: #f59e0b;
-                --text-main: #f8fafc;
-                --text-sub: #94a3b8;
+                --text-main: #ffffff;
+                --text-sub: #e2e8f0;
             }
 
             .phone-frame {
                 width: 100%;
                 max-width: 430px;
-                height: 92vh;
-                max-height: 880px;
+                height: 100dvh;
+                max-height: 900px;
                 margin: 0 auto;
-                border-radius: 44px;
-                background: linear-gradient(180deg, #0f172a 0%, #020617 100%);
-                border: 2px solid var(--border-glass);
+                border-radius: 36px;
+                background: rgba(10, 15, 30, 0.5);
+                border: 1.5px solid var(--border-glass);
                 display: flex;
                 flex-direction: column;
                 overflow: hidden;
-                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
                 position: relative;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 color: var(--text-main);
+                backdrop-filter: blur(12px);
             }
 
             .phone-status-bar {
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                padding: 14px 24px 8px;
+                padding: calc(env(safe-area-inset-top, 12px) + 6px) 20px 8px;
                 font-size: 0.8rem;
-                font-weight: 600;
-                letter-spacing: -0.2px;
-                color: #e2e8f0;
-                background: rgba(15, 23, 42, 0.4);
-                backdrop-filter: blur(10px);
+                font-weight: 700;
+                color: #ffffff;
+                background: rgba(15, 23, 42, 0.75);
+                backdrop-filter: blur(16px);
                 z-index: 10;
             }
 
@@ -120,29 +120,30 @@ export class UserInterface {
                 flex: 1;
                 overflow-y: auto;
                 padding: 16px;
+                padding-bottom: calc(20px + env(safe-area-inset-bottom, 10px));
                 display: flex;
                 flex-direction: column;
                 gap: 16px;
                 scrollbar-width: thin;
-                scrollbar-color: rgba(255,255,255,0.2) transparent;
             }
 
             /* Widget Hero Joueur */
             .player-widget-enhanced {
-                background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9));
+                background: rgba(15, 23, 42, 0.88);
                 border: 1px solid var(--border-glass);
-                border-radius: 28px;
-                padding: 20px;
-                backdrop-filter: blur(16px);
-                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+                border-radius: 24px;
+                padding: 18px;
+                backdrop-filter: blur(20px);
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
             }
 
-            .widget-subtitle {
-                font-size: 0.75rem;
-                text-transform: uppercase;
-                letter-spacing: 0.8px;
+            .widget-header-line {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-size: 0.8rem;
                 color: var(--accent-blue);
-                font-weight: 700;
+                font-weight: 800;
                 margin-bottom: 12px;
             }
 
@@ -150,22 +151,22 @@ export class UserInterface {
                 display: flex;
                 align-items: center;
                 gap: 14px;
-                margin-bottom: 16px;
+                margin-bottom: 14px;
             }
 
             .player-image-badge {
                 width: 56px;
                 height: 56px;
-                border-radius: 20px;
+                border-radius: 18px;
                 background: linear-gradient(135deg, #3b82f6, #1d4ed8);
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+                box-shadow: 0 4px 16px rgba(59, 130, 246, 0.5);
             }
 
             .jersey-number {
-                font-size: 1.3rem;
+                font-size: 1.4rem;
                 font-weight: 900;
                 color: #fff;
             }
@@ -173,11 +174,13 @@ export class UserInterface {
             .player-main-info .widget-title {
                 font-weight: 800;
                 font-size: 1.25rem;
-                letter-spacing: -0.3px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
             }
 
             .player-club-sub {
-                font-size: 0.85rem;
+                font-size: 0.88rem;
                 color: var(--text-sub);
                 margin-top: 2px;
             }
@@ -185,15 +188,15 @@ export class UserInterface {
             .widget-stats-grid {
                 display: grid;
                 grid-template-columns: repeat(2, 1fr);
-                gap: 10px;
+                gap: 8px;
             }
 
             .stat-pill {
-                background: rgba(255, 255, 255, 0.05);
-                border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 16px;
-                padding: 10px 12px;
-                font-size: 0.82rem;
+                background: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                border-radius: 12px;
+                padding: 8px 12px;
+                font-size: 0.85rem;
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
@@ -204,12 +207,24 @@ export class UserInterface {
                 color: #fff;
             }
 
-            /* Grille d'Applications iOS */
+            .widget-secret-tag {
+                margin-top: 12px;
+                padding-top: 10px;
+                border-top: 1px dashed rgba(255, 255, 255, 0.2);
+                font-size: 0.8rem;
+                color: #fbbf24;
+                font-weight: 600;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+
+            /* Grille d'Applications iOS Ultra Visibles */
             .apps-grid {
                 display: grid;
-                grid-template-columns: repeat(3, 1fr);
-                gap: 16px;
-                margin-top: 8px;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 14px;
+                margin-top: 6px;
             }
 
             .app-icon {
@@ -220,11 +235,11 @@ export class UserInterface {
                 border: none;
                 cursor: pointer;
                 position: relative;
-                transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+                transition: transform 0.15s ease, filter 0.15s ease;
             }
 
             .app-icon:active {
-                transform: scale(0.9);
+                transform: scale(0.92);
             }
 
             .app-logo {
@@ -235,27 +250,28 @@ export class UserInterface {
                 align-items: center;
                 justify-content: center;
                 font-size: 1.7rem;
-                background: rgba(255, 255, 255, 0.08);
-                backdrop-filter: blur(12px);
-                border: 1px solid var(--border-glass);
-                box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+                background: #1e293b;
+                border: 1.5px solid rgba(255, 255, 255, 0.3);
+                box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
                 margin-bottom: 6px;
             }
 
             .app-label {
                 font-size: 0.75rem;
-                font-weight: 500;
-                color: var(--text-main);
+                font-weight: 700;
+                color: #ffffff;
+                text-align: center;
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
             }
 
             .notification-badge {
                 position: absolute;
                 top: -2px;
-                right: 12px;
+                right: 4px;
                 background: #ef4444;
                 color: white;
                 font-size: 0.7rem;
-                font-weight: 800;
+                font-weight: 900;
                 width: 20px;
                 height: 20px;
                 border-radius: 50%;
@@ -263,6 +279,27 @@ export class UserInterface {
                 align-items: center;
                 justify-content: center;
                 border: 2px solid #0f172a;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+            }
+
+            /* Bouton Paramètres Flottant */
+            .btn-settings-floating {
+                position: absolute;
+                right: 20px;
+                bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+                width: 46px;
+                height: 46px;
+                border-radius: 50%;
+                background: #1e293b;
+                border: 1.5px solid var(--border-glass);
+                color: #fff;
+                font-size: 1.3rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+                z-index: 5;
             }
 
             /* Actions Principales */
@@ -276,40 +313,55 @@ export class UserInterface {
                 font-size: 1rem;
                 border: none;
                 cursor: pointer;
-                box-shadow: 0 10px 20px -5px rgba(16, 185, 129, 0.4);
-                transition: transform 0.15s ease, box-shadow 0.15s ease;
+                box-shadow: 0 10px 25px -4px rgba(16, 185, 129, 0.6);
             }
 
             .btn-play-block:active {
                 transform: scale(0.98);
             }
 
-            /* Modales et Overlays */
+            /* Style des Vues Applicatives */
+            .app-pane {
+                background: rgba(15, 23, 42, 0.9);
+                border: 1px solid var(--border-glass);
+                border-radius: 20px;
+                padding: 16px;
+                backdrop-filter: blur(16px);
+            }
+
+            .pane-title {
+                font-size: 1.15rem;
+                font-weight: 800;
+                margin-top: 0;
+                margin-bottom: 12px;
+                color: #fff;
+            }
+
+            /* Modales */
             .event-modal-overlay {
                 position: absolute;
                 inset: 0;
-                background: rgba(2, 6, 23, 0.85);
-                backdrop-filter: blur(16px);
+                background: rgba(2, 6, 23, 0.88);
+                backdrop-filter: blur(20px);
                 z-index: 100;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 padding: 20px;
-                animation: fadeIn 0.25s ease-out;
             }
 
             .event-modal-card {
-                background: var(--bg-card);
-                border: 1px solid var(--border-glass);
-                border-radius: 28px;
-                padding: 24px;
+                background: #1e293b;
+                border: 1.5px solid var(--border-glass);
+                border-radius: 26px;
+                padding: 22px;
                 width: 100%;
                 max-width: 360px;
-                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+                box-shadow: 0 20px 40px rgba(0,0,0,0.8);
             }
 
             .event-modal-category {
-                font-size: 0.7rem;
+                font-size: 0.72rem;
                 font-weight: 800;
                 letter-spacing: 1px;
                 color: var(--accent-gold);
@@ -319,38 +371,33 @@ export class UserInterface {
             .event-modal-title {
                 font-size: 1.25rem;
                 font-weight: 800;
-                margin: 6px 0 12px;
+                margin: 6px 0 10px;
+                color: #fff;
             }
 
             .event-modal-desc {
                 font-size: 0.9rem;
                 color: var(--text-sub);
-                line-height: 1.5;
-                margin-bottom: 20px;
+                line-height: 1.4;
+                margin-bottom: 18px;
             }
 
             .btn-event-choice {
                 width: 100%;
                 padding: 14px;
-                border-radius: 16px;
-                background: rgba(255, 255, 255, 0.08);
+                border-radius: 14px;
+                background: rgba(255, 255, 255, 0.1);
                 border: 1px solid var(--border-glass);
                 color: var(--text-main);
-                font-weight: 600;
+                font-weight: 700;
                 font-size: 0.9rem;
-                margin-bottom: 8px;
+                margin-bottom: 10px;
                 cursor: pointer;
                 text-align: left;
-                transition: background 0.2s ease;
             }
 
-            .btn-event-choice:hover {
-                background: rgba(255, 255, 255, 0.15);
-            }
-
-            @keyframes fadeIn {
-                from { opacity: 0; transform: scale(0.95); }
-                to { opacity: 1; transform: scale(1); }
+            .btn-event-choice:active {
+                background: rgba(255, 255, 255, 0.2);
             }
         `;
         document.head.appendChild(style);
@@ -711,75 +758,90 @@ export class UserInterface {
                 <div class="phone-frame">
                     <div class="phone-status-bar">
                         <span>9:41</span>
-                        <span>⚡ Street to Pro</span>
+                        <span>⚽ Street to Pro</span>
                         <span>🔋 100%</span>
                     </div>
                     <div class="phone-home-screen">
                         <div class="player-widget-enhanced">
-                            <div class="widget-subtitle">📅 Saison ${state.calendar?.currentSeasonYear || 2026}/${(state.calendar?.currentSeasonYear || 2026) + 1} — ${state.calendar?.currentPeriod || 'Pré-saison'}</div>
+                            <div class="widget-header-line">
+                                <span>📅 Saison ${state.calendar?.currentSeasonYear || 2026}/${(state.calendar?.currentSeasonYear || 2026) + 1}</span>
+                                <span>${state.calendar?.currentPeriod || 'Pré-saison'}</span>
+                            </div>
                             
                             <div class="player-card-banner">
                                 <div class="player-image-badge">
-                                    <span class="jersey-number">33</span>
+                                    <span class="jersey-number">${state.player?.number || 33}</span>
                                 </div>
                                 <div class="player-main-info">
-                                    <div class="widget-title">${state.player?.firstname || 'Joueur'} ${state.player?.lastname || ''}</div>
-                                    <div class="player-club-sub">📍 ${state.player?.club || 'Libre'} (${state.player?.position || 'BU'})</div>
+                                    <div class="widget-title">
+                                        <span>${state.player?.firstname || ''} ${state.player?.lastname || ''}</span>
+                                        <span style="font-size:0.85rem; opacity:0.9;">⭐ ${state.player?.workRates || 'H H'}</span>
+                                    </div>
+                                    <div class="player-club-sub">📍 ${state.player?.club || 'Bayer Leverkusen U19'} (${state.player?.position || 'BU'})</div>
                                 </div>
                             </div>
 
                             <div class="widget-stats-grid">
-                                <div class="stat-pill"><span>⚡ OVR</span><strong>${state.player?.overall || 50}</strong></div>
-                                <div class="stat-pill"><span>✨ Pot</span><strong>${state.player?.potential || 75}</strong></div>
-                                <div class="stat-pill"><span>🔋 Forme</span><strong>${state.player?.fitness || 100}%</strong></div>
-                                <div class="stat-pill"><span>❤️ Moral</span><strong>${state.player?.morale || 100}%</strong></div>
+                                <div class="stat-pill"><span>⚡ OVR</span><strong>${state.player?.overall || 47}</strong></div>
+                                <div class="stat-pill"><span>✨ Pot</span><strong>${state.player?.potential || 78}</strong></div>
+                                <div class="stat-pill"><span>🔋 Forme</span><strong>${state.player?.fitness || 90}%</strong></div>
+                                <div class="stat-pill"><span>❤️ Moral</span><strong>${state.player?.morale || 80}%</strong></div>
                                 <div class="stat-pill"><span>🎂 Âge</span><strong>${state.player?.age || 14} ans</strong></div>
-                                <div class="stat-pill"><span>💰 Solde</span><strong>${(state.career?.balance || 0).toLocaleString('fr-FR')} €</strong></div>
+                                <div class="stat-pill"><span>💰 Solde</span><strong>${(state.career?.balance || 750).toLocaleString('fr-FR')} €</strong></div>
+                            </div>
+
+                            <div class="widget-secret-tag">
+                                🚀 Développement : Peak à ${state.player?.peakAge || 24} ans (secret)
                             </div>
                         </div>
 
                         <div class="apps-grid">
                             <button class="app-icon" data-app="career">
-                                <div class="app-logo">⚽</div>
+                                <div class="app-logo" style="background: linear-gradient(135deg, #1e3a8a, #3b82f6);">⚽</div>
                                 <span class="app-label">Carrière</span>
                             </button>
 
                             <button class="app-icon" data-app="social">
-                                <div class="app-logo">📱</div>
+                                <div class="app-logo" style="background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045);">📱</div>
                                 <span class="app-label">Instafoot</span>
                                 ${state.media?.recentDilemma ? '<span class="notification-badge">1</span>' : ''}
                             </button>
 
                             <button class="app-icon" data-app="messages">
-                                <div class="app-logo">💬</div>
+                                <div class="app-logo" style="background: linear-gradient(135deg, #059669, #10b981);">💬</div>
                                 <span class="app-label">Messages</span>
                             </button>
 
                             <button class="app-icon" data-app="bank">
-                                <div class="app-logo">🏦</div>
+                                <div class="app-logo" style="background: linear-gradient(135deg, #d97706, #f59e0b);">🏦</div>
                                 <span class="app-label">Banque</span>
                             </button>
 
                             <button class="app-icon" data-app="stats">
-                                <div class="app-logo">📊</div>
+                                <div class="app-logo" style="background: linear-gradient(135deg, #4f46e5, #6366f1);">📊</div>
                                 <span class="app-label">Stats</span>
                             </button>
 
                             <button class="app-icon" data-app="training">
-                                <div class="app-logo">🏋️‍♂️</div>
+                                <div class="app-logo" style="background: linear-gradient(135deg, #dc2626, #ef4444);">🏋️‍♂️</div>
                                 <span class="app-label">Entraînement</span>
+                            </button>
+
+                            <button class="app-icon" data-app="transfers">
+                                <div class="app-logo" style="background: linear-gradient(135deg, #0891b2, #06b6d4);">🔄</div>
+                                <span class="app-label">Mercato</span>
+                            </button>
+
+                            <button class="app-icon" data-app="settings">
+                                <div class="app-logo" style="background: linear-gradient(135deg, #475569, #64748b);">⚙️</div>
+                                <span class="app-label">Réglages</span>
                             </button>
                         </div>
 
+                        <button id="settings-floating-btn" class="btn-settings-floating" title="Réglages">⚙️</button>
+
                         <button id="play-block-btn" class="btn-play-block" ${state.player?.careerEnded ? 'disabled' : ''}>
                             ${state.player?.careerEnded ? '🏁 Carrière terminée' : '▶️ Lancer le prochain bloc'}
-                        </button>
-                        ${state.player?.canRetire && !state.player?.careerEnded ? `
-                        <button id="retire-career-btn" class="btn-secondary" style="margin-top:8px;">
-                            🏁 Prendre sa retraite à ${state.player.age} ans
-                        </button>` : ''}
-                        <button id="reset-career-btn" class="btn-secondary" style="margin-top:8px; opacity:0.6;">
-                            🗑️ Recommencer
                         </button>
                     </div>
                 </div>
@@ -792,11 +854,11 @@ export class UserInterface {
                         <span>⚡ Street to Pro</span>
                         <span>🔋 100%</span>
                     </div>
-                    <div class="phone-app-view">
-                        <div class="app-header-bar" style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-glass);">
-                            <button class="btn-back-home" id="back-home-btn" style="background: none; border: none; color: var(--accent-blue); font-weight: 600; cursor: pointer;">⬅️ Accueil</button>
-                            <span class="app-title-header" style="font-weight: 700; text-transform: capitalize;">${this.activeApp}</span>
-                            <span style="width: 40px;"></span>
+                    <div class="phone-app-view" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
+                        <div class="app-header-bar" style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-glass); background: rgba(15, 23, 42, 0.85);">
+                            <button class="btn-back-home" id="back-home-btn" style="background: rgba(255,255,255,0.1); border: 1px solid var(--border-glass); border-radius: 10px; padding: 6px 12px; color: #fff; font-weight: 700; cursor: pointer; font-size: 0.85rem;">⬅️ Accueil</button>
+                            <span class="app-title-header" style="font-weight: 800; font-size:1.05rem; text-transform: capitalize;">${this.activeApp}</span>
+                            <span style="width: 60px;"></span>
                         </div>
                         <div id="app-content-body" class="app-content-body">
                             ${this.renderSpecificAppContent()}
@@ -822,40 +884,41 @@ export class UserInterface {
             case 'career':
                 return `
                     <div class="app-pane">
-                        <h3 class="pane-title career-color">⚽ Gestion Carrière</h3>
-                        <p><strong>Club :</strong> ${state.player?.club || ''}</p>
-                        <p><strong>Poste :</strong> ${state.player?.position || ''} | <strong>Âge :</strong> ${state.player?.age || 17} ans</p>
-                        <p><strong>Saison :</strong> ${state.calendar?.currentSeasonYear || 2026}</p>
-                        <p><strong>Période :</strong> ${state.calendar?.currentPeriod || ''}</p>
-                        <hr class="pane-divider" style="border-color: var(--border-glass); margin: 12px 0;">
-                        <p><strong>Valeur marchande :</strong> 🏷️ ${TransferMarket.formatPrice(marketValue)}</p>
-                        <p><strong>Forme physique :</strong> ${state.player?.fitness || 100}%</p>
-                        <p><strong>Moral :</strong> ${state.player?.morale || 100}%</p>
+                        <h3 class="pane-title">⚽ Gestion Carrière</h3>
+                        <p><strong>Joueur :</strong> ${state.player?.firstname || ''} ${state.player?.lastname || ''} (#${state.player?.number || 33})</p>
+                        <p><strong>Club :</strong> ${state.player?.club || 'Libre'}</p>
+                        <p><strong>Poste :</strong> ${state.player?.position || ''} | <strong>Rendement :</strong> ⭐ ${state.player?.workRates || 'H H'}</p>
+                        <p><strong>Saison :</strong> ${state.calendar?.currentSeasonYear || 2026} (${state.calendar?.currentPeriod || 'Pré-saison'})</p>
+                        <hr style="border-color: var(--border-glass); margin: 12px 0;">
+                        <p><strong>Valeur estimée :</strong> 🏷️ ${TransferMarket.formatPrice(marketValue)}</p>
+                        <p><strong>Condition physique :</strong> ${state.player?.fitness || 90}%</p>
+                        <p><strong>Moral du joueur :</strong> ${state.player?.morale || 80}%</p>
+                        <p><strong>Pic de forme secret :</strong> ${state.player?.peakAge || 24} ans</p>
                         
                         ${coachInfo ? `
-                            <hr class="pane-divider" style="border-color: var(--border-glass); margin: 12px 0;">
-                            <h4 class="history-section-title">👨‍💼 Entraîneur : ${coachInfo.name || ''}</h4>
-                            <p><strong>Vision :</strong> ${coachInfo.vision || ''}</p>
-                            <p><strong>Relation :</strong> ${coachInfo.relationshipScore || 50}/100</p>
+                            <hr style="border-color: var(--border-glass); margin: 12px 0;">
+                            <h4 style="margin: 0 0 6px; color: var(--accent-gold);">👨‍💼 Entraîneur : ${coachInfo.name || ''}</h4>
+                            <p style="margin:4px 0;"><strong>Philosophie :</strong> ${coachInfo.vision || ''}</p>
+                            <p style="margin:4px 0;"><strong>Confiance du coach :</strong> ${coachInfo.relationshipScore || 50}/100</p>
                         ` : ''}
                     </div>
                 `;
             case 'social':
                 return `
                     <div class="app-pane">
-                        <h3 class="pane-title social-color">📱 Instafoot & Médias</h3>
-                        <div class="social-stats-row" style="display:flex; justify-space-between; margin-bottom:12px;">
+                        <h3 class="pane-title">📱 Instafoot & Réseaux</h3>
+                        <div style="display:flex; justify-content:space-between; background: rgba(255,255,255,0.05); padding:10px; border-radius:12px; margin-bottom:12px;">
                             <span>👥 Abonnés : <strong>${(mediaState.followers || 0).toLocaleString()}</strong></span>
                             <span>🔥 Hype : <strong>${mediaState.hypeLevel || 0}/100</strong></span>
                         </div>
 
                         ${mediaState.recentDilemma ? `
-                            <div class="dilemma-box" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius:16px; padding:12px; margin-bottom:12px;">
-                                <h4 class="dilemma-title" style="color: #ef4444;">${mediaState.recentDilemma.title || ''}</h4>
-                                <p class="dilemma-desc" style="font-size:0.85rem;">${mediaState.recentDilemma.description || ''}</p>
-                                <div class="dilemma-choices" style="margin-top:8px;">
+                            <div style="background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; border-radius:16px; padding:12px; margin-bottom:14px;">
+                                <h4 style="color: #ef4444; margin:0 0 6px;">⚠️ ${mediaState.recentDilemma.title || 'Dilemma Média'}</h4>
+                                <p style="font-size:0.85rem; margin:0 0 10px;">${mediaState.recentDilemma.description || ''}</p>
+                                <div style="display:flex; flex-direction:column; gap:6px;">
                                     ${(mediaState.recentDilemma.choices || []).map((choice, idx) => `
-                                        <button class="btn-dilemma" data-choice-idx="${idx}" style="width:100%; padding:8px; margin-top:4px; border-radius:8px; background: rgba(255,255,255,0.1); border:none; color:#fff; cursor:pointer;">
+                                        <button class="btn-dilemma" data-choice-idx="${idx}" style="padding:10px; border-radius:10px; background: rgba(255,255,255,0.15); border:1px solid var(--border-glass); color:#fff; cursor:pointer; font-weight:600; text-align:left;">
                                             👉 ${choice?.text || choice?.texte || ''}
                                         </button>
                                     `).join('')}
@@ -864,78 +927,114 @@ export class UserInterface {
                         ` : ''}
                         
                         <div class="feed-list">
-                            ${(mediaState.feed || []).map(post => `
-                                <div class="feed-item" style="background: var(--bg-card); border-radius:12px; padding:10px; margin-bottom:8px;">
-                                    <div class="feed-item-header" style="display:flex; justify-content:space-between; font-size:0.75rem; color: var(--text-sub);">
-                                        <span>📢 ${post?.source || ''}</span>
+                            ${(mediaState.feed && mediaState.feed.length > 0) ? mediaState.feed.map(post => `
+                                <div style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); border-radius:12px; padding:12px; margin-bottom:10px;">
+                                    <div style="display:flex; justify-content:space-between; font-size:0.75rem; color: var(--text-sub); margin-bottom:6px;">
+                                        <span>📢 ${post?.source || 'Instafoot'}</span>
                                         <span>${post?.date || ''}</span>
                                     </div>
-                                    <p class="feed-item-content" style="font-size:0.85rem; margin:6px 0;">${post?.content || ''}</p>
-                                    <div class="feed-item-footer" style="font-size:0.75rem; display:flex; gap:12px;">
-                                        <span>❤️ ${post?.likes || 0}</span>
-                                        <span>💬 ${post?.commentsCount || 0}</span>
+                                    <p style="font-size:0.88rem; margin:0 0 8px;">${post?.content || ''}</p>
+                                    <div style="font-size:0.75rem; color: var(--accent-gold); display:flex; gap:14px;">
+                                        <span>❤️ ${post?.likes || 0} likes</span>
+                                        <span>💬 ${post?.commentsCount || 0} commentaires</span>
                                     </div>
                                 </div>
-                            `).join('')}
+                            `).join('') : '<p style="font-size:0.85rem; color: var(--text-sub);">Aucun post récent sur votre fil d\'actualité.</p>'}
                         </div>
                     </div>
                 `;
             case 'messages':
                 return `
                     <div class="app-pane">
-                        <h3 class="pane-title messages-color">💬 Messages & Vestiaire</h3>
-                        <p><strong>Situation :</strong> ${socialState.romance?.unlocked ? (socialState.romance.partnerName || 'En couple') : 'Célibataire'}</p>
-                        <hr class="pane-divider" style="border-color: var(--border-glass); margin: 12px 0;">
-                        <p class="relations-subtitle">Relations clés :</p>
-                        <ul class="relations-list" style="list-style:none; padding:0;">
-                            ${(socialState.relationships || []).map(rel => `<li style="padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.05);">${rel?.role || ''} (${rel?.name || ''}) : <strong>${rel?.score || 50}/100</strong></li>`).join('')}
-                        </ul>
+                        <h3 class="pane-title">💬 Messages & Vestiaire</h3>
+                        <p><strong>Statut personnel :</strong> ${socialState.romance?.unlocked ? (socialState.romance.partnerName || 'En couple') : 'Célibataire'}</p>
+                        <hr style="border-color: var(--border-glass); margin: 12px 0;">
+                        <h4 style="margin:0 0 8px;">Relations d'équipe :</h4>
+                        <div style="display:flex; flex-direction:column; gap:8px;">
+                            ${(socialState.relationships && socialState.relationships.length > 0) ? socialState.relationships.map(rel => `
+                                <div style="display:flex; justify-content:space-between; background:rgba(255,255,255,0.05); padding:8px 12px; border-radius:10px; font-size:0.85rem;">
+                                    <span>${rel?.role || 'Coéquipier'} (${rel?.name || 'Inconnu'})</span>
+                                    <strong>${rel?.score || 50}/100</strong>
+                                </div>
+                            `).join('') : '<p style="font-size:0.85rem; color: var(--text-sub);">Aucune interaction récente dans le vestiaire.</p>'}
+                        </div>
                     </div>
                 `;
             case 'bank':
                 return `
                     <div class="app-pane">
-                        <h3 class="pane-title bank-color">🏦 Banque & Finances</h3>
-                        <div class="bank-card-balance" style="background: linear-gradient(135deg, #10b981, #047857); padding:20px; border-radius:20px; text-align:center;">
-                            <span class="balance-label" style="font-size:0.8rem; text-transform:uppercase;">Solde Actuel</span>
-                            <div class="balance-amount" style="font-size:1.8rem; font-weight:900; margin-top:4px;">${(state.career?.balance || 0).toLocaleString('fr-FR')} €</div>
+                        <h3 class="pane-title">🏦 Banque & Finances</h3>
+                        <div style="background: linear-gradient(135deg, #10b981, #047857); padding:20px; border-radius:20px; text-align:center; margin-bottom:14px; box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);">
+                            <span style="font-size:0.8rem; text-transform:uppercase; letter-spacing:1px; opacity:0.9;">Solde Disponible</span>
+                            <div style="font-size:2rem; font-weight:900; margin-top:4px;">${(state.career?.balance || 750).toLocaleString('fr-FR')} €</div>
                         </div>
+                        <p style="font-size:0.88rem;"><strong>Salaire hebdomadaire :</strong> ${(state.player?.salary || 150).toLocaleString('fr-FR')} € / sem.</p>
                     </div>
                 `;
             case 'stats':
                 return `
                     <div class="app-pane">
-                        <h3 class="pane-title stats-color">📊 Statistiques & Attributs</h3>
-                        <p><strong>Matchs Joués :</strong> ${state.player?.stats?.matchesPlayed || 0} | <strong>Buts :</strong> ${state.player?.stats?.goals || 0}</p>
-                        <hr class="pane-divider" style="border-color: var(--border-glass); margin: 12px 0;">
-                        <h4 class="history-section-title">⚡ Profil Général (${state.player?.overall || 50})</h4>
-                        <div class="attributes-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85rem;">
-                            <div class="stat-pill">🏃‍♂️ Vitesse : <strong>${attr.vitesse || 50}</strong></div>
-                            <div class="stat-pill">🎯 Tir : <strong>${attr.tir || 50}</strong></div>
-                            <div class="stat-pill">🎯 Passe : <strong>${attr.passe || 50}</strong></div>
-                            <div class="stat-pill">✨ Dribble : <strong>${attr.dribble || 50}</strong></div>
-                            <div class="stat-pill">🛡️ Défense : <strong>${attr.defense || 50}</strong></div>
-                            <div class="stat-pill">💪 Physique : <strong>${attr.physique || 50}</strong></div>
+                        <h3 class="pane-title">📊 Statistiques & Attributs</h3>
+                        <div style="display:flex; justify-content:space-around; background:rgba(255,255,255,0.05); padding:10px; border-radius:12px; text-align:center; font-size:0.85rem; margin-bottom:12px;">
+                            <div>🎮 Matchs<br><strong>${state.player?.stats?.matchesPlayed || 0}</strong></div>
+                            <div>⚽ Buts<br><strong>${state.player?.stats?.goals || 0}</strong></div>
+                            <div>🎯 Passes<br><strong>${state.player?.stats?.assists || 0}</strong></div>
+                        </div>
+                        <hr style="border-color: var(--border-glass); margin: 12px 0;">
+                        <h4 style="margin:0 0 10px;">⚡ Général (${state.player?.overall || 47}) | Potentiel (${state.player?.potential || 78})</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                            <div class="stat-pill">🏃‍♂️ Vitesse <strong>${attr.vitesse || 50}</strong></div>
+                            <div class="stat-pill">🎯 Tir <strong>${attr.tir || 50}</strong></div>
+                            <div class="stat-pill">🎯 Passe <strong>${attr.passe || 50}</strong></div>
+                            <div class="stat-pill">✨ Dribble <strong>${attr.dribble || 50}</strong></div>
+                            <div class="stat-pill">🛡️ Défense <strong>${attr.defense || 50}</strong></div>
+                            <div class="stat-pill">💪 Physique <strong>${attr.physique || 50}</strong></div>
                         </div>
                     </div>
                 `;
             case 'training':
                 return `
                     <div class="app-pane">
-                        <h3 class="pane-title training-color">🏋️‍♂️ Programme d'Entraînement</h3>
-                        <p class="subtitle" style="font-size:0.85rem; color: var(--text-sub); margin-bottom:12px;">Définis la priorité du staff technique :</p>
-                        <div class="grid-focus" style="display:flex; flex-direction:column; gap:8px;">
+                        <h3 class="pane-title">🏋️‍♂️ Programme d'Entraînement</h3>
+                        <p style="font-size:0.85rem; color: var(--text-sub); margin-bottom:12px;">Sélectionnez le domaine à développer en priorité :</p>
+                        <div style="display:flex; flex-direction:column; gap:8px;">
                             ${Object.entries(TrainingManager.FOCUS_TYPES || {}).map(([key, focusObj]) => `
-                                <div class="card-select training-card ${state.trainingFocus === key ? 'selected' : ''}" data-focus-key="${key}" style="background: var(--bg-card); border: 1px solid var(--border-glass); padding:12px; border-radius:16px; cursor:pointer;">
-                                    <h4 style="margin:0; font-size:0.95rem;">${focusObj?.name || key}</h4>
+                                <div class="card-select training-card ${state.trainingFocus === key ? 'selected' : ''}" data-focus-key="${key}" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding:12px; border-radius:14px; cursor:pointer;">
+                                    <h4 style="margin:0; font-size:0.95rem; color:#fff;">${focusObj?.name || key}</h4>
                                     <p style="margin:4px 0 0; font-size:0.8rem; color: var(--text-sub);">${focusObj?.description || ''}</p>
                                 </div>
                             `).join('')}
                         </div>
                     </div>
                 `;
+            case 'transfers':
+                return `
+                    <div class="app-pane">
+                        <h3 class="pane-title">🔄 Marché des Transferts</h3>
+                        <p><strong>Valeur marchand estimée :</strong> ${TransferMarket.formatPrice(marketValue)}</p>
+                        <p style="font-size:0.85rem; color: var(--text-sub); margin-top:10px; line-height:1.4;">
+                            Les propositions d'autres clubs apparaîtront automatiquement sous forme de modales de négociation lors des périodes de mercato.
+                        </p>
+                    </div>
+                `;
+            case 'settings':
+                return `
+                    <div class="app-pane">
+                        <h3 class="pane-title">⚙️ Réglages Carrière</h3>
+                        <div style="display:flex; flex-direction:column; gap:10px; margin-top:14px;">
+                            ${state.player?.canRetire && !state.player?.careerEnded ? `
+                                <button id="retire-career-btn" style="padding:14px; border-radius:14px; background:rgba(239,68,68,0.25); border:1px solid #ef4444; color:#fff; font-weight:700; cursor:pointer;">
+                                    🏁 Prendre sa retraite (${state.player.age} ans)
+                                </button>
+                            ` : ''}
+                            <button id="reset-career-btn" style="padding:14px; border-radius:14px; background:rgba(255,255,255,0.1); border:1px solid var(--border-glass); color:#fff; font-weight:700; cursor:pointer;">
+                                🗑️ Recommencer la carrière
+                            </button>
+                        </div>
+                    </div>
+                `;
             default:
-                return `<p class="fallback-text">Application en cours de développement...</p>`;
+                return `<p style="font-size:0.85rem; color:var(--text-sub);">Application en cours de chargement...</p>`;
         }
     }
 
@@ -968,6 +1067,14 @@ export class UserInterface {
                     const result = this.engine.playBlock(null);
                     this.handleBlockResult(result);
                 }
+            });
+        }
+
+        const settingsFloatingBtn = document.getElementById('settings-floating-btn');
+        if (settingsFloatingBtn) {
+            settingsFloatingBtn.addEventListener('click', () => {
+                this.activeApp = 'settings';
+                this.renderDashboard();
             });
         }
 
@@ -1277,7 +1384,7 @@ export class UserInterface {
         modal.innerHTML = `
             <div class="event-modal-card">
                 <span class="event-modal-category">⚡ ÉVÉNEMENT & TACTIQUE</span>
-                <h3 class="event-modal-title">${dilemma?.title || 'Decision'}</h3>
+                <h3 class="event-modal-title">${dilemma?.title || 'Décision'}</h3>
                 <p class="event-modal-desc">${dilemma?.description || ''}</p>
 
                 <div class="event-modal-choices">
