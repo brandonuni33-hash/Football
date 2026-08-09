@@ -1,7 +1,9 @@
+
 // matchBlock.js
 import { EconomyManager } from './economy.js';
 import { TrainingManager } from './entrainement.js';
 import { PlayerLogic } from './player.js';
+import { ConsequenceSystem } from './consequenceSystem.js';
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
@@ -37,19 +39,88 @@ export const MatchBlockManager = {
         let assistBonusChance = 0;
         let duelBonusChance = 0;
 
-        if (userMatchChoice?.impacts) {
-            applyChoiceStats(player, userMatchChoice.impacts.stats || {});
+        let choiceConsequenceResult = null;
 
-            const b = userMatchChoice.impacts.matchBonuses || {};
+        if (userMatchChoice) {
+            choiceConsequenceResult =
+                ConsequenceSystem.applyMatchChoice(
+                    player,
+                    userMatchChoice
+                );
+
+            PlayerLogic.syncProgressionFromCanonical(player);
+
+            const b = userMatchChoice.impacts?.matchBonuses || {};
+
             matchRatingBonus += b.ratingBonus ?? b.ratingBoost ?? 0;
             goalBonusChance += b.goalChance || 0;
             assistBonusChance += b.assistChance || 0;
             duelBonusChance += b.duelBonus || 0;
             choiceFatigueExtra += b.fatigueRisk || 0;
             choiceCardRiskExtra += b.cardRisk || 0;
+
+            // Les effets temporaires issus du nouveau système peuvent
+            // modifier la performance du bloc actuel.
+            matchRatingBonus +=
+                ConsequenceSystem.getTemporaryModifier(
+                    player,
+                    'matchPerformance'
+                );
+
+            duelBonusChance +=
+                ConsequenceSystem.getTemporaryModifier(
+                    player,
+                    'duelBonus'
+                );
+
+            goalBonusChance +=
+                ConsequenceSystem.getTemporaryModifier(
+                    player,
+                    'goalChance'
+                );
+
+            assistBonusChance +=
+                ConsequenceSystem.getTemporaryModifier(
+                    player,
+                    'assistChance'
+                );
+
+            choiceFatigueExtra +=
+                ConsequenceSystem.getTemporaryModifier(
+                    player,
+                    'fatigueRisk'
+                );
+
+            choiceCardRiskExtra +=
+                ConsequenceSystem.getTemporaryModifier(
+                    player,
+                    'cardRisk'
+                );
         }
 
         // Risque de blessure : injuryProneness est bien un RISQUE.
+        // Les bonus temporaires provenant d'un événement ou du coach
+        // restent actifs pendant les matchs suivants.
+        if (!userMatchChoice) {
+            matchRatingBonus +=
+                ConsequenceSystem.getTemporaryModifier(player, 'matchPerformance');
+
+            duelBonusChance +=
+                ConsequenceSystem.getTemporaryModifier(player, 'duelBonus');
+
+            goalBonusChance +=
+                ConsequenceSystem.getTemporaryModifier(player, 'goalChance');
+
+            assistBonusChance +=
+                ConsequenceSystem.getTemporaryModifier(player, 'assistChance');
+
+            choiceFatigueExtra +=
+                ConsequenceSystem.getTemporaryModifier(player, 'fatigueRisk');
+
+            choiceCardRiskExtra +=
+                ConsequenceSystem.getTemporaryModifier(player, 'cardRisk');
+        }
+
         const hidden = player.hidden || {};
         const injuryProneness = clamp(hidden.injuryProneness ?? 10, 1, 20);
         const baseInjuryRisk = injuryProneness * 0.35;
@@ -185,6 +256,10 @@ export const MatchBlockManager = {
         // Améliorations cachées.
         this.updateHiddenAttributes(player, summary);
 
+        // Un bloc de matchs consomme une unité de durée des effets actifs.
+        const expiredEffects =
+            ConsequenceSystem.advanceMatch(player);
+
         return {
             results,
             isInjured,
@@ -192,7 +267,9 @@ export const MatchBlockManager = {
                 ...summary,
                 xpGained: xpMatch,
                 finance: financeReport,
-                progression: progressionResult
+                progression: progressionResult,
+                choiceConsequences: choiceConsequenceResult,
+                expiredEffects
             }
         };
     },
