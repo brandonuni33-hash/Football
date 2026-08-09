@@ -1,4 +1,3 @@
-
 // coachSystem.js
 
 import { ConsequenceSystem } from './consequenceSystem.js';
@@ -287,3 +286,4 @@ export class CoachSystem {
         };
     }
 }
+d
