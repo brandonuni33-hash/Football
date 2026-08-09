@@ -489,7 +489,6 @@ export class UserInterface {
         const state = this.engine?.state || {};
         const socialState = state.social || { romance: { unlocked: false }, relationships: [] };
         const mediaState = state.media || { followers: 0, hypeLevel: 0, feed: [], recentDilemma: null };
-        const history = state.career?.seasonHistory || [];
         const attr = state.player?.attributes || {};
 
         const marketValue = TransferMarket.calculateMarketValue(state.player || {});
@@ -533,7 +532,7 @@ export class UserInterface {
                                 <div class="dilemma-choices">
                                     ${(mediaState.recentDilemma.choices || []).map((choice, idx) => `
                                         <button class="btn-dilemma" data-choice-idx="${idx}">
-                                            👉 ${choice?.text || ''}
+                                            👉 ${choice?.text || choice?.texte || ''}
                                         </button>
                                     `).join('')}
                                 </div>
@@ -697,7 +696,7 @@ export class UserInterface {
                 <div class="event-modal-choices">
                     ${(dilemma?.choices || []).map((choix, index) => `
                         <button class="btn-event-choice" data-choice-index="${index}">
-                            👉 ${choix?.texte || 'Continuer'}
+                            👉 ${choix?.texte || choix?.text || 'Continuer'}
                         </button>
                     `).join('')}
                 </div>
