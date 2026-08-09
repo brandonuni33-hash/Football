@@ -1,43 +1,20 @@
 // main.js
 import { GameEngine } from './gameEngine.js';
-import { UserInterface } from './ui.js';
 
-console.log("main.js chargé avec succès !");
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("⚡ Démarrage de Street to Pro (v106)...");
 
-// On écoute le chargement complet au cas où
-const initApp = () => {
     try {
-        console.log("Initialisation du Football Career Simulator...");
-        
-        // 1. Instancie le moteur de jeu
-        const engine = new GameEngine();
-        window.game = engine;
+        // Initialisation globale du moteur de jeu
+        window.game = new GameEngine();
 
-        // 2. Instancie l'interface
-        if (!engine.ui) {
-            engine.ui = new UserInterface(engine);
-        }
-        
-        // 3. Lance l'affichage
-        if (engine.ui && typeof engine.ui.init === 'function') {
-            engine.ui.init();
-            console.log("Interface initialisée avec succès.");
+        // Lancement de l'interface utilisateur via le moteur
+        if (window.game.ui && typeof window.game.ui.init === 'function') {
+            window.game.ui.init();
         } else {
-            console.error("Erreur : L'interface utilisateur (UI) n'a pas de méthode init.");
+            console.error("Erreur : L'interface utilisateur n'a pas pu être initialisée.");
         }
     } catch (error) {
-        console.error("Erreur critique dans l'initialisation du jeu :", error);
-        document.getElementById('app').innerHTML = `
-            <div style="padding: 20px; color: #ef4444; font-family: monospace;">
-                <h3>Erreur d'exécution :</h3>
-                <p>${error.message}</p>
-            </div>
-        `;
+        console.error("Erreur critique lors du chargement du jeu :", error);
     }
-};
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initApp);
-} else {
-    initApp();
-}
+});
