@@ -147,8 +147,23 @@ export class GameEngine {
         player.club = youthClubName;
         player.clubCountry = youthClub?.country || player.clubCountry || player.country || 'France';
         player.clubLevel = Number(youthClub?.tier) || player.clubLevel || 1;
-        WorldSystem.normalizeCareerClub(player);
-        CareerSystem.initialize(player, youthClub || WorldSystem.getClub(player.clubId));
+
+        // À 14-17 ans, le joueur reste attaché au centre choisi.
+        // Ne surtout pas le normaliser vers un club senior : sinon un centre
+        // qui n'existe pas encore dans la base senior était automatiquement
+        // remplacé par le premier gros club du pays (PSG en France).
+        player.youthClubName = youthClubName;
+        player.youthClubData = youthClub ? { ...youthClub } : null;
+        player.isYouthPlayer = Number(player.age) < 18;
+
+        if (!player.isYouthPlayer) {
+            WorldSystem.normalizeCareerClub(player);
+        }
+
+        CareerSystem.initialize(
+            player,
+            youthClub || (player.clubId ? WorldSystem.getClub(player.clubId) : null)
+        );
         player.contract = { ...player.contract, ...contract };
         player.salary = Number(
             youthClub?.salary ??
@@ -531,6 +546,15 @@ export class GameEngine {
             vieillirDUnAn: false
         });
         PotentialSystem.advanceAge(player);
+
+        // Passage au monde senior : à 18 ans seulement, on rattache le joueur
+        // à une équipe senior. Jusqu'à cet âge, son centre de formation reste
+        // exactement celui qu'il a choisi à la création de carrière.
+        if (Number(player.age) >= 18 && player.isYouthPlayer) {
+            player.isYouthPlayer = false;
+            WorldSystem.normalizeCareerClub(player);
+        }
+
         CareerSystem.refreshStage(player);
         PlayerLogic.syncProgressionFromCanonical(player);
         player.canRetire = player.age >= 34;
