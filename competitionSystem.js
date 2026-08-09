@@ -3,6 +3,8 @@
 // Le calendrier est généré UNE fois par saison puis conservé dans state.calendar.
 // Il n'y a plus de règle "4 matchs par mois".
 
+import { WorldSystem } from './worldSystem.js';
+
 const clamp = (v, min, max) => Math.min(max, Math.max(min, Number(v) || 0));
 
 export const COMPETITIONS = {
@@ -170,16 +172,29 @@ function buildSeniorSchedule(player, seasonYear, random, competition) {
     const monthly = distributeExact(competition.matches, leagueWeights, random);
     const matches = [];
 
+    const clubs = WorldSystem.getClubs(competition.id);
+    const playerClub = WorldSystem.getClub(player?.clubId || player?.club);
+    const opponents = clubs.filter(c => !playerClub || c.id !== playerClub.id);
+    let opponentCursor = 0;
+
     for (const month of SEASON_MONTHS) {
         for (let i = 0; i < monthly[month]; i += 1) {
-            matches.push(createMatch({
+            const opponent = opponents.length ? opponents[opponentCursor++ % opponents.length] : null;
+            const match = createMatch({
                 competition,
                 month,
                 index: matches.length,
                 seasonYear,
                 random,
                 importance: importanceFor(month, i, monthly[month], random)
-            }));
+            });
+            match.leagueId = competition.id;
+            match.playerClubId = playerClub?.id || player?.clubId || null;
+            match.opponent = opponent?.name || 'Adversaire de championnat';
+            match.opponentClubId = opponent?.id || null;
+            match.homeClubId = match.venue === 'Domicile' ? match.playerClubId : match.opponentClubId;
+            match.awayClubId = match.venue === 'Domicile' ? match.opponentClubId : match.playerClubId;
+            matches.push(match);
         }
     }
 
