@@ -1,135 +1,229 @@
 // matchBlock.js
 import { EconomyManager } from './economy.js';
 import { TrainingManager } from './entrainement.js';
-import { MatchChoiceManager } from './matchChoices.js'; // Import de notre gestionnaire de choix
+import { PlayerLogic } from './player.js';
+
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+function applyChoiceStats(player, stats = {}) {
+    for (const [key, value] of Object.entries(stats)) {
+        if (player.attributes?.[key] !== undefined) {
+            player.attributes[key] = clamp(player.attributes[key] + value, 1, 99);
+        } else if (player.stats?.[key] !== undefined) {
+            player.stats[key] = clamp(player.stats[key] + value, 0, 100);
+        }
+    }
+    PlayerLogic.syncProgressionFromCanonical(player);
+}
 
 export const MatchBlockManager = {
-    simulateBlock(state, trainingFocus = 'TECHNIQUE', userMatchChoice = null) { 
+    simulateBlock(state, trainingFocus = 'TECHNIQUE', userMatchChoice = null) {
         const player = state.player;
         const calendar = state.calendar;
 
-        // 0. Récupération des effets du focus
+        if (!player) throw new Error('Impossible de simuler un bloc sans joueur.');
+
         const trainingEffect = TrainingManager.getEffect(trainingFocus);
-        
-        // Détermination du nombre de matchs
+
+        // Nombre de matchs par mois.
         let matchesInMonth = 4;
         if (calendar.currentMonth === 12) matchesInMonth = 2;
-        else if (calendar.currentMonth === 7) matchesInMonth = 0;
-        
-        // Initialisation attributs
-        if (!player.attributes) {
-            player.attributes = { consistency: 12, bigMatchPlayer: 12, injuryProneness: 10 };
-        }
+        if (calendar.currentMonth === 7) matchesInMonth = 0;
 
-        const attrs = player.attributes;
-        const volatility = 4.0 - (attrs.consistency / 20 * 2.5); 
-
-        // 1.5 Gestion des impacts et bonus du choix de match (si fourni)
         let choiceFatigueExtra = 0;
         let choiceCardRiskExtra = 0;
         let matchRatingBonus = trainingEffect.ratingBonus || 0;
-        let goalBonusChance = trainingEffect.goalBonus || 0;
-        let assistBonusChance = trainingEffect.assistBonus || 0;
+        let goalBonusChance = 0;
+        let assistBonusChance = 0;
         let duelBonusChance = 0;
 
-        if (userMatchChoice && userMatchChoice.impacts) {
-            // Appliquer les impacts permanents/semi-permanents sur les stats du joueur
-            if (userMatchChoice.impacts.stats && player.stats) {
-                for (const [statKey, value] of Object.entries(userMatchChoice.impacts.stats)) {
-                    if (player.stats[statKey] !== undefined) {
-                        player.stats[statKey] = Math.max(0, player.stats[statKey] + value);
-                    }
-                }
-            }
+        if (userMatchChoice?.impacts) {
+            applyChoiceStats(player, userMatchChoice.impacts.stats || {});
 
-            // Récupérer les bonus/malus spécifiques au match
-            if (userMatchChoice.impacts.matchBonuses) {
-                const b = userMatchChoice.impacts.matchBonuses;
-                matchRatingBonus += b.ratingBoost || 0;
-                goalBonusChance += b.goalChance || 0;
-                assistBonusChance += b.assistChance || 0;
-                duelBonusChance += b.duelBonus || 0;
-                choiceFatigueExtra += b.fatigueRisk || 0;
-                choiceCardRiskExtra += b.cardRisk || 0;
-            }
+            const b = userMatchChoice.impacts.matchBonuses || {};
+            matchRatingBonus += b.ratingBonus ?? b.ratingBoost ?? 0;
+            goalBonusChance += b.goalChance || 0;
+            assistBonusChance += b.assistChance || 0;
+            duelBonusChance += b.duelBonus || 0;
+            choiceFatigueExtra += b.fatigueRisk || 0;
+            choiceCardRiskExtra += b.cardRisk || 0;
         }
 
-        // 2. Gestion blessure (en incluant le risque lié au choix tactique si présent)
-        const baseInjuryRisk = (21 - attrs.injuryProneness) * 0.15; 
-        const fatigueMultiplier = ((player.fitness || 80) < 50 || trainingFocus === 'PHYSIQUE') ? 2 : 1; 
-        let finalInjuryChance = matchesInMonth > 0 ? (baseInjuryRisk * fatigueMultiplier) : 0;
-        
-        if (choiceCardRiskExtra > 0 && Math.random() < choiceCardRiskExtra) {
-            // Petit bonus de risque de bobo/carton si le joueur a joué la provoc ou l'impact physique max
-            finalInjuryChance += 5; 
-        }
+        // Risque de blessure : injuryProneness est bien un RISQUE.
+        const hidden = player.hidden || {};
+        const injuryProneness = clamp(hidden.injuryProneness ?? 10, 1, 20);
+        const baseInjuryRisk = injuryProneness * 0.35;
+        const fatigueMultiplier =
+            (player.fitness ?? 80) < 50 || trainingFocus === 'PHYSIQUE' ? 1.6 : 1;
 
-        const isInjured = Math.random() * 100 < finalInjuryChance;
+        let injuryChance =
+            matchesInMonth > 0
+                ? baseInjuryRisk * fatigueMultiplier * (trainingEffect.injuryRisk || 1)
+                : 0;
 
-        // 3. Simulation des matchs
-        const results = Array.from({ length: matchesInMonth }, (_, index) => {
-            const baseRating = 6.0 + (Math.random() * volatility);
-            
+        injuryChance += choiceFatigueExtra * 0.35;
+
+        const isInjured =
+            matchesInMonth > 0 &&
+            Math.random() * 100 < injuryChance;
+
+        const baseOvr = player.overall || 40;
+        const fitnessFactor = ((player.fitness ?? 80) - 50) / 100;
+        const consistency = clamp(hidden.consistency ?? 12, 1, 20);
+        const volatility = 1.8 - (consistency / 20) * 0.9;
+
+        const results = Array.from({ length: matchesInMonth }, () => {
+            const randomForm = (Math.random() - 0.5) * volatility;
+            const baseRating =
+                5.4 +
+                (baseOvr - 40) * 0.055 +
+                fitnessFactor * 0.8 +
+                randomForm +
+                matchRatingBonus;
+
+            const attackingFactor =
+                ((player.attributes?.tir || 40) + (player.attributes?.dribble || 40)) / 200;
+
+            const goalsProbability =
+                clamp(0.04 + attackingFactor * 0.16 + goalBonusChance, 0.01, 0.75);
+
+            const assistsProbability =
+                clamp(0.06 + ((player.attributes?.passe || 40) / 99) * 0.18 + assistBonusChance, 0.01, 0.75);
+
+            const rating = Number(clamp(baseRating, 4, 10).toFixed(1));
+
             return {
-                rating: parseFloat(Math.min(10.0, Math.max(4.0, baseRating + matchRatingBonus)).toFixed(1)),
-                goals: Math.random() > (0.85 - goalBonusChance) ? 1 : 0,
-                assists: Math.random() > (0.8 - assistBonusChance) ? 1 : 0
+                rating,
+                goals: Math.random() < goalsProbability ? 1 : 0,
+                assists: Math.random() < assistsProbability ? 1 : 0
             };
         });
 
-        // 4. Totaux
-        const totalGoals = results.reduce((acc, m) => acc + m.goals, 0);
-        const totalAssists = results.reduce((acc, m) => acc + m.assists, 0);
-        const avgRating = matchesInMonth > 0 ? parseFloat((results.reduce((acc, m) => acc + m.rating, 0) / matchesInMonth).toFixed(1)) : 0.0;
-        
-        // Les duels gagnés ou passes peuvent être influencés par le bonus de duel
-        const blockPasses = matchesInMonth > 0 ? Math.floor(Math.random() * 40) + 20 : 0;
-        const blockTackles = matchesInMonth > 0 ? Math.floor((Math.random() * 12) + 3 + (duelBonusChance * 10)) : 0;
+        const totalGoals = results.reduce((sum, match) => sum + match.goals, 0);
+        const totalAssists = results.reduce((sum, match) => sum + match.assists, 0);
+        const avgRating = matchesInMonth
+            ? Number((results.reduce((sum, match) => sum + match.rating, 0) / matchesInMonth).toFixed(1))
+            : 0;
 
-        const blockSummary = { rating: avgRating, goals: totalGoals, assists: totalAssists, passes: blockPasses, tackles: blockTackles };
+        const passes = matchesInMonth
+            ? Math.max(0, Math.floor(15 + Math.random() * 35 + (player.attributes?.passe || 40) * 0.12))
+            : 0;
 
-        // 5. Mise à jour stats globales
+        const tackles = matchesInMonth
+            ? Math.max(0, Math.floor(2 + Math.random() * 8 + duelBonusChance * 10 + (player.attributes?.defense || 40) * 0.05))
+            : 0;
+
+        const yellowCards = matchesInMonth
+            ? Array.from({ length: matchesInMonth }, () =>
+                Math.random() < clamp(0.04 + choiceCardRiskExtra, 0, 0.6) ? 1 : 0
+            ).reduce((a, b) => a + b, 0)
+            : 0;
+
+        const summary = {
+            rating: avgRating,
+            goals: totalGoals,
+            assists: totalAssists,
+            passes,
+            tackles,
+            yellowCards
+        };
+
         if (player.stats && matchesInMonth > 0) {
-            const prevMatches = player.stats.matchesPlayed || 0;
-            const newTotalMatches = prevMatches + matchesInMonth;
-            player.stats.matchesPlayed = newTotalMatches;
-            player.stats.goals += totalGoals;
-            player.stats.assists += totalAssists;
-            player.stats.successfulPasses += blockPasses;
-            player.stats.tackles += blockTackles;
-            const currentAvg = player.stats.averageRating || 0.0;
-            player.stats.averageRating = parseFloat((((currentAvg * prevMatches) + (avgRating * matchesInMonth)) / newTotalMatches).toFixed(1));
+            const previousMatches = player.stats.matchesPlayed || 0;
+            const totalMatches = previousMatches + matchesInMonth;
+
+            player.stats.matchesPlayed = totalMatches;
+            player.stats.goals = (player.stats.goals || 0) + totalGoals;
+            player.stats.assists = (player.stats.assists || 0) + totalAssists;
+            player.stats.successfulPasses = (player.stats.successfulPasses || 0) + passes;
+            player.stats.tackles = (player.stats.tackles || 0) + tackles;
+            player.stats.yellowCards = (player.stats.yellowCards || 0) + yellowCards;
+
+            const previousAverage = player.stats.averageRating || 0;
+            player.stats.averageRating = Number(
+                (((previousAverage * previousMatches) + (avgRating * matchesInMonth)) / totalMatches).toFixed(1)
+            );
         }
 
-        // 6. Économie
-        const financeReport = EconomyManager.processBlockFinances(state, blockSummary);
+        const financeReport = EconomyManager.processBlockFinances(state, summary);
 
-        // 7. Impact Fitness/Moral (en intégrant la fatigue supplémentaire du choix tactique)
+        // La forme d'entraînement a déjà été retirée par TrainingManager.
+        // Ici on ne retire que la fatigue liée aux matchs.
         if (matchesInMonth > 0) {
-            const moraleImpact = avgRating >= 7.0 ? 5 : -3;
-            player.morale = Math.min(100, Math.max(0, (player.morale || 50) + moraleImpact));
-            
-            const fitnessLoss = (matchesInMonth * 2) + (trainingEffect.fitnessCost || 5) + choiceFatigueExtra;
-            player.fitness = Math.min(100, Math.max(0, (player.fitness || 80) - fitnessLoss));
+            const moraleImpact = avgRating >= 7 ? 5 : -3;
+            player.morale = clamp((player.morale ?? 50) + moraleImpact, 0, 100);
+
+            const matchFatigue =
+                matchesInMonth * 2 +
+                Math.max(0, choiceFatigueExtra);
+
+            player.fitness = clamp(
+                (player.fitness ?? 80) - matchFatigue,
+                0,
+                100
+            );
         } else {
-            player.fitness = Math.min(100, (player.fitness || 80) + 20);
+            player.fitness = clamp((player.fitness ?? 80) + 20, 0, 100);
         }
-        
+
         player.isInjured = isInjured;
-        if (isInjured) player.morale = Math.max(0, player.morale - 15);
+        if (isInjured) {
+            player.injuryDuration = Math.max(1, Math.floor(Math.random() * 3) + 1);
+            player.morale = clamp((player.morale ?? 50) - 15, 0, 100);
+        }
 
-        // 8. Évolution attributs
-        if (matchesInMonth > 0) this.updateHiddenAttributes(player, blockSummary);
+        // XP de match : performance réelle, puis synchronisation avec le système de progression.
+        const xpMatch = matchesInMonth
+            ? Math.round(matchesInMonth * 70 + avgRating * 55 + totalGoals * 90 + totalAssists * 60)
+            : 0;
 
-        return { results, isInjured, summary: { ...blockSummary, finance: financeReport } };
+        const progressionResult = PlayerLogic.applyProgression(player, {
+            xp: xpMatch,
+            type: 'match'
+        });
+
+        // Améliorations cachées.
+        this.updateHiddenAttributes(player, summary);
+
+        return {
+            results,
+            isInjured,
+            summary: {
+                ...summary,
+                xpGained: xpMatch,
+                finance: financeReport,
+                progression: progressionResult
+            }
+        };
     },
 
-    updateHiddenAttributes(player, blockSummary) {
-        const attrs = player.attributes;
-        if (blockSummary.rating >= 7.0 && Math.random() < 0.4) attrs.consistency++;
-        else if (blockSummary.rating < 5.5 && Math.random() < 0.3) attrs.consistency--;
-        
-        if ((blockSummary.goals > 0 || blockSummary.rating >= 8.0) && Math.random() < 0.25) attrs.bigMatchPlayer++;
-        if (!player.isInjured && Math.random() < 0.15) attrs.injuryProneness++;
+    updateHiddenAttributes(player, summary) {
+        player.hidden ||= {
+            consistency: 12,
+            bigMatchPlayer: 12,
+            injuryProneness: 10
+        };
+
+        if (summary.rating >= 7 && Math.random() < 0.35) {
+            player.hidden.consistency = clamp(player.hidden.consistency + 1, 1, 20);
+        } else if (summary.rating < 5.5 && Math.random() < 0.25) {
+            player.hidden.consistency = clamp(player.hidden.consistency - 1, 1, 20);
+        }
+
+        if (
+            (summary.goals > 0 || summary.rating >= 8) &&
+            Math.random() < 0.25
+        ) {
+            player.hidden.bigMatchPlayer = clamp(player.hidden.bigMatchPlayer + 1, 1, 20);
+        }
+
+        // Un joueur qui se blesse souvent voit son indicateur augmenter.
+        if (player.isInjured) {
+            player.hidden.injuryProneness = clamp(
+                player.hidden.injuryProneness + 1,
+                1,
+                20
+            );
+        }
     }
 };
