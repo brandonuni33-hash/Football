@@ -19,7 +19,8 @@ export const MatchBlockManager = {
 
         // Le calendrier décide du volume réel : formation, senior ou intersaison.
         const blockPlan = CompetitionSystem.getBlockPlan(state);
-        const matchesInMonth = blockPlan.matches || 0;
+        const scheduledMatches = blockPlan.scheduledMatches || [];
+        const matchesInMonth = scheduledMatches.length;
 
         let choiceFatigueExtra = 0;
         let choiceCardRiskExtra = 0;
@@ -266,6 +267,7 @@ export const MatchBlockManager = {
             summary: {
                 ...summary,
                 blockPlan,
+                scheduledMatches,
                 xpGained: xpMatch,
                 finance: financeReport,
                 progression: progressionResult,
