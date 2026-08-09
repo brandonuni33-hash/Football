@@ -4,7 +4,7 @@ import { EventEngine } from './events.js';
 import { TrainingManager } from './entrainement.js';
 import { MatchChoiceManager } from './matchChoices.js';
 import { TransferMarket } from './transferMarket.js';
-import { CoachSystem } from './coachSystem.js'; // Rintégration du module CoachSystem
+import { CoachSystem } from './coachSystem.js';
 
 export class UserInterface {
     constructor(gameEngine) {
@@ -27,6 +27,12 @@ export class UserInterface {
         this.randomYouthClubs = []; 
         
         this.initDOM();
+        // ⚠️ SUPPRIMÉ : Plus de render() ici dans le constructeur pour éviter l'écran noir
+    }
+
+    // Nouvelle méthode d'initialisation propre appelée par main.js
+    init() {
+        console.log("Initialisation de l'interface utilisateur...");
         this.render();
     }
 
@@ -462,8 +468,6 @@ export class UserInterface {
         const attr = state.player.attributes || {};
 
         const marketValue = TransferMarket.calculateMarketValue(state.player);
-
-        // Récupération des données du Coach via CoachSystem si dispo
         const coachInfo = CoachSystem && typeof CoachSystem.getCoachData === 'function' ? CoachSystem.getCoachData(state) : null;
 
         switch(this.activeApp) {
@@ -636,7 +640,6 @@ export class UserInterface {
                 this.afficherModaleMatchDilemma(matchDilemma, (selectedChoice) => {
                     this.engine.playBlock(selectedChoice);
 
-                    // Vérification des interactions de l'entraîneur après le match
                     const coachEvent = CoachSystem && typeof CoachSystem.checkCoachInteraction === 'function' ? CoachSystem.checkCoachInteraction(state) : null;
                     if (coachEvent) {
                         this.afficherModaleCoach(coachEvent, () => {
@@ -876,9 +879,7 @@ export class UserInterface {
         modal.querySelectorAll('.btn-event-choice').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const choiceIdx = parseInt(e.currentTarget.getAttribute('data-coach-choice-index'), 10);
-                
                 const result = CoachSystem.resolveCoachChoice(this.engine.state, choiceIdx, coachEvent);
-                
                 modal.remove();
 
                 if (result && result.responseText) {
