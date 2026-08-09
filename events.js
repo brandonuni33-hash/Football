@@ -1,4 +1,3 @@
-
 // events.js
 import { StateManager } from './state.js';
 import { ConsequenceSystem } from './consequenceSystem.js';
