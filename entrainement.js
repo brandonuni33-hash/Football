@@ -1,101 +1,100 @@
-// entrainement.js
-export const TrainingManager = {
-    // Configuration des différents focus possibles avec leurs attributs cibles et descriptions
-    FOCUS_TYPES: {
-        PHYSIQUE: { 
-            name: "Physique", 
-            description: "Développe l'endurance, la vitesse et la robustesse physique dans les duels.",
-            fitnessCost: 8, 
-            ratingBonus: 0.2, 
-            injuryRisk: 1.15,
-            primaryStats: ['physique', 'vitesse'],
-            secondaryStats: ['defense']
+const TrainingSystem = {
+    // Définition des types d'entraînement et de leurs impacts sur les statistiques et la forme
+    programs: {
+        technique: {
+            name: "Technique & Agilité",
+            fitnessCost: 15,
+            primaryStats: ["dribble", "controle", "passes"],
+            secondaryStats: ["agilite", "acceleration"]
         },
-        TECHNIQUE: { 
-            name: "Technique", 
-            description: "Améliore le toucher de balle, la qualité de passe et la précision des dribbles.",
-            fitnessCost: 4, 
-            ratingBonus: 0.4, 
-            injuryRisk: 1.0,
-            primaryStats: ['dribble', 'passe'],
-            secondaryStats: ['tir']
+        physique: {
+            name: "Renforcement Physique",
+            fitnessCost: 25,
+            primaryStats: ["endurance", "force", "vitesse"],
+            secondaryStats: ["detente", "agilite"]
         },
-        OFFENSIF: { 
-            name: "Finition & Attaque", 
-            description: "Travaille les tirs au but, les appels tranchants et la spontanéité offensive.",
-            fitnessCost: 6, 
-            ratingBonus: 0.5, 
-            injuryRisk: 1.05,
-            primaryStats: ['tir', 'vitesse'],
-            secondaryStats: ['dribble']
+        tir: {
+            name: "Finition & Attaque",
+            fitnessCost: 20,
+            primaryStats: ["finition", "tirs_de_loin", "placement"],
+            secondaryStats: ["puissance", "volants"]
         },
-        DEFENSIF: { 
-            name: "Tactique & Défense", 
-            description: "Renforce le placement tactique, l'interception et la rigueur défensive.",
-            fitnessCost: 5, 
-            ratingBonus: 0.3, 
-            injuryRisk: 1.0,
-            primaryStats: ['defense', 'mental'],
-            secondaryStats: ['physique']
+        defensif: {
+            name: "Bouclier Défensif",
+            fitnessCost: 20,
+            primaryStats: ["tacle", "marquage", "agressivite"],
+            secondaryStats: ["interception", "force"]
         },
-        REPOS: { 
-            name: "Repos", 
-            description: "Permet de recharger les batteries, de récupérer de la forme et d'éviter les blessures.",
-            fitnessCost: -15, // Gain de fitness
-            ratingBonus: -0.3, 
-            injuryRisk: 0.8,
+        repos: {
+            name: "Récupération Active",
+            fitnessCost: -30, // Restaure de la forme
             primaryStats: [],
             secondaryStats: []
         }
     },
 
-    /**
-     * Récupère les données d'effet selon le focus choisi
-     */
-    getEffect(focusKey) {
-        return this.FOCUS_TYPES[focusKey] || { fitnessCost: 5, ratingBonus: 0, injuryRisk: 1.0, primaryStats: [], secondaryStats: [] };
-    },
-
-    /**
-     * Applique l'entraînement mensuel sur le joueur (Forme + Attributs + Global)
-     * @param {Object} player - L'objet joueur du state
-     * @param {String} focusKey - La clé du focus (ex: 'TECHNIQUE', 'PHYSIQUE')
-     */
-    applyTraining(player, focusKey) {
-        const effect = this.getEffect(focusKey);
-
-        // 1. Gestion de la forme (Fitness)
-        player.fitness = Math.max(0, Math.min(100, player.fitness - effect.fitnessCost));
-
-        // 2. Progression des attributs (uniquement si ce n'est pas "REPOS")
-        if (focusKey !== 'REPOS' && player.attributes) {
-            const allTargetStats = [...effect.primaryStats, ...effect.secondaryStats];
-
-            allTargetStats.forEach(statKey => {
-                if (player.attributes[statKey] !== undefined) {
-                    const currentVal = player.attributes[statKey];
-
-                    // Ne dépasse pas le potentiel max du joueur
-                    if (currentVal >= (player.potential || 99)) return;
-
-                    // Plus de chance de progresser sur les stats principales que secondaires
-                    const isPrimary = effect.primaryStats.includes(statKey);
-                    const threshold = isPrimary ? 0.75 : 0.40;
-
-                    if (Math.random() < threshold) {
-                        const gain = Math.random() < 0.2 ? 2 : 1; // Rare boost de +2
-                        player.attributes[statKey] = Math.min(player.potential || 99, currentVal + gain);
-                    }
-                }
-            });
-
-            // 3. Recalcul automatique de l'Overall (OVR) basé sur la moyenne des attributs
-            const attrs = player.attributes;
-            const statKeys = ['vitesse', 'tir', 'passe', 'dribble', 'defense', 'physique', 'mental'];
-            const sum = statKeys.reduce((acc, key) => acc + (attrs[key] || player.overall), 0);
-            player.overall = Math.round(sum / statKeys.length);
+    // Fonction principale pour exécuter un entraînement
+    executeTraining(player, programKey) {
+        const effect = this.programs[programKey];
+        if (!effect) {
+            return { success: false, message: "Programme d'entraînement inconnu." };
         }
 
-        console.log(`🏋️‍♂️ Entraînement [${effect.name}] appliqué. Nouvelle forme : ${player.fitness}%, OVR : ${player.overall}`);
+        // 1. Gestion de la forme physique (fitness)
+        player.fitness = Math.max(0, Math.min(100, (player.fitness || 80) - effect.fitnessCost));
+
+        // Si c'est un repos, on applique uniquement la récupération
+        if (programKey === 'repos') {
+            return {
+                focus: effect.name,
+                fitnessChange: -effect.fitnessCost,
+                statIncreases: {},
+                message: `Séance de "${effect.name}" effectuée avec succès.`
+            };
+        }
+
+        // 2. Progression des statistiques cibles
+        const statIncreases = {};
+        
+        const increaseStat = (statName, amount) => {
+            if (!player.stats) player.stats = {};
+            const current = player.stats[statName] || 40;
+            const maxVal = player.potential || 99;
+            if (current < maxVal) {
+                player.stats[statName] = Math.min(maxVal, current + amount);
+                statIncreases[statName] = (statIncreases[statName] || 0) + amount;
+            }
+        };
+
+        // Appliquer les gains pour les stats primaires (hausse de 1 à 2 points)
+        effect.primaryStats.forEach(stat => {
+            const gain = Math.random() < 0.7 ? 1 : 2;
+            increaseStat(stat, gain);
+        });
+
+        // Appliquer les gains pour les stats secondaires (hausse de 1 point avec 50% de chance)
+        effect.secondaryStats.forEach(stat => {
+            if (Math.random() < 0.5) {
+                increaseStat(stat, 1);
+            }
+        });
+
+        // 3. Recalcul de l'OVR général du joueur
+        const statValues = Object.values(player.stats);
+        if (statValues.length > 0) {
+            const sum = statValues.reduce((a, b) => a + b, 0);
+            player.overall = Math.round(sum / statValues.length);
+        }
+
+        return {
+            success: true,
+            focus: effect.name,
+            fitnessChange: -effect.fitnessCost,
+            statIncreases,
+            message: `Entraînement "${effect.name}" effectué avec succès.`
+        };
     }
 };
+
+// Export si tu utilises des modules Node.js / ES6
+// export default TrainingSystem;
