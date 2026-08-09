@@ -342,6 +342,10 @@ export const EventEngine = {
         if (impacts.isInjured !== undefined) {
             state.player.isInjured = Boolean(impacts.isInjured);
         }
+        if (impacts.injuryDuration !== undefined) {
+            state.player.injuryDuration = Math.max(0, Number(impacts.injuryDuration) || 0);
+            if (state.player.injuryDuration > 0) state.player.isInjured = true;
+        }
         console.log(
             `🎯 Événement résolu [${event.titre}] -> Choix : "${choice.texte}"`,
             impacts
