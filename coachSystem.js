@@ -30,6 +30,8 @@ export class CoachSystem {
         }
 
         const coachState = state.social.coachData;
+        coachState.relation = Math.min(100, Math.max(0, Number(coachState.relation ?? player.stats?.relationCoach ?? 50)));
+        if (player.stats) player.stats.relationCoach = coachState.relation;
         const hasTransferred = coachState.hasLeftClub || (player.club !== state.social?.youthClubName);
 
         // 1. SCÉNARIOS SPÉCIFIQUES LIÉS À L'ORIGINE DU JOUEUR
@@ -249,6 +251,11 @@ export class CoachSystem {
 
             state.player.stats ||= {};
             state.player.stats.relationCoach = coachState.relation;
+            const coachRel = state.social?.relationships?.find(r => r.id === 'coach');
+            if (coachRel) {
+                coachRel.score = coachState.relation;
+                coachRel.status = coachState.relation >= 80 ? 'Allié / Ami' : coachState.relation <= 20 ? 'Rival / Tendu' : 'Neutre';
+            }
         }
 
         return {
@@ -267,7 +274,7 @@ export class CoachSystem {
         if (!state || !state.social) return null;
         const coachState = state.social.coachData || {
             name: state.social.formativeCoach || "l'entraîneur",
-            relation: state.social.relationCoach || 50,
+            relation: state.player?.stats?.relationCoach ?? 50,
             opinion: "Neutre",
             hasLeftClub: false
         };
