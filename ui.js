@@ -8,6 +8,7 @@ import { TransferMarket as _TransferMarket } from './transferMarket.js';
 import { CoachSystem as _CoachSystem } from './coachSystem.js';
 import { ConsequenceSystem as _ConsequenceSystem } from './consequenceSystem.js';
 import { CareerSystem as _CareerSystem } from './careerSystem.js';
+import { WorldSystem } from './worldSystem.js';
 
 // Sécurisation des données importées
 const POSITIONS = Array.isArray(_POSITIONS) ? _POSITIONS : Object.values(_POSITIONS || {});
