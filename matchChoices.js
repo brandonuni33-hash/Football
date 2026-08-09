@@ -25,28 +25,28 @@ export class MatchChoiceManager {
                         text: "Insister sur un pressing ultra-offensif quitte à s'épuiser physiquement",
                         impacts: { 
                             stats: { physique: +2, mental: +1 },
-                            matchBonuses: { goalChance: +0.20, ratingBonus: +0.3, fatigueRisk: +15 }
+                            matchBonuses: { goalChance: +0.07, ratingBonus: +0.15, fatigueRisk: +7}, careerMomentum: +1
                         }
                     },
                     {
                         text: "Jouer la carte de la sécurité, privilégier la conservation et limiter les risques",
                         impacts: { 
                             stats: { technique: +2, discipline: +2 },
-                            matchBonuses: { passAccuracy: +0.25, goalChance: -0.05, ratingBonus: +0.1 }
+                            matchBonuses: { passAccuracy: +0.12, goalChance: -0.03, ratingBonus: +0.08}, careerMomentum: +1
                         }
                     },
                     {
                         text: "Prendre la parole dans le vestiaire pour galvaniser les troupes (Rôle de leader)",
                         impacts: { 
                             stats: { charisme: +3, relationCoach: +2, vestiaire: +3 },
-                            matchBonuses: { teamBoost: +0.15, ratingBonus: +0.2 }
+                            matchBonuses: { teamBoost: +0.10, ratingBonus: +0.12}, careerMomentum: +1
                         }
                     },
                     {
                         text: "Rester dans ta bulle, se focaliser uniquement sur tes duels individuels",
                         impacts: { 
                             stats: { mental: +3 },
-                            matchBonuses: { duelBonus: +0.20, assistChance: -0.05 }
+                            matchBonuses: { duelBonus: +0.10, assistChance: -0.03 }
                         }
                     }
                 ]
@@ -64,21 +64,21 @@ export class MatchChoiceManager {
                         text: "Rentrer dans le duel physique et répondre à l'impact de l'adversaire",
                         impacts: { 
                             stats: { physique: +2, discipline: -4 },
-                            matchBonuses: { duelBonus: +0.30, cardRisk: +0.20 }
+                            matchBonuses: { duelBonus: +0.12, cardRisk: +0.10}, careerMomentum: +1
                         }
                     },
                     {
                         text: "Esquiver les provocations et répondre uniquement par le jeu et la vision",
                         impacts: { 
                             stats: { mental: +3, technique: +1 },
-                            matchBonuses: { passAccuracy: +0.20, ratingBonus: +0.25 }
+                            matchBonuses: { passAccuracy: +0.10, ratingBonus: +0.12}, careerMomentum: +1
                         }
                     },
                     {
                         text: "Provoquer la défense adverse pour tenter de gratter des fautes ou des penaltys",
                         impacts: { 
                             stats: { charisme: +2, technique: +1 },
-                            matchBonuses: { goalChance: +0.15, duelBonus: +0.10 }
+                            matchBonuses: { goalChance: +0.08, duelBonus: +0.06}, careerMomentum: +1
                         }
                     }
                 ]
@@ -94,15 +94,15 @@ export class MatchChoiceManager {
                     choices: [
                         {
                             text: "Jouer la transition rapide en contre-attaque sur ton aile",
-                            impacts: { stats: { vitesse: +2 }, matchBonuses: { counterAttack: +0.25, passAccuracy: -0.05 } },
+                            impacts: { stats: { vitesse: +2 }, matchBonuses: { counterAttack: +0.12, passAccuracy: -0.03}, careerMomentum: +1 },
                         },
                         {
                             text: "Décrocher au milieu de terrain pour faire circuler le ballon",
-                            impacts: { stats: { technique: +2, mental: +1 }, matchBonuses: { assistChance: +0.20, goalChance: -0.05 } },
+                            impacts: { stats: { technique: +2, mental: +1 }, matchBonuses: { assistChance: +0.08, goalChance: -0.03}, careerMomentum: +1 },
                         },
                         {
                             text: "Rester haut sur le terrain pour rôder à l'affût des erreurs de marquage",
-                            impacts: { stats: { mental: +2 }, matchBonuses: { goalChance: +0.20, fatigueRisk: +5 } }
+                            impacts: { stats: { mental: +2 }, matchBonuses: { goalChance: +0.08, fatigueRisk: +4}, careerMomentum: +1 }
                         }
                     ]
                 },
@@ -112,11 +112,11 @@ export class MatchChoiceManager {
                     choices: [
                         {
                             text: "Coller ton vis-à-vis de près et harceler le porteur de balle",
-                            impacts: { stats: { physique: +1, defense: +2 }, matchBonuses: { duelBonus: +0.20, cardRisk: +0.15 } },
+                            impacts: { stats: { physique: +1, defense: +2 }, matchBonuses: { duelBonus: +0.08, cardRisk: +0.08}, careerMomentum: +1 },
                         },
                         {
                             text: "Garder une position équilibrée pour couper les lignes de passe",
-                            impacts: { stats: { mental: +2, defense: +1 }, matchBonuses: { passAccuracy: +0.10, ratingBonus: +0.15 } }
+                            impacts: { stats: { mental: +2, defense: +1 }, matchBonuses: { passAccuracy: +0.06, ratingBonus: +0.08}, careerMomentum: +1 }
                         }
                     ]
                 }
