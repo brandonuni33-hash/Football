@@ -636,26 +636,16 @@ export class UserInterface {
                 this.afficherModaleMatchDilemma(matchDilemma, (selectedChoice) => {
                     this.engine.playBlock(selectedChoice);
 
-                    // Vérification des retombées de l'entraîneur après le bloc si applicable
-                    if (CoachSystem && typeof CoachSystem.checkPostMatchInteractions === 'function') {
-                        CoachSystem.checkPostMatchInteractions(state);
+                    // Vérification des interactions de l'entraîneur après le match
+                    const coachEvent = CoachSystem && typeof CoachSystem.checkCoachInteraction === 'function' ? CoachSystem.checkCoachInteraction(state) : null;
+                    if (coachEvent) {
+                        this.afficherModaleCoach(coachEvent, () => {
+                            this.verifierSuiteEvenementsBloc(state);
+                        });
+                        return;
                     }
 
-                    if (Math.random() < 0.15 && !state.activeTransferOffer) {
-                        const offre = TransferMarket.generateTransferOffer(state.player);
-                        if (offre) {
-                            state.activeTransferOffer = offre;
-                            this.afficherOffreTransfert(offre);
-                            return;
-                        }
-                    }
-
-                    const eventActuel = EventEngine.checkTriggers ? EventEngine.checkTriggers() : null;
-                    if (eventActuel) {
-                        this.afficherModaleEvenement(eventActuel);
-                    } else {
-                        this.renderDashboard();
-                    }
+                    this.verifierSuiteEvenementsBloc(state);
                 });
             });
         }
@@ -695,6 +685,24 @@ export class UserInterface {
                 }
             });
         });
+    }
+
+    verifierSuiteEvenementsBloc(state) {
+        if (Math.random() < 0.15 && !state.activeTransferOffer) {
+            const offre = TransferMarket.generateTransferOffer(state.player);
+            if (offre) {
+                state.activeTransferOffer = offre;
+                this.afficherOffreTransfert(offre);
+                return;
+            }
+        }
+
+        const eventActuel = EventEngine.checkTriggers ? EventEngine.checkTriggers() : null;
+        if (eventActuel) {
+            this.afficherModaleEvenement(eventActuel);
+        } else {
+            this.renderDashboard();
+        }
     }
 
     afficherOffreTransfert(offre) {
@@ -839,6 +847,76 @@ export class UserInterface {
                 this.renderDashboard();
             });
         });
+    }
+
+    afficherModaleCoach(coachEvent, onChoiceResolved) {
+        let modal = document.getElementById('event-modal-container');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'event-modal-container';
+            modal.className = 'event-modal-overlay';
+            document.body.appendChild(modal);
+        }
+
+        modal.innerHTML = `
+            <div class="event-modal-card">
+                <span class="event-modal-category">👨‍💼 POINT ENTRAÎNEUR</span>
+                <h3 class="event-modal-title">${coachEvent.title}</h3>
+                <p class="event-modal-desc">${coachEvent.description}</p>
+                <div class="event-modal-choices">
+                    ${coachEvent.choices.map((choice, index) => `
+                        <button class="btn-event-choice" data-coach-choice-index="${index}">
+                            👉 ${choice.text}
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+
+        modal.querySelectorAll('.btn-event-choice').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const choiceIdx = parseInt(e.currentTarget.getAttribute('data-coach-choice-index'), 10);
+                
+                const result = CoachSystem.resolveCoachChoice(this.engine.state, choiceIdx, coachEvent);
+                
+                modal.remove();
+
+                if (result && result.responseText) {
+                    this.afficherModaleReponseCoach(result.responseText, () => {
+                        if (typeof onChoiceResolved === 'function') onChoiceResolved();
+                        this.renderDashboard();
+                    });
+                } else {
+                    if (typeof onChoiceResolved === 'function') onChoiceResolved();
+                    this.renderDashboard();
+                }
+            });
+        });
+    }
+
+    afficherModaleReponseCoach(responseText, onClose) {
+        let modal = document.getElementById('event-modal-container');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'event-modal-container';
+            modal.className = 'event-modal-overlay';
+            document.body.appendChild(modal);
+        }
+
+        modal.innerHTML = `
+            <div class="event-modal-card">
+                <span class="event-modal-category">💬 RÉACTION DE L'entraîneur</span>
+                <p class="event-modal-desc" style="font-size: 1.05rem; font-style: italic; margin: 20px 0;">${responseText}</p>
+                <div class="event-modal-choices">
+                    <button id="btn-close-coach-response" class="btn-event-choice btn-success">✔ Compris</button>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('btn-close-coach-response').onclick = () => {
+            modal.remove();
+            if (typeof onClose === 'function') onClose();
+        };
     }
 
     appliquerImpactsChoix(impacts) {
