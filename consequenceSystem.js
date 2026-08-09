@@ -1,3 +1,5 @@
+import { PlayerLogic } from './player.js';
+import { PotentialSystem } from './potentialSystem.js';
 /**
  * consequenceSystem.js
  * Point central des conséquences des choix du jeu.
@@ -21,6 +23,7 @@ const LIMITS = {
     discipline: [0, 100],
     mental: [0, 100],
     relationCoach: [0, 100],
+    careerMomentum: [-24, 24],
     vestiaire: [0, 100],
     confidence: [0, 100],
     reputation: [0, 100],
@@ -37,6 +40,7 @@ const LABELS = {
     vestiaire: 'Vestiaire',
     confidence: 'Confiance',
     reputation: 'Réputation',
+    careerMomentum: 'Dynamique de carrière',
     balance: 'Finances',
     vitesse: 'Vitesse',
     tir: 'Tir',
@@ -46,6 +50,18 @@ const LABELS = {
     physique: 'Physique',
     technique: 'Technique',
     charisme: 'Charisme'
+};
+
+const LEGACY_ATTRIBUTE_MAP = {
+    vitesse: 'vitesse',
+    tir: 'tir',
+    passe: 'passe',
+    passes: 'passe',
+    dribble: 'dribble',
+    defense: 'defense',
+    physique: 'physique',
+    mental: 'mental',
+    tete: 'mental'
 };
 
 const MATCH_BONUS_LABELS = {
@@ -81,6 +97,7 @@ function ensurePlayer(player) {
     player.stats ||= {};
     player.attributes ||= {};
     player.temporaryEffects ||= [];
+    PotentialSystem.ensure(player);
 
     // Ne crée les nouvelles stats que si elles n'existent pas déjà.
     // Les stats historiques (morale, fame, etc.) restent la référence.
@@ -105,6 +122,19 @@ function ensurePlayer(player) {
 }
 
 function readValue(player, key) {
+    if (key === 'careerMomentum') {
+        const before = n(player.potentialProfile?.careerMomentum);
+        PotentialSystem.addMomentum(player, num(delta), 'decisions');
+        const after = n(player.potentialProfile?.careerMomentum);
+        return {
+            stat: key,
+            label: LABELS[key],
+            before,
+            after,
+            delta: after - before
+        };
+    }
+
     if (key.startsWith('attributes.')) {
         return num(player.attributes?.[key.slice(11)]);
     }
@@ -241,9 +271,10 @@ function flattenLegacyImpacts(impacts = {}) {
     }
 
     for (const [key, value] of Object.entries(impacts.stats || {})) {
-        if (typeof value === 'number') {
-            permanent[key] = (permanent[key] || 0) + value;
-        }
+        if (typeof value !== 'number') continue;
+        const mapped = LEGACY_ATTRIBUTE_MAP[key];
+        const target = mapped ? `attributes.${mapped}` : key;
+        permanent[target] = (permanent[target] || 0) + value;
     }
 
     // Les matchBonuses restent temporaires et sont consommés par matchBlock.js.
@@ -316,7 +347,9 @@ function normalizeChoice(choice = {}) {
 
         xp: num(
             explicit.xp ??
-            explicit.experience,
+            explicit.experience ??
+            legacy.xp ??
+            legacy.experience,
             0
         )
     };
@@ -376,7 +409,9 @@ export const ConsequenceSystem = {
         }
 
         const xp = clamp(Math.round(normalized.xp), 0, 30);
-        if (xp > 0) player.xp += xp;
+        if (xp > 0) PlayerLogic.applyProgression(player, { xp, type: 'choixCarriere' });
+
+        PotentialSystem.recordConsequenceChanges(player, changes);
 
         return {
             title: normalized.title || 'Conséquences',
@@ -447,7 +482,9 @@ export const ConsequenceSystem = {
         }
 
         const xp = clamp(Math.round(normalized.xp), 0, 30);
-        if (xp > 0) state.player.xp += xp;
+        if (xp > 0) PlayerLogic.applyProgression(state.player, { xp, type: 'choixCarriere' });
+
+        PotentialSystem.recordConsequenceChanges(state.player, changes);
 
         return {
             title: normalized.title || 'Conséquences',
