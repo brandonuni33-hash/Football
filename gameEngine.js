@@ -1,5 +1,3 @@
-
-
 // gameEngine.js
 import { UserInterface } from './ui.js';
 import { MatchBlockManager } from './matchBlock.js';
@@ -13,6 +11,7 @@ import { TrainingManager } from './entrainement.js';
 import { PlayerLogic } from './player.js';
 import { StateManager } from './state.js';
 import { ConsequenceSystem } from './consequenceSystem.js';
+import { PotentialSystem } from './potentialSystem.js';
 
 export class GameEngine {
     constructor() {
@@ -23,6 +22,7 @@ export class GameEngine {
         if (this.state?.player) {
             this.migrateLoadedState();
             ConsequenceSystem.initialize(this.state.player);
+            PotentialSystem.ensure(this.state.player);
         }
 
         this.ui = new UserInterface(this);
@@ -172,6 +172,7 @@ export class GameEngine {
         };
 
         ConsequenceSystem.initialize(this.state.player);
+        PotentialSystem.ensure(this.state.player);
         StateManager.save(this.state);
         console.log('Carrière créée :', this.state);
 
@@ -180,6 +181,13 @@ export class GameEngine {
 
     playBlock(selectedChoice = null) {
         if (!this.state?.player) return null;
+        if (this.state.player.retired || this.state.player.careerEnded || this.state.player.age >= 42) {
+            this.state.player.careerEnded = true;
+            return {
+                careerEnded: true,
+                report: { summary: { rating: 0, goals: 0, assists: 0, passes: 0, tackles: 0, yellowCards: 0, finance: null } }
+            };
+        }
 
         const player = this.state.player;
 
@@ -396,6 +404,23 @@ export class GameEngine {
         return true;
     }
 
+    retireCareer() {
+        if (!this.state?.player) return null;
+        const player = this.state.player;
+        if (player.age < 34) return { retired: false, reason: 'Retraite disponible à partir de 34 ans.' };
+
+        player.retired = true;
+        player.careerEnded = true;
+        StateManager.save(this.state);
+
+        return {
+            retired: true,
+            age: player.age,
+            overall: player.overall,
+            potential: player.potential
+        };
+    }
+
     archiveAndResetSeason() {
         const player = this.state.player;
         const currentYear = this.state.calendar.currentSeasonYear;
@@ -412,14 +437,31 @@ export class GameEngine {
             averageRating: player.stats?.averageRating || 0
         });
 
-        // Une seule source de vérité pour le vieillissement + déclin.
+        // Le potentiel vivant est évalué une seule fois par saison, avant
+        // la remise à zéro des statistiques saisonnières.
+        const potentialReport = PotentialSystem.finalizeSeason(player, {
+            seasonLabel: `${currentYear}/${currentYear + 1}`,
+            overall: player.overall,
+            matches: player.stats?.matchesPlayed || 0,
+            goals: player.stats?.goals || 0,
+            assists: player.stats?.assists || 0,
+            averageRating: player.stats?.averageRating || 0
+        });
+
+        // Déclin physique de fin de saison, puis vieillissement explicite.
         PlayerLogic.applyProgression(player, {
             xp: 0,
             type: 'finSaison',
-            vieillirDUnAn: true
+            vieillirDUnAn: false
         });
+        PotentialSystem.advanceAge(player);
+        PlayerLogic.syncProgressionFromCanonical(player);
+        player.canRetire = player.age >= 34;
+        player.careerEnded = player.age >= 42;
 
-        // Réinitialisation des statistiques de saison.
+        this.state.career.lastPotentialReport = potentialReport;
+
+        // Réinitialisation des statistiques saisonnières.
         player.stats.matchesPlayed = 0;
         player.stats.goals = 0;
         player.stats.assists = 0;
