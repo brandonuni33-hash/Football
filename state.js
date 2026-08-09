@@ -1,8 +1,9 @@
+
 // state.js
 // Persistence centralisée et tolérante aux anciennes sauvegardes.
 
 const STORAGE_KEY = 'street_to_pro_save_v3';
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 const DEFAULT_STATE = {
     schemaVersion: SCHEMA_VERSION,
@@ -58,6 +59,16 @@ function migrate(raw) {
     if (!state.career) state.career = cloneDefault().career;
     if (!Array.isArray(state.career.seasonHistory)) state.career.seasonHistory = [];
     if (!state.calendar) state.calendar = cloneDefault().calendar;
+
+    // Migration des sauvegardes vers le système de conséquences.
+    if (state.player) {
+        state.player.stats ||= {};
+        state.player.attributes ||= {};
+        state.player.temporaryEffects =
+            Array.isArray(state.player.temporaryEffects)
+                ? state.player.temporaryEffects
+                : [];
+    }
 
     return state;
 }
