@@ -1,5 +1,7 @@
+
 // events.js
 import { StateManager } from './state.js';
+import { ConsequenceSystem } from './consequenceSystem.js';
 
 export const listeEvenements = [
   {
@@ -329,38 +331,26 @@ export const EventEngine = {
     },
 
     resolveChoice(state, eventId, choiceIndex) {
-        const event = listeEvenements.find(e => e.id === eventId);
-        if (!event || !event.choix[choiceIndex]) return null;
+        const event = listeEvenements.find(item => item.id === eventId);
+        if (!state?.player || !event || !event.choix?.[choiceIndex]) return null;
 
         const choice = event.choix[choiceIndex];
-        const impacts = choice.impacts;
-        const player = state.player;
+        const result = ConsequenceSystem.applyEventChoice(state, choice);
 
-        for (const [key, value] of Object.entries(impacts)) {
-            if (key.startsWith('attributes.')) {
-                const attrName = key.split('.')[1];
-                if (player.attributes && player.attributes[attrName] !== undefined) {
-                    player.attributes[attrName] = Math.min(player.potential || 99, player.attributes[attrName] + value);
-                }
-            } else if (key === 'balance') {
-                if (!state.career) state.career = { balance: 0 };
-                state.career.balance = (state.career.balance || 0) + value;
-            } else if (player.attributes && player.attributes[key] !== undefined) {
-                player.attributes[key] = Math.max(1, Math.min(99, player.attributes[key] + value));
-            } else if (player[key] !== undefined) {
-                if (typeof player[key] === 'boolean') {
-                    player[key] = value;
-                } else if (key === 'injuryDuration') {
-                    player[key] = Math.max(0, Math.min(12, player[key] + value));
-                } else {
-                    player[key] = Math.max(0, Math.min(100, player[key] + value));
-                }
-            } else if (player.stats && player.stats[key] !== undefined) {
-                player.stats[key] = Math.max(0, Math.min(100, player.stats[key] + value));
-            }
+        // Les blessures / drapeaux historiques restent compatibles.
+        const impacts = choice.impacts || {};
+        if (impacts.isInjured !== undefined) {
+            state.player.isInjured = Boolean(impacts.isInjured);
         }
+        console.log(
+            `🎯 Événement résolu [${event.titre}] -> Choix : "${choice.texte}"`,
+            impacts
+        );
 
-        console.log(`🎯 Événement résolu [${event.titre}] -> Choix : "${choice.texte}"`, impacts);
-        return choice.texte;
+        return {
+            ...result,
+            choiceText: choice.texte,
+            eventId: event.id
+        };
     }
 };
