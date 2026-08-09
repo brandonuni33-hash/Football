@@ -697,7 +697,7 @@ export class UserInterface {
             }
         }
 
-        const eventActuel = EventEngine.checkTriggers ? EventEngine.checkTriggers() : null;
+        const eventActuel = EventEngine.checkAndTriggerEvent ? EventEngine.checkAndTriggerEvent(state) : null;
         if (eventActuel) {
             this.afficherModaleEvenement(eventActuel);
         } else {
