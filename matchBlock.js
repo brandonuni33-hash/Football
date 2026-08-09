@@ -4,6 +4,7 @@ import { TrainingManager } from './entrainement.js';
 import { PlayerLogic } from './player.js';
 import { ConsequenceSystem } from './consequenceSystem.js';
 import { PotentialSystem } from './potentialSystem.js';
+import { CompetitionSystem } from './competitionSystem.js';
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
@@ -16,10 +17,9 @@ export const MatchBlockManager = {
 
         const trainingEffect = TrainingManager.getEffect(trainingFocus);
 
-        // Nombre de matchs par mois.
-        let matchesInMonth = 4;
-        if (calendar.currentMonth === 12) matchesInMonth = 2;
-        if (calendar.currentMonth === 7) matchesInMonth = 0;
+        // Le calendrier décide du volume réel : formation, senior ou intersaison.
+        const blockPlan = CompetitionSystem.getBlockPlan(state);
+        const matchesInMonth = blockPlan.matches || 0;
 
         let choiceFatigueExtra = 0;
         let choiceCardRiskExtra = 0;
@@ -265,6 +265,7 @@ export const MatchBlockManager = {
             isInjured,
             summary: {
                 ...summary,
+                blockPlan,
                 xpGained: xpMatch,
                 finance: financeReport,
                 progression: progressionResult,
