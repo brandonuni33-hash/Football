@@ -42,6 +42,7 @@ export const POSTES_PONDERATION = {
   MOFF: { passes: 0.28, dribble: 0.25, tir: 0.18, vitesse: 0.12, physique: 0.10, defense: 0.05, tete: 0.02 },
   AIL:  { vitesse: 0.28, dribble: 0.28, tir: 0.18, passes: 0.14, physique: 0.08, defense: 0.02, tete: 0.02 },
   BU:   { tir: 0.35, tete: 0.18, physique: 0.15, vitesse: 0.15, dribble: 0.12, passes: 0.03, defense: 0.02 },
+  GK:   { defense: 0.35, physique: 0.20, vitesse: 0.15, tete: 0.10, passes: 0.10, dribble: 0.05, tir: 0.05 },
 };
 
 /** Paliers de potentiel caché (Pilier 3) : fourchette du Potentiel Max tiré au sort. */
@@ -66,49 +67,49 @@ export const ORIGINES = {
     description: "Excellent technicien formé en surface réduite : contrôle et vista au-dessus de la moyenne, lacunes physiques et aériennes.",
     deltas:    { vitesse: 5,  tir: 6,  passes: 12, dribble: 22, defense: -8,  physique: -15, tete: -18 },
     affinites: { vitesse: 1.0, tir: 1.05, passes: 1.15, dribble: 1.3, defense: 0.9, physique: 0.75, tete: 0.7 },
-    distribution: { limite: 0.05, correct: 0.15, prometteur: 0.30, talentueux: 0.30, exceptionnel: 0.15, generationnel: 0.05 },
+    distribution: { limite: 0.05, prometteur: 0.45, talentueux: 0.30, exceptionnel: 0.15, generationnel: 0.05 },
   },
   AMATEUR_QUARTIER: {
     label: 'Amateur de quartier',
     description: "Formé sur les terrains vagues / club amateur : vif et créatif balle au pied, peu structuré tactiquement.",
     deltas:    { vitesse: 8, tir: -2, passes: -8, dribble: 10, defense: -5, physique: 5, tete: -5 },
     affinites: { vitesse: 1.1, tir: 0.95, passes: 0.85, dribble: 1.1, defense: 0.85, physique: 1.0, tete: 0.9 },
-    distribution: { limite: 0.25, correct: 0.35, prometteur: 0.25, talentueux: 0.10, exceptionnel: 0.04, generationnel: 0.01 },
+    distribution: { limite: 0.25, prometteur: 0.60, talentueux: 0.10, exceptionnel: 0.04, generationnel: 0.01 },
   },
   CENTRE_FORMATION: {
     label: 'Centre de formation',
     description: "Passé par l'académie : bases tactiques, physiques et défensives solides, créativité brute plus limitée.",
     deltas:    { vitesse: 5, tir: 2, passes: 12, dribble: -5, defense: 10, physique: 8, tete: 8 },
     affinites: { vitesse: 1.0, tir: 1.0, passes: 1.05, dribble: 0.9, defense: 1.05, physique: 1.05, tete: 1.0 },
-    distribution: { limite: 0.05, correct: 0.20, prometteur: 0.30, talentueux: 0.25, exceptionnel: 0.15, generationnel: 0.05 },
+    distribution: { limite: 0.05, prometteur: 0.50, talentueux: 0.25, exceptionnel: 0.15, generationnel: 0.05 },
   },
   STREET_CAGE: {
     label: 'Street / Cage',
     description: "Forgé dans les cages urbaines (street football) : dribble et vitesse à l'état brut, profil très irrégulier, capable de pépites rares.",
     deltas:    { vitesse: 12, tir: 5, passes: -12, dribble: 25, defense: -15, physique: -8, tete: -12 },
     affinites: { vitesse: 1.15, tir: 1.05, passes: 0.8, dribble: 1.35, defense: 0.75, physique: 0.85, tete: 0.7 },
-    distribution: { limite: 0.20, correct: 0.20, prometteur: 0.15, talentueux: 0.15, exceptionnel: 0.15, generationnel: 0.15 },
+    distribution: { limite: 0.20, prometteur: 0.35, talentueux: 0.15, exceptionnel: 0.15, generationnel: 0.15 },
   },
   DEBUTANT_TARDIF: {
     label: 'Débutant tardif',
     description: "A commencé le foot tard : fondamentaux techniques faibles au départ, mais apprend très vite (fort potentiel de rattrapage).",
     deltas:    { vitesse: 10, tir: -10, passes: -15, dribble: -18, defense: -10, physique: 8, tete: -5 },
     affinites: { vitesse: 1.0, tir: 1.2, passes: 1.15, dribble: 1.15, defense: 1.1, physique: 1.0, tete: 1.05 },
-    distribution: { limite: 0.30, correct: 0.30, prometteur: 0.20, talentueux: 0.12, exceptionnel: 0.06, generationnel: 0.02 },
+    distribution: { limite: 0.30, prometteur: 0.50, talentueux: 0.12, exceptionnel: 0.06, generationnel: 0.02 },
   },
   ATHLETE_POLYVALENT: {
     label: 'Athlète polyvalent',
     description: "Vient d'un autre sport (athlétisme, basket...) : moteur physique exceptionnel, technique football encore brute.",
     deltas:    { vitesse: 15, tir: -12, passes: -10, dribble: -15, defense: -3, physique: 18, tete: 5 },
     affinites: { vitesse: 0.95, tir: 1.1, passes: 1.05, dribble: 1.05, defense: 1.0, physique: 0.9, tete: 1.0 },
-    distribution: { limite: 0.10, correct: 0.25, prometteur: 0.30, talentueux: 0.20, exceptionnel: 0.10, generationnel: 0.05 },
+    distribution: { limite: 0.10, prometteur: 0.55, talentueux: 0.20, exceptionnel: 0.10, generationnel: 0.05 },
   },
   FILS_DE_PRO: {
     label: 'Fils de pro',
     description: "A grandi dans les vestiaires professionnels : bases techniques et mentales précoces, profil précocement complet.",
     deltas:    { vitesse: 3, tir: 8, passes: 10, dribble: 8, defense: 5, physique: 2, tete: 5 },
     affinites: { vitesse: 1.0, tir: 1.05, passes: 1.05, dribble: 1.0, defense: 1.0, physique: 1.0, tete: 1.0 },
-    distribution: { limite: 0.03, correct: 0.12, prometteur: 0.25, talentueux: 0.30, exceptionnel: 0.22, generationnel: 0.08 },
+    distribution: { limite: 0.03, prometteur: 0.37, talentueux: 0.30, exceptionnel: 0.22, generationnel: 0.08 },
   },
 };
 
@@ -243,7 +244,7 @@ export function initialiserJoueur(origine, poste, age = 14) {
  * Général (OVR) = moyenne pondérée selon l'importance de chaque attribut
  * pour le poste occupé — jamais une moyenne brute.
  */
-export function calculerGeneral(stats, poste) {
+export function calculerGeneral(stats, poste, plafondGeneral = null) {
   const ponderation = POSTES_PONDERATION[poste];
   if (!ponderation) throw new Error(`Poste inconnu : "${poste}"`);
 
@@ -300,11 +301,11 @@ export function verifierPotentielEtPlafonds(joueur) {
     }
   });
   if (correctionsAppliquees.length) {
-    joueur.general = calculerGeneral(joueur.stats, joueur.poste);
+    joueur.general = calculerGeneral(joueur.stats, joueur.poste, joueur.potentialProfile?.current ?? joueur.potentielMax);
   }
 
   const facteurAge = obtenirFacteurAge(joueur.age);
-  const ecartPotentiel = joueur.potentielMax - joueur.general;
+  const ecartPotentiel = (joueur.potentialProfile?.current ?? joueur.potentielMax) - joueur.general;
   const statsAuPlafond = ATTRIBUTS.filter((a) => joueur.stats[a] >= joueur.plafondsStats[a]);
   const statsProchesDuPlafond = ATTRIBUTS.filter(
     (a) => !statsAuPlafond.includes(a) && joueur.plafondsStats[a] - joueur.stats[a] <= 3
@@ -417,7 +418,7 @@ export function appliquerProgression(joueur, gains) {
     declinAppliqueAge = appliquerDeclinAge(joueur);
   }
 
-  joueur.general = calculerGeneral(joueur.stats, joueur.poste);
+  joueur.general = calculerGeneral(joueur.stats, joueur.poste, joueur.potentialProfile?.current ?? joueur.potentielMax);
   const rapportPotentiel = verifierPotentielEtPlafonds(joueur);
 
   joueur.historique.push({
