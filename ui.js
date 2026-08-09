@@ -431,7 +431,7 @@ export class UserInterface {
                 <div class="phone-frame">
                     <div class="phone-status-bar">
                         <span>9:41</span>
-                        <span>⚡ Street to Pro</span>
+                        <span>⚽️ Street to Pro</span>
                         <span>🔋 100%</span>
                     </div>
                     <div class="phone-home-screen">
@@ -441,7 +441,7 @@ export class UserInterface {
                             <div class="player-card-banner">
                                 <div class="player-image-badge">
                                     <img src="assets/IMG_8758.jpg" alt="Avatar" onerror="this.style.display='none'">
-                                    <span class="jersey-number">99</span>
+                                    <span class="jersey-number">33</span>
                                 </div>
                                 <div class="player-main-info">
                                     <div class="widget-title">⭐ ${state.player?.firstname || ''} ${state.player?.lastname || ''}</div>
