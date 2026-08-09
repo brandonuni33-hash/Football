@@ -17,16 +17,25 @@ const COACH_NAMES = _COACH_NAMES || ['Thomas Tuchel', 'Pep Guardiola'];
 
 const EventEngine = _EventEngine || { checkAndTriggerEvent: () => null };
 const TrainingManager = _TrainingManager || { FOCUS_TYPES: { TECHNIQUE: { name: 'Technique', description: 'Améliore la technique pure' } } };
-const MatchChoiceManager = _MatchChoiceManager || { getMatchDilemma: () => ({ title: 'Match important', description: 'Préparez votre rencontre.', choices: [{ texte: 'Jouer prudemment', impacts: {} }] }) };
-const TransferMarket = _TransferMarket || { 
-    calculateMarketValue: () => 100000, 
-    formatPrice: (p) => `${p || 0} €`, 
-    generateTransferOffer: () => null 
+const MatchChoiceManager = _MatchChoiceManager || {
+    getMatchDilemma: (type = 'standard', opponent = '') => ({
+        title: 'Match important',
+        description: `Affrontez ${opponent || "l'adversaire"}.`,
+        choices: [
+            { texte: 'Jouer prudemment', impacts: {} },
+            { texte: 'Aller à fond', impacts: {} }
+        ]
+    })
 };
-const CoachSystem = _CoachSystem || { 
-    getCoachData: () => null, 
-    checkCoachInteraction: () => null, 
-    resolveCoachChoice: () => null 
+const TransferMarket = _TransferMarket || {
+    calculateMarketValue: () => 100000,
+    formatPrice: (p) => `${p || 0} €`,
+    generateTransferOffer: () => null
+};
+const CoachSystem = _CoachSystem || {
+    getCoachData: () => null,
+    checkCoachInteraction: () => null,
+    resolveCoachChoice: () => null
 };
 
 export class UserInterface {
@@ -46,8 +55,8 @@ export class UserInterface {
             coachVision: null,
             coachName: null
         };
-        this.randomYouthClubs = []; 
-        
+        this.randomYouthClubs = [];
+
         this.initDOM();
     }
 
@@ -188,7 +197,7 @@ export class UserInterface {
                 `;
             }
             case 3: {
-                const paysList = this.selectedData.continent && CONTINENTS[this.selectedData.continent] 
+                const paysList = this.selectedData.continent && CONTINENTS[this.selectedData.continent]
                     ? (Array.isArray(CONTINENTS[this.selectedData.continent]) ? CONTINENTS[this.selectedData.continent] : Object.values(CONTINENTS[this.selectedData.continent]))
                     : [];
 
@@ -231,7 +240,7 @@ export class UserInterface {
             case 5: {
                 if (this.randomYouthClubs.length === 0 && YOUTH_CLUBS_POOL.length > 0) {
                     const shuffled = [...YOUTH_CLUBS_POOL].sort(() => 0.5 - Math.random());
-                    const count = Math.floor(Math.random() * 3) + 4; 
+                    const count = Math.floor(Math.random() * 3) + 4;
                     
                     this.randomYouthClubs = shuffled.slice(0, count).map(yc => {
                         const randomVision = COACH_VISIONS[Math.floor(Math.random() * COACH_VISIONS.length)];
@@ -564,7 +573,7 @@ export class UserInterface {
                                 </div>
                             </div>
                         ` : ''}
-
+                        
                         <div class="feed-list">
                             ${(mediaState.feed || []).map(post => `
                                 <div class="feed-item">
