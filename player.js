@@ -26,7 +26,7 @@ const POSITION_MAP = {
     AD: 'AIL',
     AG: 'AIL',
     BU: 'BU',
-    GK: 'BU'
+    GK: 'GK'
 };
 
 const clamp = (value, min = 0, max = 100) =>
@@ -58,12 +58,12 @@ function syncCanonicalFromProgression(player) {
         mental: model.stats.tete
     };
 
-    player.overall = model.general;
-    player.potential = model.potentielMax;
-    player.potentialProfile = model.potentialProfile || player.potentialProfile;
-    if (player.potentialProfile) {
-        player.potentialProfile.current = model.potentielMax;
-    }
+    player.potentialProfile = player.potentialProfile || model.potentialProfile || PotentialSystem.createProfile(model.potentielMax);
+    PotentialSystem.ensure(player);
+    player.overall = Math.min(model.general, player.potentialProfile.current);
+    model.general = player.overall;
+    model.potentielMax = player.potentialProfile.current;
+    player.potential = player.potentialProfile.current;
     player.xp = model.xp;
     player.xpLevel = model.niveauXP;
     player.age = model.age;
@@ -82,9 +82,12 @@ function syncProgressionFromCanonical(player) {
     player.progression.stats.defense = clamp(a.defense, 1, 99);
     player.progression.stats.physique = clamp(a.physique, 1, 99);
     player.progression.stats.tete = clamp(a.mental, 1, 99);
+    const potential = player.potentialProfile?.current ?? player.progression.potentielMax ?? player.potential ?? 99;
+    player.progression.potentielMax = Number(potential);
     player.progression.general = calculerGeneral(
         player.progression.stats,
-        player.progression.poste
+        player.progression.poste,
+        potential
     );
     player.overall = player.progression.general;
 }
