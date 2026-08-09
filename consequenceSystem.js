@@ -124,7 +124,6 @@ function ensurePlayer(player) {
 function readValue(player, key) {
     if (key === 'careerMomentum') {
         const before = n(player.potentialProfile?.careerMomentum);
-        PotentialSystem.addMomentum(player, num(delta), 'decisions');
         const after = n(player.potentialProfile?.careerMomentum);
         return {
             stat: key,
@@ -147,6 +146,18 @@ function readValue(player, key) {
 }
 
 function writeValue(player, key, delta) {
+    if (key === 'careerMomentum') {
+        const before = n(player.potentialProfile?.careerMomentum);
+        const after = PotentialSystem.addMomentum(player, n(delta), 'decisions');
+        return {
+            stat: key,
+            label: LABELS[key],
+            before,
+            after,
+            delta: after - before
+        };
+    }
+
     if (key.startsWith('attributes.')) {
         const attr = key.slice(11);
         const before = num(player.attributes?.[attr]);
