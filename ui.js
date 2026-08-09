@@ -1,10 +1,33 @@
 // ui.js
-import { POSITIONS, CONTINENTS, ORIGINS, HEART_CLUBS, YOUTH_CLUBS_POOL, COACH_VISIONS, COACH_NAMES } from './constants.js';
-import { EventEngine } from './events.js';
-import { TrainingManager } from './entrainement.js';
-import { MatchChoiceManager } from './matchChoices.js';
-import { TransferMarket } from './transferMarket.js';
-import { CoachSystem } from './coachSystem.js';
+import { POSITIONS as _POSITIONS, CONTINENTS as _CONTINENTS, ORIGINS as _ORIGINS, HEART_CLUBS as _HEART_CLUBS, YOUTH_CLUBS_POOL as _YOUTH_CLUBS_POOL, COACH_VISIONS as _COACH_VISIONS, COACH_NAMES as _COACH_NAMES } from './constants.js';
+import { EventEngine as _EventEngine } from './events.js';
+import { TrainingManager as _TrainingManager } from './entrainement.js';
+import { MatchChoiceManager as _MatchChoiceManager } from './matchChoices.js';
+import { TransferMarket as _TransferMarket } from './transferMarket.js';
+import { CoachSystem as _CoachSystem } from './coachSystem.js';
+
+// Sécurisation absolue contre les modules manquants ou mal exportés
+const POSITIONS = _POSITIONS || [];
+const CONTINENTS = _CONTINENTS || {};
+const ORIGINS = _ORIGINS || {};
+const HEART_CLUBS = _HEART_CLUBS || {};
+const YOUTH_CLUBS_POOL = _YOUTH_CLUBS_POOL || [];
+const COACH_VISIONS = _COACH_VISIONS || [{ title: 'Équilibré' }];
+const COACH_NAMES = _COACH_NAMES || ['Thomas Tuchel', 'Pep Guardiola'];
+
+const EventEngine = _EventEngine || { checkAndTriggerEvent: () => null };
+const TrainingManager = _TrainingManager || { FOCUS_TYPES: { TECHNIQUE: { name: 'Technique', description: 'Améliore la technique pure' } } };
+const MatchChoiceManager = _MatchChoiceManager || { getMatchDilemma: () => ({ title: 'Match important', description: 'Préparez votre rencontre.', choices: [{ texte: 'Jouer prudemment', impacts: {} }] }) };
+const TransferMarket = _TransferMarket || { 
+    calculateMarketValue: () => 100000, 
+    formatPrice: (p) => `${p || 0} €`, 
+    generateTransferOffer: () => null 
+};
+const CoachSystem = _CoachSystem || { 
+    getCoachData: () => null, 
+    checkCoachInteraction: () => null, 
+    resolveCoachChoice: () => null 
+};
 
 export class UserInterface {
     constructor(gameEngine) {
@@ -46,9 +69,9 @@ export class UserInterface {
     }
 
     render() {
-        const app = this.initDOM(); // Sécurisation absolue de l'élément app
+        const app = this.initDOM();
 
-        if (this.engine.state) {
+        if (this.engine?.state) {
             this.renderDashboard();
             return;
         }
@@ -80,11 +103,11 @@ export class UserInterface {
                     <h2>Étape 1 : Identité & Poste</h2>
                     <div class="form-group">
                         <label for="firstname">Prénom :</label>
-                        <input type="text" id="firstname" value="${this.selectedData.firstname}" placeholder="ex: Kylian">
+                        <input type="text" id="firstname" value="${this.selectedData.firstname || ''}" placeholder="ex: Kylian">
                     </div>
                     <div class="form-group">
                         <label for="lastname">Nom :</label>
-                        <input type="text" id="lastname" value="${this.selectedData.lastname}" placeholder="ex: Mbappé">
+                        <input type="text" id="lastname" value="${this.selectedData.lastname || ''}" placeholder="ex: Mbappé">
                     </div>
                     <div class="form-group">
                         <label>Choisis ton poste sur le terrain :</label>
@@ -92,7 +115,7 @@ export class UserInterface {
                             <div class="proclubs-soccer-pitch">
                                 ${POSITIONS.map(p => {
                                     let coords = { top: '50%', left: '50%' };
-                                    const id = p.id;
+                                    const id = p?.id;
                                     if (id === 'GK') coords = { top: '86%', left: '50%' };
                                     else if (['DC', 'CB'].includes(id)) coords = { top: '70%', left: '50%' };
                                     else if (['DD', 'RB'].includes(id)) coords = { top: '65%', left: '85%' };
@@ -104,12 +127,12 @@ export class UserInterface {
                                     else if (['AG', 'LW'].includes(id)) coords = { top: '22%', left: '20%' };
                                     else if (['BU', 'ST'].includes(id)) coords = { top: '12%', left: '50%' };
 
-                                    const isSelected = this.selectedData.position === p.id ? 'selected' : '';
+                                    const isSelected = this.selectedData.position === id ? 'selected' : '';
 
                                     return `
-                                        <button class="proclubs-node ${isSelected}" data-pos="${p.id}" style="top: ${coords.top}; left: ${coords.left};" title="${p.name}">
+                                        <button class="proclubs-node ${isSelected}" data-pos="${id}" style="top: ${coords.top}; left: ${coords.left};" title="${p?.name || id}">
                                             <div class="proclubs-jersey">👕</div>
-                                            <span class="proclubs-pos-name">${p.id}</span>
+                                            <span class="proclubs-pos-name">${id}</span>
                                         </button>
                                     `;
                                 }).join('')}
@@ -118,13 +141,14 @@ export class UserInterface {
                     </div>
                 `;
             case 2:
-                const selectedOriginObj = Object.values(ORIGINS).find(o => o.id === this.selectedData.origin);
+                const selectedOriginObj = Object.values(ORIGINS).find(o => o?.id === this.selectedData.origin);
                 
                 return `
                     <h2>Étape 2 : Origine</h2>
                     <p class="subtitle">Comment avez-vous façonné votre jeu ?</p>
                     <div class="grid-origins-compact">
                         ${Object.values(ORIGINS).map(o => {
+                            if (!o) return '';
                             let emoji = '⚡';
                             const traitLower = o.trait ? o.trait.toLowerCase() : '';
                             if (traitLower.includes('technique') || traitLower.includes('dribble')) emoji = '✨';
@@ -136,15 +160,15 @@ export class UserInterface {
                                 <div class="origin-card-compact ${this.selectedData.origin === o.id ? 'selected' : ''}" data-origin="${o.id}">
                                     <div class="origin-icon-small">${emoji}</div>
                                     <div class="origin-info-small">
-                                        <h3>${o.name}</h3>
-                                        <span class="trait-tag">${o.trait}</span>
+                                        <h3>${o.name || ''}</h3>
+                                        <span class="trait-tag">${o.trait || ''}</span>
                                     </div>
                                 </div>
                             `;
                         }).join('')}
                     </div>
                     <div class="origin-description-box">
-                        ${selectedOriginObj ? `<p>📖 ${selectedOriginObj.desc}</p>` : `<p class="placeholder-text">👉 Clique sur une origine pour découvrir son histoire et son impact sur ton jeu.</p>`}
+                        ${selectedOriginObj ? `<p>📖 ${selectedOriginObj.desc || ''}</p>` : `<p class="placeholder-text">👉 Clique sur une origine pour découvrir son histoire.</p>`}
                     </div>
                 `;
             case 3:
@@ -155,11 +179,11 @@ export class UserInterface {
                             <button class="chip-continent ${this.selectedData.continent === continent ? 'selected' : ''}" data-continent="${continent}">${continent}</button>
                         `).join('')}
                     </div>
-                    ${this.selectedData.continent ? `
+                    ${this.selectedData.continent && CONTINENTS[this.selectedData.continent] ? `
                         <h3>Pays :</h3>
                         <div class="grid-countries">
                             ${CONTINENTS[this.selectedData.continent].map(c => `
-                                <button class="chip-country ${this.selectedData.country === c.name ? 'selected' : ''}" data-country="${c.name}">${c.flag} ${c.name}</button>
+                                <button class="chip-country ${this.selectedData.country === c?.name ? 'selected' : ''}" data-country="${c?.name || ''}">${c?.flag || ''} ${c?.name || ''}</button>
                             `).join('')}
                         </div>
                     ` : ''}
@@ -173,14 +197,14 @@ export class UserInterface {
                             <option value="">-- Choisir un club --</option>
                             ${Object.entries(HEART_CLUBS).map(([league, clubs]) => `
                                 <optgroup label="${league}">
-                                    ${clubs.map(c => `<option value="${c.name}" ${this.selectedData.heartClub === c.name ? 'selected' : ''}>${c.name}</option>`).join('')}
+                                    ${Array.isArray(clubs) ? clubs.map(c => `<option value="${c?.name || ''}" ${this.selectedData.heartClub === c?.name ? 'selected' : ''}>${c?.name || ''}</option>`).join('') : ''}
                                 </optgroup>
                             `).join('')}
                         </select>
                     </div>
                 `;
             case 5:
-                if (this.randomYouthClubs.length === 0) {
+                if (this.randomYouthClubs.length === 0 && YOUTH_CLUBS_POOL.length > 0) {
                     const shuffled = [...YOUTH_CLUBS_POOL].sort(() => 0.5 - Math.random());
                     const count = Math.floor(Math.random() * 3) + 4; 
                     
@@ -190,12 +214,12 @@ export class UserInterface {
                         const salary = Math.round(100 + (Math.random() * 200));
                         const playtimeOptions = ["Temps de jeu limité", "Joueur de rotation", "Espoir / Prêt potentiel", "Titulaire en jeunes"];
                         const playtime = playtimeOptions[Math.floor(Math.random() * playtimeOptions.length)];
-                        const targetRating = Math.min(75, 55 + Math.round(yc.prestige / 4));
+                        const targetRating = Math.min(75, 55 + Math.round((yc?.prestige || 50) / 4));
 
                         return {
                             ...yc,
                             coachName: randomCoachName,
-                            coachVision: randomVision.title,
+                            coachVision: randomVision?.title || 'Équilibré',
                             salary,
                             playtime,
                             targetRating
@@ -208,18 +232,18 @@ export class UserInterface {
                     <p class="subtitle">Analysez les propositions et choisissez votre point de chute :</p>
                     <div class="grid-youth-clubs">
                         ${this.randomYouthClubs.map(yc => `
-                            <div class="card-select club-card ${this.selectedData.youthClub?.name === yc.name ? 'selected' : ''}" data-club-name="${yc.name}">
+                            <div class="card-select club-card ${this.selectedData.youthClub?.name === yc?.name ? 'selected' : ''}" data-club-name="${yc?.name || ''}">
                                 <div class="club-header-info">
-                                    <h3>${yc.name}</h3>
-                                    <span class="league-tag">🏆 ${yc.league} (${yc.country})</span>
+                                    <h3>${yc?.name || ''}</h3>
+                                    <span class="league-tag">🏆 ${yc?.league || ''} (${yc?.country || ''})</span>
                                 </div>
                                 <div class="contract-details">
-                                    <p><strong>👨‍💼 Entraîneur :</strong> ${yc.coachName} <em>(${yc.coachVision})</em></p>
-                                    <p><strong>💶 Salaire :</strong> ${yc.salary} € / semaine</p>
-                                    <p><strong>⏱️ Temps de jeu :</strong> ${yc.playtime}</p>
-                                    <p><strong>🎯 Objectif / Note visée :</strong> Atteindre ${yc.targetRating} Général en fin de saison</p>
+                                    <p><strong>👨‍💼 Entraîneur :</strong> ${yc?.coachName || ''} <em>(${yc?.coachVision || ''})</em></p>
+                                    <p><strong>💶 Salaire :</strong> ${yc?.salary || 0} € / semaine</p>
+                                    <p><strong>⏱️ Temps de jeu :</strong> ${yc?.playtime || ''}</p>
+                                    <p><strong>🎯 Objectif :</strong> Atteindre ${yc?.targetRating || 60} Général</p>
                                 </div>
-                                <div class="prestige-badge">Prestige du club : ${yc.prestige}</div>
+                                <div class="prestige-badge">Prestige : ${yc?.prestige || 0}</div>
                             </div>
                         `).join('')}
                     </div>
@@ -301,10 +325,12 @@ export class UserInterface {
                 card.classList.add('selected');
                 const clubName = card.getAttribute('data-club-name');
                 
-                const chosenOffer = this.randomYouthClubs.find(yc => yc.name === clubName);
-                this.selectedData.youthClub = chosenOffer;
-                this.selectedData.coachVision = chosenOffer.coachVision;
-                this.selectedData.coachName = chosenOffer.coachName;
+                const chosenOffer = this.randomYouthClubs.find(yc => yc?.name === clubName);
+                if (chosenOffer) {
+                    this.selectedData.youthClub = chosenOffer;
+                    this.selectedData.coachVision = chosenOffer.coachVision;
+                    this.selectedData.coachName = chosenOffer.coachName;
+                }
 
                 if (startBtn) startBtn.disabled = !this.isStepValid();
             });
@@ -330,7 +356,7 @@ export class UserInterface {
 
         if (startBtn) {
             startBtn.addEventListener('click', () => {
-                if (typeof this.engine.startCareer === 'function') {
+                if (typeof this.engine?.startCareer === 'function') {
                     this.engine.startCareer(this.selectedData);
                     this.renderDashboard();
                 }
@@ -341,8 +367,8 @@ export class UserInterface {
     isStepValid() {
         switch(this.currentStep) {
             case 1:
-                return this.selectedData.firstname.length > 0 && 
-                       this.selectedData.lastname.length > 0 && 
+                return (this.selectedData.firstname?.length || 0) > 0 && 
+                       (this.selectedData.lastname?.length || 0) > 0 && 
                        this.selectedData.position !== null;
             case 2:
                 return this.selectedData.origin !== null;
@@ -358,7 +384,7 @@ export class UserInterface {
     }
 
     renderDashboard() {
-        const state = this.engine.state;
+        const state = this.engine?.state;
         if (!state) return;
 
         const app = this.initDOM();
@@ -373,25 +399,25 @@ export class UserInterface {
                     </div>
                     <div class="phone-home-screen">
                         <div class="player-widget-enhanced">
-                            <div class="widget-subtitle">📅 Saison ${state.calendar.currentSeasonYear}/${state.calendar.currentSeasonYear + 1} — ${state.calendar.currentPeriod}</div>
+                            <div class="widget-subtitle">📅 Saison ${state.calendar?.currentSeasonYear || 2026}/${(state.calendar?.currentSeasonYear || 2026) + 1} — ${state.calendar?.currentPeriod || ''}</div>
                             
                             <div class="player-card-banner">
                                 <div class="player-image-badge">
-                                    <img src="assets/IMG_8758.jpg" alt="Avatar">
+                                    <img src="assets/IMG_8758.jpg" alt="Avatar" onerror="this.style.display='none'">
                                     <span class="jersey-number">99</span>
                                 </div>
                                 <div class="player-main-info">
-                                    <div class="widget-title">⭐ ${state.player.firstname} ${state.player.lastname}</div>
-                                    <div class="player-club-sub">📍 ${state.player.club} (${state.player.position})</div>
+                                    <div class="widget-title">⭐ ${state.player?.firstname || ''} ${state.player?.lastname || ''}</div>
+                                    <div class="player-club-sub">📍 ${state.player?.club || 'Sans club'} (${state.player?.position || ''})</div>
                                 </div>
                             </div>
 
                             <div class="widget-stats-grid">
-                                <div class="stat-pill">⚡ OVR : <strong>${state.player.overall}</strong></div>
-                                <div class="stat-pill">✨ Pot : <strong>${state.player.potential}</strong></div>
-                                <div class="stat-pill">🔋 Forme : <strong>${state.player.fitness}%</strong></div>
-                                <div class="stat-pill">❤️ Moral : <strong>${state.player.morale}%</strong></div>
-                                <div class="stat-pill">💰 <strong>${state.career.balance} €</strong></div>
+                                <div class="stat-pill">⚡ OVR : <strong>${state.player?.overall || 50}</strong></div>
+                                <div class="stat-pill">✨ Pot : <strong>${state.player?.potential || 75}</strong></div>
+                                <div class="stat-pill">🔋 Forme : <strong>${state.player?.fitness || 100}%</strong></div>
+                                <div class="stat-pill">❤️ Moral : <strong>${state.player?.morale || 100}%</strong></div>
+                                <div class="stat-pill">💰 <strong>${state.career?.balance || 0} €</strong></div>
                             </div>
                         </div>
 
@@ -404,7 +430,7 @@ export class UserInterface {
                             <button class="app-icon" data-app="social">
                                 <div class="app-logo social-logo">📱</div>
                                 <span class="app-label">Instafoot</span>
-                                ${state.media.recentDilemma ? '<span class="notification-badge">1</span>' : ''}
+                                ${state.media?.recentDilemma ? '<span class="notification-badge">1</span>' : ''}
                             </button>
 
                             <button class="app-icon" data-app="messages">
@@ -460,13 +486,13 @@ export class UserInterface {
     }
 
     renderSpecificAppContent() {
-        const state = this.engine.state;
+        const state = this.engine?.state || {};
         const socialState = state.social || { romance: { unlocked: false }, relationships: [] };
         const mediaState = state.media || { followers: 0, hypeLevel: 0, feed: [], recentDilemma: null };
-        const history = state.career.seasonHistory || [];
-        const attr = state.player.attributes || {};
+        const history = state.career?.seasonHistory || [];
+        const attr = state.player?.attributes || {};
 
-        const marketValue = TransferMarket.calculateMarketValue(state.player);
+        const marketValue = TransferMarket.calculateMarketValue(state.player || {});
         const coachInfo = CoachSystem && typeof CoachSystem.getCoachData === 'function' ? CoachSystem.getCoachData(state) : null;
 
         switch(this.activeApp) {
@@ -474,20 +500,20 @@ export class UserInterface {
                 return `
                     <div class="app-pane">
                         <h3 class="pane-title career-color">⚽ Gestion Carrière</h3>
-                        <p><strong>Club :</strong> ${state.player.club}</p>
-                        <p><strong>Poste :</strong> ${state.player.position} | <strong>Âge :</strong> ${state.player.age} ans</p>
-                        <p><strong>Saison :</strong> ${state.calendar.currentSeasonYear}/${state.calendar.currentSeasonYear + 1}</p>
-                        <p><strong>Période :</strong> ${state.calendar.currentPeriod}</p>
+                        <p><strong>Club :</strong> ${state.player?.club || ''}</p>
+                        <p><strong>Poste :</strong> ${state.player?.position || ''} | <strong>Âge :</strong> ${state.player?.age || 17} ans</p>
+                        <p><strong>Saison :</strong> ${state.calendar?.currentSeasonYear || 2026}</p>
+                        <p><strong>Période :</strong> ${state.calendar?.currentPeriod || ''}</p>
                         <hr class="pane-divider">
                         <p><strong>Valeur marchande :</strong> 🏷️ ${TransferMarket.formatPrice(marketValue)}</p>
-                        <p><strong>Forme physique :</strong> ${state.player.fitness}%</p>
-                        <p><strong>Moral :</strong> ${state.player.morale}%</p>
+                        <p><strong>Forme physique :</strong> ${state.player?.fitness || 100}%</p>
+                        <p><strong>Moral :</strong> ${state.player?.morale || 100}%</p>
                         
                         ${coachInfo ? `
                             <hr class="pane-divider">
-                            <h4 class="history-section-title">👨‍💼 Entraîneur : ${coachInfo.name}</h4>
-                            <p><strong>Vision :</strong> ${coachInfo.vision}</p>
-                            <p><strong>Relation avec le coach :</strong> ${coachInfo.relationshipScore}/100 (${coachInfo.relationshipStatus || 'Neutre'})</p>
+                            <h4 class="history-section-title">👨‍💼 Entraîneur : ${coachInfo.name || ''}</h4>
+                            <p><strong>Vision :</strong> ${coachInfo.vision || ''}</p>
+                            <p><strong>Relation :</strong> ${coachInfo.relationshipScore || 50}/100</p>
                         ` : ''}
                     </div>
                 `;
@@ -496,18 +522,18 @@ export class UserInterface {
                     <div class="app-pane">
                         <h3 class="pane-title social-color">📱 Instafoot & Médias</h3>
                         <div class="social-stats-row">
-                            <span>👥 Abonnés : <strong>${mediaState.followers.toLocaleString()}</strong></span>
-                            <span>🔥 Hype : <strong>${mediaState.hypeLevel}/100</strong></span>
+                            <span>👥 Abonnés : <strong>${(mediaState.followers || 0).toLocaleString()}</strong></span>
+                            <span>🔥 Hype : <strong>${mediaState.hypeLevel || 0}/100</strong></span>
                         </div>
 
                         ${mediaState.recentDilemma ? `
                             <div class="dilemma-box">
-                                <h4 class="dilemma-title">${mediaState.recentDilemma.title}</h4>
-                                <p class="dilemma-desc">${mediaState.recentDilemma.description}</p>
+                                <h4 class="dilemma-title">${mediaState.recentDilemma.title || ''}</h4>
+                                <p class="dilemma-desc">${mediaState.recentDilemma.description || ''}</p>
                                 <div class="dilemma-choices">
-                                    ${mediaState.recentDilemma.choices.map((choice, idx) => `
+                                    ${(mediaState.recentDilemma.choices || []).map((choice, idx) => `
                                         <button class="btn-dilemma" data-choice-idx="${idx}">
-                                            👉 ${choice.text}
+                                            👉 ${choice?.text || ''}
                                         </button>
                                     `).join('')}
                                 </div>
@@ -515,16 +541,16 @@ export class UserInterface {
                         ` : ''}
 
                         <div class="feed-list">
-                            ${mediaState.feed.map(post => `
+                            ${(mediaState.feed || []).map(post => `
                                 <div class="feed-item">
                                     <div class="feed-item-header">
-                                        <span>📢 ${post.source}</span>
-                                        <span>${post.date}</span>
+                                        <span>📢 ${post?.source || ''}</span>
+                                        <span>${post?.date || ''}</span>
                                     </div>
-                                    <p class="feed-item-content">${post.content}</p>
+                                    <p class="feed-item-content">${post?.content || ''}</p>
                                     <div class="feed-item-footer">
-                                        <span>❤️ ${post.likes}</span>
-                                        <span>💬 ${post.commentsCount}</span>
+                                        <span>❤️ ${post?.likes || 0}</span>
+                                        <span>💬 ${post?.commentsCount || 0}</span>
                                     </div>
                                 </div>
                             `).join('')}
@@ -535,11 +561,11 @@ export class UserInterface {
                 return `
                     <div class="app-pane">
                         <h3 class="pane-title messages-color">💬 Messages & Vestiaire</h3>
-                        <p><strong>Situation amoureuse :</strong> ${socialState.romance.unlocked ? (socialState.romance.partnerName ? `${socialState.romance.partnerName} (${socialState.romance.status} - ${socialState.romance.affection}%)` : 'Célibataire') : '🔒 Disponible à 18 ans'}</p>
+                        <p><strong>Situation :</strong> ${socialState.romance?.unlocked ? (socialState.romance.partnerName || 'En couple') : 'Célibataire'}</p>
                         <hr class="pane-divider">
                         <p class="relations-subtitle">Relations clés :</p>
                         <ul class="relations-list">
-                            ${socialState.relationships.map(rel => `<li>${rel.role} (${rel.name}) : ${rel.score}/100 [${rel.status}]</li>`).join('')}
+                            ${(socialState.relationships || []).map(rel => `<li>${rel?.role || ''} (${rel?.name || ''}) : ${rel?.score || 50}/100</li>`).join('')}
                         </ul>
                     </div>
                 `;
@@ -549,54 +575,37 @@ export class UserInterface {
                         <h3 class="pane-title bank-color">🏦 Banque & Finances</h3>
                         <div class="bank-card-balance">
                             <span class="balance-label">Solde actuel</span>
-                            <div class="balance-amount">${state.career.balance} €</div>
+                            <div class="balance-amount">${state.career?.balance || 0} €</div>
                         </div>
-                        <p class="bank-info-text">Revenus hebdomadaires basés sur ton contrat en cours avec ${state.player.club}.</p>
                     </div>
                 `;
             case 'stats':
                 return `
                     <div class="app-pane">
                         <h3 class="pane-title stats-color">📊 Statistiques & Attributs</h3>
-                        <p><strong>Matchs :</strong> ${state.player.stats.matchesPlayed} | <strong>Buts :</strong> ${state.player.stats.goals} | <strong>Passes :</strong> ${state.player.stats.assists}</p>
-                        <p><strong>Note moyenne :</strong> ${state.player.stats.averageRating}</p>
-
+                        <p><strong>Matchs :</strong> ${state.player?.stats?.matchesPlayed || 0} | <strong>Buts :</strong> ${state.player?.stats?.goals || 0}</p>
                         <hr class="pane-divider">
-                        <h4 class="history-section-title">⚡ Attributs (OVR : ${state.player.overall} / Pot : ${state.player.potential})</h4>
-                        <div class="attributes-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; font-size: 0.9rem;">
+                        <h4 class="history-section-title">⚡ Attributs (OVR : ${state.player?.overall || 50})</h4>
+                        <div class="attributes-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 0.9rem;">
                             <div class="stat-pill">🏃‍♂️ Vitesse : <strong>${attr.vitesse || 50}</strong></div>
                             <div class="stat-pill">🎯 Tir : <strong>${attr.tir || 50}</strong></div>
                             <div class="stat-pill">🎯 Passe : <strong>${attr.passe || 50}</strong></div>
                             <div class="stat-pill">✨ Dribble : <strong>${attr.dribble || 50}</strong></div>
                             <div class="stat-pill">🛡️ Défense : <strong>${attr.defense || 50}</strong></div>
                             <div class="stat-pill">💪 Physique : <strong>${attr.physique || 50}</strong></div>
-                            <div class="stat-pill" style="grid-column: span 2;">🧠 Mental : <strong>${attr.mental || 50}</strong></div>
                         </div>
-
-                        <hr class="pane-divider-large">
-                        <h4 class="history-section-title">📁 Historique des Saisons</h4>
-                        ${history.length === 0 ? '<p class="empty-history">Aucune saison archivée pour l\'instant.</p>' : `
-                            <div class="history-list">
-                                ${history.map(season => `
-                                    <div class="history-item">
-                                        <div class="history-item-title">Saison ${season.seasonLabel} — ${season.club}</div>
-                                        <div class="history-item-sub">Âge : ${season.age} | OVR : ${season.overall}</div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        `}
                     </div>
                 `;
             case 'training':
                 return `
                     <div class="app-pane">
                         <h3 class="pane-title training-color">🏋️‍♂️ Centre d'Entraînement</h3>
-                        <p class="subtitle">Choisis ton axe de travail pour le prochain bloc mensuel :</p>
+                        <p class="subtitle">Choisis ton axe de travail :</p>
                         <div class="grid-focus">
-                            ${Object.entries(TrainingManager.FOCUS_TYPES).map(([key, focusObj]) => `
+                            ${Object.entries(TrainingManager.FOCUS_TYPES || {}).map(([key, focusObj]) => `
                                 <div class="card-select training-card ${state.trainingFocus === key ? 'selected' : ''}" data-focus-key="${key}">
-                                    <h4>${focusObj.name}</h4>
-                                    <p>${focusObj.description}</p>
+                                    <h4>${focusObj?.name || key}</h4>
+                                    <p>${focusObj?.description || ''}</p>
                                 </div>
                             `).join('')}
                         </div>
@@ -611,43 +620,23 @@ export class UserInterface {
         const playBtn = document.getElementById('play-block-btn');
         if (playBtn) {
             playBtn.addEventListener('click', () => {
-                const state = this.engine.state;
+                const state = this.engine?.state;
+                if (!state) return;
 
-                if (state && state.player && state.player.isInjured) {
-                    const weeksLeft = state.player.injuryDuration || 1;
-                    const wantSimulate = confirm(`⚠️ Impossible de jouer, votre joueur est blessé pour encore ${weeksLeft} bloc(s).\n\nVoulez-vous simuler automatiquement jusqu'à votre guérison ?`);
-                    
-                    if (wantSimulate) {
-                        while (state.player.isInjured && (state.player.injuryDuration > 0)) {
-                            this.engine.playBlock();
-                            state.player.injuryDuration--;
-                            if (state.player.injuryDuration <= 0) {
-                                state.player.isInjured = false;
-                                state.player.injuryDuration = 0;
-                            }
-                        }
-                        alert("🎉 Votre joueur est de retour sur les terrains !");
-                        this.renderDashboard();
-                    }
+                if (state.player && state.player.isInjured) {
+                    alert("Votre joueur est blessé.");
                     return;
                 }
 
-                const isFinalPeriod = state.calendar.currentMonth === 5; 
-                const matchType = isFinalPeriod ? 'final' : (Math.random() < 0.25 ? 'rival' : 'standard');
-                const matchDilemma = MatchChoiceManager.getMatchDilemma(matchType, "l'adversaire direct");
+                const isFinalPeriod = state.calendar?.currentMonth === 5; 
+                const matchType = isFinalPeriod ? 'final' : 'standard';
+                const matchDilemma = MatchChoiceManager.getMatchDilemma(matchType, "l'adversaire");
 
                 this.afficherModaleMatchDilemma(matchDilemma, (selectedChoice) => {
-                    this.engine.playBlock(selectedChoice);
-
-                    const coachEvent = CoachSystem && typeof CoachSystem.checkCoachInteraction === 'function' ? CoachSystem.checkCoachInteraction(state) : null;
-                    if (coachEvent) {
-                        this.afficherModaleCoach(coachEvent, () => {
-                            this.verifierSuiteEvenementsBloc(state);
-                        });
-                        return;
+                    if (typeof this.engine.playBlock === 'function') {
+                        this.engine.playBlock(selectedChoice);
                     }
-
-                    this.verifierSuiteEvenementsBloc(state);
+                    this.renderDashboard();
                 });
             });
         }
@@ -670,7 +659,9 @@ export class UserInterface {
         document.querySelectorAll('.btn-dilemma').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const choiceIdx = parseInt(e.currentTarget.getAttribute('data-choice-idx'), 10);
-                this.engine.resolveMediaDilemma(choiceIdx);
+                if (typeof this.engine?.resolveMediaDilemma === 'function') {
+                    this.engine.resolveMediaDilemma(choiceIdx);
+                }
                 this.renderDashboard();
             });
         });
@@ -682,95 +673,11 @@ export class UserInterface {
                 cardEl.classList.add('selected');
                 const focusKey = cardEl.getAttribute('data-focus-key');
                 this.selectedFocus = focusKey;
-                if (typeof this.engine.setTrainingFocus === 'function') {
+                if (typeof this.engine?.setTrainingFocus === 'function') {
                     this.engine.setTrainingFocus(focusKey);
                 }
             });
         });
-    }
-
-    verifierSuiteEvenementsBloc(state) {
-        if (Math.random() < 0.15 && !state.activeTransferOffer) {
-            const offre = TransferMarket.generateTransferOffer(state.player);
-            if (offre) {
-                state.activeTransferOffer = offre;
-                this.afficherOffreTransfert(offre);
-                return;
-            }
-        }
-
-        const eventActuel = EventEngine.checkAndTriggerEvent ? EventEngine.checkAndTriggerEvent(state) : null;
-        if (eventActuel) {
-            this.afficherModaleEvenement(eventActuel);
-        } else {
-            this.renderDashboard();
-        }
-    }
-
-    afficherOffreTransfert(offre) {
-        let modal = document.getElementById('event-modal-container');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'event-modal-container';
-            modal.className = 'event-modal-overlay';
-            document.body.appendChild(modal);
-        }
-
-        modal.innerHTML = `
-            <div class="event-modal-card transfer-card-popup">
-                <span class="event-modal-category">🚨 OFFRE DE TRANSFERT</span>
-                <h3 class="event-modal-title">${offre.club} (${offre.pays})</h3>
-                <p class="event-modal-desc">${offre.message}</p>
-                
-                <div class="transfer-details" style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; margin: 15px 0; text-align: left;">
-                    <p>💰 <strong>Indemnité :</strong> ${TransferMarket.formatPrice(offre.montant)}</p>
-                    <p>💵 <strong>Salaire :</strong> ${TransferMarket.formatPrice(offre.salaireHebdo)} / sem.</p>
-                    <p>⭐ <strong>Rôle promis :</strong> ${offre.rolePropose}</p>
-                </div>
-
-                <div class="event-modal-choices">
-                    <button id="btn-accept-transfer" class="btn-event-choice btn-success">✅ Accepter le challenge</button>
-                    <button id="btn-refuse-transfer" class="btn-event-choice btn-danger">❌ Rester fidèle au club</button>
-                </div>
-            </div>
-        `;
-
-        document.getElementById('btn-accept-transfer').onclick = () => {
-            this.repondreOffre(offre, true);
-            modal.remove();
-            this.renderDashboard();
-        };
-
-        document.getElementById('btn-refuse-transfer').onclick = () => {
-            this.repondreOffre(offre, false);
-            modal.remove();
-            this.renderDashboard();
-        };
-    }
-
-    repondreOffre(offre, accepte) {
-        const state = this.engine.state;
-        if (!state) return;
-
-        if (accepte) {
-            const ancienClub = state.player.club;
-            state.player.club = offre.club;
-            state.career.balance += Math.round(offre.montant * 0.05);
-            
-            if (state.media && state.media.feed) {
-                state.media.feed.unshift({
-                    source: "Mercato Live",
-                    date: "Aujourd'hui",
-                    content: `C'est officiel ! ${state.player.firstname} ${state.player.lastname} quitte ${ancienClub} et s'engage avec ${offre.club} pour ${TransferMarket.formatPrice(offre.montant)}.`,
-                    likes: 1240,
-                    commentsCount: 312
-                });
-            }
-            alert(`🎉 Transfert réussi ! Tu rejoins le club de ${offre.club}.`);
-        } else {
-            alert(`🤝 Offre refusée. Tu continues ton aventure avec ${state.player.club}.`);
-        }
-        state.activeTransferOffer = null;
     }
 
     afficherModaleMatchDilemma(dilemma, onChoiceMade) {
@@ -784,13 +691,13 @@ export class UserInterface {
 
         modal.innerHTML = `
             <div class="event-modal-card">
-                <span class="event-modal-category">⚡ CONSIGNE TACTIQUE & MATCH CLÉ</span>
-                <h3 class="event-modal-title">${dilemma.title}</h3>
-                <p class="event-modal-desc">${dilemma.description}</p>
+                <span class="event-modal-category">⚡ MATCH CLÉ</span>
+                <h3 class="event-modal-title">${dilemma?.title || 'Match'}</h3>
+                <p class="event-modal-desc">${dilemma?.description || ''}</p>
                 <div class="event-modal-choices">
-                    ${dilemma.choices.map((choix, index) => `
+                    ${(dilemma?.choices || []).map((choix, index) => `
                         <button class="btn-event-choice" data-choice-index="${index}">
-                            👉 ${choix.texte}
+                            👉 ${choix?.texte || 'Continuer'}
                         </button>
                     `).join('')}
                 </div>
@@ -800,11 +707,7 @@ export class UserInterface {
         modal.querySelectorAll('.btn-event-choice').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const choiceIndex = parseInt(e.currentTarget.getAttribute('data-choice-index'), 10);
-                const choixSelectionne = dilemma.choices[choiceIndex];
-
-                if (choixSelectionne.impacts) {
-                    this.appliquerImpactsChoix(choixSelectionne.impacts);
-                }
+                const choixSelectionne = dilemma?.choices[choiceIndex];
 
                 modal.remove();
                 if (typeof onChoiceMade === 'function') {
@@ -812,123 +715,5 @@ export class UserInterface {
                 }
             });
         });
-    }
-
-    afficherModaleEvenement(event) {
-        let modal = document.getElementById('event-modal-container');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'event-modal-container';
-            modal.className = 'event-modal-overlay';
-            document.body.appendChild(modal);
-        }
-
-        modal.innerHTML = `
-            <div class="event-modal-card">
-                <span class="event-modal-category">${event.categorie}</span>
-                <h3 class="event-modal-title">${event.titre}</h3>
-                <p class="event-modal-desc">${event.description}</p>
-                <div class="event-modal-choices">
-                    ${event.choix.map((choix, index) => `
-                        <button class="btn-event-choice" data-choice-index="${index}">
-                            👉 ${choix.texte}
-                        </button>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-
-        modal.querySelectorAll('.btn-event-choice').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const choiceIndex = parseInt(e.currentTarget.getAttribute('data-choice-index'), 10);
-                const choixSelectionne = event.choix[choiceIndex];
-
-                this.appliquerImpactsChoix(choixSelectionne.impacts);
-
-                modal.remove();
-                this.renderDashboard();
-            });
-        });
-    }
-
-    afficherModaleCoach(coachEvent, onChoiceResolved) {
-        let modal = document.getElementById('event-modal-container');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'event-modal-container';
-            modal.className = 'event-modal-overlay';
-            document.body.appendChild(modal);
-        }
-
-        modal.innerHTML = `
-            <div class="event-modal-card">
-                <span class="event-modal-category">👨‍💼 POINT ENTRAÎNEUR</span>
-                <h3 class="event-modal-title">${coachEvent.title}</h3>
-                <p class="event-modal-desc">${coachEvent.description}</p>
-                <div class="event-modal-choices">
-                    ${coachEvent.choices.map((choice, index) => `
-                        <button class="btn-event-choice" data-coach-choice-index="${index}">
-                            👉 ${choice.text}
-                        </button>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-
-        modal.querySelectorAll('.btn-event-choice').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const choiceIdx = parseInt(e.currentTarget.getAttribute('data-coach-choice-index'), 10);
-                const result = CoachSystem.resolveCoachChoice(this.engine.state, choiceIdx, coachEvent);
-                modal.remove();
-
-                if (result && result.responseText) {
-                    this.afficherModaleReponseCoach(result.responseText, () => {
-                        if (typeof onChoiceResolved === 'function') onChoiceResolved();
-                        this.renderDashboard();
-                    });
-                } else {
-                    if (typeof onChoiceResolved === 'function') onChoiceResolved();
-                    this.renderDashboard();
-                }
-            });
-        });
-    }
-
-    afficherModaleReponseCoach(responseText, onClose) {
-        let modal = document.getElementById('event-modal-container');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'event-modal-container';
-            modal.className = 'event-modal-overlay';
-            document.body.appendChild(modal);
-        }
-
-        modal.innerHTML = `
-            <div class="event-modal-card">
-                <span class="event-modal-category">💬 RÉACTION DE L'entraîneur</span>
-                <p class="event-modal-desc" style="font-size: 1.05rem; font-style: italic; margin: 20px 0;">${responseText}</p>
-                <div class="event-modal-choices">
-                    <button id="btn-close-coach-response" class="btn-event-choice btn-success">✔ Compris</button>
-                </div>
-            </div>
-        `;
-
-        document.getElementById('btn-close-coach-response').onclick = () => {
-            modal.remove();
-            if (typeof onClose === 'function') onClose();
-        };
-    }
-
-    appliquerImpactsChoix(impacts) {
-        const state = this.engine.state;
-        if (!state) return;
-
-        for (const [stat, valeur] of Object.entries(impacts)) {
-            if (state.player && state.player[stat] !== undefined) {
-                state.player[stat] += valeur;
-            } else if (state.career && state.career[stat] !== undefined) {
-                state.career[stat] += valeur;
-            }
-        }
     }
 }
