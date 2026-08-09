@@ -254,19 +254,6 @@ button:disabled {
    CONSEQUENCE SYSTEM
    ========================================================= */
 
-/*
- * ---------------------------------------------------------
- * CHOIX AVANT VALIDATION
- * ---------------------------------------------------------
- *
- * IMPORTANT :
- * Les conséquences ne doivent PAS être visibles
- * lorsque le joueur doit encore choisir.
- *
- * Même si le JavaScript génère un aperçu,
- * celui-ci est masqué visuellement.
- */
-
 .choice-consequences {
     display: none !important;
 }
@@ -275,23 +262,11 @@ button:disabled {
     display: none !important;
 }
 
-
-/*
- * Texte principal du choix
- */
-
 .choice-main-text {
     display: block;
     font-weight: 700;
     line-height: 1.35;
 }
-
-
-/*
- * Si une ancienne version du HTML place
- * les conséquences directement dans le bouton,
- * on masque également les éléments connus.
- */
 
 .choice-button .consequence-chip,
 .choice-card .consequence-chip,
@@ -311,28 +286,13 @@ button:disabled {
     margin: 0 auto;
 }
 
-
-/*
- * Titre
- */
-
 .consequence-result-card h3 {
     margin: 0 0 8px 0;
 }
 
-
-/*
- * Message explicatif
- */
-
 .consequence-result-card p {
     line-height: 1.5;
 }
-
-
-/*
- * Liste
- */
 
 .consequence-result-list {
     display: flex;
@@ -342,103 +302,44 @@ button:disabled {
     margin-bottom: 18px;
 }
 
-
-/*
- * Une conséquence
- */
-
 .consequence-result-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-
     gap: 12px;
-
     padding: 11px 14px;
-
     border-radius: 10px;
-
     font-size: 0.95rem;
     line-height: 1.3;
-
     background: rgba(255, 255, 255, 0.055);
-
-    border: 1px solid rgba(
-        255,
-        255,
-        255,
-        0.08
-    );
-
-    animation:
-        consequenceAppear
-        0.25s
-        ease-out
-        both;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    animation: consequenceAppear 0.25s ease-out both;
 }
-
-
-/*
- * Texte de la conséquence
- */
 
 .consequence-result-row span {
     font-weight: 600;
 }
-
-
-/*
- * Valeur
- */
 
 .consequence-result-row strong {
     white-space: nowrap;
     font-weight: 800;
 }
 
-
-/*
- * BONUS
- */
-
 .consequence-result-row.positive {
     color: #69e6a7;
-
-    background:
-        rgba(16, 185, 129, 0.09);
-
-    border-color:
-        rgba(16, 185, 129, 0.22);
+    background: rgba(16, 185, 129, 0.09);
+    border-color: rgba(16, 185, 129, 0.22);
 }
-
-
-/*
- * MALUS
- */
 
 .consequence-result-row.negative {
     color: #ff8792;
-
-    background:
-        rgba(239, 68, 68, 0.08);
-
-    border-color:
-        rgba(239, 68, 68, 0.22);
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.22);
 }
-
-
-/*
- * Effet temporaire
- */
 
 .consequence-result-row.temporary {
     border-style: dashed;
 }
-
-
-/*
- * Durée de l'effet
- */
 
 .consequence-result-row small {
     font-size: 0.75rem;
@@ -446,18 +347,10 @@ button:disabled {
     font-weight: 500;
 }
 
-
-/*
- * Aucun changement
- */
-
 .consequence-empty {
     margin: 12px 0 4px;
-
     text-align: center;
-
     color: #94a3b8;
-
     font-size: 0.9rem;
 }
 
@@ -466,33 +359,17 @@ button:disabled {
    ANIMATION DES CONSÉQUENCES
    ========================================================= */
 
-.consequence-result-row:nth-child(2) {
-    animation-delay: 0.04s;
-}
-
-.consequence-result-row:nth-child(3) {
-    animation-delay: 0.08s;
-}
-
-.consequence-result-row:nth-child(4) {
-    animation-delay: 0.12s;
-}
-
-.consequence-result-row:nth-child(5) {
-    animation-delay: 0.16s;
-}
-
-.consequence-result-row:nth-child(6) {
-    animation-delay: 0.20s;
-}
+.consequence-result-row:nth-child(2) { animation-delay: 0.04s; }
+.consequence-result-row:nth-child(3) { animation-delay: 0.08s; }
+.consequence-result-row:nth-child(4) { animation-delay: 0.12s; }
+.consequence-result-row:nth-child(5) { animation-delay: 0.16s; }
+.consequence-result-row:nth-child(6) { animation-delay: 0.20s; }
 
 @keyframes consequenceAppear {
-
     from {
         opacity: 0;
         transform: translateY(5px);
     }
-
     to {
         opacity: 1;
         transform: translateY(0);
@@ -501,7 +378,7 @@ button:disabled {
 
 
 /* =========================================================
-   BOUTON CONTINUER
+   BOUTON CONTINUER & EFFETS ACTIFS
    ========================================================= */
 
 .consequence-continue {
@@ -509,16 +386,8 @@ button:disabled {
     margin-top: 8px;
 }
 
-
-/*
- * Si le bouton est généré avec une classe
- * différente mais contient ce rôle.
- */
-
 .consequence-result-card button {
-    transition:
-        transform 0.15s ease,
-        opacity 0.15s ease;
+    transition: transform 0.15s ease, opacity 0.15s ease;
 }
 
 .consequence-result-card button:hover {
@@ -528,11 +397,6 @@ button:disabled {
 .consequence-result-card button:active {
     transform: translateY(0);
 }
-
-
-/* =========================================================
-   EFFETS TEMPORAIRES ACTIFS
-   ========================================================= */
 
 .active-consequences {
     display: flex;
@@ -545,42 +409,97 @@ button:disabled {
     display: flex;
     align-items: center;
     justify-content: space-between;
-
     gap: 10px;
-
     padding: 9px 12px;
-
     border-radius: 9px;
-
-    background:
-        rgba(255, 255, 255, 0.045);
-
-    border:
-        1px solid rgba(
-            255,
-            255,
-            255,
-            0.08
-        );
+    background: rgba(255, 255, 255, 0.045);
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .active-consequence.positive {
-    border-color:
-        rgba(16, 185, 129, 0.2);
+    border-color: rgba(16, 185, 129, 0.2);
 }
 
 .active-consequence.negative {
-    border-color:
-        rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.2);
 }
 
 
 /* =========================================================
-   RESPONSIVE MOBILE
+   WALLPAPER / ARRIÈRE-PLAN SMARTPHONE (NATIVE)
+   ========================================================= */
+
+/* Le conteneur du téléphone sert de référence de positionnement */
+.phone-frame,
+.phone-home-screen {
+    position: relative;
+    min-height: 100vh;
+    overflow: hidden;
+    background-color: #111827;
+}
+
+/* Image de fond fixe couvrant l'écran du smartphone */
+.phone-home-screen::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('assets/IMG_8758.jpg');
+    background-size: cover;
+    background-position: center top;
+    background-repeat: no-repeat;
+    z-index: 0;
+    pointer-events: none;
+}
+
+/* Overlay sombre progressif pour garantir la lisibilité du texte */
+.phone-home-screen::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        to bottom,
+        rgba(17, 24, 39, 0.35) 0%,
+        rgba(17, 24, 39, 0.75) 50%,
+        rgba(17, 24, 39, 0.95) 100%
+    );
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* Éléments de l'interface placés au-dessus de l'arrière-plan */
+.phone-status-bar,
+.player-widget-enhanced,
+.widget-state-grid,
+.player-card-banner,
+#main-content,
+#dashboard {
+    position: relative;
+    z-index: 2;
+}
+
+/* Style des cartes en verre dépoli (Glassmorphism) sur le fond */
+.player-widget-enhanced {
+    background: rgba(31, 41, 55, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    padding: 16px;
+    margin-top: 12px;
+}
+
+
+/* =========================================================
+   RESPONSIVE MOBILE & ACCESSIBILITÉ
    ========================================================= */
 
 @media (max-width: 600px) {
-
     .career-container {
         padding: 12px;
     }
@@ -608,11 +527,6 @@ button:disabled {
     }
 }
 
-
-/* =========================================================
-   ACCESSIBILITÉ
-   ========================================================= */
-
 button:focus-visible,
 .chip:focus-visible,
 .chip-continent:focus-visible,
@@ -620,53 +534,4 @@ button:focus-visible,
 .card-select:focus-visible {
     outline: 2px solid #60a5fa;
     outline-offset: 2px;
-}
-
-
-/* =========================================================
-   FIN CONSEQUENCE SYSTEM
-   ========================================================= */
-/* =========================================================
-   WIDGET JOUEUR & BADGE IMAGE (HOME SCREEN)
-   ========================================================= */
-
-.player-card-banner {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-top: 10px;
-}
-
-/* Conteneur de l'image du joueur */
-.player-image-badge {
-    position: relative;
-    width: 80px;                /* Largeur souhaitée pour la photo */
-    height: 80px;               /* Hauteur souhaitée pour la photo */
-    min-width: 80px;            /* Empêche l'image d'être écrasée en Flexbox */
-    border-radius: 12px;        /* Coins arrondis */
-    overflow: hidden;           /* Coupe le surplus de l'image */
-    border: 2px solid #374151;  /* Bordure sombre */
-    background-color: #1f2937;
-}
-
-/* L'image elle-même */
-.player-image-badge img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;          /* Recadre proprement sans déformer */
-    object-position: top;       /* Garde le visage visible */
-    display: block;
-}
-
-/* Badge du numéro de maillot par-dessus l'image */
-.jersey-number {
-    position: absolute;
-    bottom: 4px;
-    right: 4px;
-    background: rgba(0, 0, 0, 0.75);
-    color: #10b981;             /* Vert thème */
-    font-size: 0.75rem;
-    font-weight: bold;
-    padding: 2px 6px;
-    border-radius: 4px;
 }
