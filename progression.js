@@ -15,6 +15,8 @@
  * ============================================================
  */
 
+import { PotentialSystem } from './potentialSystem.js';
+
 // ============================================================
 // 1. CONSTANTES & DONNÉES DE RÉFÉRENCE
 // ============================================================
@@ -44,12 +46,10 @@ export const POSTES_PONDERATION = {
 
 /** Paliers de potentiel caché (Pilier 3) : fourchette du Potentiel Max tiré au sort. */
 export const TIERS_POTENTIEL = [
-  { id: 'limite',        label: 'Limité',        min: 55, max: 66 },
-  { id: 'correct',       label: 'Correct',       min: 67, max: 75 },
-  { id: 'prometteur',    label: 'Prometteur',    min: 76, max: 83 },
-  { id: 'talentueux',    label: 'Talentueux',    min: 84, max: 89 },
-  { id: 'exceptionnel',  label: 'Exceptionnel',  min: 90, max: 94 },
-  { id: 'generationnel', label: 'Générationnel', min: 95, max: 99 },
+  { id: 'prometteur',    label: 'Prometteur',    min: 75, max: 77 },
+  { id: 'talentueux',    label: 'Talentueux',    min: 78, max: 80 },
+  { id: 'exceptionnel',  label: 'Exceptionnel',  min: 81, max: 89 },
+  { id: 'generationnel', label: 'Générationnel', min: 90, max: 99 },
 ];
 
 /**
@@ -121,16 +121,23 @@ const COEFFICIENT_XP_VERS_POINTS = 0.05;
 
 /** Facteur multiplicatif de progression selon l'âge (Pilier 4 — plafond lié à l'âge). */
 const PALIERS_AGE = [
-  { max: 19, facteur: 1.15 },
-  { max: 23, facteur: 1.05 },
-  { max: 27, facteur: 1.0 },
-  { max: 30, facteur: 0.85 },
-  { max: 33, facteur: 0.55 },
-  { max: 35, facteur: 0.3 },
-  { max: Infinity, facteur: 0.05 }, // plafond quasi bloqué en fin de carrière
+  { max: 15, facteur: 0.58 },
+  { max: 16, facteur: 0.68 },
+  { max: 17, facteur: 0.80 },
+  { max: 18, facteur: 0.92 },
+  { max: 19, facteur: 1.00 },
+  { max: 22, facteur: 1.05 },
+  { max: 25, facteur: 0.98 },
+  { max: 28, facteur: 0.88 },
+  { max: 30, facteur: 0.72 },
+  { max: 33, facteur: 0.52 },
+  { max: 35, facteur: 0.36 },
+  { max: 38, facteur: 0.22 },
+  { max: 41, facteur: 0.12 },
+  { max: Infinity, facteur: 0.06 },
 ];
 
-const AGE_DEBUT_DECLIN = 31; // déclin physique en fin de saison à partir de cet âge
+const AGE_DEBUT_DECLIN = 31; // déclin physique progressif en fin de saison
 
 // ============================================================
 // 2. UTILITAIRES
@@ -175,17 +182,17 @@ function facteurRalentissementLog(valeurActuelle, plafond) {
  * @param {keyof typeof POSTES_PONDERATION} poste
  * @param {number} [age=16] Âge de départ
  */
-export function initialiserJoueur(origine, poste, age = 16) {
+export function initialiserJoueur(origine, poste, age = 14) {
   const profilOrigine = ORIGINES[origine];
   const ponderationPoste = POSTES_PONDERATION[poste];
   if (!profilOrigine) throw new Error(`Origine inconnue : "${origine}"`);
   if (!ponderationPoste) throw new Error(`Poste inconnu : "${poste}"`);
 
-  // Potentiel Max caché : on tire d'abord un tier selon la distribution
-  // propre à l'origine, puis une valeur précise dans la fourchette du tier.
-  const idTier = tirageAleatoirePondere(profilOrigine.distribution);
-  const tier = TIERS_POTENTIEL.find((t) => t.id === idTier);
-  const potentielMax = entierAleatoire(tier.min, tier.max);
+  // Nouveau moteur : le potentiel initial est volontairement resserré à 75–80.
+  // L'origine ne décide plus seule du plafond : elle influence surtout le profil
+  // de développement et les affinités.
+  const potentialProfile = PotentialSystem.createProfile();
+  const potentielMax = potentialProfile.current;
 
   // Plafonds par attribut : dérivés du potentiel max, nuancés par le profil
   // de l'origine (un futsaleur peut plafonner en dribble au-dessus de son
@@ -209,14 +216,16 @@ export function initialiserJoueur(origine, poste, age = 16) {
   const joueur = {
     origine,
     poste,
-    age,
+    age: Math.max(14, Number(age) || 14),
     xp: 0,
     niveauXP: 1,
     stats,
     plafondsStats,
     progressionAccumulee,
     affinites: profilOrigine.affinites,
-    potentielMax,          // caché : ne jamais afficher tel quel côté joueur
+    potentielMax,          // compatibilité : synchronisé avec potentialProfile.current
+    potentialProfile,
+    origineDeltas: profilOrigine.deltas,
     general: 0,
     historique: [],
   };
@@ -367,7 +376,8 @@ export function appliquerProgression(joueur, gains) {
   joueur.niveauXP = infoNiveau.niveau;
 
   const facteurAge = obtenirFacteurAge(joueur.age);
-  const pointsDisponibles = xp * COEFFICIENT_XP_VERS_POINTS * facteurAge;
+  const facteurPic = PotentialSystem.getPeakMultiplier(joueur);
+  const pointsDisponibles = xp * COEFFICIENT_XP_VERS_POINTS * facteurAge * facteurPic;
   const repartitionFinale = repartition || POSTES_PONDERATION[joueur.poste];
 
   const detailGains = {};
@@ -418,6 +428,7 @@ export function appliquerProgression(joueur, gains) {
     declinAppliqueAge,
     niveauXP: joueur.niveauXP,
     xpProchainNiveau: infoNiveau.xpProchainNiveau,
+    facteurPic: Number(facteurPic.toFixed(3)),
     rapportPotentiel,
   };
 }
