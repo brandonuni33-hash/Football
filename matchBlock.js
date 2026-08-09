@@ -201,7 +201,9 @@ export const MatchBlockManager = {
             assists: totalAssists,
             passes,
             tackles,
-            yellowCards
+            yellowCards,
+            // Le potentiel vivant doit connaître les blessures du bloc.
+            injured: isInjured
         };
 
         if (player.stats && matchesInMonth > 0) {
