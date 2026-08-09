@@ -1,9 +1,8 @@
-
 // state.js
 // Persistence centralisée et tolérante aux anciennes sauvegardes.
 
 const STORAGE_KEY = 'street_to_pro_save_v3';
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 const DEFAULT_STATE = {
     schemaVersion: SCHEMA_VERSION,
@@ -68,6 +67,11 @@ function migrate(raw) {
             Array.isArray(state.player.temporaryEffects)
                 ? state.player.temporaryEffects
                 : [];
+
+        state.player.age = Math.max(14, Number(state.player.age) || 14);
+        state.player.potentialProfile ||= null;
+        state.player.canRetire = state.player.age >= 34;
+        state.player.careerEnded = state.player.age >= 42;
     }
 
     return state;
