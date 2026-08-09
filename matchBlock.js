@@ -7,17 +7,6 @@ import { PotentialSystem } from './potentialSystem.js';
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
-function applyChoiceStats(player, stats = {}) {
-    for (const [key, value] of Object.entries(stats)) {
-        if (player.attributes?.[key] !== undefined) {
-            player.attributes[key] = clamp(player.attributes[key] + value, 1, 99);
-        } else if (player.stats?.[key] !== undefined) {
-            player.stats[key] = clamp(player.stats[key] + value, 0, 100);
-        }
-    }
-    PlayerLogic.syncProgressionFromCanonical(player);
-}
-
 export const MatchBlockManager = {
     simulateBlock(state, trainingFocus = 'TECHNIQUE', userMatchChoice = null) {
         const player = state.player;
