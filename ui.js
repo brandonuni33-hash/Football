@@ -4,7 +4,7 @@ import { EventEngine as _EventEngine } from './events.js';
 import { TrainingManager as _TrainingManager } from './entrainement.js';
 import { MatchChoiceManager as _MatchChoiceManager } from './matchChoices.js';
 import { TransferMarket as _TransferMarket } from './transferMarket.js';
-import { CoachSystem as _CoachSystem } from './coachSystem.js';
+import { CoachSystem as _CoachSystem } from './coachsystem.js';
 
 // Sécurisation absolue (transformation en tableaux si les imports sont des objets)
 const POSITIONS = Array.isArray(_POSITIONS) ? _POSITIONS : Object.values(_POSITIONS || {});
