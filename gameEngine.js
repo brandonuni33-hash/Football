@@ -7,7 +7,7 @@ import { EconomyManager as _EconomyManager } from './economy.js';
 import { SocialSystem as _SocialSystem } from './social.js';
 import { MediaSystem as _MediaSystem } from './media.js';
 import { EventEngine as _EventEngine } from './events.js';
-import { CoachSystem as _CoachSystem } from './coachSystem.js';
+import { CoachSystem as _CoachSystem } from './coachsystem.js';
 
 const MatchBlockManager = _MatchBlockManager || { simulateBlock: () => ({}) };
 const EconomyManager = _EconomyManager || { calculateContractOffer: () => ({ weeklySalary: 150 }) };
