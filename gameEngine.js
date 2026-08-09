@@ -12,6 +12,8 @@ import { PlayerLogic } from './player.js';
 import { StateManager, SCHEMA_VERSION } from './state.js';
 import { ConsequenceSystem } from './consequenceSystem.js';
 import { PotentialSystem } from './potentialSystem.js';
+import { CareerSystem } from './careerSystem.js';
+import { CompetitionSystem } from './competitionSystem.js';
 
 export class GameEngine {
     constructor() {
@@ -23,6 +25,7 @@ export class GameEngine {
             this.migrateLoadedState();
             ConsequenceSystem.initialize(this.state.player);
             PotentialSystem.ensure(this.state.player);
+            CareerSystem.refreshStage(this.state.player);
         }
 
         this.ui = new UserInterface(this);
@@ -78,6 +81,17 @@ export class GameEngine {
             this.state.player = migrated;
         }
 
+        if (!this.state.player.careerProfile) {
+            CareerSystem.initialize(this.state.player, {
+                name: this.state.player.club || 'Centre de Formation',
+                prestige: 40,
+                country: this.state.player.clubCountry || this.state.player.country || 'France'
+            });
+        } else {
+            CareerSystem.refreshStage(this.state.player);
+        }
+
+        this.state.careerStructure = this.state.player.careerProfile;
         this.state.trainingFocus ||= 'TECHNIQUE';
         this.state.career ||= { balance: 0, seasonHistory: [], totalCareerIncome: 0 };
         this.state.calendar ||= {
@@ -125,6 +139,10 @@ export class GameEngine {
         );
 
         player.club = youthClubName;
+        player.clubCountry = youthClub?.country || player.clubCountry || player.country || 'France';
+        player.clubLevel = Number(youthClub?.tier) || player.clubLevel || 1;
+        CareerSystem.initialize(player, youthClub);
+        player.contract = { ...player.contract, ...contract };
         player.salary = Number(
             youthClub?.salary ??
             youthClub?.weeklySalary ??
@@ -170,12 +188,16 @@ export class GameEngine {
             pendingEvent: null,
             pendingCoachEvent: null,
             pendingMediaDilemma: null,
-            pendingTransferOffer: null
+            pendingTransferOffer: null,
+            pendingPositionProposal: null,
+            careerStructure: player.careerProfile || null
         };
 
         this.socialSystem.ensureRelationships(this.state);
         ConsequenceSystem.initialize(this.state.player);
         PotentialSystem.ensure(this.state.player);
+        CareerSystem.refreshStage(this.state.player);
+        this.state.careerStructure = this.state.player.careerProfile || null;
         StateManager.save(this.state);
         console.log('Carrière créée :', this.state);
 
@@ -256,15 +278,20 @@ export class GameEngine {
             ? null
             : CoachSystem.checkCoachInteraction(this.state);
 
-        // 5. Offre de transfert occasionnelle.
+        // 5. Développement de carrière : rôle naturel et recrutement précoce.
+        CareerSystem.refreshStage(player);
+        const discoveredRole = CareerSystem.detectRole(player);
+        const positionProposal = CareerSystem.evaluatePositionChange(player);
+        this.state.pendingPositionProposal = positionProposal || null;
+
         this.state.pendingTransferOffer = null;
-        if (
-            player.age >= 17 &&
-            !player.isInjured &&
-            Math.random() < 0.12
-        ) {
-            this.state.pendingTransferOffer =
-                TransferMarket.generateTransferOffer(player);
+        if (!player.isInjured) {
+            if (player.age < 22) {
+                this.state.pendingTransferOffer = CareerSystem.recruitmentOffer(player);
+            }
+            if (!this.state.pendingTransferOffer && player.age >= 18 && Math.random() < 0.08) {
+                this.state.pendingTransferOffer = TransferMarket.generateTransferOffer(player);
+            }
         }
 
         const calendar = this.advanceCalendar();
@@ -280,7 +307,9 @@ export class GameEngine {
             event: this.state.pendingEvent,
             coachEvent: this.state.pendingCoachEvent,
             transferOffer: this.state.pendingTransferOffer,
-            mediaDilemma: this.state.media?.recentDilemma || null
+            mediaDilemma: this.state.media?.recentDilemma || null,
+            positionProposal: this.state.pendingPositionProposal,
+            discoveredRole
         };
     }
 
@@ -377,6 +406,17 @@ export class GameEngine {
         return result;
     }
 
+    resolvePositionProposal(accepted) {
+        const proposal = this.state?.pendingPositionProposal;
+        if (!proposal) return false;
+        const result = CareerSystem.applyPositionChange(this.state.player, !!accepted, proposal);
+        this.state.pendingPositionProposal = null;
+        this.state.careerStructure = this.state.player.careerProfile || null;
+        PlayerLogic.syncProgressionFromCanonical(this.state.player);
+        StateManager.save(this.state);
+        return result;
+    }
+
     acceptTransferOffer() {
         const offer = this.state?.pendingTransferOffer;
         if (!offer) return null;
@@ -458,6 +498,7 @@ export class GameEngine {
             vieillirDUnAn: false
         });
         PotentialSystem.advanceAge(player);
+        CareerSystem.refreshStage(player);
         PlayerLogic.syncProgressionFromCanonical(player);
         player.canRetire = player.age >= 34;
         player.careerEnded = player.age >= 42;
