@@ -471,17 +471,14 @@
             color: white;
         }
     </style>
-    <!-- Script de débogage pour attraper la moindre erreur JavaScript -->
-    <script>
-        window.onerror = function(msg, url, line) {
-            alert("Erreur JS : " + msg + " (Ligne " + line + ")");
-        };
-    </script>
+    <!-- Console mobile Eruda pour inspecter les erreurs directement sur téléphone -->
+    <script src="//cdn.jsdelivr.net/npm/eruda"></script>
+    <script>eruda.init();</script>
 </head>
 <body>
     
     <div id="app"></div>
 
-    <script type="module" src="./main.js?v=104"></script>
+    <script type="module" src="./main.js?v=105"></script>
 </body>
 </html>
