@@ -9,7 +9,7 @@ import { CoachSystem } from './coachSystem.js';
 import { TransferMarket } from './transferMarket.js';
 import { TrainingManager } from './entrainement.js';
 import { PlayerLogic } from './player.js';
-import { StateManager } from './state.js';
+import { StateManager, SCHEMA_VERSION } from './state.js';
 import { ConsequenceSystem } from './consequenceSystem.js';
 import { PotentialSystem } from './potentialSystem.js';
 
@@ -90,6 +90,8 @@ export class GameEngine {
         );
         this.state.media ||= this.mediaSystem.initMediaData();
 
+        this.socialSystem.ensureRelationships(this.state);
+
         this.state.social.coachData ||= {
             name: this.state.player.coachName || 'l’entraîneur',
             relation: this.state.player.stats?.relationCoach ?? 50,
@@ -143,7 +145,7 @@ export class GameEngine {
         };
 
         this.state = {
-            schemaVersion: 4,
+            schemaVersion: SCHEMA_VERSION,
             player,
             trainingFocus: 'TECHNIQUE',
             social,
@@ -171,6 +173,7 @@ export class GameEngine {
             pendingTransferOffer: null
         };
 
+        this.socialSystem.ensureRelationships(this.state);
         ConsequenceSystem.initialize(this.state.player);
         PotentialSystem.ensure(this.state.player);
         StateManager.save(this.state);
