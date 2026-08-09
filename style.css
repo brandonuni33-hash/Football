@@ -359,17 +359,32 @@ button:disabled {
    ANIMATION DES CONSÉQUENCES
    ========================================================= */
 
-.consequence-result-row:nth-child(2) { animation-delay: 0.04s; }
-.consequence-result-row:nth-child(3) { animation-delay: 0.08s; }
-.consequence-result-row:nth-child(4) { animation-delay: 0.12s; }
-.consequence-result-row:nth-child(5) { animation-delay: 0.16s; }
-.consequence-result-row:nth-child(6) { animation-delay: 0.20s; }
+.consequence-result-row:nth-child(2) {
+    animation-delay: 0.04s;
+}
+
+.consequence-result-row:nth-child(3) {
+    animation-delay: 0.08s;
+}
+
+.consequence-result-row:nth-child(4) {
+    animation-delay: 0.12s;
+}
+
+.consequence-result-row:nth-child(5) {
+    animation-delay: 0.16s;
+}
+
+.consequence-result-row:nth-child(6) {
+    animation-delay: 0.20s;
+}
 
 @keyframes consequenceAppear {
     from {
         opacity: 0;
         transform: translateY(5px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -387,7 +402,9 @@ button:disabled {
 }
 
 .consequence-result-card button {
-    transition: transform 0.15s ease, opacity 0.15s ease;
+    transition:
+        transform 0.15s ease,
+        opacity 0.15s ease;
 }
 
 .consequence-result-card button:hover {
@@ -502,9 +519,12 @@ button:disabled {
     z-index: 2;
     position: relative;
     overflow-y: auto;
+
     /* Hauteur ajustée pour laisser de la place à la bulle d'action en bas */
-    max-height: calc(100vh - 280px); 
-    padding-bottom: 60px; /* Espace pour ne pas que les apps soient cachées derrière la bulle */
+    max-height: calc(100vh - 280px);
+
+    /* Espace pour ne pas que les apps soient cachées derrière la bulle */
+    padding-bottom: 60px;
 }
 
 .app-icon {
@@ -534,7 +554,7 @@ button:disabled {
     position: relative;
     background: rgba(255, 255, 255, 0.15);
     border: 1.5px solid rgba(255, 255, 255, 0.25);
-    box-shadow: 
+    box-shadow:
         0 8px 16px rgba(0, 0, 0, 0.5),
         inset 0 1px 1px rgba(255, 255, 255, 0.3),
         inset 0 -1px 1px rgba(0, 0, 0, 0.3);
@@ -559,9 +579,9 @@ button:disabled {
     font-weight: 700;
     text-align: center;
     color: #ffffff;
-    text-shadow: 
+    text-shadow:
         0 1px 2px rgba(0, 0, 0, 0.8),
-        -1px -1px 0 rgba(0, 0, 0, 0.2),  
+        -1px -1px 0 rgba(0, 0, 0, 0.2),
         1px -1px 0 rgba(0, 0, 0, 0.2),
         -1px 1px 0 rgba(0, 0, 0, 0.2),
         1px 1px 0 rgba(0, 0, 0, 0.2);
@@ -570,8 +590,10 @@ button:disabled {
 #settings-floating-btn {
     position: fixed;
     right: 20px;
+
     /* Ajusté pour être juste au-dessus de la nouvelle bulle d'action */
-    bottom: calc(140px + env(safe-area-inset-bottom)); 
+    bottom: calc(140px + env(safe-area-inset-bottom));
+
     width: 44px;
     height: 44px;
     border-radius: 50%;
@@ -596,46 +618,51 @@ button:disabled {
 /* Le bouton 'play-block-btn' devient une bulle flottante */
 .btn-play-block {
     position: fixed;
+
     /* Centré en bas */
-    bottom: calc(40px + env(safe-area-inset-bottom)); 
+    bottom: calc(40px + env(safe-area-inset-bottom));
+
     left: 50%;
-    transform: translateX(-50%); /* Technique de centrage CSS */
-    
+    transform: translateX(-50%);
+
     /* Dimensions et forme de bulle */
     width: auto;
-    min-width: 180px; /* Largeur minimale pour le texte */
+    min-width: 180px;
     padding: 12px 24px;
-    border-radius: 30px; /* Bords très arrondis comme une pilule */
-    
+    border-radius: 30px;
+
     /* Z-index élevé pour être au-dessus des apps et du fond */
     z-index: 15;
-    
-    /* Style visuel : Neumorphisme épuré et visible */
-    background: rgba(16, 185, 129, 0.9); /* Vert opaque */
-    border: 2px solid rgba(255, 255, 255, 0.4); /* Bordure blanche prononcée */
-    box-shadow: 
-        0 10px 25px rgba(0, 0, 0, 0.6), /* Forte ombre externe */
-        inset 0 1px 2px rgba(255, 255, 255, 0.5); /* Lumière interne */
-        
+
+    /* Style visuel */
+    background: rgba(16, 185, 129, 0.9);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+
+    box-shadow:
+        0 10px 25px rgba(0, 0, 0, 0.6),
+        inset 0 1px 2px rgba(255, 255, 255, 0.5);
+
     /* Texte */
     color: #ffffff;
     font-weight: 800;
     font-size: 1rem;
     text-align: center;
     cursor: pointer;
-    border: none;
-    transition: transform 0.1s ease, background 0.2s ease;
+
+    transition:
+        transform 0.1s ease,
+        background 0.2s ease;
 }
 
 /* Effet au clic */
 .btn-play-block:active {
     transform: translateX(-50%) scale(0.95);
-    background: rgba(5, 150, 105, 1); /* Vert plus foncé */
+    background: rgba(5, 150, 105, 1);
 }
 
 /* État désactivé (fin de carrière) */
 .btn-play-block:disabled {
-    background: rgba(107, 114, 128, 0.9); /* Gris */
+    background: rgba(107, 114, 128, 0.9);
     border-color: rgba(255, 255, 255, 0.2);
     box-shadow: none;
     cursor: not-allowed;
@@ -648,6 +675,7 @@ button:disabled {
    ========================================================= */
 
 @media (max-width: 600px) {
+
     .career-container {
         padding: 12px;
     }
