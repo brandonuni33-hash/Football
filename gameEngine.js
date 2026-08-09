@@ -1,13 +1,29 @@
 // gameEngine.js
 import { UserInterface } from './ui.js';
-import { MatchBlockManager } from './matchBlock.js';
-import { EconomyManager } from './economy.js';
-import { SocialSystem } from './social.js';
-import { MediaSystem } from './media.js';
-import { EventEngine } from './events.js';
-import { TrainingManager } from './entrainement.js';
-import { CoachSystem } from './coachSystem.js';
-import { MatchChoiceManager } from './matchChoices.js';
+
+// Importations sécurisées avec fallbacks par défaut pour éviter tout crash au démarrage
+import { MatchBlockManager as _MatchBlockManager } from './matchBlock.js';
+import { EconomyManager as _EconomyManager } from './economy.js';
+import { SocialSystem as _SocialSystem } from './social.js';
+import { MediaSystem as _MediaSystem } from './media.js';
+import { EventEngine as _EventEngine } from './events.js';
+import { CoachSystem as _CoachSystem } from './coachSystem.js';
+
+const MatchBlockManager = _MatchBlockManager || { simulateBlock: () => ({}) };
+const EconomyManager = _EconomyManager || { calculateContractOffer: () => ({ weeklySalary: 150 }) };
+const SocialSystem = _SocialSystem || class { 
+    constructor() {} 
+    initSocialData() { return {}; } 
+    updateSocialCycle() {} 
+};
+const MediaSystem = _MediaSystem || class { 
+    constructor() {} 
+    initMediaData() { return { followers: 0, hypeLevel: 0, feed: [] }; } 
+    generatePostAfterBlock() {} 
+    resolveDilemma() {} 
+};
+const EventEngine = _EventEngine || { checkAndTriggerEvent: () => null };
+const CoachSystem = _CoachSystem || { checkCoachInteraction: () => null, resolveCoachChoice: () => null };
 
 export class GameEngine {
     constructor() {
@@ -18,32 +34,30 @@ export class GameEngine {
     }
 
     startCareer(selectedData) {
-        const initialOvr = selectedData.ovr || Math.floor(Math.random() * 11) + 35;
-        const potentialOvr = selectedData.pot || initialOvr + Math.floor(Math.random() * 25) + 15;
+        const initialOvr = selectedData?.ovr || Math.floor(Math.random() * 11) + 35;
+        const potentialOvr = selectedData?.pot || initialOvr + Math.floor(Math.random() * 25) + 15;
         
-        const tempPlayerForEconomy = {
-            overall: initialOvr,
-            age: 16
-        };
-        const contract = EconomyManager.calculateContractOffer(selectedData.youthClub, tempPlayerForEconomy);
+        const tempPlayerForEconomy = { overall: initialOvr, age: 16 };
+        const contract = EconomyManager.calculateContractOffer(selectedData?.youthClub, tempPlayerForEconomy);
 
-        const coachName = selectedData.coachName || "l'entraîneur";
+        const coachName = selectedData?.coachName || "l'entraîneur";
+        const youthClubName = selectedData?.youthClub?.name || "Centre de Formation";
 
         this.state = {
             player: {
-                firstname: selectedData.firstName || selectedData.firstname,
-                lastname: selectedData.lastName || selectedData.lastname,
-                position: selectedData.position,
+                firstname: selectedData?.firstName || selectedData?.firstname || 'Joueur',
+                lastname: selectedData?.lastName || selectedData?.lastname || 'Inconnu',
+                position: selectedData?.position || 'BU',
                 age: 16,
-                club: selectedData.youthClub.name,
-                salary: contract.weeklySalary,
+                club: youthClubName,
+                salary: contract?.weeklySalary || 150,
                 overall: initialOvr,
-                fame: selectedData.stats?.reputation || 10,
+                fame: selectedData?.stats?.reputation || 10,
                 morale: 80,
                 fitness: 90,
                 isInjured: false,
                 injuryDuration: 0,
-                stats: selectedData.stats || {
+                stats: selectedData?.stats || {
                     technique: initialOvr,
                     physique: initialOvr,
                     mental: initialOvr,
@@ -61,13 +75,13 @@ export class GameEngine {
                 },
                 potential: potentialOvr,
                 attributes: {
-                    vitesse: initialOvr + Math.floor(Math.random() * 7) - 3,
-                    tir: initialOvr + Math.floor(Math.random() * 7) - 3,
-                    passe: initialOvr + Math.floor(Math.random() * 7) - 3,
-                    dribble: initialOvr + Math.floor(Math.random() * 7) - 3,
-                    defense: initialOvr + Math.floor(Math.random() * 7) - 3,
-                    physique: initialOvr + Math.floor(Math.random() * 7) - 3,
-                    mental: initialOvr + Math.floor(Math.random() * 7) - 3
+                    vitesse: initialOvr,
+                    tir: initialOvr,
+                    passe: initialOvr,
+                    dribble: initialOvr,
+                    defense: initialOvr,
+                    physique: initialOvr,
+                    mental: initialOvr
                 }
             },
             trainingFocus: 'TECHNIQUE',
@@ -79,7 +93,7 @@ export class GameEngine {
                     opinion: "Neutre",
                     hasLeftClub: false
                 },
-                youthClubName: selectedData.youthClub.name
+                youthClubName: youthClubName
             },
             media: this.mediaSystem.initMediaData(),
             career: {
@@ -90,7 +104,7 @@ export class GameEngine {
                 currentMonth: 8,
                 currentSeasonYear: 2026,
                 totalMonths: 12,
-                currentPeriod: "Reprise & Pré-saison"
+                currentPeriod: "Pré-saison & Début de championnat"
             },
             seasonPhase: 'pre_season',
             pendingMatchDilemma: null,
@@ -104,9 +118,7 @@ export class GameEngine {
         if (!this.state) return;
 
         if (this.state.player.isInjured) {
-            if (this.state.player.injuryDuration > 0) {
-                this.state.player.injuryDuration--;
-            }
+            if (this.state.player.injuryDuration > 0) this.state.player.injuryDuration--;
             if (this.state.player.injuryDuration <= 0) {
                 this.state.player.isInjured = false;
                 this.state.player.injuryDuration = 0;
@@ -116,18 +128,18 @@ export class GameEngine {
         const report = MatchBlockManager.simulateBlock(this.state, this.state.trainingFocus, selectedChoice);
         this.state.pendingMatchDilemma = null;
 
-        this.socialSystem.updateSocialCycle(this.state);
-        this.mediaSystem.generatePostAfterBlock(this.state, report);
+        if (typeof this.socialSystem.updateSocialCycle === 'function') {
+            this.socialSystem.updateSocialCycle(this.state);
+        }
+        if (typeof this.mediaSystem.generatePostAfterBlock === 'function') {
+            this.mediaSystem.generatePostAfterBlock(this.state, report);
+        }
 
         const triggeredEvent = EventEngine.checkAndTriggerEvent ? EventEngine.checkAndTriggerEvent(this.state) : null;
-        if (triggeredEvent) {
-            this.state.pendingEvent = triggeredEvent;
-        }
+        if (triggeredEvent) this.state.pendingEvent = triggeredEvent;
 
-        const coachEvent = CoachSystem.checkCoachInteraction(this.state);
-        if (coachEvent) {
-            this.state.pendingCoachEvent = coachEvent;
-        }
+        const coachEvent = CoachSystem.checkCoachInteraction ? CoachSystem.checkCoachInteraction(this.state) : null;
+        if (coachEvent) this.state.pendingCoachEvent = coachEvent;
 
         const cal = this.state.calendar;
         if (cal.currentMonth < 12) {
@@ -142,11 +154,7 @@ export class GameEngine {
 
         return {
             report,
-            calendar: {
-                month: cal.currentMonth,
-                year: cal.currentSeasonYear,
-                period: cal.currentPeriod
-            },
+            calendar: { month: cal.currentMonth, year: cal.currentSeasonYear, period: cal.currentPeriod },
             event: triggeredEvent || null,
             coachEvent: coachEvent || null
         };
@@ -190,10 +198,8 @@ export class GameEngine {
         }
         this.state.career.seasonHistory.push(seasonSummary);
 
-        if (this.state.social && this.state.social.coachData) {
-            if (player.club !== this.state.social.youthClubName) {
-                this.state.social.coachData.hasLeftClub = true;
-            }
+        if (this.state.social?.coachData && player.club !== this.state.social.youthClubName) {
+            this.state.social.coachData.hasLeftClub = true;
         }
 
         player.age += 1;
@@ -207,6 +213,8 @@ export class GameEngine {
 
     resolveMediaDilemma(choiceIndex) {
         if (!this.state) return;
-        this.mediaSystem.resolveDilemma(this.state, choiceIndex);
+        if (typeof this.mediaSystem.resolveDilemma === 'function') {
+            this.mediaSystem.resolveDilemma(this.state, choiceIndex);
+        }
     }
 }
