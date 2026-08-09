@@ -227,12 +227,12 @@ export class CoachSystem {
                 if (statKey === 'relationCoach') {
                     coachState.relation = Math.min(100, Math.max(0, coachState.relation + val));
                     if (player.stats) player.stats.relationCoach = coachState.relation;
+                } else if (player.attributes && player.attributes[statKey] !== undefined) {
+                    player.attributes[statKey] = Math.min(99, Math.max(1, player.attributes[statKey] + val));
                 } else if (player[statKey] !== undefined) {
                     player[statKey] = Math.min(100, Math.max(0, player[statKey] + val));
                 } else if (player.stats && player.stats[statKey] !== undefined) {
                     player.stats[statKey] = Math.min(100, Math.max(0, player.stats[statKey] + val));
-                } else if (player.attributes && player.attributes[statKey] !== undefined) {
-                    player.attributes[statKey] = Math.min(100, Math.max(0, player.attributes[statKey] + val));
                 } else {
                     // Fallback par défaut si la stat n'existe nulle part pour éviter les plantages
                     player[statKey] = Math.min(100, Math.max(0, (player[statKey] || 50) + val));
