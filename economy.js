@@ -68,9 +68,13 @@ export const EconomyManager = {
             state.player.fitness = Math.min(100, Math.max(0, (state.player.fitness || 80) + choice.fitnessEffect));
             state.player.fame = Math.max(0, (state.player.fame || 10) + choice.fameEffect);
 
-            if (choice.attributeBonus && state.player.attributes) {
+            if (choice.attributeBonus) {
                 const attrKey = choice.attributeBonus.type;
-                if (state.player.attributes[attrKey] < 20) state.player.attributes[attrKey] += choice.attributeBonus.value;
+                if (attrKey === 'injuryProneness' && state.player.hidden) {
+                    state.player.hidden.injuryProneness = Math.min(20, Math.max(1, (state.player.hidden.injuryProneness || 10) + choice.attributeBonus.value));
+                } else if (state.player.attributes?.[attrKey] !== undefined) {
+                    state.player.attributes[attrKey] = Math.min(99, Math.max(1, state.player.attributes[attrKey] + choice.attributeBonus.value));
+                }
             }
 
             return { success: true, message: `Validé : ${choice.label} (-${choice.cost} €)` };
