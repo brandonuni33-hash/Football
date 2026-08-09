@@ -6,12 +6,12 @@ import { MatchChoiceManager as _MatchChoiceManager } from './matchChoices.js';
 import { TransferMarket as _TransferMarket } from './transferMarket.js';
 import { CoachSystem as _CoachSystem } from './coachSystem.js';
 
-// Sécurisation absolue contre les modules manquants ou mal exportés
-const POSITIONS = _POSITIONS || [];
+// Sécurisation absolue (transformation en tableaux si les imports sont des objets)
+const POSITIONS = Array.isArray(_POSITIONS) ? _POSITIONS : Object.values(_POSITIONS || {});
 const CONTINENTS = _CONTINENTS || {};
 const ORIGINS = _ORIGINS || {};
 const HEART_CLUBS = _HEART_CLUBS || {};
-const YOUTH_CLUBS_POOL = _YOUTH_CLUBS_POOL || [];
+const YOUTH_CLUBS_POOL = Array.isArray(_YOUTH_CLUBS_POOL) ? _YOUTH_CLUBS_POOL : Object.values(_YOUTH_CLUBS_POOL || {});
 const COACH_VISIONS = _COACH_VISIONS || [{ title: 'Équilibré' }];
 const COACH_NAMES = _COACH_NAMES || ['Thomas Tuchel', 'Pep Guardiola'];
 
@@ -34,7 +34,6 @@ export class UserInterface {
         this.engine = gameEngine;
         this.currentStep = 1;
         this.activeApp = 'home';
-        this.selectedFocus = 'TECHNIQUE';
         this.selectedData = {
             firstname: '',
             lastname: '',
@@ -53,7 +52,7 @@ export class UserInterface {
     }
 
     init() {
-        console.log("Initialisation et rendu forcé de l'interface utilisateur...");
+        console.log("Initialisation et rendu de l'interface utilisateur...");
         this.render();
     }
 
@@ -62,43 +61,58 @@ export class UserInterface {
         if (!app) {
             app = document.createElement('div');
             app.id = 'app';
-            document.body.appendChild(app);
+            if (document.body) {
+                document.body.appendChild(app);
+            }
         }
         window.UI = this;
         return app;
     }
 
     render() {
-        const app = this.initDOM();
+        try {
+            const app = this.initDOM();
 
-        if (this.engine?.state) {
-            this.renderDashboard();
-            return;
+            if (this.engine?.state) {
+                this.renderDashboard();
+                return;
+            }
+
+            app.innerHTML = `
+                <div class="career-container">
+                    <header class="career-header">
+                        <h1>⚡ Street to Pro</h1>
+                        <div class="progress-bar">
+                            <div class="progress" style="width: ${(this.currentStep / 5) * 100}%"></div>
+                        </div>
+                    </header>
+                    <main class="career-content">
+                        ${this.renderStepContent()}
+                    </main>
+                    <footer class="career-footer">
+                        ${this.currentStep > 1 ? '<button id="prev-btn" class="btn-secondary">Précédent</button>' : ''}
+                        ${this.currentStep < 5 ? '<button id="next-btn" class="btn-primary" disabled>Suivant</button>' : '<button id="start-btn" class="btn-success" disabled>Lancer</button>'}
+                    </footer>
+                </div>
+            `;
+            this.bindStepEvents();
+        } catch (error) {
+            console.error("💥 CRASH CRITIQUE DANS RENDER() :", error);
+            const app = document.getElementById('app');
+            if (app) {
+                app.innerHTML = `<div style="padding: 20px; color: white; background: red; border-radius: 8px;">
+                    <h3>⚠️ Erreur d'interface</h3>
+                    <p>${error.message}</p>
+                    <p style="font-size: 12px; margin-top: 10px;">Vérifie la console Eruda pour plus de détails.</p>
+                </div>`;
+            }
         }
-
-        app.innerHTML = `
-            <div class="career-container">
-                <header class="career-header">
-                    <h1>⚡ Street to Pro</h1>
-                    <div class="progress-bar">
-                        <div class="progress" style="width: ${(this.currentStep / 5) * 100}%"></div>
-                    </div>
-                </header>
-                <main class="career-content">
-                    ${this.renderStepContent()}
-                </main>
-                <footer class="career-footer">
-                    ${this.currentStep > 1 ? '<button id="prev-btn" class="btn-secondary">Précédent</button>' : ''}
-                    ${this.currentStep < 5 ? '<button id="next-btn" class="btn-primary" disabled>Suivant</button>' : '<button id="start-btn" class="btn-success" disabled>Lancer</button>'}
-                </footer>
-            </div>
-        `;
-        this.bindStepEvents();
     }
 
     renderStepContent() {
+        // Ajout des blocs { } pour chaque case afin de protéger le scope des variables (const/let)
         switch(this.currentStep) {
-            case 1:
+            case 1: {
                 return `
                     <h2>Étape 1 : Identité & Poste</h2>
                     <div class="form-group">
@@ -140,7 +154,8 @@ export class UserInterface {
                         </div>
                     </div>
                 `;
-            case 2:
+            }
+            case 2: {
                 const selectedOriginObj = Object.values(ORIGINS).find(o => o?.id === this.selectedData.origin);
                 
                 return `
@@ -171,7 +186,12 @@ export class UserInterface {
                         ${selectedOriginObj ? `<p>📖 ${selectedOriginObj.desc || ''}</p>` : `<p class="placeholder-text">👉 Clique sur une origine pour découvrir son histoire.</p>`}
                     </div>
                 `;
-            case 3:
+            }
+            case 3: {
+                const paysList = this.selectedData.continent && CONTINENTS[this.selectedData.continent] 
+                    ? (Array.isArray(CONTINENTS[this.selectedData.continent]) ? CONTINENTS[this.selectedData.continent] : Object.values(CONTINENTS[this.selectedData.continent]))
+                    : [];
+
                 return `
                     <h2>Étape 3 : Région & Pays</h2>
                     <div class="grid-continents">
@@ -179,31 +199,36 @@ export class UserInterface {
                             <button class="chip-continent ${this.selectedData.continent === continent ? 'selected' : ''}" data-continent="${continent}">${continent}</button>
                         `).join('')}
                     </div>
-                    ${this.selectedData.continent && CONTINENTS[this.selectedData.continent] ? `
+                    ${this.selectedData.continent && paysList.length > 0 ? `
                         <h3>Pays :</h3>
                         <div class="grid-countries">
-                            ${CONTINENTS[this.selectedData.continent].map(c => `
+                            ${paysList.map(c => `
                                 <button class="chip-country ${this.selectedData.country === c?.name ? 'selected' : ''}" data-country="${c?.name || ''}">${c?.flag || ''} ${c?.name || ''}</button>
                             `).join('')}
                         </div>
                     ` : ''}
                 `;
-            case 4:
+            }
+            case 4: {
                 return `
                     <h2>Étape 4 : Club de Cœur</h2>
                     <div class="form-group">
                         <label for="heart-club-select">Club de cœur :</label>
                         <select id="heart-club-select">
                             <option value="">-- Choisir un club --</option>
-                            ${Object.entries(HEART_CLUBS).map(([league, clubs]) => `
-                                <optgroup label="${league}">
-                                    ${Array.isArray(clubs) ? clubs.map(c => `<option value="${c?.name || ''}" ${this.selectedData.heartClub === c?.name ? 'selected' : ''}>${c?.name || ''}</option>`).join('') : ''}
-                                </optgroup>
-                            `).join('')}
+                            ${Object.entries(HEART_CLUBS).map(([league, clubs]) => {
+                                const clubArray = Array.isArray(clubs) ? clubs : Object.values(clubs || {});
+                                return `
+                                    <optgroup label="${league}">
+                                        ${clubArray.map(c => `<option value="${c?.name || ''}" ${this.selectedData.heartClub === c?.name ? 'selected' : ''}>${c?.name || ''}</option>`).join('')}
+                                    </optgroup>
+                                `;
+                            }).join('')}
                         </select>
                     </div>
                 `;
-            case 5:
+            }
+            case 5: {
                 if (this.randomYouthClubs.length === 0 && YOUTH_CLUBS_POOL.length > 0) {
                     const shuffled = [...YOUTH_CLUBS_POOL].sort(() => 0.5 - Math.random());
                     const count = Math.floor(Math.random() * 3) + 4; 
@@ -248,6 +273,7 @@ export class UserInterface {
                         `).join('')}
                     </div>
                 `;
+            }
             default:
                 return `<p>Chargement...</p>`;
         }
