@@ -1,4 +1,3 @@
-
 // ui.js
 import { POSITIONS as _POSITIONS, CONTINENTS as _CONTINENTS, ORIGINS as _ORIGINS, HEART_CLUBS as _HEART_CLUBS, YOUTH_CLUBS_POOL as _YOUTH_CLUBS_POOL, COACH_VISIONS as _COACH_VISIONS, COACH_NAMES as _COACH_NAMES } from './constants.js';
 import { EventEngine as _EventEngine } from './events.js';
@@ -455,7 +454,11 @@ export class UserInterface {
                                 <div class="stat-pill">✨ Pot : <strong>${state.player?.potential || 75}</strong></div>
                                 <div class="stat-pill">🔋 Forme : <strong>${state.player?.fitness || 100}%</strong></div>
                                 <div class="stat-pill">❤️ Moral : <strong>${state.player?.morale || 100}%</strong></div>
+                                <div class="stat-pill">🎂 Âge : <strong>${state.player?.age || 14}</strong> ans</div>
                                 <div class="stat-pill">💰 <strong>${state.career?.balance || 0} €</strong></div>
+                            </div>
+                            <div class="stat-pill" style="margin-top:8px;">
+                                ${state.player?.careerEnded ? '🏁 Carrière terminée' : state.player?.canRetire ? '🏁 Retraite disponible' : `🚀 Développement : ${state.player?.potentialProfile?.peakAge || '??'} ans (secret)`}
                             </div>
                         </div>
 
@@ -492,9 +495,13 @@ export class UserInterface {
                             </button>
                         </div>
 
-                        <button id="play-block-btn" class="btn-play-block">
-                            ▶️ Lancer le prochain bloc
+                        <button id="play-block-btn" class="btn-play-block" ${state.player?.careerEnded ? 'disabled' : ''}>
+                            ${state.player?.careerEnded ? '🏁 Carrière terminée' : '▶️ Lancer le prochain bloc'}
                         </button>
+                        ${state.player?.canRetire && !state.player?.careerEnded ? `
+                        <button id="retire-career-btn" class="btn-secondary" style="margin-top:8px;">
+                            🏁 Prendre sa retraite à ${state.player.age} ans
+                        </button>` : ''}
                         <button id="reset-career-btn" class="btn-secondary" style="margin-top:8px;">
                             🗑️ Nouvelle carrière
                         </button>
@@ -688,6 +695,16 @@ export class UserInterface {
                 } else {
                     const result = this.engine.playBlock(null);
                     this.handleBlockResult(result);
+                }
+            });
+        }
+
+        const retireCareerBtn = document.getElementById('retire-career-btn');
+        if (retireCareerBtn) {
+            retireCareerBtn.addEventListener('click', () => {
+                if (window.confirm(`Prendre sa retraite à ${this.engine?.state?.player?.age || 34} ans ?`)) {
+                    this.engine.retireCareer();
+                    this.renderDashboard();
                 }
             });
         }
