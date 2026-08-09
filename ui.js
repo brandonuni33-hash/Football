@@ -1,3 +1,4 @@
+
 // ui.js
 import { POSITIONS as _POSITIONS, CONTINENTS as _CONTINENTS, ORIGINS as _ORIGINS, HEART_CLUBS as _HEART_CLUBS, YOUTH_CLUBS_POOL as _YOUTH_CLUBS_POOL, COACH_VISIONS as _COACH_VISIONS, COACH_NAMES as _COACH_NAMES } from './constants.js';
 import { EventEngine as _EventEngine } from './events.js';
@@ -5,6 +6,7 @@ import { TrainingManager as _TrainingManager } from './entrainement.js';
 import { MatchChoiceManager as _MatchChoiceManager } from './matchChoices.js';
 import { TransferMarket as _TransferMarket } from './transferMarket.js';
 import { CoachSystem as _CoachSystem } from './coachSystem.js';
+import { ConsequenceSystem as _ConsequenceSystem } from './consequenceSystem.js';
 
 // Sécurisation absolue (transformation en tableaux si les imports sont des objets)
 const POSITIONS = Array.isArray(_POSITIONS) ? _POSITIONS : Object.values(_POSITIONS || {});
@@ -32,6 +34,7 @@ const TransferMarket = _TransferMarket || {
     formatPrice: (p) => `${p || 0} €`,
     generateTransferOffer: () => null
 };
+const ConsequenceSystem = _ConsequenceSystem || { preview: () => ({ effects: [] }) };
 const CoachSystem = _CoachSystem || {
     getCoachData: () => null,
     checkCoachInteraction: () => null,
@@ -750,23 +753,55 @@ export class UserInterface {
             return;
         }
 
-        if (result.event) {
-            this.afficherModaleEvent(result.event, (choiceIndex) => {
-                this.engine.resolveEventChoice(choiceIndex);
-                this.renderDashboard();
-                this.handlePostInteraction();
-            });
+        const openPendingInteraction = () => {
+            if (result.event) {
+                this.afficherModaleEvent(result.event, (choiceIndex) => {
+                    const consequence = this.engine.resolveEventChoice(choiceIndex);
+
+                    const finish = () => {
+                        this.renderDashboard();
+                        this.handlePostInteraction();
+                    };
+
+                    if (consequence?.changes?.length || consequence?.temporary?.length || consequence?.xp) {
+                        this.afficherModaleConsequences(consequence, finish);
+                    } else {
+                        finish();
+                    }
+                });
+                return;
+            }
+
+            if (result.coachEvent) {
+                this.afficherModaleCoach(result.coachEvent, (choiceIndex) => {
+                    const consequence = this.engine.resolveCoachChoice(choiceIndex);
+
+                    const finish = () => {
+                        this.renderDashboard();
+                        this.handlePostInteraction();
+                    };
+
+                    if (consequence?.changes?.length || consequence?.temporary?.length || consequence?.xp) {
+                        this.afficherModaleConsequences(consequence, finish);
+                    } else {
+                        finish();
+                    }
+                });
+                return;
+            }
+
+            this.handlePostInteraction();
+        };
+
+        if (result.report?.summary?.choiceConsequences) {
+            this.afficherModaleConsequences(
+                result.report.summary.choiceConsequences,
+                openPendingInteraction
+            );
             return;
         }
 
-        if (result.coachEvent) {
-            this.afficherModaleCoach(result.coachEvent, (choiceIndex) => {
-                this.engine.resolveCoachChoice(choiceIndex);
-                this.renderDashboard();
-                this.handlePostInteraction();
-            });
-            return;
-        }
+        openPendingInteraction();
 
         if (result.transferOffer) {
             this.afficherModaleTransfer(result.transferOffer);
@@ -798,6 +833,7 @@ export class UserInterface {
             title: event?.titre || 'Événement',
             description: event?.description || '',
             choices: (event?.choix || []).map(choice => ({
+                ...choice,
                 text: choice?.texte || 'Continuer'
             }))
         }, (_, index) => {
@@ -863,6 +899,81 @@ export class UserInterface {
         });
     }
 
+    afficherModaleConsequences(result, onContinue = null) {
+        let modal = document.getElementById('event-modal-container');
+
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'event-modal-container';
+            modal.className = 'event-modal-overlay';
+            document.body.appendChild(modal);
+        }
+
+        const changes = result?.changes || [];
+        const temporary = result?.temporary || [];
+        const effects = [
+            ...changes.map(change => ({
+                label: change.label || change.stat,
+                delta: change.delta,
+                type: 'permanent'
+            })),
+            ...temporary.map(effect => ({
+                label: effect.label || effect.stat,
+                delta: effect.value,
+                type: 'temporary',
+                duration: effect.duration
+            }))
+        ];
+
+        if (result?.xp) {
+            effects.push({
+                label: 'XP',
+                delta: result.xp,
+                type: 'xp'
+            });
+        }
+
+        const html = effects.map(effect => {
+            const positive = Number(effect.delta) > 0;
+            const sign = positive ? '+' : '';
+            const value = effect.type === 'temporary'
+                ? `${sign}${Math.round(Number(effect.delta) * 100)}%`
+                : `${sign}${effect.delta}`;
+
+            const duration = effect.type === 'temporary'
+                ? `<small> · ${effect.duration} match${effect.duration > 1 ? 's' : ''}</small>`
+                : '';
+
+            return `
+                <div class="consequence-result-row ${positive ? 'positive' : 'negative'}">
+                    <span>${positive ? '▲' : '▼'} ${effect.label}</span>
+                    <strong>${value}${duration}</strong>
+                </div>
+            `;
+        }).join('');
+
+        modal.innerHTML = `
+            <div class="event-modal-card consequence-result-card">
+                <span class="event-modal-category">📊 CONSÉQUENCES</span>
+                <h3 class="event-modal-title">${result?.title || 'Conséquences'}</h3>
+                ${result?.message ? `<p class="event-modal-desc">${result.message}</p>` : ''}
+                <div class="consequence-result-list">
+                    ${html || '<p class="consequence-empty">Aucune modification directe.</p>'}
+                </div>
+                <div class="event-modal-choices">
+                    <button class="btn-event-choice consequence-continue">Continuer</button>
+                </div>
+            </div>
+        `;
+
+        modal.querySelector('.consequence-continue')?.addEventListener('click', () => {
+            modal.remove();
+            if (typeof onContinue === 'function') {
+                onContinue();
+            }
+        });
+    }
+
     afficherModaleMatchDilemma(dilemma, onChoiceMade) {
         let modal = document.getElementById('event-modal-container');
         if (!modal) {
@@ -878,11 +989,35 @@ export class UserInterface {
                 <h3 class="event-modal-title">${dilemma?.title || 'Match'}</h3>
                 <p class="event-modal-desc">${dilemma?.description || ''}</p>
                 <div class="event-modal-choices">
-                    ${(dilemma?.choices || []).map((choix, index) => `
-                        <button class="btn-event-choice" data-choice-index="${index}">
-                            👉 ${choix?.texte || choix?.text || 'Continuer'}
-                        </button>
-                    `).join('')}
+                    ${(dilemma?.choices || []).map((choix, index) => {
+                        const preview = ConsequenceSystem.preview(choix);
+                        const previewHtml = (preview.effects || []).slice(0, 5).map(effect => {
+                            const positive = effect.direction === 'positive';
+                            const sign = effect.delta > 0 ? '+' : '';
+                            const value = effect.type === 'temporary'
+                                ? `${sign}${Math.round(effect.delta * 100)}%`
+                                : `${sign}${effect.delta}`;
+
+                            const duration = effect.type === 'temporary'
+                                ? ` <small>· ${effect.duration} match${effect.duration > 1 ? 's' : ''}</small>`
+                                : '';
+
+                            return `
+                                <span class="consequence-chip ${positive ? 'positive' : 'negative'}">
+                                    ${positive ? '▲' : '▼'} ${effect.label} ${value}${duration}
+                                </span>
+                            `;
+                        }).join('');
+
+                        return `
+                            <button class="btn-event-choice" data-choice-index="${index}">
+                                <span class="choice-main-text">
+                                    👉 ${choix?.texte || choix?.text || 'Continuer'}
+                                </span>
+                                ${previewHtml ? `<span class="choice-consequences">${previewHtml}</span>` : ''}
+                            </button>
+                        `;
+                    }).join('')}
                 </div>
             </div>
         `;
