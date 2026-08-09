@@ -4,6 +4,7 @@ import { EventEngine } from './events.js';
 import { TrainingManager } from './entrainement.js';
 import { MatchChoiceManager } from './matchChoices.js';
 import { TransferMarket } from './transferMarket.js';
+import { CoachSystem } from './coachSystem.js';
 
 export class UserInterface {
     constructor(gameEngine) {
@@ -37,7 +38,6 @@ export class UserInterface {
             document.body.appendChild(app);
         }
 
-        // Rendre l'UI accessible globalement pour les déclenchements externes (comme le GameEngine)
         window.UI = this;
     }
 
@@ -405,6 +405,7 @@ export class UserInterface {
                             <button class="app-icon" data-app="messages">
                                 <div class="app-logo messages-logo">💬</div>
                                 <span class="app-label">Messages</span>
+                                ${state.pendingCoachEvent ? '<span class="notification-badge">!</span>' : ''}
                             </button>
 
                             <button class="app-icon" data-app="bank">
@@ -461,7 +462,6 @@ export class UserInterface {
         const history = state.career.seasonHistory || [];
         const attr = state.player.attributes || {};
 
-        // Calcul de la valeur marchande actuelle
         const marketValue = TransferMarket.calculateMarketValue(state.player);
 
         switch(this.activeApp) {
@@ -523,6 +523,21 @@ export class UserInterface {
                 return `
                     <div class="app-pane">
                         <h3 class="pane-title messages-color">💬 Messages & Vestiaire</h3>
+                        
+                        ${state.pendingCoachEvent ? `
+                            <div class="coach-event-box" style="background: rgba(255, 152, 0, 0.15); border: 1px solid #ff9800; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                                <h4 style="color: #ff9800; margin-bottom: 6px;">💬 ${state.pendingCoachEvent.title}</h4>
+                                <p style="font-size: 0.9rem; margin-bottom: 12px;">${state.pendingCoachEvent.description}</p>
+                                <div class="coach-choices-grid" style="display: flex; flex-direction: column; gap: 8px;">
+                                    ${state.pendingCoachEvent.choices.map((choice, idx) => `
+                                        <button class="btn-coach-choice btn-event-choice" data-coach-choice-idx="${idx}" style="text-align: left; font-size: 0.85rem;">
+                                            👉 ${choice.text}
+                                        </button>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+
                         <p><strong>Situation amoureuse :</strong> ${socialState.romance.unlocked ? (socialState.romance.partnerName ? `${socialState.romance.partnerName} (${socialState.romance.status} - ${socialState.romance.affection}%)` : 'Célibataire') : '🔒 Disponible à 18 ans'}</p>
                         <hr class="pane-divider">
                         <p class="relations-subtitle">Relations clés :</p>
@@ -620,6 +635,14 @@ export class UserInterface {
                     return;
                 }
 
+                // Si un événement de coach est en attente, forcer à le traiter d'abord
+                if (state && state.pendingCoachEvent) {
+                    alert("💬 Ton entraîneur formateur t'attend dans tes messages pour faire un point ! Lis son message avant de lancer un nouveau bloc.");
+                    this.activeApp = 'messages';
+                    this.renderDashboard();
+                    return;
+                }
+
                 const isFinalPeriod = state.calendar.currentMonth === 5; 
                 const matchType = isFinalPeriod ? 'final' : (Math.random() < 0.25 ? 'rival' : 'standard');
                 const matchDilemma = MatchChoiceManager.getMatchDilemma(matchType, "l'adversaire direct");
@@ -627,7 +650,6 @@ export class UserInterface {
                 this.afficherModaleMatchDilemma(matchDilemma, (selectedChoice) => {
                     this.engine.playBlock(selectedChoice);
 
-                    // Vérifier si une offre de transfert survient lors de l'avancée
                     if (Math.random() < 0.15 && !state.activeTransferOffer) {
                         const offre = TransferMarket.generateTransferOffer(state.player);
                         if (offre) {
@@ -670,6 +692,18 @@ export class UserInterface {
             });
         });
 
+        // Gestion des choix de l'entraîneur dans l'onglet messages
+        document.querySelectorAll('.btn-coach-choice').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const choiceIdx = parseInt(e.currentTarget.getAttribute('data-coach-choice-idx'), 10);
+                const result = this.engine.resolveCoachChoice(choiceIdx);
+                if (result) {
+                    alert(result.responseText);
+                    this.renderDashboard();
+                }
+            });
+        });
+
         document.querySelectorAll('.training-card').forEach(card => {
             card.addEventListener('click', (e) => {
                 document.querySelectorAll('.training-card').forEach(c => c.classList.remove('selected'));
@@ -684,9 +718,6 @@ export class UserInterface {
         });
     }
 
-    /**
-     * Affiche la pop-up d'une offre de transfert d'un club
-     */
     afficherOffreTransfert(offre) {
         let modal = document.getElementById('event-modal-container');
         if (!modal) {
@@ -728,9 +759,6 @@ export class UserInterface {
         };
     }
 
-    /**
-     * Traite la réponse à l'offre de transfert
-     */
     repondreOffre(offre, accepte) {
         const state = this.engine.state;
         if (!state) return;
@@ -738,9 +766,8 @@ export class UserInterface {
         if (accepte) {
             const ancienClub = state.player.club;
             state.player.club = offre.club;
-            state.career.balance += Math.round(offre.montant * 0.05); // Prime à la signature pour le joueur (5% du transfert)
+            state.career.balance += Math.round(offre.montant * 0.05);
             
-            // Ajouter un message dans le feed média
             if (state.media && state.media.feed) {
                 state.media.feed.unshift({
                     source: "Mercato Live",
