@@ -1,37 +1,98 @@
 // social.js
+// Système social léger. Les relations sont centralisées ici : le coach reste
+// la relation principale et la relation vestiaire est séparée.
+
+const clamp = (value, min, max) => Math.min(max, Math.max(min, Number(value) || 0));
+
+function relationStatus(score) {
+    if (score <= -30) return 'Rival / Tendu';
+    if (score >= 30) return 'Allié / Ami';
+    return 'Neutre';
+}
 
 export class SocialSystem {
     constructor(engine) {
         this.engine = engine;
     }
 
-    // Initialisation des données sociales au lancement d'une carrière
-    initSocialData(coachName) {
+    initSocialData(coachName = 'l’entraîneur') {
         return {
             romance: {
                 unlocked: false,
                 partnerName: null,
-                partnerType: null, // 'supportive', 'influencer', 'childhood'
-                affection: 50,     // De 0 à 100
+                partnerType: null,
+                affection: 50,
                 status: 'célibataire'
             },
+            coachVision: 'Formateur Patient',
+            youthClubName: 'Centre de Formation',
+            coachData: {
+                name: coachName,
+                relation: 50,
+                opinion: 'Neutre',
+                hasLeftClub: false
+            },
+            // Relation distincte avec le vestiaire pour les événements sociaux.
             relationships: [
-                { id: 'coach', name: coachName, role: 'Entraîneur', score: 50, status: 'Neutre' }
+                { id: 'coach', name: coachName, role: 'Entraîneur', score: 50, status: 'Neutre' },
+                { id: 'vestiaire', name: 'Le vestiaire', role: 'Coéquipiers', score: 50, status: 'Neutre' }
             ]
         };
     }
 
-    // Vérification des évolutions (âge, impacts sur le moral)
-    updateSocialCycle(state) {
-        if (!state.social) return;
+    ensureRelationships(state) {
+        if (!state) return;
+        state.social ||= this.initSocialData(state.player?.coachName || 'l’entraîneur');
+        state.social.relationships ||= [];
 
-        // Déblocage de la romance à 18 ans
-        if (state.player.age >= 18 && !state.social.romance.unlocked) {
-            state.social.romance.unlocked = true;
-            // On peut déclencher un événement ou une notification ici
+        if (!state.social.relationships.some(r => r.id === 'coach')) {
+            state.social.relationships.push({
+                id: 'coach',
+                name: state.social.coachData?.name || state.player?.coachName || 'l’entraîneur',
+                role: 'Entraîneur',
+                score: clamp(state.player?.stats?.relationCoach ?? 50, 0, 100),
+                status: 'Neutre'
+            });
         }
 
-        // Impact du couple sur le moral
+        if (!state.social.relationships.some(r => r.id === 'vestiaire')) {
+            state.social.relationships.push({
+                id: 'vestiaire',
+                name: 'Le vestiaire',
+                role: 'Coéquipiers',
+                score: clamp(state.player?.stats?.vestiaire ?? 50, 0, 100),
+                status: relationStatus(clamp(state.player?.stats?.vestiaire ?? 50, 0, 100) - 50)
+            });
+        }
+
+        state.social.coachData ||= {
+            name: state.player?.coachName || 'l’entraîneur',
+            relation: clamp(state.player?.stats?.relationCoach ?? 50, 0, 100),
+            opinion: 'Neutre',
+            hasLeftClub: false
+        };
+
+        const coach = state.social.relationships.find(r => r.id === 'coach');
+        const vestiaire = state.social.relationships.find(r => r.id === 'vestiaire');
+
+        // Source de vérité du coach : coachData.relation.
+        state.social.coachData.relation = clamp(state.social.coachData.relation, 0, 100);
+        if (coach) {
+            coach.score = state.social.coachData.relation;
+            coach.status = relationStatus(coach.score - 50);
+        }
+        if (state.player?.stats) state.player.stats.relationCoach = state.social.coachData.relation;
+        if (vestiaire && state.player?.stats) state.player.stats.vestiaire = clamp(vestiaire.score, 0, 100);
+    }
+
+    updateSocialCycle(state) {
+        if (!state?.player) return;
+        this.ensureRelationships(state);
+
+        if (state.player.age >= 18 && !state.social.romance.unlocked) {
+            state.social.romance.unlocked = true;
+        }
+
         const romance = state.social.romance;
         if (romance.unlocked && romance.status !== 'célibataire') {
             if (romance.affection > 75) {
@@ -42,52 +103,74 @@ export class SocialSystem {
         }
     }
 
-    // Modifier le score de relation avec un personnage (coach ou coéquipier)
     modifyRelationship(state, characterId, amount) {
-        if (!state.social || !state.social.relationships) return;
+        if (!state?.player) return null;
+        this.ensureRelationships(state);
 
         const rel = state.social.relationships.find(r => r.id === characterId);
-        if (rel) {
-            rel.score = Math.max(-100, Math.min(100, rel.score + amount));
-            
-            // Mise à jour du statut textuel
-            if (rel.score <= -30) rel.status = 'Rival / Tendu';
-            else if (rel.score >= 30) rel.status = 'Allié / Ami';
-            else rel.status = 'Neutre';
+        if (!rel) return null;
+
+        const delta = Number(amount) || 0;
+        const before = rel.score;
+        rel.score = clamp(rel.score + delta, 0, 100);
+        rel.status = relationStatus(rel.score - 50);
+
+        if (characterId === 'coach') {
+            state.social.coachData.relation = rel.score;
+            state.player.stats.relationCoach = rel.score;
+        } else if (characterId === 'vestiaire') {
+            state.player.stats.vestiaire = rel.score;
         }
+
+        return {
+            characterId,
+            before,
+            after: rel.score,
+            delta: rel.score - before,
+            status: rel.status
+        };
     }
 
-    // Générer un événement aléatoire (Dilemme de vestiaire ou de couple)
+    getRelationship(state, characterId) {
+        this.ensureRelationships(state);
+        return state?.social?.relationships?.find(r => r.id === characterId) || null;
+    }
+
     getRandomSocialEvent(state) {
-        const events = [];
+        this.ensureRelationships(state);
+        const events = [
+            {
+                type: 'coach',
+                title: 'Tension à l’entraînement',
+                description: 'Ton entraîneur te reproche un manque d’implication lors de la dernière séance tactique devant tout le groupe.',
+                choices: [
+                    { text: 'S’excuser platement et redoubler d’efforts', effect: { coachDelta: +10, moraleDelta: -2 } },
+                    { text: 'Lui répondre vertement pour défendre ta place', effect: { coachDelta: -20, moraleDelta: +5 } }
+                ]
+            },
+            {
+                type: 'vestiaire',
+                title: 'Une blague qui tourne mal',
+                description: 'Une plaisanterie de vestiaire te vise avant un match important. Tu peux désamorcer la situation ou répondre sur le même ton.',
+                choices: [
+                    { text: 'Rire avec le groupe', effect: { relationshipDelta: +8, moraleDelta: +2 } },
+                    { text: 'Recadrer calmement le groupe', effect: { relationshipDelta: -4, disciplineDelta: +2 } }
+                ]
+            }
+        ];
 
-        // Événement entraineur / vestiaire
-        events.push({
-            type: 'coach',
-            title: 'Tension à l’entraînement',
-            description: 'Ton entraîneur te reproche un manque d’implication lors de la dernière séance tactique devant tout le groupe.',
-            choices: [
-                { text: 'S’excuser platement et redoubler d’efforts', effect: { coachDelta: +10, moraleDelta: -2 } },
-                { text: 'Lui répondre vertement pour défendre ta place', effect: { coachDelta: -20, moraleDelta: +5 } }
-            ]
-        });
-
-        // Événement romance (si en couple)
-        if (state.social?.romance?.unlocked && state.social.romance.status !== 'célibataire') {
+        if (state.social.romance?.unlocked && state.social.romance.status !== 'célibataire') {
             events.push({
                 type: 'romance',
                 title: 'Soirée importante vs Repos',
-                description: `${state.social.romance.partnerName} t'organise une belle soirée surprise, mais ton match capital de la semaine demande une concentration maximale.`,
+                description: `${state.social.romance.partnerName || 'Ton partenaire'} t'organise une belle soirée surprise, mais ton match capital demande une concentration maximale.`,
                 choices: [
-                    { text: 'Profiter de la soirée (Risque de fatigue sportive)', effect: { affectionDelta: +15, fitnessDelta: -10 } },
-                    { text: 'Annuler pour se reposer et préparer le match', effect: { affectionDelta: -15, fitnessDelta: +10 } }
+                    { text: 'Profiter de la soirée', effect: { affectionDelta: +15, fitnessDelta: -10 } },
+                    { text: 'Annuler pour te reposer', effect: { affectionDelta: -15, fitnessDelta: +10 } }
                 ]
             });
         }
 
-        // Sélectionner un événement au hasard s'il y en a de dispo
-        if (events.length === 0) return null;
-        const randomIndex = Math.floor(Math.random() * events.length);
-        return events[randomIndex];
+        return events[Math.floor(Math.random() * events.length)] || null;
     }
 }
