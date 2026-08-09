@@ -4,9 +4,10 @@
 //
 // Règles principales :
 // - départ : 75–80 ;
-// - variation normale : jusqu'à base ±15 ;
-// - 95+ est exceptionnel et ne peut arriver qu'à partir d'une base 80,
-//   ou via une micro-chance légendaire strictement encadrée ;
+// - variation normale : jusqu'à base +15 ;
+// - plancher de carrière : 69 ;
+// - 95+ est une zone légendaire accessible à toutes les bases, mais seulement
+//   après une excellente trajectoire et une fenêtre d'explosion bien exploitée ;
 // - âge d'explosion individuel : 15–28 ans ;
 // - l'explosion accélère la conversion du momentum en potentiel, elle ne
 //   donne jamais directement des points d'OVR ;
@@ -22,6 +23,8 @@ export const POTENTIAL_RULES = {
     START_MIN: 75,
     START_MAX: 80,
     DELTA_LIMIT: 15,
+    ABSOLUTE_MIN: 69,
+    EXCEPTIONAL_MAX: 99,
     SEASON_CHANGE_MIN: -3,
     SEASON_CHANGE_MAX: 3,
     PEAK_MIN_AGE: 15,
@@ -79,8 +82,9 @@ export function createPotentialProfile(base = null) {
     return {
         base: initial,
         current: initial,
-        min: initial - POTENTIAL_RULES.DELTA_LIMIT,
+        min: Math.max(POTENTIAL_RULES.ABSOLUTE_MIN, initial - POTENTIAL_RULES.DELTA_LIMIT),
         max: initial + POTENTIAL_RULES.DELTA_LIMIT,
+        exceptionalMax: POTENTIAL_RULES.EXCEPTIONAL_MAX,
         peakAge: generatePeakAge(),
         peakStrength: generatePeakStrength(),
         careerMomentum: 0,
@@ -158,10 +162,11 @@ export const PotentialSystem = {
         profile.current = clamp(
             Math.round(n(profile.current, n(player.potential, profile.base))),
             profile.min ?? profile.base - 15,
-            profile.max ?? profile.base + 15
+            profile.exceptionalMax ?? profile.max ?? profile.base + 15
         );
-        profile.min = profile.base - 15;
-        profile.max = profile.base + 15;
+        profile.min = Math.max(POTENTIAL_RULES.ABSOLUTE_MIN, profile.base - POTENTIAL_RULES.DELTA_LIMIT);
+        profile.max = profile.base + POTENTIAL_RULES.DELTA_LIMIT;
+        profile.exceptionalMax = clamp(n(profile.exceptionalMax, POTENTIAL_RULES.EXCEPTIONAL_MAX), profile.max, POTENTIAL_RULES.EXCEPTIONAL_MAX);
         profile.peakAge = clamp(Math.round(n(profile.peakAge, 22)), 15, 28);
         profile.peakStrength = clamp(n(profile.peakStrength, 1), 0.75, 1.25);
         profile.careerMomentum = clamp(n(profile.careerMomentum), -24, 24);
@@ -282,31 +287,45 @@ export const PotentialSystem = {
 
         const peakMultiplier = this.getPeakMultiplier(player);
         const adjusted = momentum * peakMultiplier;
+        const current = profile.current;
         let change = 0;
 
-        if (adjusted <= -15) change = -3;
-        else if (adjusted <= -8) change = -2;
-        else if (adjusted <= -3) change = -1;
-        else if (adjusted < 3) change = 0;
-        else if (adjusted < 9) change = 1;
-        else if (adjusted < 16) change = 2;
+        // On veut que la majorité des carrières se stabilisent autour de 82–84,
+        // sans empêcher les très bonnes trajectoires de dépasser 85.
+        // Sous 80 : développement encore assez accessible.
+        // 80–83 : progression normale.
+        // 84+ : chaque point supplémentaire demande une saison plus forte.
+        const positive1 = current < 84 ? 0 : current === 84 ? 12 : current < 90 ? 5 : 3;
+        const positive2 = current < 84 ? 7 : current === 84 ? 20 : current < 90 ? 14 : 10;
+        const positive3 = current < 84 ? 12 : current === 84 ? 28 : current < 90 ? 22 : 18;
+
+        if (adjusted <= -28) change = -3;
+        else if (adjusted <= -20) change = -2;
+        else if (adjusted <= -11) change = -1;
+        else if (adjusted < positive1) change = 0;
+        else if (adjusted < positive2) change = 1;
+        else if (adjusted < positive3) change = 2;
         else change = 3;
 
-        return clamp(change, -3, 3);
+        return clamp(change, POTENTIAL_RULES.SEASON_CHANGE_MIN, POTENTIAL_RULES.SEASON_CHANGE_MAX);
     },
 
     exceptionalUpgradeChance(player, momentum) {
         const profile = this.ensure(player);
         if (!profile) return 0;
 
-        // 95+ est une zone légendaire. Pour l'atteindre, il faut être au bord
-        // de son plafond, produire une très grosse saison et être proche de sa
-        // fenêtre d'explosion. La chance reste volontairement minuscule.
-        if (momentum < POTENTIAL_RULES.EXCEPTIONAL_THRESHOLD) return 0;
-        const peak = this.getPeakMultiplier(player);
+        // Zone exceptionnelle : on peut dépasser base + 15, mais seulement
+        // après avoir déjà construit une très grosse carrière.
+        if (profile.current < 90) return 0;
+
         const state = this.getPeakState(player);
-        const peakBonus = state === 'pic' ? 1.0 : state === 'fenetre_explosion' ? 0.55 : 0.2;
-        return clamp(0.004 + (peak - 1) * 0.02 + peakBonus * 0.002, 0.004, 0.02);
+        const peakBonus = state === 'pic' ? 0.10 : state === 'fenetre_explosion' ? 0.06 : 0.02;
+        const momentumBonus = Math.max(0, momentum - 8) * 0.012;
+        const currentBonus = Math.max(0, profile.current - 90) * 0.025;
+
+        // Environ 5 % des carrières doivent pouvoir franchir 95+, mais la
+        // probabilité est conditionnée par une vraie carrière d'élite.
+        return clamp(0.55 + peakBonus + momentumBonus + currentBonus, 0.12, 0.95);
     },
 
     refreshProgressionCaps(player) {
@@ -327,25 +346,25 @@ export const PotentialSystem = {
         let target = oldPotential + change;
         target = clamp(target, profile.min, profile.max);
 
-        // Si la carrière atteint son plafond normal (+15), 95+ devient une
-        // zone d'exception. Avec une base 80, 95 est le maximum normal ; pour
-        // dépasser 95 il faut une saison légendaire, et la probabilité est
-        // volontairement très faible. On ne dépasse jamais base + 15 dans ce
-        // moteur : 95+ n'est donc possible que pour les bases 80 (95).
-        if (target > 95) target = 95;
-        if (target === 95 && profile.base < 80) target = 94;
-
-        if (oldPotential >= 94 && change > 0) {
+        // Le plafond normal reste base + 15. Le dépasser est une percée
+        // exceptionnelle et ne donne jamais plus d'un point supplémentaire
+        // par saison.
+        if (oldPotential >= profile.max && change > 0) {
             const chance = this.exceptionalUpgradeChance(player, momentum);
-            if (Math.random() > chance) {
-                target = Math.min(target, 94);
+            if (Math.random() <= chance) {
+                target = Math.min(oldPotential + (Math.random() < 0.20 ? 2 : 1), profile.exceptionalMax);
+            }
+        } else if (oldPotential >= profile.max - 1 && target >= profile.max && momentum >= POTENTIAL_RULES.EXCEPTIONAL_THRESHOLD) {
+            const chance = this.exceptionalUpgradeChance(player, momentum);
+            if (Math.random() <= chance) {
+                target = Math.min(oldPotential + (Math.random() < 0.20 ? 2 : 1), profile.exceptionalMax);
             }
         }
 
         // Une saison catastrophique pendant la fenêtre d'explosion peut faire
         // rater une partie du développement ; une excellente saison permet au
         // contraire de profiter davantage du pic.
-        profile.current = clamp(target, profile.min, profile.max);
+        profile.current = clamp(target, profile.min, profile.exceptionalMax);
         player.potential = profile.current;
         this.refreshProgressionCaps(player);
 
