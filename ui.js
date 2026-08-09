@@ -1,4 +1,5 @@
 // ui.js
+import { CompetitionSystem } from './competitionSystem.js';
 import { POSITIONS as _POSITIONS, CONTINENTS as _CONTINENTS, ORIGINS as _ORIGINS, HEART_CLUBS as _HEART_CLUBS, YOUTH_CLUBS_POOL as _YOUTH_CLUBS_POOL, COACH_VISIONS as _COACH_VISIONS, COACH_NAMES as _COACH_NAMES } from './constants.js';
 import { EventEngine as _EventEngine } from './events.js';
 import { TrainingManager as _TrainingManager } from './entrainement.js';
@@ -793,6 +794,16 @@ export class UserInterface {
                                 <div class="stat-pill"><span>🎂 Âge</span><strong>${state.player?.age || 14} ans</strong></div>
                                 <div class="stat-pill"><span>💰 Solde</span><strong>${(state.career?.balance || 750).toLocaleString('fr-FR')} €</strong></div>
                             </div>
+
+                            ${(() => {
+                                const plan = this.engine?.state ? CompetitionSystem.getBlockPlan(this.engine.state) : null;
+                                const next = plan?.scheduledMatches?.[0];
+                                if (!plan) return '';
+                                if (plan.type === 'offseason') {
+                                    return `<div class="widget-secret-tag">☀️ ${plan.monthLabel} · ${plan.activities.join(' · ')}</div>`;
+                                }
+                                return `<div class="widget-secret-tag">⚽ ${plan.matches} match${plan.matches > 1 ? 's' : ''} prévu${plan.matches > 1 ? 's' : ''} ce mois · ${next ? `${next.competitionName} · ${next.venue}` : 'activité de carrière'}</div>`;
+                            })()}
 
                             <div class="widget-secret-tag">
                                 🚀 Développement : fenêtre d'explosion inconnue
