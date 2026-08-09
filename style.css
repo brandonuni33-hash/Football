@@ -1,4 +1,7 @@
-/* style.css */
+/* =========================================================
+   STREET TO PRO — STYLE.CSS
+   ========================================================= */
+
 body {
     background-color: #111827;
     color: #f3f4f6;
@@ -44,7 +47,8 @@ body {
     font-weight: 500;
 }
 
-.form-group input, .form-group select {
+.form-group input,
+.form-group select {
     width: 100%;
     padding: 10px;
     background-color: #1f2937;
@@ -54,13 +58,17 @@ body {
     box-sizing: border-box;
 }
 
-.grid-positions, .grid-countries, .grid-continents {
+.grid-positions,
+.grid-countries,
+.grid-continents {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
 }
 
-.chip, .chip-continent, .chip-country {
+.chip,
+.chip-continent,
+.chip-country {
     background-color: #1f2937;
     border: 1px solid #374151;
     color: white;
@@ -70,7 +78,9 @@ body {
     font-size: 0.9rem;
 }
 
-.chip.selected, .chip-continent.selected, .chip-country.selected {
+.chip.selected,
+.chip-continent.selected,
+.chip-country.selected {
     background-color: #10b981;
     border-color: #10b981;
 }
@@ -81,7 +91,9 @@ body {
     margin-top: 24px;
 }
 
-.btn-primary, .btn-secondary, .btn-success {
+.btn-primary,
+.btn-secondary,
+.btn-success {
     padding: 10px 20px;
     border-radius: 6px;
     border: none;
@@ -89,10 +101,25 @@ body {
     cursor: pointer;
 }
 
-.btn-primary { background-color: #3b82f6; color: white; }
-.btn-secondary { background-color: #4b5563; color: white; }
-.btn-success { background-color: #10b981; color: white; }
-button:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.btn-secondary {
+    background-color: #4b5563;
+    color: white;
+}
+
+.btn-success {
+    background-color: #10b981;
+    color: white;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
 
 .card-select {
     background-color: #1f2937;
@@ -102,10 +129,12 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     margin-bottom: 8px;
     cursor: pointer;
 }
+
 .card-select.selected {
     border-color: #10b981;
     background-color: #064e3b;
 }
+
 .club-card {
     display: flex;
     flex-direction: column;
@@ -146,10 +175,17 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     font-weight: bold;
 }
 
-/* Style moderne pour la grille d'origine de l'étape 2 */
+
+/* =========================================================
+   STYLE MODERNE POUR LA GRILLE D'ORIGINE
+   ========================================================= */
+
 .grid-origins-modern {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    grid-template-columns: repeat(
+        auto-fit,
+        minmax(240px, 1fr)
+    );
     gap: 12px;
     margin-top: 20px;
 }
@@ -175,7 +211,8 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .origin-card-modern.selected {
     background: rgba(37, 99, 235, 0.15);
     border-color: #2563eb;
-    box-shadow: 0 0 15px rgba(37, 99, 235, 0.3);
+    box-shadow:
+        0 0 15px rgba(37, 99, 235, 0.3);
 }
 
 .origin-icon {
@@ -211,3 +248,381 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     color: #94a3b8;
     line-height: 1.4;
 }
+
+
+/* =========================================================
+   CONSEQUENCE SYSTEM
+   ========================================================= */
+
+/*
+ * ---------------------------------------------------------
+ * CHOIX AVANT VALIDATION
+ * ---------------------------------------------------------
+ *
+ * IMPORTANT :
+ * Les conséquences ne doivent PAS être visibles
+ * lorsque le joueur doit encore choisir.
+ *
+ * Même si le JavaScript génère un aperçu,
+ * celui-ci est masqué visuellement.
+ */
+
+.choice-consequences {
+    display: none !important;
+}
+
+.consequence-chip {
+    display: none !important;
+}
+
+
+/*
+ * Texte principal du choix
+ */
+
+.choice-main-text {
+    display: block;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+
+/*
+ * Si une ancienne version du HTML place
+ * les conséquences directement dans le bouton,
+ * on masque également les éléments connus.
+ */
+
+.choice-button .consequence-chip,
+.choice-card .consequence-chip,
+.choice-option .consequence-chip,
+.match-choice .consequence-chip {
+    display: none !important;
+}
+
+
+/* =========================================================
+   PANNEAU DES CONSÉQUENCES APRÈS LE CHOIX
+   ========================================================= */
+
+.consequence-result-card {
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+}
+
+
+/*
+ * Titre
+ */
+
+.consequence-result-card h3 {
+    margin: 0 0 8px 0;
+}
+
+
+/*
+ * Message explicatif
+ */
+
+.consequence-result-card p {
+    line-height: 1.5;
+}
+
+
+/*
+ * Liste
+ */
+
+.consequence-result-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 18px;
+    margin-bottom: 18px;
+}
+
+
+/*
+ * Une conséquence
+ */
+
+.consequence-result-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 12px;
+
+    padding: 11px 14px;
+
+    border-radius: 10px;
+
+    font-size: 0.95rem;
+    line-height: 1.3;
+
+    background: rgba(255, 255, 255, 0.055);
+
+    border: 1px solid rgba(
+        255,
+        255,
+        255,
+        0.08
+    );
+
+    animation:
+        consequenceAppear
+        0.25s
+        ease-out
+        both;
+}
+
+
+/*
+ * Texte de la conséquence
+ */
+
+.consequence-result-row span {
+    font-weight: 600;
+}
+
+
+/*
+ * Valeur
+ */
+
+.consequence-result-row strong {
+    white-space: nowrap;
+    font-weight: 800;
+}
+
+
+/*
+ * BONUS
+ */
+
+.consequence-result-row.positive {
+    color: #69e6a7;
+
+    background:
+        rgba(16, 185, 129, 0.09);
+
+    border-color:
+        rgba(16, 185, 129, 0.22);
+}
+
+
+/*
+ * MALUS
+ */
+
+.consequence-result-row.negative {
+    color: #ff8792;
+
+    background:
+        rgba(239, 68, 68, 0.08);
+
+    border-color:
+        rgba(239, 68, 68, 0.22);
+}
+
+
+/*
+ * Effet temporaire
+ */
+
+.consequence-result-row.temporary {
+    border-style: dashed;
+}
+
+
+/*
+ * Durée de l'effet
+ */
+
+.consequence-result-row small {
+    font-size: 0.75rem;
+    opacity: 0.72;
+    font-weight: 500;
+}
+
+
+/*
+ * Aucun changement
+ */
+
+.consequence-empty {
+    margin: 12px 0 4px;
+
+    text-align: center;
+
+    color: #94a3b8;
+
+    font-size: 0.9rem;
+}
+
+
+/* =========================================================
+   ANIMATION DES CONSÉQUENCES
+   ========================================================= */
+
+.consequence-result-row:nth-child(2) {
+    animation-delay: 0.04s;
+}
+
+.consequence-result-row:nth-child(3) {
+    animation-delay: 0.08s;
+}
+
+.consequence-result-row:nth-child(4) {
+    animation-delay: 0.12s;
+}
+
+.consequence-result-row:nth-child(5) {
+    animation-delay: 0.16s;
+}
+
+.consequence-result-row:nth-child(6) {
+    animation-delay: 0.20s;
+}
+
+@keyframes consequenceAppear {
+
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+/* =========================================================
+   BOUTON CONTINUER
+   ========================================================= */
+
+.consequence-continue {
+    width: 100%;
+    margin-top: 8px;
+}
+
+
+/*
+ * Si le bouton est généré avec une classe
+ * différente mais contient ce rôle.
+ */
+
+.consequence-result-card button {
+    transition:
+        transform 0.15s ease,
+        opacity 0.15s ease;
+}
+
+.consequence-result-card button:hover {
+    transform: translateY(-1px);
+}
+
+.consequence-result-card button:active {
+    transform: translateY(0);
+}
+
+
+/* =========================================================
+   EFFETS TEMPORAIRES ACTIFS
+   ========================================================= */
+
+.active-consequences {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.active-consequence {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 10px;
+
+    padding: 9px 12px;
+
+    border-radius: 9px;
+
+    background:
+        rgba(255, 255, 255, 0.045);
+
+    border:
+        1px solid rgba(
+            255,
+            255,
+            255,
+            0.08
+        );
+}
+
+.active-consequence.positive {
+    border-color:
+        rgba(16, 185, 129, 0.2);
+}
+
+.active-consequence.negative {
+    border-color:
+        rgba(239, 68, 68, 0.2);
+}
+
+
+/* =========================================================
+   RESPONSIVE MOBILE
+   ========================================================= */
+
+@media (max-width: 600px) {
+
+    .career-container {
+        padding: 12px;
+    }
+
+    .consequence-result-card {
+        width: 100%;
+        max-width: none;
+    }
+
+    .consequence-result-row {
+        padding: 10px 12px;
+        font-size: 0.9rem;
+    }
+
+    .consequence-result-row strong {
+        font-size: 0.9rem;
+    }
+
+    .consequence-result-row small {
+        font-size: 0.7rem;
+    }
+
+    .choice-main-text {
+        line-height: 1.4;
+    }
+}
+
+
+/* =========================================================
+   ACCESSIBILITÉ
+   ========================================================= */
+
+button:focus-visible,
+.chip:focus-visible,
+.chip-continent:focus-visible,
+.chip-country:focus-visible,
+.card-select:focus-visible {
+    outline: 2px solid #60a5fa;
+    outline-offset: 2px;
+}
+
+
+/* =========================================================
+   FIN CONSEQUENCE SYSTEM
+   ========================================================= */
