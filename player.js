@@ -5,6 +5,7 @@ import {
     calculerGeneral,
     appliquerProgression
 } from './progression.js';
+import { PotentialSystem } from './potentialSystem.js';
 
 const ORIGIN_MAP = {
     CENTRE_FORMATION: 'CENTRE_FORMATION',
@@ -59,6 +60,10 @@ function syncCanonicalFromProgression(player) {
 
     player.overall = model.general;
     player.potential = model.potentielMax;
+    player.potentialProfile = model.potentialProfile || player.potentialProfile;
+    if (player.potentialProfile) {
+        player.potentialProfile.current = model.potentielMax;
+    }
     player.xp = model.xp;
     player.xpLevel = model.niveauXP;
     player.age = model.age;
@@ -99,7 +104,7 @@ export const PlayerLogic = {
         const progressionOrigin = normalizeOrigin(originId);
         const position = formData.position || 'BU';
         const progressionPoste = normalizePoste(position);
-        const age = Number(formData.age) || 16;
+        const age = Math.max(14, Number(formData.age) || 14);
 
         let progressionPlayer;
         try {
@@ -132,6 +137,9 @@ export const PlayerLogic = {
 
             overall: progressionPlayer.general,
             potential: progressionPlayer.potentielMax,
+            potentialProfile: progressionPlayer.potentialProfile || PotentialSystem.createProfile(progressionPlayer.potentielMax),
+            canRetire: false,
+            careerEnded: false,
             attributes: {},
             progression: progressionPlayer,
 
@@ -175,6 +183,7 @@ export const PlayerLogic = {
         };
 
         syncCanonicalFromProgression(player);
+        PotentialSystem.ensure(player);
         return player;
     },
 
