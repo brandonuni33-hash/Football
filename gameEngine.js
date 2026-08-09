@@ -249,6 +249,4 @@ export class GameEngine {
 }
 
 // Lancement automatique du jeu au chargement de la page
-window.addEventListener('DOMContentLoaded', () => {
-    window.game = new GameEngine();
 });
