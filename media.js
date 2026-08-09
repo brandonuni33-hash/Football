@@ -150,12 +150,12 @@ export class MediaSystem {
         if (eff.followerDelta) state.media.followers += eff.followerDelta;
         if (eff.moraleDelta) state.player.morale = Math.max(0, Math.min(100, state.player.morale + eff.moraleDelta));
 
-        // Impact coach / relation si présent
-        if (eff.coachDelta && state.social && state.social.relationships) {
-            const coachRel = state.social.relationships.find(r => r.id === 'coach');
-            if (coachRel) {
-                coachRel.score = Math.max(-100, Math.min(100, coachRel.score + eff.coachDelta));
-            }
+        // Les relations sont centralisées dans SocialSystem via l'engine.
+        if (eff.coachDelta && this.engine?.socialSystem) {
+            this.engine.socialSystem.modifyRelationship(state, 'coach', eff.coachDelta);
+        }
+        if (eff.relationshipDelta && this.engine?.socialSystem) {
+            this.engine.socialSystem.modifyRelationship(state, 'vestiaire', eff.relationshipDelta);
         }
 
         // Effacer le dilemme après choix
