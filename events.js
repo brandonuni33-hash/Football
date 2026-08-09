@@ -345,9 +345,13 @@ export const EventEngine = {
             } else if (key === 'balance') {
                 if (!state.career) state.career = { balance: 0 };
                 state.career.balance = (state.career.balance || 0) + value;
+            } else if (player.attributes && player.attributes[key] !== undefined) {
+                player.attributes[key] = Math.max(1, Math.min(99, player.attributes[key] + value));
             } else if (player[key] !== undefined) {
                 if (typeof player[key] === 'boolean') {
                     player[key] = value;
+                } else if (key === 'injuryDuration') {
+                    player[key] = Math.max(0, Math.min(12, player[key] + value));
                 } else {
                     player[key] = Math.max(0, Math.min(100, player[key] + value));
                 }
