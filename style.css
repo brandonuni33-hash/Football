@@ -626,3 +626,27 @@ button:focus-visible,
 /* =========================================================
    FIN CONSEQUENCE SYSTEM
    ========================================================= */
+/* =========================================================
+   CADRAGE AVATAR / PORTRAIT JOUEUR (ASSETS)
+   ========================================================= */
+
+/* Limite la taille du conteneur pour éviter l'effet géant */
+.player-avatar {
+    width: 130px;               /* Largeur du bloc avatar */
+    height: 130px;              /* Hauteur du bloc avatar */
+    margin: 16px auto;          /* Centre le bloc dans la page */
+    border-radius: 12px;        /* Coins arrondis (ou 50% pour un cercle) */
+    overflow: hidden;           /* Coupe l'image qui dépasse */
+    border: 2px solid #374151;  /* BORDURE assortie à votre thème sombre */
+    background-color: #1f2937;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Force l'image IMG_8758.jpg à s'adapter parfaitement */
+.player-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;          /* Remplit le bloc sans déformer le ratio */
+    object-position: top;       /* Reste aligné sur le haut (visage) */
+    display: block;
+}
