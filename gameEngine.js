@@ -101,7 +101,7 @@ export class GameEngine {
                 seasonHistory: []
             },
             calendar: {
-                currentMonth: 8,
+                currentMonth: 8, // Début en Août
                 currentSeasonYear: 2026,
                 totalMonths: 12,
                 currentPeriod: "Pré-saison & Début de championnat"
@@ -117,6 +117,7 @@ export class GameEngine {
     playBlock(selectedChoice = null) {
         if (!this.state) return;
 
+        // 1. Gestion des blessures
         if (this.state.player.isInjured) {
             if (this.state.player.injuryDuration > 0) this.state.player.injuryDuration--;
             if (this.state.player.injuryDuration <= 0) {
@@ -125,6 +126,7 @@ export class GameEngine {
             }
         }
 
+        // 2. Simulation du bloc de matchs et progression
         const report = MatchBlockManager.simulateBlock(this.state, this.state.trainingFocus, selectedChoice);
         this.state.pendingMatchDilemma = null;
 
@@ -135,19 +137,26 @@ export class GameEngine {
             this.mediaSystem.generatePostAfterBlock(this.state, report);
         }
 
+        // 3. Déclenchement des événements aléatoires
         const triggeredEvent = EventEngine.checkAndTriggerEvent ? EventEngine.checkAndTriggerEvent(this.state) : null;
         if (triggeredEvent) this.state.pendingEvent = triggeredEvent;
 
         const coachEvent = CoachSystem.checkCoachInteraction ? CoachSystem.checkCoachInteraction(this.state) : null;
         if (coachEvent) this.state.pendingCoachEvent = coachEvent;
 
+        // 4. Avancement CORRECT du Calendrier 
         const cal = this.state.calendar;
-        if (cal.currentMonth < 12) {
-            cal.currentMonth++;
-        } else {
+        cal.currentMonth++;
+
+        // Passage à la nouvelle année civile (Janvier)
+        if (cal.currentMonth > 12) {
+            cal.currentMonth = 1;
+        }
+
+        // Si on revient en Août, c'est le début d'une nouvelle saison
+        if (cal.currentMonth === 8) {
             this.archiveAndResetSeason();
-            cal.currentMonth = 8;
-            cal.currentSeasonYear++;
+            cal.currentSeasonYear++; // On incrémente l'année de la saison (ex: 2026 -> 2027)
         }
 
         cal.currentPeriod = this.getPeriodName(cal.currentMonth);
@@ -166,7 +175,8 @@ export class GameEngine {
         if (month === 12) return "Mercato hivernal & Trêve";
         if (month >= 1 && month <= 4) return "Seconde partie de saison";
         if (month === 5) return "Sprint final & Bilan de saison";
-        return "Trêve estivale & Bilan";
+        // Ajout explicite pour Juin (6) et Juillet (7) pour éviter un undefined
+        return "Trêve estivale & Bilan"; 
     }
 
     setTrainingFocus(focusKey) {
@@ -203,6 +213,8 @@ export class GameEngine {
         }
 
         player.age += 1;
+        
+        // Reset des stats annuelles
         player.stats.matchesPlayed = 0;
         player.stats.goals = 0;
         player.stats.assists = 0;
