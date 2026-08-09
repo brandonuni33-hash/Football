@@ -1,9 +1,9 @@
-
 // matchBlock.js
 import { EconomyManager } from './economy.js';
 import { TrainingManager } from './entrainement.js';
 import { PlayerLogic } from './player.js';
 import { ConsequenceSystem } from './consequenceSystem.js';
+import { PotentialSystem } from './potentialSystem.js';
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
@@ -56,6 +56,11 @@ export const MatchBlockManager = {
             goalBonusChance += b.goalChance || 0;
             assistBonusChance += b.assistChance || 0;
             duelBonusChance += b.duelBonus || 0;
+            // Anciens bonus tactiques désormais réellement consommés.
+            matchRatingBonus += (b.passAccuracy || 0) * 0.20;
+            matchRatingBonus += (b.teamBoost || 0) * 0.35;
+            goalBonusChance += (b.counterAttack || 0) * 0.20;
+            assistBonusChance += (b.counterAttack || 0) * 0.08;
             choiceFatigueExtra += b.fatigueRisk || 0;
             choiceCardRiskExtra += b.cardRisk || 0;
 
@@ -242,6 +247,10 @@ export const MatchBlockManager = {
             player.injuryDuration = Math.max(1, Math.floor(Math.random() * 3) + 1);
             player.morale = clamp((player.morale ?? 50) - 15, 0, 100);
         }
+
+        // Le moteur de potentiel accumule la qualité de la période ; le potentiel
+        // lui-même ne changera qu'au bilan de saison.
+        PotentialSystem.recordMatch(player, summary, matchesInMonth);
 
         // XP de match : performance réelle, puis synchronisation avec le système de progression.
         const xpMatch = matchesInMonth
