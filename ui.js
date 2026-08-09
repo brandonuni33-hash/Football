@@ -976,6 +976,7 @@ export class UserInterface {
 
     afficherModaleMatchDilemma(dilemma, onChoiceMade) {
         let modal = document.getElementById('event-modal-container');
+
         if (!modal) {
             modal = document.createElement('div');
             modal.id = 'event-modal-container';
@@ -983,51 +984,44 @@ export class UserInterface {
             document.body.appendChild(modal);
         }
 
+        /*
+         * IMPORTANT : les conséquences sont volontairement
+         * cachées avant le choix. Le joueur doit décider
+         * sans connaître les bonus/malus exacts.
+         *
+         * Elles seront affichées ensuite par
+         * afficherModaleConsequences(), après résolution
+         * du choix par le GameEngine.
+         */
         modal.innerHTML = `
             <div class="event-modal-card">
                 <span class="event-modal-category">⚡ MATCH CLÉ</span>
                 <h3 class="event-modal-title">${dilemma?.title || 'Match'}</h3>
                 <p class="event-modal-desc">${dilemma?.description || ''}</p>
+
                 <div class="event-modal-choices">
-                    ${(dilemma?.choices || []).map((choix, index) => {
-                        const preview = ConsequenceSystem.preview(choix);
-                        const previewHtml = (preview.effects || []).slice(0, 5).map(effect => {
-                            const positive = effect.direction === 'positive';
-                            const sign = effect.delta > 0 ? '+' : '';
-                            const value = effect.type === 'temporary'
-                                ? `${sign}${Math.round(effect.delta * 100)}%`
-                                : `${sign}${effect.delta}`;
-
-                            const duration = effect.type === 'temporary'
-                                ? ` <small>· ${effect.duration} match${effect.duration > 1 ? 's' : ''}</small>`
-                                : '';
-
-                            return `
-                                <span class="consequence-chip ${positive ? 'positive' : 'negative'}">
-                                    ${positive ? '▲' : '▼'} ${effect.label} ${value}${duration}
-                                </span>
-                            `;
-                        }).join('');
-
-                        return `
-                            <button class="btn-event-choice" data-choice-index="${index}">
-                                <span class="choice-main-text">
-                                    👉 ${choix?.texte || choix?.text || 'Continuer'}
-                                </span>
-                                ${previewHtml ? `<span class="choice-consequences">${previewHtml}</span>` : ''}
-                            </button>
-                        `;
-                    }).join('')}
+                    ${(dilemma?.choices || []).map((choix, index) => `
+                        <button class="btn-event-choice" data-choice-index="${index}" type="button">
+                            <span class="choice-main-text">
+                                👉 ${choix?.texte || choix?.text || choix?.label || 'Continuer'}
+                            </span>
+                        </button>
+                    `).join('')}
                 </div>
             </div>
         `;
 
         modal.querySelectorAll('.btn-event-choice').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const choiceIndex = parseInt(e.currentTarget.getAttribute('data-choice-index'), 10);
-                const choixSelectionne = dilemma?.choices[choiceIndex];
+                const choiceIndex = parseInt(
+                    e.currentTarget.getAttribute('data-choice-index'),
+                    10
+                );
+
+                const choixSelectionne = dilemma?.choices?.[choiceIndex];
 
                 modal.remove();
+
                 if (typeof onChoiceMade === 'function') {
                     onChoiceMade(choixSelectionne, choiceIndex);
                 }
