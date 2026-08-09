@@ -4,7 +4,7 @@ import { EventEngine as _EventEngine } from './events.js';
 import { TrainingManager as _TrainingManager } from './entrainement.js';
 import { MatchChoiceManager as _MatchChoiceManager } from './matchChoices.js';
 import { TransferMarket as _TransferMarket } from './transferMarket.js';
-import { CoachSystem as _CoachSystem } from './coachsystem.js';
+import { CoachSystem as _CoachSystem } from './coachSystem.js';
 
 // Sécurisation absolue (transformation en tableaux si les imports sont des objets)
 const POSITIONS = Array.isArray(_POSITIONS) ? _POSITIONS : Object.values(_POSITIONS || {});
@@ -16,7 +16,7 @@ const COACH_VISIONS = _COACH_VISIONS || [{ title: 'Équilibré' }];
 const COACH_NAMES = _COACH_NAMES || ['Thomas Tuchel', 'Pep Guardiola'];
 
 const EventEngine = _EventEngine || { checkAndTriggerEvent: () => null };
-const TrainingManager = _TrainingManager || { programs: { TECHNIQUE: { name: 'Technique & Agilité', fitnessCost: 15, primaryStats: ['dribble', 'controle', 'passes'], secondaryStats: ['agilite', 'acceleration'] } } };
+const TrainingManager = _TrainingManager || { FOCUS_TYPES: { TECHNIQUE: { name: 'Technique', description: 'Améliore la technique pure' } } };
 const MatchChoiceManager = _MatchChoiceManager || {
     getMatchDilemma: (type = 'standard', opponent = '') => ({
         title: 'Match important',
@@ -119,6 +119,7 @@ export class UserInterface {
     }
 
     renderStepContent() {
+        // Ajout des blocs { } pour chaque case afin de protéger le scope des variables (const/let)
         switch(this.currentStep) {
             case 1: {
                 return `
@@ -491,6 +492,9 @@ export class UserInterface {
                         <button id="play-block-btn" class="btn-play-block">
                             ▶️ Lancer le prochain bloc
                         </button>
+                        <button id="reset-career-btn" class="btn-secondary" style="margin-top:8px;">
+                            🗑️ Nouvelle carrière
+                        </button>
                     </div>
                 </div>
             `;
@@ -635,10 +639,10 @@ export class UserInterface {
                         <h3 class="pane-title training-color">🏋️‍♂️ Centre d'Entraînement</h3>
                         <p class="subtitle">Choisis ton axe de travail :</p>
                         <div class="grid-focus">
-                            ${Object.entries(TrainingManager.programs || {}).map(([key, focusObj]) => `
+                            ${Object.entries(TrainingManager.FOCUS_TYPES || {}).map(([key, focusObj]) => `
                                 <div class="card-select training-card ${state.trainingFocus === key ? 'selected' : ''}" data-focus-key="${key}">
                                     <h4>${focusObj?.name || key}</h4>
-                                    <p>${focusObj?.description || (focusObj.primaryStats ? `Cible : ${focusObj.primaryStats.join(', ')}` : '')}</p>
+                                    <p>${focusObj?.description || ''}</p>
                                 </div>
                             `).join('')}
                         </div>
@@ -656,21 +660,41 @@ export class UserInterface {
                 const state = this.engine?.state;
                 if (!state) return;
 
-                if (state.player && state.player.isInjured) {
-                    alert("Votre joueur est blessé.");
+                if (state.player?.isInjured) {
+                    const result = this.engine.playBlock(null);
+                    this.handleBlockResult(result);
                     return;
                 }
 
-                const isFinalPeriod = state.calendar?.currentMonth === 5; 
+                const isFinalPeriod = state.calendar?.currentMonth === 5;
                 const matchType = isFinalPeriod ? 'final' : 'standard';
-                const matchDilemma = MatchChoiceManager.getMatchDilemma(matchType, "l'adversaire");
 
-                this.afficherModaleMatchDilemma(matchDilemma, (selectedChoice) => {
-                    if (typeof this.engine.playBlock === 'function') {
-                        this.engine.playBlock(selectedChoice);
-                    }
-                    this.renderDashboard();
-                });
+                // Les dilemmes classiques sont réellement optionnels.
+                const shouldAsk = MatchChoiceManager.shouldTriggerDilemma(matchType);
+
+                if (shouldAsk) {
+                    const dilemma = MatchChoiceManager.getMatchDilemma(
+                        matchType,
+                        "l'adversaire"
+                    );
+
+                    this.afficherModaleMatchDilemma(dilemma, (selectedChoice) => {
+                        const result = this.engine.playBlock(selectedChoice);
+                        this.handleBlockResult(result);
+                    });
+                } else {
+                    const result = this.engine.playBlock(null);
+                    this.handleBlockResult(result);
+                }
+            });
+        }
+
+        const resetCareerBtn = document.getElementById('reset-career-btn');
+        if (resetCareerBtn) {
+            resetCareerBtn.addEventListener('click', () => {
+                if (window.confirm('Supprimer la carrière actuelle et recommencer ?')) {
+                    this.engine.resetCareer();
+                }
             });
         }
 
@@ -713,6 +737,132 @@ export class UserInterface {
         });
     }
 
+    handleBlockResult(result) {
+        this.renderDashboard();
+
+        if (!result) return;
+
+        if (result.recoveryOnly) {
+            this.afficherMessageModal(
+                '🏥 Récupération',
+                'Ton joueur est encore en récupération. Le bloc est consacré au retour en forme.'
+            );
+            return;
+        }
+
+        if (result.event) {
+            this.afficherModaleEvent(result.event, (choiceIndex) => {
+                this.engine.resolveEventChoice(choiceIndex);
+                this.renderDashboard();
+                this.handlePostInteraction();
+            });
+            return;
+        }
+
+        if (result.coachEvent) {
+            this.afficherModaleCoach(result.coachEvent, (choiceIndex) => {
+                this.engine.resolveCoachChoice(choiceIndex);
+                this.renderDashboard();
+                this.handlePostInteraction();
+            });
+            return;
+        }
+
+        if (result.transferOffer) {
+            this.afficherModaleTransfer(result.transferOffer);
+            return;
+        }
+
+        this.handlePostInteraction();
+    }
+
+    handlePostInteraction() {
+        const state = this.engine?.state;
+        if (!state) return;
+
+        if (state.pendingTransferOffer) {
+            this.afficherModaleTransfer(state.pendingTransferOffer);
+        }
+    }
+
+    afficherMessageModal(title, description) {
+        this.afficherModaleMatchDilemma({
+            title,
+            description,
+            choices: [{ text: 'Continuer', impacts: {} }]
+        }, () => this.renderDashboard());
+    }
+
+    afficherModaleEvent(event, onChoiceMade) {
+        this.afficherModaleMatchDilemma({
+            title: event?.titre || 'Événement',
+            description: event?.description || '',
+            choices: (event?.choix || []).map(choice => ({
+                text: choice?.texte || 'Continuer'
+            }))
+        }, (_, index) => {
+            // afficherModaleMatchDilemma transmet l'objet choisi ; retrouver son index.
+            const choices = event?.choix || [];
+            const selectedIndex = choices.findIndex(choice => choice === _);
+            onChoiceMade(selectedIndex >= 0 ? selectedIndex : index);
+        });
+    }
+
+    afficherModaleCoach(event, onChoiceMade) {
+        this.afficherModaleMatchDilemma({
+            title: event?.title || 'Discussion avec le coach',
+            description: event?.description || '',
+            choices: event?.choices || []
+        }, (choice, index) => {
+            const choices = event?.choices || [];
+            const selectedIndex = choices.findIndex(item => item === choice);
+            onChoiceMade(selectedIndex >= 0 ? selectedIndex : index);
+        });
+    }
+
+    afficherModaleTransfer(offer) {
+        let modal = document.getElementById('event-modal-container');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'event-modal-container';
+            modal.className = 'event-modal-overlay';
+            document.body.appendChild(modal);
+        }
+
+        modal.innerHTML = `
+            <div class="event-modal-card">
+                <span class="event-modal-category">🔄 MERCATO</span>
+                <h3 class="event-modal-title">Offre de ${offer?.club || 'nouveau club'}</h3>
+                <p class="event-modal-desc">${offer?.message || ''}</p>
+                <p><strong>Rôle :</strong> ${offer?.rolePropose || 'Rotation'}</p>
+                <p><strong>Salaire :</strong> ${(offer?.salaireHebdo || 0).toLocaleString('fr-FR')} € / semaine</p>
+                <p><strong>Indemnité :</strong> ${(offer?.montant || 0).toLocaleString('fr-FR')} €</p>
+                <div class="event-modal-choices">
+                    <button class="btn-event-choice" data-transfer="accept">✅ Accepter</button>
+                    <button class="btn-event-choice" data-transfer="reject">❌ Refuser</button>
+                </div>
+            </div>
+        `;
+
+        modal.querySelector('[data-transfer="accept"]')?.addEventListener('click', () => {
+            const result = this.engine.acceptTransferOffer();
+            modal.remove();
+            this.renderDashboard();
+            this.afficherMessageModal(
+                '✈️ Nouveau chapitre',
+                result
+                    ? `Tu rejoins ${result.newClub}. Nouveau salaire : ${result.salary.toLocaleString('fr-FR')} € / semaine.`
+                    : 'Transfert accepté.'
+            );
+        });
+
+        modal.querySelector('[data-transfer="reject"]')?.addEventListener('click', () => {
+            this.engine.rejectTransferOffer();
+            modal.remove();
+            this.renderDashboard();
+        });
+    }
+
     afficherModaleMatchDilemma(dilemma, onChoiceMade) {
         let modal = document.getElementById('event-modal-container');
         if (!modal) {
@@ -744,7 +894,7 @@ export class UserInterface {
 
                 modal.remove();
                 if (typeof onChoiceMade === 'function') {
-                    onChoiceMade(choixSelectionne);
+                    onChoiceMade(choixSelectionne, choiceIndex);
                 }
             });
         });
