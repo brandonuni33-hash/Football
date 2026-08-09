@@ -2,7 +2,7 @@
 // Persistence centralisée et tolérante aux anciennes sauvegardes.
 
 const STORAGE_KEY = 'street_to_pro_save_v3';
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 const DEFAULT_STATE = {
     schemaVersion: SCHEMA_VERSION,
@@ -26,7 +26,8 @@ const DEFAULT_STATE = {
     pendingEvent: null,
     pendingCoachEvent: null,
     pendingMediaDilemma: null,
-    pendingTransferOffer: null
+    pendingTransferOffer: null,
+    world: { version: 1, leagues: {}, lastSeasonFinalized: null }
 };
 
 function cloneDefault() {
@@ -66,6 +67,7 @@ function migrate(raw) {
     state.calendar.seasonMatchCursor = Number.isFinite(Number(state.calendar.seasonMatchCursor))
         ? Number(state.calendar.seasonMatchCursor)
         : 0;
+    state.world ||= { version: 1, leagues: {}, lastSeasonFinalized: null };
 
     // Migration des sauvegardes vers le système de conséquences.
     if (state.player) {
