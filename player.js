@@ -6,6 +6,7 @@ import {
     appliquerProgression
 } from './progression.js';
 import { PotentialSystem } from './potentialSystem.js';
+import { CareerSystem } from './careerSystem.js';
 
 const ORIGIN_MAP = {
     CENTRE_FORMATION: 'CENTRE_FORMATION',
@@ -182,11 +183,14 @@ export const PlayerLogic = {
             },
 
             salary: 0,
-            club: null
+            club: null,
+            clubCountry: formData.clubCountry || null,
+            clubLevel: Number(formData.clubLevel) || 1
         };
 
         syncCanonicalFromProgression(player);
         PotentialSystem.ensure(player);
+        CareerSystem.initialize(player, formData.youthClub || null);
         return player;
     },
 
