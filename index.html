@@ -470,6 +470,12 @@
             color: white;
         }
     </style>
+    <!-- Script de débogage pour attraper la moindre erreur JavaScript -->
+    <script>
+        window.onerror = function(msg, url, line) {
+            alert("Erreur JS : " + msg + " (Ligne " + line + ")");
+        };
+    </script>
 </head>
 <body>
     
