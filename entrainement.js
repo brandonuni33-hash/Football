@@ -1,9 +1,10 @@
 // entrainement.js
 export const TrainingManager = {
-    // Configuration des différents focus possibles avec leurs attributs cibles
+    // Configuration des différents focus possibles avec leurs attributs cibles et descriptions
     FOCUS_TYPES: {
         PHYSIQUE: { 
             name: "Physique", 
+            description: "Développe l'endurance, la vitesse et la robustesse physique dans les duels.",
             fitnessCost: 8, 
             ratingBonus: 0.2, 
             injuryRisk: 1.15,
@@ -12,6 +13,7 @@ export const TrainingManager = {
         },
         TECHNIQUE: { 
             name: "Technique", 
+            description: "Améliore le toucher de balle, la qualité de passe et la précision des dribbles.",
             fitnessCost: 4, 
             ratingBonus: 0.4, 
             injuryRisk: 1.0,
@@ -20,6 +22,7 @@ export const TrainingManager = {
         },
         OFFENSIF: { 
             name: "Finition & Attaque", 
+            description: "Travaille les tirs au but, les appels tranchants et la spontanéité offensive.",
             fitnessCost: 6, 
             ratingBonus: 0.5, 
             injuryRisk: 1.05,
@@ -28,6 +31,7 @@ export const TrainingManager = {
         },
         DEFENSIF: { 
             name: "Tactique & Défense", 
+            description: "Renforce le placement tactique, l'interception et la rigueur défensive.",
             fitnessCost: 5, 
             ratingBonus: 0.3, 
             injuryRisk: 1.0,
@@ -36,6 +40,7 @@ export const TrainingManager = {
         },
         REPOS: { 
             name: "Repos", 
+            description: "Permet de recharger les batteries, de récupérer de la forme et d'éviter les blessures.",
             fitnessCost: -15, // Gain de fitness
             ratingBonus: -0.3, 
             injuryRisk: 0.8,
