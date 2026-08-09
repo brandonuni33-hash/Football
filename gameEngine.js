@@ -1,4 +1,5 @@
 
+
 // gameEngine.js
 import { UserInterface } from './ui.js';
 import { MatchBlockManager } from './matchBlock.js';
@@ -11,6 +12,7 @@ import { TransferMarket } from './transferMarket.js';
 import { TrainingManager } from './entrainement.js';
 import { PlayerLogic } from './player.js';
 import { StateManager } from './state.js';
+import { ConsequenceSystem } from './consequenceSystem.js';
 
 export class GameEngine {
     constructor() {
@@ -20,6 +22,7 @@ export class GameEngine {
 
         if (this.state?.player) {
             this.migrateLoadedState();
+            ConsequenceSystem.initialize(this.state.player);
         }
 
         this.ui = new UserInterface(this);
@@ -140,7 +143,7 @@ export class GameEngine {
         };
 
         this.state = {
-            schemaVersion: 3,
+            schemaVersion: 4,
             player,
             trainingFocus: 'TECHNIQUE',
             social,
@@ -168,6 +171,7 @@ export class GameEngine {
             pendingTransferOffer: null
         };
 
+        ConsequenceSystem.initialize(this.state.player);
         StateManager.save(this.state);
         console.log('Carrière créée :', this.state);
 
