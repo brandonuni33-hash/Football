@@ -1,11 +1,11 @@
+import { TransferMarket } from './transferMarket.js';
+
 // economy.js
 
 export const EconomyManager = {
     // 1. Calcul de la valeur marchande du joueur (OVR + Âge)
     calculateMarketValue(player) {
-        const baseValue = Math.max(10000, Math.pow(player.overall - 50, 3) * 5000);
-        const ageMultiplier = player.age < 22 ? 1.5 : (player.age > 30 ? 0.6 : 1.0);
-        return Math.round(baseValue * ageMultiplier);
+        return TransferMarket.calculateMarketValue(player);
     },
 
     // 2. Offre de contrat initiale (Corrigée pour respecter 100-300€)
