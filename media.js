@@ -49,7 +49,7 @@ export class MediaSystem {
             newPostContent = `Quel match de ${player.firstname} ${player.lastname} ! Le gamin est en feu en ce moment, futur crack 🔥⚽`;
             sourceName = "Actu Foot Jeunes";
             postType = "media";
-        } else if (matchReport && matchReport.averageRating && matchReport.averageRating < 5.5) {
+        } else if (matchReport && (matchReport.averageRating ?? matchReport.rating) < 5.5) {
             newPostContent = `Match compliqué pour ${player.firstname}. Il va falloir se ressaisir rapidement sur le terrain... 📉`;
             sourceName = "Forum Officiel";
             postType = "critique";
@@ -162,4 +162,3 @@ export class MediaSystem {
         state.media.recentDilemma = null;
     }
 }
-
