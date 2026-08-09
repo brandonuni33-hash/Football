@@ -46,6 +46,7 @@ export const POSTES_PONDERATION = {
 
 /** Paliers de potentiel caché (Pilier 3) : fourchette du Potentiel Max tiré au sort. */
 export const TIERS_POTENTIEL = [
+  { id: 'limite',        label: 'Limité',        min: 69, max: 74 },
   { id: 'prometteur',    label: 'Prometteur',    min: 75, max: 77 },
   { id: 'talentueux',    label: 'Talentueux',    min: 78, max: 80 },
   { id: 'exceptionnel',  label: 'Exceptionnel',  min: 81, max: 89 },
@@ -259,10 +260,11 @@ export function calculerGeneral(stats, poste) {
 
 /** Indice qualitatif donné par l'agent — ne révèle jamais le chiffre exact. */
 function obtenirIndiceAgent(joueur) {
+  const potentiel = clamp(Number(joueur.potentielMax) || 69, 69, 99);
   const tier = TIERS_POTENTIEL.find(
-    (t) => joueur.potentielMax >= t.min && joueur.potentielMax <= t.max
-  );
-  const ecart = joueur.potentielMax - joueur.general;
+    (t) => potentiel >= t.min && potentiel <= t.max
+  ) || TIERS_POTENTIEL[0];
+  const ecart = potentiel - joueur.general;
 
   const phrasesTier = {
     limite: "Ton agent reste prudent : ce profil semble avoir un plafond assez proche.",
