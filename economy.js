@@ -10,17 +10,15 @@ export const EconomyManager = {
 
     // 2. Offre de contrat initiale (Corrigée pour respecter 100-300€)
     calculateContractOffer(club, player) {
-        // Salaire forcé entre 100 et 300€ pour le jeune joueur
+        // Le nouveau parcours de carrière peut fournir un contrat adapté à l'âge.
+        if (player?.careerProfile?.stage && player?.contract?.weeklySalary) {
+            return { ...player.contract };
+        }
+
         const weeklySalary = Math.round(100 + (Math.random() * 200));
-        
-        // Prime à la signature basée sur la valeur estimée
         const signingBonus = Math.round(this.calculateMarketValue(player) * 0.05);
 
-        return {
-            weeklySalary,
-            signingBonus,
-            durationYears: Math.floor(Math.random() * 3) + 2
-        };
+        return { weeklySalary, signingBonus, durationYears: Math.floor(Math.random() * 3) + 2, type: player?.age >= 18 ? 'professionnel' : player?.age >= 16 ? 'semi_pro' : 'jeune' };
     },
 
     // 3. Gestion de la paie de fin de bloc + Primes de performance
