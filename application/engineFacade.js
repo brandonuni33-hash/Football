@@ -9,26 +9,19 @@ export function bindEngineToRegistry(engine, registry) {
     }
 
     engine.startCareer = (selectedData = {}) => {
-        const career = registry.careerApplication;
-        if (!career?.create) throw new Error('CareerApplication is not registered.');
-        const state = career.create(selectedData);
+        const state = registry.careerApplication.create(selectedData);
         engine.state = state;
         return state;
     };
 
-    engine.playBlock = (selectedChoice = null) => {
-        const blockSystem = registry.blockSystem;
-        if (!blockSystem?.execute) throw new Error('BlockSystem is not registered.');
-        return blockSystem.execute(engine.state, selectedChoice);
-    };
+    engine.playBlock = (selectedChoice = null) =>
+        registry.blockSystem.execute(engine.state, selectedChoice);
 
-    engine.advanceCalendar = () => {
-        const calendarSystem = registry.calendarSystem;
-        if (!calendarSystem?.advance) throw new Error('CalendarSystem is not registered.');
-        return calendarSystem.advance(engine.state);
-    };
+    engine.advanceCalendar = () =>
+        registry.calendarSystem.advance(engine.state);
 
-    engine.getPeriodName = (month) => registry.calendarSystem.getPeriodName(month);
+    engine.getPeriodName = (month) =>
+        registry.calendarSystem.getPeriodName(month);
 
     engine.setTrainingFocus = (focusKey) => {
         const training = registry.trainingSystem;
@@ -38,17 +31,33 @@ export function bindEngineToRegistry(engine, registry) {
         return true;
     };
 
-    engine.resolveEventChoice = (choiceIndex) => registry.interactionSystem.resolveEventChoice(engine.state, choiceIndex);
-    engine.resolveCoachChoice = (choiceIndex) => registry.interactionSystem.resolveCoachChoice(engine.state, choiceIndex);
-    engine.resolveMediaDilemma = (choiceIndex) => registry.interactionSystem.resolveMediaChoice(engine.state, choiceIndex);
-    engine.resolvePositionProposal = (accepted) => registry.interactionSystem.resolvePositionProposal(engine.state, accepted);
-    engine.acceptTransferOffer = () => registry.transferSystem.accept(engine.state);
-    engine.rejectTransferOffer = () => registry.transferSystem.reject(engine.state);
-    engine.retireCareer = () => registry.careerLifecycleSystem.retire(engine.state);
+    engine.resolveEventChoice = (choiceIndex) =>
+        registry.interactionSystem.resolveEventChoice(engine.state, choiceIndex);
+
+    engine.resolveCoachChoice = (choiceIndex) =>
+        registry.interactionSystem.resolveCoachChoice(engine.state, choiceIndex);
+
+    engine.resolveMediaDilemma = (choiceIndex) =>
+        registry.interactionSystem.resolveMediaChoice(engine.state, choiceIndex);
+
+    engine.resolvePositionProposal = (accepted) =>
+        registry.interactionSystem.resolvePositionProposal(engine.state, accepted);
+
+    engine.acceptTransferOffer = () =>
+        registry.transferSystem.accept(engine.state);
+
+    engine.rejectTransferOffer = () =>
+        registry.transferSystem.reject(engine.state);
+
+    engine.retireCareer = () =>
+        registry.careerLifecycleSystem.retire(engine.state);
 
     engine.resetCareer = () => {
         const result = registry.careerLifecycleSystem.reset();
         engine.state = null;
+
+        // Seule compatibilité UI restante. Elle sera supprimée lorsque l'UI
+        // passera entièrement par ses propres commandes applicatives.
         if (engine.ui) {
             engine.ui.activeApp = 'home';
             engine.ui.currentStep = 1;
