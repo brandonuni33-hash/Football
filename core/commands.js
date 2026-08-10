@@ -8,6 +8,9 @@ export const COMMANDS = Object.freeze({
     ADVANCE_CALENDAR: 'calendar.advance',
     SET_TRAINING_FOCUS: 'training.focus.set',
 
+    CAREER_CREATE: 'career.create',
+    CAREER_RESTORE: 'career.restore',
+
     RESOLVE_EVENT_CHOICE: 'event.choice.resolve',
     RESOLVE_COACH_CHOICE: 'coach.choice.resolve',
     RESOLVE_MEDIA_CHOICE: 'media.choice.resolve',
