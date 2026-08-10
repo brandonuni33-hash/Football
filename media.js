@@ -4,23 +4,13 @@ import { EventBus } from './core/eventBus.js';
 import { EVENTS } from './core/events.js';
 
 export class MediaSystem {
-    constructor(engine) {
-        this.engine = engine;
-    }
+    constructor(engine) { this.engine = engine; }
 
     initMediaData() {
         return {
             followers: 1200,
             hypeLevel: 10,
-            feed: [{
-                id: 1,
-                source: "Le Petit Journal Local",
-                type: "news",
-                content: "Un nouveau jeune talent débarque au centre de formation. Les observateurs curieux de voir son évolution.",
-                likes: 42,
-                commentsCount: 3,
-                date: "Début de saison"
-            }],
+            feed: [{ id: 1, source: 'Le Petit Journal Local', type: 'news', content: 'Un nouveau jeune talent débarque au centre de formation. Les observateurs curieux de voir son évolution.', likes: 42, commentsCount: 3, date: 'Début de saison' }],
             recentDilemma: null
         };
     }
@@ -31,53 +21,34 @@ export class MediaSystem {
         const player = state.player;
         const goalsScored = matchReport?.goals || 0;
         const assists = matchReport?.assists || 0;
-        const followerGain = 150 + (goalsScored * 500) + (assists * 300);
-        media.followers += followerGain;
+        media.followers += 150 + (goalsScored * 500) + (assists * 300);
         media.hypeLevel = Math.min(100, media.hypeLevel + (goalsScored * 5) + 2);
 
-        let newPostContent = "";
-        let sourceName = "Supporters du club";
-        let postType = "fans";
+        let newPostContent = '';
+        let sourceName = 'Supporters du club';
+        let postType = 'fans';
         if (goalsScored >= 2) {
             newPostContent = `Quel match de ${player.firstname} ${player.lastname} ! Le gamin est en feu en ce moment, futur crack 🔥⚽`;
-            sourceName = "Actu Foot Jeunes";
-            postType = "media";
+            sourceName = 'Actu Foot Jeunes'; postType = 'media';
         } else if (matchReport && (matchReport.averageRating ?? matchReport.rating) < 5.5) {
             newPostContent = `Match compliqué pour ${player.firstname}. Il va falloir se ressaisir rapidement sur le terrain... 📉`;
-            sourceName = "Forum Officiel";
-            postType = "critique";
+            sourceName = 'Forum Officiel'; postType = 'critique';
         } else {
             newPostContent = `Semaine studieuse à l'entraînement pour ${player.firstname} ${player.lastname}. Concentré sur les objectifs du club. 🧠💪`;
-            sourceName = "Mon compte officiel (@" + player.lastname.toLowerCase() + ")";
-            postType = "player";
+            sourceName = 'Mon compte officiel (@' + player.lastname.toLowerCase() + ')'; postType = 'player';
         }
 
-        media.feed.unshift({
-            id: Date.now(), source: sourceName, type: postType, content: newPostContent,
-            likes: Math.floor(Math.random() * 800) + 50,
-            commentsCount: Math.floor(Math.random() * 45) + 2,
-            date: `Mois ${state.calendar.currentMonth}`
-        });
+        media.feed.unshift({ id: Date.now(), source: sourceName, type: postType, content: newPostContent, likes: Math.floor(Math.random() * 800) + 50, commentsCount: Math.floor(Math.random() * 45) + 2, date: `Mois ${state.calendar.currentMonth}` });
         if (media.feed.length > 10) media.feed.pop();
+        media.recentDilemma = Math.random() < 0.4 ? this.getRandomMediaDilemma(state) : null;
 
-        if (Math.random() < 0.4) media.recentDilemma = this.getRandomMediaDilemma(state);
-        else media.recentDilemma = null;
-
-        EventBus.emit(EVENTS.MEDIA_POST_CREATED || 'media.post.created', {
-            state,
-            playerId: player.id,
-            post: media.feed[0]
-        });
+        EventBus.emit(EVENTS.MEDIA_POST_CREATED, { state, playerId: player.id, post: media.feed[0] });
         if (media.recentDilemma) {
-            EventBus.emit('media.dilemma.created', {
-                state,
-                playerId: player.id,
-                dilemma: media.recentDilemma
-            });
+            EventBus.emit(EVENTS.MEDIA_DILEMMA_CREATED, { state, playerId: player.id, dilemma: media.recentDilemma });
         }
     }
 
-    getRandomMediaDilemma(state) {
+    getRandomMediaDilemma() {
         const dilemmas = [
             { id: 'tiktok_trend', title: '📱 Tendance Réseaux Sociaux', description: 'Une trend TikTok populaire tourne en dérision les jeunes joueurs qui se la racontent trop. Un journaliste te tague pour savoir si tu vas y participer.', choices: [{ text: 'Faire une vidéo décalée', effect: { hypeDelta: 10, followerDelta: 2500, coachDelta: -10 } }, { text: 'Ignorer poliment', effect: { hypeDelta: -2, followerDelta: 200, coachDelta: 5 } }] },
             { id: 'locker_room_story', title: '📸 Story fuité du vestiaire', description: 'Un coéquipier a posté une story par inadvertance où l’on te voit faire une sieste dans le vestiaire avant un décrassage. Les fans rigolent, mais la presse relaie l’info.', choices: [{ text: 'En rire dans les commentaires', effect: { moraleDelta: 5, followerDelta: 800, relationshipDelta: 5 } }, { text: 'Demander à supprimer', effect: { moraleDelta: -3, coachDelta: 5, relationshipDelta: -10 } }] },
@@ -98,7 +69,7 @@ export class MediaSystem {
         if (eff.coachDelta && this.engine?.socialSystem) this.engine.socialSystem.modifyRelationship(state, 'coach', eff.coachDelta);
         if (eff.relationshipDelta && this.engine?.socialSystem) this.engine.socialSystem.modifyRelationship(state, 'vestiaire', eff.relationshipDelta);
         state.media.recentDilemma = null;
-        EventBus.emit('media.dilemma.resolved', { state, playerId: state.player?.id, dilemmaId: dilemma.id, choiceIndex });
+        EventBus.emit(EVENTS.MEDIA_DILEMMA_RESOLVED, { state, playerId: state.player?.id, dilemmaId: dilemma.id, choiceIndex });
         return { dilemmaId: dilemma.id, choiceIndex };
     }
 }
