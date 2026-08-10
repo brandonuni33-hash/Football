@@ -5,10 +5,28 @@ import { InternationalSystem } from './internationalSystem.js';
 import { CompetitionSystem } from './competitionSystem.js';
 import { GameEngine } from './gameEngine.js';
 
+const originalEnsure = InternationalSystem.ensure.bind(InternationalSystem);
 const originalMigrate = GameEngine.prototype.migrateLoadedState;
 const originalStartCareer = GameEngine.prototype.startCareer;
 const originalPlayBlock = GameEngine.prototype.playBlock;
 const originalAdvanceCalendar = GameEngine.prototype.advanceCalendar;
+
+// Dans le calendrier du jeu, juin/juillet appartiennent à la saison commencée
+// en août précédent. Un tournoi d'été porte donc l'année suivante.
+InternationalSystem.ensure = function (state) {
+    if (!state?.calendar) return originalEnsure(state);
+    const month = Number(state.calendar.currentMonth);
+    const isInternationalWindow = month === 6 || month === 7;
+    if (!isInternationalWindow) return state.international || originalEnsure(state);
+
+    const originalYear = state.calendar.currentSeasonYear;
+    state.calendar.currentSeasonYear = Number(originalYear) + 1;
+    try {
+        return originalEnsure(state);
+    } finally {
+        state.calendar.currentSeasonYear = originalYear;
+    }
+};
 
 GameEngine.prototype.migrateLoadedState = function (...args) {
     const result = originalMigrate.apply(this, args);
@@ -23,6 +41,11 @@ GameEngine.prototype.startCareer = function (...args) {
 };
 
 GameEngine.prototype.advanceCalendar = function (...args) {
+    const state = this.state;
+    if (Number(state?.calendar?.currentMonth) === 7) {
+        InternationalSystem.finalizeSeason(state);
+    }
+
     const result = originalAdvanceCalendar.apply(this, args);
     InternationalSystem.ensure(this.state);
     return result;
