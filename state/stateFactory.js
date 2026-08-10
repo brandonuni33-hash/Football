@@ -8,6 +8,8 @@ export function createBaseState(overrides = {}) {
     return {
         schemaVersion: STATE_SCHEMA_VERSION,
         player: null,
+        activePlayerId: null,
+        careerGeneration: 1,
         trainingFocus: 'TECHNIQUE',
         social: null,
         media: null,
@@ -16,6 +18,22 @@ export function createBaseState(overrides = {}) {
             seasonHistory: [],
             totalCareerIncome: 0
         },
+        family: {
+            members: [],
+            couples: [],
+            children: [],
+            events: []
+        },
+        relationships: {},
+        relationshipNetwork: [],
+        careerMemory: [],
+        generationHistory: [],
+        secondGeneration: {
+            unlocked: [],
+            active: null,
+            completed: []
+        },
+        familyLegacy: [],
         calendar: {
             currentMonth: 8,
             currentSeasonYear: new Date().getFullYear(),
