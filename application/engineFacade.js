@@ -8,25 +8,11 @@ export function bindEngineToRegistry(engine, registry) {
         throw new Error('bindEngineToRegistry requires an engine and a registry.');
     }
 
-    const legacy = {
-        startCareer: engine.startCareer?.bind(engine),
-        playBlock: engine.playBlock?.bind(engine),
-        advanceCalendar: engine.advanceCalendar?.bind(engine),
-        getPeriodName: engine.getPeriodName?.bind(engine),
-        setTrainingFocus: engine.setTrainingFocus?.bind(engine),
-        resolveEventChoice: engine.resolveEventChoice?.bind(engine),
-        resolveCoachChoice: engine.resolveCoachChoice?.bind(engine),
-        resolveMediaDilemma: engine.resolveMediaDilemma?.bind(engine),
-        resolvePositionProposal: engine.resolvePositionProposal?.bind(engine),
-        acceptTransferOffer: engine.acceptTransferOffer?.bind(engine),
-        rejectTransferOffer: engine.rejectTransferOffer?.bind(engine),
-        retireCareer: engine.retireCareer?.bind(engine),
-        resetCareer: engine.resetCareer?.bind(engine)
-    };
+    const legacy = {};
 
     engine.startCareer = (selectedData = {}) => {
         const career = registry.careerApplication;
-        if (!career?.create) return legacy.startCareer?.(selectedData) ?? null;
+        if (!career?.create) throw new Error('CareerApplication is not registered.');
         const state = career.create(selectedData);
         engine.state = state;
         return state;
@@ -34,92 +20,58 @@ export function bindEngineToRegistry(engine, registry) {
 
     engine.playBlock = (selectedChoice = null) => {
         const blockSystem = registry.blockSystem;
-        if (!blockSystem?.execute) return legacy.playBlock?.(selectedChoice) ?? null;
+        if (!blockSystem?.execute) throw new Error('BlockSystem is not registered.');
         return blockSystem.execute(engine.state, selectedChoice);
     };
 
     engine.advanceCalendar = () => {
         const calendarSystem = registry.calendarSystem;
-        if (!calendarSystem?.advance) return legacy.advanceCalendar?.() ?? null;
+        if (!calendarSystem?.advance) throw new Error('CalendarSystem is not registered.');
         return calendarSystem.advance(engine.state);
     };
 
-    engine.getPeriodName = (month) => {
-        const calendarSystem = registry.calendarSystem;
-        if (!calendarSystem?.getPeriodName) return legacy.getPeriodName?.(month) ?? '';
-        return calendarSystem.getPeriodName(month);
-    };
+    engine.getPeriodName = (month) => registry.calendarSystem.getPeriodName(month);
 
     engine.setTrainingFocus = (focusKey) => {
         const training = registry.trainingSystem;
-        if (!training?.isValidFocus?.(focusKey)) return legacy.setTrainingFocus?.(focusKey) ?? false;
-        if (!engine.state?.player) return false;
+        if (!training?.isValidFocus?.(focusKey) || !engine.state?.player) return false;
         engine.state.trainingFocus = focusKey;
-        registry.blockSystem?.stateManager?.save?.(engine.state);
+        registry.blockSystem.stateManager.save(engine.state);
         return true;
     };
 
-    engine.resolveEventChoice = (choiceIndex) => {
-        const interactions = registry.interactionSystem;
-        if (!interactions?.resolveEventChoice) return legacy.resolveEventChoice?.(choiceIndex) ?? null;
-        return interactions.resolveEventChoice(engine.state, choiceIndex);
-    };
+    engine.resolveEventChoice = (choiceIndex) =>
+        registry.interactionSystem.resolveEventChoice(engine.state, choiceIndex);
 
-    engine.resolveCoachChoice = (choiceIndex) => {
-        const interactions = registry.interactionSystem;
-        if (!interactions?.resolveCoachChoice) return legacy.resolveCoachChoice?.(choiceIndex) ?? null;
-        return interactions.resolveCoachChoice(engine.state, choiceIndex);
-    };
+    engine.resolveCoachChoice = (choiceIndex) =>
+        registry.interactionSystem.resolveCoachChoice(engine.state, choiceIndex);
 
-    engine.resolveMediaDilemma = (choiceIndex) => {
-        const interactions = registry.interactionSystem;
-        if (!interactions?.resolveMediaChoice) return legacy.resolveMediaDilemma?.(choiceIndex) ?? null;
-        return interactions.resolveMediaChoice(engine.state, choiceIndex);
-    };
+    engine.resolveMediaDilemma = (choiceIndex) =>
+        registry.interactionSystem.resolveMediaChoice(engine.state, choiceIndex);
 
-    engine.resolvePositionProposal = (accepted) => {
-        const interactions = registry.interactionSystem;
-        if (!interactions?.resolvePositionProposal) return legacy.resolvePositionProposal?.(accepted) ?? false;
-        return interactions.resolvePositionProposal(engine.state, accepted);
-    };
+    engine.resolvePositionProposal = (accepted) =>
+        registry.interactionSystem.resolvePositionProposal(engine.state, accepted);
 
-    engine.acceptTransferOffer = () => {
-        const transfer = registry.transferSystem;
-        if (!transfer?.accept) return legacy.acceptTransferOffer?.() ?? null;
-        return transfer.accept(engine.state);
-    };
+    engine.acceptTransferOffer = () => registry.transferSystem.accept(engine.state);
 
-    engine.rejectTransferOffer = () => {
-        const transfer = registry.transferSystem;
-        if (!transfer?.reject) return legacy.rejectTransferOffer?.() ?? false;
-        return transfer.reject(engine.state);
-    };
+    engine.rejectTransferOffer = () => registry.transferSystem.reject(engine.state);
 
-    engine.retireCareer = () => {
-        const lifecycle = registry.careerLifecycleSystem;
-        if (!lifecycle?.retire) return legacy.retireCareer?.() ?? null;
-        return lifecycle.retire(engine.state);
-    };
+    engine.retireCareer = () => registry.careerLifecycleSystem.retire(engine.state);
 
     engine.resetCareer = () => {
-        const lifecycle = registry.careerLifecycleSystem;
-        if (!lifecycle?.reset) return legacy.resetCareer?.() ?? null;
-        const result = lifecycle.reset();
+        const result = registry.careerLifecycleSystem.reset();
         engine.state = null;
+
+        // Cette remise à zéro de navigation reste la seule partie UI de la
+        // façade de compatibilité. Elle sera déplacée lorsque l'UI passera
+        // entièrement par ses propres commandes applicatives.
         if (engine.ui) {
             engine.ui.activeApp = 'home';
             engine.ui.currentStep = 1;
             engine.ui.selectedData = {
-                firstname: '',
-                lastname: '',
-                position: null,
-                continent: null,
-                country: null,
-                origin: null,
-                heartClub: null,
-                youthClub: null,
-                coachVision: null,
-                coachName: null
+                firstname: '', lastname: '', position: null, continent: null,
+                country: null, origin: null, heartClub: null, youthClub: null,
+                coachVision: null, coachName: null
             };
             engine.ui.render?.();
         }
@@ -129,19 +81,10 @@ export function bindEngineToRegistry(engine, registry) {
     engine.__architecture = Object.freeze({
         phase: 5,
         delegated: [
-            'startCareer',
-            'playBlock',
-            'advanceCalendar',
-            'getPeriodName',
-            'setTrainingFocus',
-            'resolveEventChoice',
-            'resolveCoachChoice',
-            'resolveMediaDilemma',
-            'resolvePositionProposal',
-            'acceptTransferOffer',
-            'rejectTransferOffer',
-            'retireCareer',
-            'resetCareer'
+            'startCareer', 'playBlock', 'advanceCalendar', 'getPeriodName',
+            'setTrainingFocus', 'resolveEventChoice', 'resolveCoachChoice',
+            'resolveMediaDilemma', 'resolvePositionProposal',
+            'acceptTransferOffer', 'rejectTransferOffer', 'retireCareer', 'resetCareer'
         ]
     });
 
