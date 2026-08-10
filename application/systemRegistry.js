@@ -56,9 +56,6 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
 
     const blockSystem = new BlockSystem({
         trainingManager: TrainingManager,
-        // Le façade MatchSystem est désormais la porte d'entrée des blocs :
-        // MatchBlockManager conserve l'orchestration historique, mais toutes
-        // les performances passent par le moteur commun.
         matchBlockManager: matchSystem,
         worldSystem,
         socialSystem,
@@ -83,10 +80,19 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
 
     notificationSystem.start();
 
-    return Object.freeze({ socialSystem, mediaSystem, trainingSystem, matchSystem, relationshipSystem, networkEvolutionSystem,
-        familySystem, familyLifeSystem, notificationSystem, secondGenerationSystem, childCareerSystem,
-        generationSimulationFacade, seasonSystem, calendarSystem, blockSystem, interactionSystem,
-        transferSystem, careerLifecycleSystem, careerApplication });
+    // Les deux niveaux sont exposés volontairement :
+    // - matchSystem = façade commune pour les blocs simulés
+    // - matchBlockManager = API des matchs interactifs
+    return Object.freeze({
+        socialSystem, mediaSystem, trainingSystem,
+        matchSystem, matchBlockManager: MatchBlockManager,
+        competitionSystem, cupSystem,
+        relationshipSystem, networkEvolutionSystem,
+        familySystem, familyLifeSystem, notificationSystem,
+        secondGenerationSystem, childCareerSystem, generationSimulationFacade,
+        seasonSystem, calendarSystem, blockSystem, interactionSystem,
+        transferSystem, careerLifecycleSystem, careerApplication
+    });
 }
 
 export default createSystemRegistry;
