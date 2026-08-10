@@ -4,10 +4,8 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'careerSimulation.js'
       - 'careerSimulationV4.js'
       - 'player.js'
-      - 'progression.js'
       - 'potentialSystem.js'
       - 'matchBlock.js'
       - 'competitionSystem.js'
