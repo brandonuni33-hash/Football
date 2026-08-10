@@ -1,10 +1,13 @@
-// domain/family/familyLifeSystem.js
 // Vie de couple et famille : évolution lente, événements majeurs et arbitrages carrière/vie privée.
 
 import RelationshipDynamics from '../relationship/relationshipDynamics.js';
 import RelationshipMemory from '../relationship/relationshipMemory.js';
 
 const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, value));
+const MALE_NAMES = ['Lucas', 'Hugo', 'Gabriel', 'Noah', 'Léo', 'Nathan', 'Ethan', 'Jules', 'Arthur', 'Louis'];
+const FEMALE_NAMES = ['Emma', 'Chloé', 'Léa', 'Jade', 'Louise', 'Alice', 'Mia', 'Rose', 'Anna', 'Inès'];
+
+const randomName = list => list[Math.floor(Math.random() * list.length)];
 
 export class FamilyLifeSystem {
     constructor({ dynamics = new RelationshipDynamics(), memory = new RelationshipMemory() } = {}) {
@@ -13,7 +16,7 @@ export class FamilyLifeSystem {
     }
 
     ensure(state) {
-        state.family ||= { members: [], children: [], events: [] };
+        state.family ||= { members: [], children: [], events: [], couples: [] };
         state.family.members ||= [];
         state.family.children ||= [];
         state.family.events ||= [];
@@ -87,6 +90,69 @@ export class FamilyLifeSystem {
             context
         });
         return record;
+    }
+
+    /**
+     * Vérifie une fois par saison si un couple stable peut accueillir un enfant.
+     * La naissance reste rare et dépend de la stabilité du couple, de l'âge
+     * du joueur et de son désir de famille. Aucun enfant n'est créé sans couple.
+     */
+    evaluateBirths({ state, player, season }) {
+        const family = this.ensure(state);
+        const age = Number(player?.age ?? 0);
+        if (!player?.id || age < 18 || age > 40) return [];
+        if (family.lastBirthCheckSeason === season) return [];
+        family.lastBirthCheckSeason = season;
+
+        const births = [];
+        for (const couple of family.couples) {
+            if (couple.playerId !== player.id || couple.status !== 'together') continue;
+            if (family.children.some(child => child.parentPlayerId === player.id && child.birthSeason === season)) continue;
+
+            const relationship = couple.relationshipId
+                ? state?.relationships?.[couple.relationshipId]
+                : null;
+            const axes = relationship?.axes || {};
+            const stability = clamp(Number(axes.trust ?? 50) * 0.35 + Number(axes.affection ?? 50) * 0.45 + Number(axes.respect ?? 50) * 0.20);
+            const familyDesire = clamp(Number(couple.familyDesire ?? 50));
+            const baseChance = 0.035;
+            const stabilityBonus = Math.max(0, stability - 55) * 0.0015;
+            const desireBonus = Math.max(0, familyDesire - 50) * 0.001;
+            const ageModifier = age >= 28 && age <= 35 ? 1.15 : 1;
+            const chance = (baseChance + stabilityBonus + desireBonus) * ageModifier;
+
+            if (Math.random() >= chance) continue;
+
+            const gender = Math.random() < 0.51 ? 'male' : 'female';
+            const firstName = gender === 'male' ? randomName(MALE_NAMES) : randomName(FEMALE_NAMES);
+            const birthDate = new Date().toISOString();
+            const child = {
+                id: `child_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                parentPlayerId: player.id,
+                partnerId: couple.partnerId,
+                firstName,
+                gender,
+                birthSeason: Number(season),
+                birthDate,
+                age: 0,
+                createdAt: birthDate
+            };
+
+            family.children.push(child);
+            const event = {
+                id: `family_birth_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                type: 'child_born',
+                childId: child.id,
+                playerId: player.id,
+                partnerId: couple.partnerId,
+                season: Number(season),
+                createdAt: birthDate
+            };
+            family.events.push(event);
+            births.push({ child, event });
+        }
+
+        return births;
     }
 
     children(state, playerId) {
