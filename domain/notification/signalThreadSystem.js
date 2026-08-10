@@ -29,6 +29,7 @@ export class SignalThreadSystem {
         const latest = signals[signals.length - 1];
         const unread = signals.filter(signal => !signal.read && !signal.archived).length;
         const actionable = signals.filter(signal => signal.actionable && !signal.archived).length;
+        const closed = Boolean(thread.closedAt);
 
         return {
             id: thread.id,
@@ -40,11 +41,21 @@ export class SignalThreadSystem {
             unreadCount: unread,
             actionableCount: actionable,
             latest,
-            status: actionable > 0 ? 'action_required' : 'active'
+            status: closed ? 'closed' : actionable > 0 ? 'action_required' : 'active',
+            certainty: this.#certainty(latest),
+            visibility: latest.visibility || 'visible'
         };
     }
 
     listActive(state = this.state) {
+        return (state?.notifications?.threads || [])
+            .filter(thread => !thread.closedAt)
+            .map(thread => this.summarize(thread.id, state))
+            .filter(Boolean)
+            .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+    }
+
+    listHistory(state = this.state) {
         return (state?.notifications?.threads || [])
             .map(thread => this.summarize(thread.id, state))
             .filter(Boolean)
@@ -64,6 +75,23 @@ export class SignalThreadSystem {
             state.notifications.unreadCount = Math.max(0, (state.notifications.unreadCount || 0) - changed);
         }
         return changed;
+    }
+
+    close(threadId, reason = 'resolved', state = this.state) {
+        const thread = this.getThread(threadId, state);
+        if (!thread) return false;
+        thread.closedAt = new Date().toISOString();
+        thread.closeReason = reason;
+        return true;
+    }
+
+    #certainty(signal) {
+        if (!signal) return 'unknown';
+        const confidence = Number(signal.confidence ?? 1);
+        if (confidence >= 0.85) return 'certain';
+        if (confidence >= 0.6) return 'probable';
+        if (confidence >= 0.35) return 'rumor';
+        return 'uncertain';
     }
 }
 
