@@ -4,22 +4,8 @@
 // la migration.
 
 export class InteractionSystem {
-    constructor({
-        eventEngine,
-        coachSystem,
-        mediaSystem,
-        playerLogic,
-        careerSystem,
-        stateManager
-    } = {}) {
-        Object.assign(this, {
-            eventEngine,
-            coachSystem,
-            mediaSystem,
-            playerLogic,
-            careerSystem,
-            stateManager
-        });
+    constructor({ eventEngine, coachSystem, mediaSystem, playerLogic, careerSystem, stateManager } = {}) {
+        Object.assign(this, { eventEngine, coachSystem, mediaSystem, playerLogic, careerSystem, stateManager });
     }
 
     resolveEventChoice(state, choiceIndex) {
@@ -27,7 +13,7 @@ export class InteractionSystem {
         const event = state.pendingEvent;
         const result = this.eventEngine.resolveChoice(state, event.id, choiceIndex);
         state.pendingEvent = null;
-        this.playerLogic.syncProgressionFromCanonical(state.player);
+        this.playerLogic.ensure(state.player);
         this.stateManager.save(state);
         return result;
     }
@@ -37,7 +23,7 @@ export class InteractionSystem {
         const event = state.pendingCoachEvent;
         const result = this.coachSystem.resolveCoachChoice(state, choiceIndex, event);
         state.pendingCoachEvent = null;
-        this.playerLogic.syncProgressionFromCanonical(state.player);
+        this.playerLogic.ensure(state.player);
         this.stateManager.save(state);
         return result;
     }
@@ -52,14 +38,10 @@ export class InteractionSystem {
     resolvePositionProposal(state, accepted) {
         const proposal = state?.pendingPositionProposal;
         if (!proposal) return false;
-        const result = this.careerSystem.applyPositionChange(
-            state.player,
-            Boolean(accepted),
-            proposal
-        );
+        const result = this.careerSystem.applyPositionChange(state.player, Boolean(accepted), proposal);
         state.pendingPositionProposal = null;
         state.careerStructure = state.player.careerProfile || null;
-        this.playerLogic.syncProgressionFromCanonical(state.player);
+        this.playerLogic.ensure(state.player);
         this.stateManager.save(state);
         return result;
     }
