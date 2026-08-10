@@ -1,6 +1,9 @@
 // domain/match/matchSystem.js
 // Façade de domaine pour la simulation des blocs de match.
-// Les règles historiques restent dans MatchBlockManager pendant la migration.
+// Le moteur de performance commun recalibre les matchs simulés à partir
+// des attributs, de la forme, du mental, de la régularité et du contexte.
+
+import { recalibrateReport } from './matchPerformanceEngine.js';
 
 export class MatchSystem {
     constructor(matchBlockManager) {
@@ -11,7 +14,8 @@ export class MatchSystem {
     }
 
     simulateBlock(state, trainingFocus = 'TECHNIQUE', userMatchChoice = null) {
-        return this.legacy.simulateBlock(state, trainingFocus, userMatchChoice);
+        const report = this.legacy.simulateBlock(state, trainingFocus, userMatchChoice);
+        return recalibrateReport(state?.player, report, { trainingFocus, interactive: Boolean(userMatchChoice) });
     }
 }
 
