@@ -4,6 +4,7 @@ import { EconomyManager } from '../economy.js';
 import { SocialSystem } from '../social.js';
 import { MediaSystem } from '../media.js';
 import { TrainingManager } from '../entrainement.js';
+import { MatchChoiceManager } from '../matchChoices.js';
 import { PlayerLogic } from '../player.js';
 import { StateManager, SCHEMA_VERSION } from '../state/stateManager.js';
 import { EventEngine } from '../events.js';
@@ -83,6 +84,7 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
         socialSystem,
         mediaSystem,
         trainingSystem,
+        matchChoiceManager: MatchChoiceManager,
         simulatedMatchSystem,
         interactiveMatchSystem: InteractiveMatchSystem,
         competitionSystem,
