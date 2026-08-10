@@ -53,6 +53,15 @@ function roleStats(player) {
     return [['MATCHS', matches], ['BUTS', goals], ['PASSES D.', assists], ['NOTE MOY.', ratingFromStats(stats)]];
 }
 
+function loadLiveStyles() {
+    if (document.getElementById('street-live-polish-css')) return;
+    const link = document.createElement('link');
+    link.id = 'street-live-polish-css';
+    link.rel = 'stylesheet';
+    link.href = './ui-live-polish.css?v=1';
+    document.head.appendChild(link);
+}
+
 function enhanceDashboard() {
     const app = document.getElementById('app');
     const state = window.UI?.engine?.state;
@@ -63,13 +72,11 @@ function enhanceDashboard() {
 
     widget.dataset.livePolished = '1';
     const player = state.player;
-    const stats = player.stats || {};
     const flag = countryFlag(player);
     const first = player.firstname || '';
     const last = player.lastname || '';
     const name = `${first} ${last}`.trim() || 'Joueur';
 
-    // Identité : drapeau + nom + âge. Suppression visuelle des work rates et infos parasites.
     const title = widget.querySelector('.widget-title');
     if (title) {
         title.innerHTML = `${flag ? `<span class="live-player-flag" aria-label="Pays">${flag}</span>` : ''}<span>${name}</span><span class="live-player-age">${player.age ?? '—'} ans</span>`;
@@ -77,9 +84,7 @@ function enhanceDashboard() {
     widget.querySelectorAll('.widget-secret-tag').forEach(el => el.remove());
 
     const clubSub = widget.querySelector('.player-club-sub');
-    if (clubSub) {
-        clubSub.textContent = `${player.club || 'Sans club'} · ${player.position || player.positionId || '—'}`;
-    }
+    if (clubSub) clubSub.textContent = `${player.club || 'Sans club'} · ${player.position || player.positionId || '—'}`;
 
     const oldGrid = widget.querySelector('.widget-stats-grid');
     if (oldGrid) {
@@ -99,7 +104,6 @@ function enhanceDashboard() {
         oldGrid.insertAdjacentElement('afterend', career);
     }
 
-    // Les applications deviennent une vraie section lisible.
     const apps = screen.querySelector('.apps-grid');
     if (apps && !screen.querySelector('.live-section-title')) {
         const heading = document.createElement('div');
@@ -108,23 +112,18 @@ function enhanceDashboard() {
         apps.parentNode.insertBefore(heading, apps);
     }
 
-    // Réglages flottants : une seule entrée dans la grille suffit.
     screen.querySelector('#settings-floating-btn')?.remove();
-
-    // Libellé du bouton de progression.
     const advance = screen.querySelector('#play-block-btn');
     if (advance && !player.careerEnded) advance.textContent = 'Avancer';
 }
 
-const observer = new MutationObserver(() => {
-    // ui.js reconstruit le Dashboard après chaque action : on attend le rendu puis on applique la couche visuelle.
-    requestAnimationFrame(enhanceDashboard);
-});
+const observer = new MutationObserver(() => requestAnimationFrame(enhanceDashboard));
 
 function start() {
+    loadLiveStyles();
     const app = document.getElementById('app') || document.body;
     observer.observe(app, { childList: true, subtree: true });
-    enhanceDashboard();
+    requestAnimationFrame(enhanceDashboard);
 }
 
 if (document.readyState === 'loading') {
