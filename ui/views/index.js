@@ -7,3 +7,7 @@ export { TransferView } from './transferView.js';
 export { TrainingView } from './trainingView.js';
 export { CareerView } from './careerView.js';
 export { FamilyView } from './familyView.js';
+export { MessagesView } from './messagesView.js';
+export { BankView } from './bankView.js';
+export { StatsView } from './statsView.js';
+export { SettingsView } from './settingsView.js';
