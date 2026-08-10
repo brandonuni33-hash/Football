@@ -1,658 +1,353 @@
 // cupSystem.js
-// ============================================================
-// STREET TO PRO — PHASE 2D
-// Coupes nationales
-// ============================================================
-//
-// Principe :
-// - une coupe nationale par pays
-// - élimination directe
-// - tirage aléatoire
-// - les clubs des deux premières divisions participent
-// - les tours sont générés progressivement
-// - prolongation / tirs au but
-// - finale = match majeur
-// - le système ne modifie pas le championnat
-//
-// ============================================================
-
+// Phase 2D — Coupes nationales réellement intégrées au calendrier et au match.
 import { WorldSystem } from './worldSystem.js';
 
-const clamp = (value, min, max) =>
-    Math.min(max, Math.max(min, Number(value) || 0));
+const clamp = (v, min, max) => Math.min(max, Math.max(min, Number(v) || 0));
 
-const COUNTRIES = {
-    France: {
-        id: 'COUPE_FR',
-        name: 'Coupe de France',
-        shortName: 'CDF',
-        leagueIds: ['FR_L1', 'FR_L2']
-    },
-
-    Angleterre: {
-        id: 'COUPE_EN',
-        name: 'FA Cup',
-        shortName: 'FA Cup',
-        leagueIds: ['EN_PL', 'EN_CH']
-    },
-
-    Espagne: {
-        id: 'COUPE_ES',
-        name: 'Copa del Rey',
-        shortName: 'Copa',
-        leagueIds: ['ES_LA', 'ES_SD']
-    },
-
-    Italie: {
-        id: 'COUPE_IT',
-        name: 'Coppa Italia',
-        shortName: 'Coppa',
-        leagueIds: ['IT_A', 'IT_B']
-    },
-
-    Allemagne: {
-        id: 'COUPE_DE',
-        name: 'DFB-Pokal',
-        shortName: 'Pokal',
-        leagueIds: ['DE_B1', 'DE_B2']
-    }
+export const COUNTRIES = {
+    France: { id: 'COUPE_FR', name: 'Coupe de France', shortName: 'CDF', leagueIds: ['FR_L1', 'FR_L2'] },
+    Angleterre: { id: 'COUPE_EN', name: 'FA Cup', shortName: 'FA Cup', leagueIds: ['EN_PL', 'EN_CH'] },
+    Espagne: { id: 'COUPE_ES', name: 'Copa del Rey', shortName: 'Copa', leagueIds: ['ES_LA', 'ES_SD'] },
+    Italie: { id: 'COUPE_IT', name: 'Coppa Italia', shortName: 'Coppa', leagueIds: ['IT_A', 'IT_B'] },
+    Allemagne: { id: 'COUPE_DE', name: 'DFB-Pokal', shortName: 'Pokal', leagueIds: ['DE_B1', 'DE_B2'] }
 };
 
-const ROUND_NAMES = {
-    64: '64es de finale',
-    32: '32es de finale',
-    16: '16es de finale',
-    8: 'Quarts de finale',
-    4: 'Demi-finales',
-    2: 'Finale'
-};
-
-function shuffle(array) {
+const ROUND_MONTHS = [9, 10, 1, 3, 5];
+const shuffle = (array, random = Math.random) => {
     const result = [...array];
-
     for (let i = result.length - 1; i > 0; i -= 1) {
-        const j = Math.floor(Math.random() * (i + 1));
-
-        [result[i], result[j]] =
-            [result[j], result[i]];
+        const j = Math.floor(random() * (i + 1));
+        [result[i], result[j]] = [result[j], result[i]];
     }
-
     return result;
+};
+
+function seededRandom(seed) {
+    let value = (seed >>> 0) || 1;
+    return () => {
+        value += 0x6D2B79F5;
+        let t = value;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
+function hashSeed(input) {
+    let h = 2166136261;
+    const text = String(input);
+    for (let i = 0; i < text.length; i += 1) {
+        h ^= text.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
 }
 
 function getStrength(club) {
     if (!club) return 50;
-
-    return (
-        Number(club.strength || 50) +
-        Number(club.prestige || 0) * 0.35
-    );
+    return Number(club.strength || 50) + Number(club.prestige || 0) * 0.35;
 }
 
-function simulateGoals(home, away) {
-    const homeStrength = getStrength(home);
-    const awayStrength = getStrength(away);
+function roundName(matchCount) {
+    const names = { 32: '32es de finale', 16: '16es de finale', 8: 'Quarts de finale', 4: 'Demi-finales', 2: 'Finale' };
+    return names[matchCount] || `${matchCount * 2}es de finale`;
+}
 
-    const homeAdvantage = 3;
-
-    const homeScore =
-        clamp(
-            Math.floor(
-                Math.random() *
-                (1.3 + Math.max(0, homeStrength + homeAdvantage - awayStrength) / 35)
-            ),
-            0,
-            5
-        );
-
-    const awayScore =
-        clamp(
-            Math.floor(
-                Math.random() *
-                (1.2 + Math.max(0, awayStrength - homeStrength) / 35)
-            ),
-            0,
-            5
-        );
-
+function createMatch(home, away, round, seasonYear, index, month) {
     return {
-        homeGoals: homeScore,
-        awayGoals: awayScore
+        id: `cup-${seasonYear}-${round}-${index + 1}-${home.id}-${away.id}`,
+        type: 'cup',
+        competitionType: 'national_cup',
+        competitionId: null,
+        competitionName: null,
+        round,
+        month,
+        seasonYear,
+        homeClubId: home.id,
+        awayClubId: away.id,
+        homeClub: home.name,
+        awayClub: away.name,
+        venue: 'Domicile',
+        importance: round === 'Finale' ? 'major' : round === 'Demi-finales' ? 'important' : 'normal',
+        playable: true,
+        played: false
     };
 }
 
-function resolveKnockoutMatch(home, away) {
-    let { homeGoals, awayGoals } =
-        simulateGoals(home, away);
+function simulateGoals(home, away, random = Math.random) {
+    const diff = getStrength(home) - getStrength(away);
+    const homeLambda = clamp(1.25 + diff / 45, 0.35, 2.8);
+    const awayLambda = clamp(1.05 - diff / 55, 0.25, 2.4);
+    const poissonish = lambda => {
+        let goals = 0;
+        const attempts = Math.max(1, Math.round(lambda * 3));
+        for (let i = 0; i < attempts; i += 1) {
+            if (random() < lambda / attempts) goals += 1;
+        }
+        return Math.min(5, goals);
+    };
+    return { homeGoals: poissonish(homeLambda), awayGoals: poissonish(awayLambda) };
+}
 
+function resolveMatch(home, away, random = Math.random, forcedScore = null) {
+    let homeGoals = forcedScore?.homeGoals;
+    let awayGoals = forcedScore?.awayGoals;
     let wentToExtraTime = false;
     let wentToPenalties = false;
 
+    if (homeGoals == null || awayGoals == null) ({ homeGoals, awayGoals } = simulateGoals(home, away, random));
+
     if (homeGoals === awayGoals) {
         wentToExtraTime = true;
-
-        const extraHome =
-            Math.random() < 0.50 ? 1 : 0;
-
-        const extraAway =
-            Math.random() < 0.45 ? 1 : 0;
-
-        homeGoals += extraHome;
-        awayGoals += extraAway;
+        homeGoals += random() < 0.48 ? 1 : 0;
+        awayGoals += random() < 0.45 ? 1 : 0;
     }
 
     let winner;
-
-    if (homeGoals > awayGoals) {
-        winner = home;
-    } else if (awayGoals > homeGoals) {
-        winner = away;
-    } else {
+    if (homeGoals > awayGoals) winner = home;
+    else if (awayGoals > homeGoals) winner = away;
+    else {
         wentToPenalties = true;
-
-        const homePenaltyChance =
-            clamp(
-                0.50 +
-                (getStrength(home) - getStrength(away)) / 250,
-                0.35,
-                0.65
-            );
-
-        winner =
-            Math.random() < homePenaltyChance
-                ? home
-                : away;
+        const chance = clamp(0.5 + (getStrength(home) - getStrength(away)) / 250, 0.35, 0.65);
+        winner = random() < chance ? home : away;
     }
 
-    return {
-        homeClubId: home.id,
-        awayClubId: away.id,
-
-        homeGoals,
-        awayGoals,
-
-        winnerClubId: winner.id,
-
-        wentToExtraTime,
-        wentToPenalties
-    };
+    return { homeClubId: home.id, awayClubId: away.id, homeGoals, awayGoals, winnerClubId: winner.id, wentToExtraTime, wentToPenalties };
 }
 
-function createMatch(home, away, round, final = false) {
-    return {
-        id:
-            `cup-${Date.now()}-${Math.random()
-                .toString(36)
-                .slice(2, 9)}`,
-
-        type: final
-            ? 'final'
-            : 'cup',
-
-        competitionType: 'national_cup',
-
-        round,
-
-        homeClubId: home.id,
-        awayClubId: away.id,
-
-        homeClub: home.name,
-        awayClub: away.name,
-
-        importance:
-            final
-                ? 'majeur'
-                : round === 'Demi-finales'
-                    ? 'important'
-                    : 'normal',
-
-        playable: true
-    };
+function getActiveIds(cup) {
+    return (cup.qualifiedClubIds || []).filter(id => !(cup.eliminatedClubIds || []).includes(id));
 }
 
-function createInitialCupClubs(country) {
-    const competition = COUNTRIES[country];
+function buildRound(cup, ids) {
+    const clubs = ids.map(id => WorldSystem.getClub(id)).filter(Boolean);
+    if (clubs.length <= 1) return { matches: [], byes: clubs.map(c => c.id), round: 'Finale' };
 
-    if (!competition) return [];
-
-    return competition.leagueIds
-        .flatMap(leagueId =>
-            WorldSystem.getClubs(leagueId)
-        );
-}
-
-function resetCup(cup, clubs) {
-    cup.status = 'active';
-
-    cup.currentRound = null;
-
-    cup.qualifiedClubIds = clubs.map(
-        club => club.id
-    );
-
-    cup.eliminatedClubIds = [];
-
-    cup.matches = [];
-
-    cup.history = [];
-
-    cup.finalistIds = [];
-
-    cup.winnerId = null;
-
-    cup.champion = null;
-}
-
-function buildRound(cup, clubIds) {
-    const clubs = clubIds
-        .map(id => WorldSystem.getClub(id))
-        .filter(Boolean);
-
-    if (clubs.length < 2) {
-        return [];
-    }
-
-    const shuffled = shuffle(clubs);
-
-    const roundName =
-        ROUND_NAMES[shuffled.length] ||
-        `${shuffled.length} clubs`;
-
+    // We reduce to the next power of two by giving byes to the strongest clubs.
+    const target = 2 ** Math.floor(Math.log2(clubs.length));
+    const matchClubCount = clubs.length === target
+        ? clubs.length
+        : Math.max(2, (clubs.length - target) * 2);
+    const ordered = [...clubs].sort((a, b) => getStrength(b) - getStrength(a));
+    const byeClubs = ordered.slice(0, clubs.length - matchClubCount);
+    const drawPool = shuffle(ordered.slice(clubs.length - matchClubCount), seededRandom(hashSeed(`${cup.seasonYear}|${cup.id}|${cup.roundIndex}`)));
+    const matchesCount = drawPool.length / 2;
+    const month = ROUND_MONTHS[Math.min(cup.roundIndex, ROUND_MONTHS.length - 1)];
+    const round = roundName(Math.max(2, target));
     const matches = [];
-
-    for (
-        let i = 0;
-        i < shuffled.length;
-        i += 2
-    ) {
-        const home = shuffled[i];
-        const away = shuffled[i + 1];
-
-        if (!away) continue;
-
-        matches.push(
-            createMatch(
-                home,
-                away,
-                roundName,
-                shuffled.length === 2
-            )
-        );
+    for (let i = 0; i < drawPool.length; i += 2) {
+        const home = drawPool[i];
+        const away = drawPool[i + 1];
+        const match = createMatch(home, away, round, cup.seasonYear, i / 2, month);
+        match.competitionId = cup.id;
+        match.competitionName = cup.name;
+        match.opponent = home.id === cup.playerClubId ? away.name : home.name;
+        match.venue = home.id === cup.playerClubId ? 'Domicile' : 'Extérieur';
+        matches.push(match);
     }
-
-    cup.currentRound = roundName;
-
-    return matches;
+    if (matchesCount === 1 && target === 2) matches[0].importance = 'major';
+    return { matches, byes: byeClubs.map(c => c.id), round };
 }
 
-function playRound(cup) {
-    const matches = cup.matches.filter(
-        match => !match.played
-    );
-
-    const winners = [];
-
-    for (const match of matches) {
-        const home =
-            WorldSystem.getClub(
-                match.homeClubId
-            );
-
-        const away =
-            WorldSystem.getClub(
-                match.awayClubId
-            );
-
-        if (!home || !away) continue;
-
-        const result =
-            resolveKnockoutMatch(
-                home,
-                away
-            );
-
-        match.played = true;
-
-        match.result = result;
-
-        match.winnerClubId =
-            result.winnerClubId;
-
-        match.homeGoals =
-            result.homeGoals;
-
-        match.awayGoals =
-            result.awayGoals;
-
-        match.wentToExtraTime =
-            result.wentToExtraTime;
-
-        match.wentToPenalties =
-            result.wentToPenalties;
-
-        winners.push(
-            result.winnerClubId
-        );
-
-        const loserId =
-            result.winnerClubId === home.id
-                ? away.id
-                : home.id;
-
-        cup.eliminatedClubIds.push(
-            loserId
-        );
-    }
-
-    cup.history.push(
-        ...matches
-    );
-
-    cup.matches = [];
-
-    return winners;
+function countryForPlayer(state) {
+    return state?.player?.clubCountry || state?.player?.country || 'France';
 }
 
 export const CupSystem = {
-
     COUNTRIES,
 
-    /**
-     * Initialise les cinq coupes nationales.
-     */
     ensure(state) {
         state.cups ||= {};
-
+        const seasonYear = Number(state.calendar?.currentSeasonYear) || new Date().getFullYear();
         for (const country of Object.keys(COUNTRIES)) {
-            const definition =
-                COUNTRIES[country];
-
-            if (!state.cups[definition.id]) {
-                const clubs =
-                    createInitialCupClubs(
-                        country
-                    );
-
-                const cup = {
-                    id: definition.id,
-                    name: definition.name,
-                    shortName: definition.shortName,
+            const def = COUNTRIES[country];
+            const clubs = def.leagueIds.flatMap(id => WorldSystem.getClubs(id));
+            const existing = state.cups[def.id];
+            if (!existing || Number(existing.seasonYear) !== seasonYear) {
+                state.cups[def.id] = {
+                    id: def.id,
+                    name: def.name,
+                    shortName: def.shortName,
                     country,
-
-                    seasonYear:
-                        Number(
-                            state.calendar?.currentSeasonYear
-                        ) || 2026,
-
+                    seasonYear,
                     status: 'active',
-
+                    roundIndex: 0,
                     currentRound: null,
-
-                    qualifiedClubIds:
-                        clubs.map(
-                            club => club.id
-                        ),
-
+                    roundMonth: null,
+                    qualifiedClubIds: clubs.map(c => c.id),
                     eliminatedClubIds: [],
-
-                    finalistIds: [],
-
-                    winnerId: null,
-
-                    champion: null,
-
                     matches: [],
-
-                    history: []
+                    history: [],
+                    finalistIds: [],
+                    winnerId: null,
+                    champion: null,
+                    playerClubId: state.player?.clubId || WorldSystem.getClub(state.player?.club)?.id || null
                 };
-
-                state.cups[
-                    definition.id
-                ] = cup;
             }
         }
-
         return state.cups;
     },
 
-    /**
-     * Retourne la coupe d'un pays.
-     */
-    getCup(state, country) {
+    getCup(state, country = countryForPlayer(state)) {
         this.ensure(state);
-
-        const definition =
-            COUNTRIES[country];
-
-        if (!definition) return null;
-
-        return state.cups[
-            definition.id
-        ] || null;
+        const def = COUNTRIES[country];
+        return def ? state.cups[def.id] || null : null;
     },
 
-    /**
-     * Prépare un nouveau tour.
-     */
-    prepareRound(state, country) {
-        const cup =
-            this.getCup(
-                state,
-                country
-            );
-
-        if (!cup) return [];
-
-        if (
-            cup.status === 'finished' ||
-            cup.winnerId
-        ) {
+    prepareRound(state, country = countryForPlayer(state)) {
+        const cup = this.getCup(state, country);
+        if (!cup || cup.status === 'finished' || cup.matches.length) return cup?.matches || [];
+        cup.playerClubId = state.player?.clubId || WorldSystem.getClub(state.player?.club)?.id || null;
+        const ids = getActiveIds(cup);
+        if (ids.length <= 1) {
+            cup.status = 'finished';
+            cup.winnerId = ids[0] || null;
+            cup.champion = WorldSystem.getClub(ids[0])?.name || null;
             return [];
         }
-
-        const activeIds =
-            cup.qualifiedClubIds
-                .filter(
-                    id =>
-                        !cup.eliminatedClubIds
-                            .includes(id)
-                );
-
-        const matches =
-            buildRound(
-                cup,
-                activeIds
-            );
-
-        cup.matches = matches;
-
-        return matches;
+        const built = buildRound(cup, ids);
+        cup.currentRound = built.round;
+        cup.roundMonth = ROUND_MONTHS[Math.min(cup.roundIndex, ROUND_MONTHS.length - 1)];
+        cup.matches = built.matches;
+        cup.byeClubIds = built.byes;
+        // Byes are already qualified for this round; they are not eliminated.
+        cup.pendingWinnerIds = [...built.byes];
+        if (built.matches.length === 0) this._finishRound(state, country, []);
+        return cup.matches;
     },
 
-    /**
-     * Simule le tour courant.
-     */
-    simulateRound(state, country) {
-        const cup =
-            this.getCup(
-                state,
-                country
-            );
+    getPlayerMatch(state, country = countryForPlayer(state)) {
+        const playerClubId = state.player?.clubId || WorldSystem.getClub(state.player?.club)?.id;
+        if (!playerClubId) return null;
+        const cup = this.getCup(state, country);
+        if (!cup || cup.status === 'finished') return null;
+        if (!cup.matches.length) this.prepareRound(state, country);
+        return cup.matches.find(m => !m.played && (m.homeClubId === playerClubId || m.awayClubId === playerClubId)) || null;
+    },
 
+    getPlayerFixtures(state) {
+        const country = countryForPlayer(state);
+        const cup = this.getCup(state, country);
+        if (!cup || cup.status === 'finished') return [];
+        const currentMonth = Number(state.calendar?.currentMonth) || 8;
+        const match = this.getPlayerMatch(state, country);
+        if (!match || Number(match.month) !== currentMonth) return [];
+        return [match];
+    },
+
+    resolvePlayerMatch(state, match, performance = {}) {
+        if (!match || match.played) return match?.result || null;
+        const country = countryForPlayer(state);
+        const cup = this.getCup(state, country);
         if (!cup) return null;
+        const home = WorldSystem.getClub(match.homeClubId);
+        const away = WorldSystem.getClub(match.awayClubId);
+        if (!home || !away) return null;
 
-        if (!cup.matches.length) {
-            this.prepareRound(
-                state,
-                country
-            );
-        }
+        const playerClubId = state.player?.clubId || home.id;
+        const playerIsHome = home.id === playerClubId;
+        const rating = Number(performance.rating || 6);
+        const playerGoals = Math.max(0, Number(performance.goals || 0));
+        const playerAssists = Math.max(0, Number(performance.assists || 0));
+        const base = simulateGoals(home, away);
+        const impact = clamp((rating - 6) * 0.22 + playerAssists * 0.08, -0.5, 1.1);
+        let playerScore = playerIsHome ? base.homeGoals : base.awayGoals;
+        playerScore = Math.max(0, Math.round(playerScore + impact));
+        playerScore = Math.min(5, Math.max(playerScore, Math.min(3, playerGoals)));
+        let opponentScore = playerIsHome ? base.awayGoals : base.homeGoals;
+        const forced = playerIsHome
+            ? { homeGoals: playerScore, awayGoals: opponentScore }
+            : { homeGoals: opponentScore, awayGoals: playerScore };
 
-        const winners =
-            playRound(cup);
-
-        if (winners.length === 1) {
-            const champion =
-                WorldSystem.getClub(
-                    winners[0]
-                );
-
-            cup.winnerId =
-                winners[0];
-
-            cup.champion =
-                champion?.name || null;
-
-            cup.status =
-                'finished';
-
-            cup.finalistIds =
-                cup.finalistIds.length
-                    ? cup.finalistIds
-                    : winners;
-
-            return {
-                finished: true,
-                winnerId: cup.winnerId,
-                champion: cup.champion
-            };
-        }
-
-        cup.qualifiedClubIds =
-            winners;
-
-        if (winners.length === 2) {
-            cup.finalistIds =
-                [...winners];
-        }
-
-        return {
-            finished: false,
-            currentRound:
-                cup.currentRound,
-            winners
-        };
+        const result = resolveMatch(home, away, Math.random, forced);
+        this._recordMatch(cup, match, result);
+        this._finishRoundIfReady(state, country);
+        return result;
     },
 
-    /**
-     * Vérifie si le joueur est encore dans la coupe.
-     */
-    playerStillInCup(state, country) {
-        const player =
-            state.player;
-
-        if (!player) return false;
-
-        const club =
-            WorldSystem.getClub(
-                player.clubId ||
-                player.club
-            );
-
-        if (!club) return false;
-
-        const cup =
-            this.getCup(
-                state,
-                country
-            );
-
-        if (!cup) return false;
-
-        if (cup.status === 'finished') {
-            return cup.winnerId === club.id;
+    simulateCurrentRound(state, country = countryForPlayer(state)) {
+        const cup = this.getCup(state, country);
+        if (!cup || cup.status === 'finished') return null;
+        if (!cup.matches.length) this.prepareRound(state, country);
+        const playerClubId = state.player?.clubId || WorldSystem.getClub(state.player?.club)?.id;
+        const playerMatch = cup.matches.find(m => !m.played && (m.homeClubId === playerClubId || m.awayClubId === playerClubId));
+        for (const match of [...cup.matches]) {
+            if (match.played || match.id === playerMatch?.id) continue;
+            const home = WorldSystem.getClub(match.homeClubId);
+            const away = WorldSystem.getClub(match.awayClubId);
+            if (!home || !away) continue;
+            this._recordMatch(cup, match, resolveMatch(home, away));
         }
-
-        return cup.qualifiedClubIds
-            .includes(club.id);
+        this._finishRoundIfReady(state, country);
+        return cup;
     },
 
-    /**
-     * Trouve la prochaine rencontre du joueur.
-     */
-    getPlayerMatch(state, country) {
-        const player =
-            state.player;
+    _recordMatch(cup, match, result) {
+        match.played = true;
+        match.homeGoals = result.homeGoals;
+        match.awayGoals = result.awayGoals;
+        match.winnerClubId = result.winnerClubId;
+        match.wentToExtraTime = result.wentToExtraTime;
+        match.wentToPenalties = result.wentToPenalties;
+        match.result = result;
+        cup.history.push({ ...match });
+        if (result.winnerClubId && !cup.pendingWinnerIds.includes(result.winnerClubId)) cup.pendingWinnerIds.push(result.winnerClubId);
+        const loserId = result.winnerClubId === match.homeClubId ? match.awayClubId : match.homeClubId;
+        if (!cup.eliminatedClubIds.includes(loserId)) cup.eliminatedClubIds.push(loserId);
+    },
 
-        const club =
-            WorldSystem.getClub(
-                player?.clubId ||
-                player?.club
-            );
+    _finishRoundIfReady(state, country) {
+        const cup = this.getCup(state, country);
+        if (!cup || cup.matches.some(m => !m.played)) return false;
+        const winners = [...new Set(cup.pendingWinnerIds || [])];
+        this._finishRound(state, country, winners);
+        return true;
+    },
 
-        if (!club) return null;
-
-        const cup =
-            this.getCup(
-                state,
-                country
-            );
-
+    _finishRound(state, country, winners) {
+        const cup = this.getCup(state, country);
         if (!cup) return null;
-
-        const match =
-            cup.matches.find(
-                item =>
-                    !item.played &&
-                    (
-                        item.homeClubId === club.id ||
-                        item.awayClubId === club.id
-                    )
-            );
-
-        return match || null;
+        cup.qualifiedClubIds = [...new Set(winners)];
+        cup.matches = [];
+        cup.pendingWinnerIds = [];
+        if (cup.qualifiedClubIds.length <= 1) {
+            cup.status = 'finished';
+            cup.winnerId = cup.qualifiedClubIds[0] || null;
+            cup.champion = WorldSystem.getClub(cup.winnerId)?.name || null;
+            return cup;
+        }
+        cup.roundIndex += 1;
+        cup.currentRound = null;
+        cup.roundMonth = null;
+        if (cup.qualifiedClubIds.length === 2) cup.finalistIds = [...cup.qualifiedClubIds];
+        return cup;
     },
 
-    /**
-     * Retourne un résumé propre pour l'UI.
-     */
-    getSummary(state, country) {
-        const cup =
-            this.getCup(
-                state,
-                country
-            );
-
+    getSummary(state, country = countryForPlayer(state)) {
+        const cup = this.getCup(state, country);
         if (!cup) return null;
-
+        const playerClubId = state.player?.clubId || WorldSystem.getClub(state.player?.club)?.id;
         return {
             id: cup.id,
             name: cup.name,
             country: cup.country,
             round: cup.currentRound,
+            roundMonth: cup.roundMonth,
             status: cup.status,
             champion: cup.champion,
-            playerStillIn:
-                this.playerStillInCup(
-                    state,
-                    country
-                )
+            winnerId: cup.winnerId,
+            playerStillIn: cup.status !== 'finished' && cup.qualifiedClubIds.includes(playerClubId),
+            history: cup.history.length
         };
     },
 
-    /**
-     * Fin de saison : les coupes sont archivées.
-     */
     finalizeSeason(state) {
         this.ensure(state);
-
         state.cupHistory ||= [];
-
-        for (const cup of Object.values(
-            state.cups
-        )) {
-            state.cupHistory.push({
-                id: cup.id,
-                name: cup.name,
-                country: cup.country,
-                seasonYear: cup.seasonYear,
-                champion: cup.champion,
-                winnerId: cup.winnerId
-            });
+        for (const cup of Object.values(state.cups)) {
+            state.cupHistory.push({ id: cup.id, name: cup.name, country: cup.country, seasonYear: cup.seasonYear, champion: cup.champion, winnerId: cup.winnerId, history: cup.history });
         }
-
         state.cups = {};
-
         return state.cupHistory;
     }
 };
