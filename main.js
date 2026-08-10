@@ -5,6 +5,7 @@ import GameApplication from './application/gameApplication.js';
 import { UIGateway } from './application/uiGateway.js';
 import { createSystemRegistry } from './application/systemRegistry.js';
 import { bindEngineToRegistry } from './application/engineFacade.js';
+import { ViewCoordinator } from './ui/viewCoordinator.js';
 import './ui-hotfix.js?v=5';
 import './ui-gameplay-hotfix.js?v=2';
 
@@ -60,17 +61,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             engine: window.game
         });
         window.game.ui.engine = window.gameUI;
+        window.gameViews = new ViewCoordinator({
+            ui: window.game.ui,
+            gateway: window.gameUI
+        });
 
         AwardsSystem.ensure(window.game.state);
 
         if (window.game.ui && typeof window.game.ui.init === 'function') {
             window.game.ui.init();
+            // Expose les nouvelles vues au contrôleur historique sans remplacer
+            // son conteneur DOM pendant la migration progressive.
+            window.game.ui.gateway = window.gameUI;
+            window.game.ui.views = window.gameViews;
         } else {
             throw new Error("L'interface utilisateur n'a pas pu être initialisée.");
         }
 
         await import('./awardsIntegration.js?v=4');
-        console.log("✅ Street to Pro prêt — UI gateway active.");
+        console.log("✅ Street to Pro prêt — UI views active.");
     } catch (error) {
         showFatalError(error);
     }
