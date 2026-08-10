@@ -1,12 +1,8 @@
 // main.js
 import { GameEngine } from './gameEngine.js';
 import { UserInterface } from './ui.js';
-import './ui-hotfix.js';
+import './ui-hotfix.js?v=3';
 import { AwardsSystem } from './awardsSystem.js';
-
-// L'intégration des récompenses monkey-patche GameEngine et importe lui-même
-// GameEngine. Elle doit donc être chargée APRÈS l'initialisation du module
-// GameEngine pour éviter une dépendance circulaire au démarrage.
 
 function showFatalError(error) {
     console.error("Erreur critique lors du chargement du jeu :", error);
@@ -28,22 +24,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log("⚡ Démarrage de Street to Pro...");
 
     try {
-        // 1. Le moteur est chargé et initialisé sans aucune intégration cyclique.
         window.game = new GameEngine();
-
-        // 2. Initialise/migre le palmarès même pour une ancienne sauvegarde.
         AwardsSystem.ensure(window.game.state);
 
-        // 3. L'interface est disponible immédiatement.
         if (window.game.ui && typeof window.game.ui.init === 'function') {
             window.game.ui.init();
         } else {
             throw new Error("L'interface utilisateur n'a pas pu être initialisée.");
         }
 
-        // 4. Après l'initialisation complète, on applique le patch des récompenses.
-        // Le module importe GameEngine : le chargement différé évite la boucle
-        // GameEngine -> awardsIntegration -> GameEngine au démarrage.
         await import('./awardsIntegration.js?v=2');
 
         console.log("✅ Street to Pro prêt.");
