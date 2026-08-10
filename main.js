@@ -1,8 +1,7 @@
 // main.js
 import { GameEngine } from './gameEngine.js';
 import { UserInterface } from './ui.js';
-import './ui-hotfix.js?v=5';
-import './ui-gameplay-hotfix.js?v=2';
+import './ui-gameplay-hotfix.js?v=3';
 import './ui-live-polish.js?v=1';
 import { AwardsSystem } from './awardsSystem.js';
 
