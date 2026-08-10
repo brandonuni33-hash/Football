@@ -8,8 +8,6 @@ export function bindEngineToRegistry(engine, registry) {
         throw new Error('bindEngineToRegistry requires an engine and a registry.');
     }
 
-    const legacy = {};
-
     engine.startCareer = (selectedData = {}) => {
         const career = registry.careerApplication;
         if (!career?.create) throw new Error('CareerApplication is not registered.');
