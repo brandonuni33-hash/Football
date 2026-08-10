@@ -3,6 +3,8 @@
 // Le système ne décide jamais seul des choix du joueur : il produit des faits
 // familiaux consommables par les autres systèmes via l'event bus.
 
+import { EventBus } from '../../core/eventBus.js';
+
 const MALE = new Set(['male', 'm', 'garçon', 'garcon']);
 const FEMALE = new Set(['female', 'f', 'fille']);
 
@@ -40,12 +42,20 @@ export class FamilySystem {
         };
 
         family.children.push(child);
-        family.events.push({
+        const event = {
             type: 'child_born',
             childId: child.id,
             parentPlayerId,
             season: child.birthSeason,
             createdAt: child.createdAt
+        };
+        family.events.push(event);
+
+        EventBus.emit('family.child_born', {
+            state,
+            playerId: parentPlayerId,
+            child,
+            familyEvent: event
         });
 
         return child;
