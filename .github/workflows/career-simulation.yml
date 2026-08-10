@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - 'careerSimulation.js'
+      - 'careerSimulationV4.js'
       - 'player.js'
       - 'progression.js'
       - 'potentialSystem.js'
@@ -39,7 +40,7 @@ jobs:
           mkdir -p simulation-results
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
-          import { simulateCareer, printSimulationReport } from './careerSimulation.js';
+          import { simulateCareer, printSimulationReport } from './careerSimulationV4.js';
 
           const result = simulateCareer(1000, { maxAge: 34 });
           printSimulationReport(result);
@@ -52,7 +53,6 @@ jobs:
           const rows = result.careers.map(c => ({
             id: c.id,
             position: c.position,
-            origin: c.origin,
             initialOverall: c.initialOverall,
             initialPotential: c.initialPotential,
             peakOverall: c.peakOverall,
@@ -60,7 +60,6 @@ jobs:
             finalOverall: c.finalOverall,
             finalPotential: c.finalPotential,
             totalMatches: c.totalMatches,
-            averageCareerRating: Number(c.averageCareerRating || 0).toFixed(2),
             seasons: c.seasons.length,
             finalAge: c.finalAge
           }));
@@ -77,7 +76,7 @@ jobs:
             JSON.stringify({
               generatedAt: result.generatedAt,
               simulatorType: result.simulatorType,
-              engines: result.engines,
+              engine: result.engine,
               countRequested: result.countRequested,
               countCompleted: result.countCompleted,
               countErrors: result.countErrors,
