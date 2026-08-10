@@ -23,8 +23,6 @@ export class UIGateway {
         return this.application.registry?.blockSystem?.execute?.(this.state, choice) ?? null;
     }
 
-    // Nom explicite utilisé par DashboardView. L'ancien playBlock reste
-    // disponible pour la compatibilité avec les vues historiques.
     playNextBlock(choice = null) {
         return this.playBlock(choice);
     }
@@ -77,6 +75,38 @@ export class UIGateway {
 
     getPeriodName(month) {
         return this.application.registry?.calendarSystem?.getPeriodName?.(month) ?? '';
+    }
+
+    getSuccessorOptions(playerId = this.state?.player?.id, currentAge = this.state?.player?.age) {
+        return this.application.registry?.generationSimulationFacade?.getOptions?.({
+            state: this.state,
+            playerId,
+            currentAge
+        }) || [];
+    }
+
+    simulateChildTo14(childId, playerId = this.state?.player?.id) {
+        const result = this.application.registry?.generationSimulationFacade?.simulateTo14?.({
+            state: this.state,
+            playerId,
+            childId,
+            currentAge: this.state?.player?.age,
+            world: this.state?.world || {}
+        });
+        this.application.registry?.blockSystem?.stateManager?.save?.(this.state);
+        return result;
+    }
+
+    startSuccessorCareer(childId, playerId = this.state?.player?.id) {
+        const result = this.application.registry?.generationSimulationFacade?.startIfReady?.({
+            state: this.state,
+            playerId,
+            childId,
+            currentAge: this.state?.player?.age,
+            world: this.state?.world || {}
+        });
+        if (result) this.application.registry?.blockSystem?.stateManager?.save?.(this.state);
+        return result;
     }
 }
 
