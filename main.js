@@ -1,13 +1,9 @@
 // main.js
 import { GameEngine } from './gameEngine.js';
-import { AwardsSystem } from './awardsSystem.js';
-import GameApplication from './application/gameApplication.js';
-import { UIGateway } from './application/uiGateway.js';
-import { createSystemRegistry } from './application/systemRegistry.js';
-import { bindEngineToRegistry } from './application/engineFacade.js';
-import ViewCoordinator from './ui/viewCoordinator.js';
+import { UserInterface } from './ui.js';
 import './ui-hotfix.js?v=5';
 import './ui-gameplay-hotfix.js?v=2';
+import { AwardsSystem } from './awardsSystem.js';
 
 function showFatalError(error) {
     console.error("Erreur critique lors du chargement du jeu :", error);
@@ -30,53 +26,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
         window.game = new GameEngine();
-        window.gameSystems = createSystemRegistry({
-            engine: window.game,
-            worldSystem: window.game.worldSystem,
-            competitionSystem: window.game.competitionSystem,
-            cupSystem: window.game.cupSystem
-        });
-
-        window.game.socialSystem = window.gameSystems.socialSystem;
-        window.game.mediaSystem = window.gameSystems.mediaSystem;
-        window.game.worldSystem = window.gameSystems.seasonSystem.worldSystem;
-        window.game.competitionSystem = window.gameSystems.calendarSystem.competitionSystem;
-        window.game.cupSystem = window.gameSystems.seasonSystem.cupSystem;
-
-        if (window.game.state?.player) {
-            window.game.state = window.gameSystems.careerApplication.migrate(window.game.state);
-        }
-
-        bindEngineToRegistry(window.game, window.gameSystems);
-
-        window.gameApp = new GameApplication({
-            engine: window.game,
-            registry: window.gameSystems
-        });
-        window.gameApp.start();
-
-        // Contrat UI : toutes les actions de gameplay passent par l'application.
-        window.gameUI = new UIGateway({
-            application: window.gameApp,
-            engine: window.game
-        });
-        window.game.ui.engine = window.gameUI;
-
         AwardsSystem.ensure(window.game.state);
 
         if (window.game.ui && typeof window.game.ui.init === 'function') {
             window.game.ui.init();
-            window.game.ui.gateway = window.gameUI;
-            window.game.viewCoordinator = new ViewCoordinator({
-                ui: window.game.ui,
-                gateway: window.gameUI
-            }).install();
         } else {
             throw new Error("L'interface utilisateur n'a pas pu être initialisée.");
         }
 
         await import('./awardsIntegration.js?v=4');
-        console.log("✅ Street to Pro prêt — presentation views active.");
+
+        console.log("✅ Street to Pro prêt.");
     } catch (error) {
         showFatalError(error);
     }
