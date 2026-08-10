@@ -2,6 +2,9 @@
 // Orchestration métier des offres de transfert du joueur.
 // La génération reste fournie par TransferMarket pendant la migration.
 
+import { EventBus } from '../../core/eventBus.js';
+import { EVENTS } from '../../core/events.js';
+
 export class TransferSystem {
     constructor({ transferMarket, careerSystem, playerLogic, stateManager, worldSystem } = {}) {
         Object.assign(this, {
@@ -48,18 +51,26 @@ export class TransferSystem {
         this.playerLogic.syncProgressionFromCanonical(player);
         this.stateManager.save(state);
 
-        return {
+        const result = {
             accepted: true,
             oldClub,
             newClub: offer.club,
             salary: player.salary
         };
+        EventBus.emit(EVENTS.TRANSFER_OFFER_ACCEPTED, { ...result, playerId: player.id });
+        EventBus.emit(EVENTS.TRANSFER_COMPLETED, { ...result, playerId: player.id });
+        return result;
     }
 
     reject(state) {
-        if (!state?.pendingTransferOffer) return false;
+        const offer = state?.pendingTransferOffer;
+        if (!offer) return false;
         state.pendingTransferOffer = null;
         this.stateManager.save(state);
+        EventBus.emit(EVENTS.TRANSFER_OFFER_REJECTED, {
+            playerId: state.player?.id,
+            club: offer.club
+        });
         return true;
     }
 }
