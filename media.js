@@ -4,8 +4,6 @@ import { EventBus } from './core/eventBus.js';
 import { EVENTS } from './core/events.js';
 
 export class MediaSystem {
-    constructor(engine) { this.engine = engine; }
-
     initMediaData() {
         return {
             followers: 1200,
@@ -40,12 +38,10 @@ export class MediaSystem {
 
         media.feed.unshift({ id: Date.now(), source: sourceName, type: postType, content: newPostContent, likes: Math.floor(Math.random() * 800) + 50, commentsCount: Math.floor(Math.random() * 45) + 2, date: `Mois ${state.calendar.currentMonth}` });
         if (media.feed.length > 10) media.feed.pop();
-        media.recentDilemma = Math.random() < 0.4 ? this.getRandomMediaDilemma(state) : null;
+        media.recentDilemma = Math.random() < 0.4 ? this.getRandomMediaDilemma() : null;
 
         EventBus.emit(EVENTS.MEDIA_POST_CREATED, { state, playerId: player.id, post: media.feed[0] });
-        if (media.recentDilemma) {
-            EventBus.emit(EVENTS.MEDIA_DILEMMA_CREATED, { state, playerId: player.id, dilemma: media.recentDilemma });
-        }
+        if (media.recentDilemma) EventBus.emit(EVENTS.MEDIA_DILEMMA_CREATED, { state, playerId: player.id, dilemma: media.recentDilemma });
     }
 
     getRandomMediaDilemma() {
@@ -66,10 +62,14 @@ export class MediaSystem {
         if (eff.hypeDelta) state.media.hypeLevel = Math.max(0, Math.min(100, state.media.hypeLevel + eff.hypeDelta));
         if (eff.followerDelta) state.media.followers += eff.followerDelta;
         if (eff.moraleDelta) state.player.morale = Math.max(0, Math.min(100, state.player.morale + eff.moraleDelta));
-        if (eff.coachDelta && this.engine?.socialSystem) this.engine.socialSystem.modifyRelationship(state, 'coach', eff.coachDelta);
-        if (eff.relationshipDelta && this.engine?.socialSystem) this.engine.socialSystem.modifyRelationship(state, 'vestiaire', eff.relationshipDelta);
         state.media.recentDilemma = null;
-        EventBus.emit(EVENTS.MEDIA_DILEMMA_RESOLVED, { state, playerId: state.player?.id, dilemmaId: dilemma.id, choiceIndex });
+        EventBus.emit(EVENTS.MEDIA_DILEMMA_RESOLVED, {
+            state,
+            playerId: state.player?.id,
+            dilemmaId: dilemma.id,
+            choiceIndex,
+            effects: { coachDelta: eff.coachDelta || 0, relationshipDelta: eff.relationshipDelta || 0 }
+        });
         return { dilemmaId: dilemma.id, choiceIndex };
     }
 }
