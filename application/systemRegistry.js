@@ -5,18 +5,21 @@
 import { SocialSystem } from '../social.js';
 import { MediaSystem } from '../media.js';
 import { TrainingManager } from '../entrainement.js';
+import { MatchBlockManager } from '../matchBlock.js';
 import { PlayerLogic } from '../player.js';
 import { PotentialSystem } from '../potentialSystem.js';
 import { CareerSystem } from '../careerSystem.js';
 import { CupSystem } from '../cupSystem.js';
 import { CalendarSystem } from '../domain/calendar/calendarSystem.js';
 import { SeasonSystem } from '../domain/career/seasonSystem.js';
+import { MatchSystem } from '../domain/match/matchSystem.js';
 import { TrainingSystem } from '../domain/training/trainingSystem.js';
 
 export function createSystemRegistry({ engine, worldSystem, competitionSystem, cupSystem = CupSystem } = {}) {
     const socialSystem = new SocialSystem(engine);
     const mediaSystem = new MediaSystem(engine);
     const trainingSystem = new TrainingSystem(TrainingManager);
+    const matchSystem = new MatchSystem(MatchBlockManager);
 
     const seasonSystem = new SeasonSystem({
         playerLogic: PlayerLogic,
@@ -37,6 +40,7 @@ export function createSystemRegistry({ engine, worldSystem, competitionSystem, c
         socialSystem,
         mediaSystem,
         trainingSystem,
+        matchSystem,
         seasonSystem,
         calendarSystem
     });
