@@ -13,16 +13,16 @@ const makeClub = (id, name, country, leagueId, tier, strength, prestige, centerS
 // la structure accepte autant de clubs que nécessaire et sera étendue sans
 // changer les interfaces du moteur.
 export const LEAGUES = {
-    FR_L1: { id: 'FR_L1', name: 'Ligue 1', country: 'France', tier: 1, size: 18, promotion: false, relegation: 3 },
-    FR_L2: { id: 'FR_L2', name: 'Ligue 2', country: 'France', tier: 2, size: 18, promotion: 2, relegation: 3 },
+    FR_L1: { id: 'FR_L1', name: 'Ligue 1', country: 'France', tier: 1, size: 18, promotion: false, relegation: 2 },
+    FR_L2: { id: 'FR_L2', name: 'Ligue 2', country: 'France', tier: 2, size: 18, promotion: 2, relegation: 0 },
     EN_PL: { id: 'EN_PL', name: 'Premier League', country: 'Angleterre', tier: 1, size: 20, promotion: false, relegation: 3 },
-    EN_CH: { id: 'EN_CH', name: 'Championship', country: 'Angleterre', tier: 2, size: 24, promotion: 3, relegation: 3 },
+    EN_CH: { id: 'EN_CH', name: 'Championship', country: 'Angleterre', tier: 2, size: 24, promotion: 3, relegation: 0 },
     ES_LA: { id: 'ES_LA', name: 'La Liga', country: 'Espagne', tier: 1, size: 20, promotion: false, relegation: 3 },
-    ES_SD: { id: 'ES_SD', name: 'Segunda División', country: 'Espagne', tier: 2, size: 22, promotion: 3, relegation: 4 },
+    ES_SD: { id: 'ES_SD', name: 'Segunda División', country: 'Espagne', tier: 2, size: 22, promotion: 3, relegation: 0 },
     IT_A: { id: 'IT_A', name: 'Serie A', country: 'Italie', tier: 1, size: 20, promotion: false, relegation: 3 },
-    IT_B: { id: 'IT_B', name: 'Serie B', country: 'Italie', tier: 2, size: 20, promotion: 3, relegation: 3 },
+    IT_B: { id: 'IT_B', name: 'Serie B', country: 'Italie', tier: 2, size: 20, promotion: 3, relegation: 0 },
     DE_B1: { id: 'DE_B1', name: 'Bundesliga', country: 'Allemagne', tier: 1, size: 18, promotion: false, relegation: 3 },
-    DE_B2: { id: 'DE_B2', name: '2. Bundesliga', country: 'Allemagne', tier: 2, size: 18, promotion: 3, relegation: 3 }
+    DE_B2: { id: 'DE_B2', name: '2. Bundesliga', country: 'Allemagne', tier: 2, size: 18, promotion: 3, relegation: 0 }
 };
 
 const CLUBS = [
@@ -38,7 +38,7 @@ const CLUBS = [
         ['ARS','Arsenal',92,5,5,5],['MCI','Manchester City',91,5,5,5],['LIV','Liverpool',90,5,5,5],['MUN','Manchester United',84,5,5,5],['CHE','Chelsea',83,5,5,5],['TOT','Tottenham',80,4,5,4],['AVL','Aston Villa',81,4,4,4],['NEW','Newcastle United',82,4,4,4],['WHU','West Ham United',74,4,4,3],['CRY','Crystal Palace',73,3,3,3],['BRI','Brighton',77,4,4,3],['EVE','Everton',72,4,4,3],['BRE','Brentford',72,3,3,3],['FUL','Fulham',71,3,3,3],['BOU','Bournemouth',70,3,3,3],['NFO','Nottingham Forest',70,3,3,3],['WOL','Wolverhampton',68,3,3,2],['LEI','Leicester City',68,3,4,2],['LEE','Leeds United',71,3,4,3],['SUN','Sunderland',66,3,3,2]
     ].map(c=>makeClub(c[0],c[1],'Angleterre','EN_PL',1,c[2],c[3],c[4],c[5])),
     ...[
-        ['CH_LDS','Leicester City',70,3,4,3],['CH_BUR','Burnley',70,3,4,3],['CH_SHEF','Sheffield United',69,3,4,3],['CH_SWA','Swansea City',67,3,3,3],['CH_WBA','West Bromwich Albion',67,3,4,3],['CH_NOR','Norwich City',66,3,4,3],['CH_MID','Middlesbrough',66,3,4,3],['CH_COV','Coventry City',65,3,3,2],['CH_WAT','Watford',64,3,3,3],['CH_QPR','Queens Park Rangers',61,2,3,2],['CH_STOKE','Stoke City',62,2,3,2],['CH_CARD','Cardiff City',61,2,3,2],['CH_HULL','Hull City',60,2,3,2],['CH_BLACK','Blackburn Rovers',61,3,3,2],['CH_BRISTOL','Bristol City',62,3,3,2],['CH_PRESTON','Preston North End',59,2,3,2],['CH_MILL','Millwall',58,2,3,2],['CH_SHEFFW','Sheffield Wednesday',58,2,3,2],['CH_PORT','Portsmouth',57,2,3,2],['CH_DERBY','Derby County',59,2,3,2],['CH_PLY','Plymouth Argyle',55,2,2,2],['CH_OXF','Oxford United',55,2,2,2],['CH_RHOV','Rotherham United',53,2,2,1],['CH_WATF','Watford B',52,1,2,1]
+        ['CH_BIR','Birmingham City',67,3,4,3],['CH_BUR','Burnley',70,3,4,3],['CH_SHEF','Sheffield United',69,3,4,3],['CH_SWA','Swansea City',67,3,3,3],['CH_WBA','West Bromwich Albion',67,3,4,3],['CH_NOR','Norwich City',66,3,4,3],['CH_MID','Middlesbrough',66,3,4,3],['CH_COV','Coventry City',65,3,3,2],['CH_WAT','Watford',64,3,3,3],['CH_QPR','Queens Park Rangers',61,2,3,2],['CH_STOKE','Stoke City',62,2,3,2],['CH_CARD','Cardiff City',61,2,3,2],['CH_HULL','Hull City',60,2,3,2],['CH_BLACK','Blackburn Rovers',61,3,3,2],['CH_BRISTOL','Bristol City',62,3,3,2],['CH_PRESTON','Preston North End',59,2,3,2],['CH_MILL','Millwall',58,2,3,2],['CH_SHEFFW','Sheffield Wednesday',58,2,3,2],['CH_PORT','Portsmouth',57,2,3,2],['CH_DERBY','Derby County',59,2,3,2],['CH_PLY','Plymouth Argyle',55,2,2,2],['CH_OXF','Oxford United',55,2,2,2],['CH_RHOV','Rotherham United',53,2,2,1],['CH_WATF','Watford B',52,1,2,1]
     ].map(c=>makeClub(c[0],c[1],'Angleterre','EN_CH',2,c[2],c[3],c[4],c[5])),
     // Spain
     ...[
@@ -59,7 +59,7 @@ const CLUBS = [
         ['BAY','Bayern Munich',94,5,5,5],['BVB','Borussia Dortmund',86,5,5,5],['LEV','Bayer Leverkusen',88,5,5,5],['RBL','RB Leipzig',83,4,5,4],['SGE','Eintracht Frankfurt',79,4,4,4],['SCF','SC Freiburg',73,3,4,3],['M05','Mainz 05',72,3,3,3],['BMG','Borussia Mönchengladbach',71,4,4,3],['SVW','Werder Bremen',70,4,4,3],['VFB','VfB Stuttgart',78,4,4,4],['WOB','VfL Wolfsburg',72,4,4,3],['FCU','Union Berlin',69,3,3,3],['FCA','Augsburg',65,3,3,2],['TSG','Hoffenheim',68,3,3,2],['KOE','1. FC Köln',65,3,3,2],['HSV','Hamburger SV',70,4,4,3],['STP','FC St. Pauli',68,3,3,3],['HEI','1. FC Heidenheim',64,3,3,2]
     ].map(c=>makeClub(c[0],c[1],'Allemagne','DE_B1',1,c[2],c[3],c[4],c[5])),
     ...[
-        ['DB_WOL','VfL Wolfsburg',67,3,3,3],['DB_HEI','1. FC Heidenheim',63,3,3,2],['DB_STP','FC St. Pauli',65,3,3,3],['DB_HAN','Hannover 96',66,3,4,3],['DB_DAR','SV Darmstadt 98',60,2,3,2],['DB_KAI','1. FC Kaiserslautern',62,3,3,2],['DB_HER','Hertha BSC',68,4,4,3],['DB_NUE','1. FC Nürnberg',63,3,3,2],['DB_BOC','VfL Bochum',65,3,3,3],['DB_KAR','Karlsruher SC',59,2,3,2],['DB_DRE','Dynamo Dresden',60,3,3,2],['DB_HOL','Holstein Kiel',61,3,3,2],['DB_ARM','Arminia Bielefeld',58,2,3,2],['DB_MAG','1. FC Magdeburg',60,2,3,2],['DB_BRA','Eintracht Braunschweig',55,2,2,1],['DB_FUR','Greuther Fürth',56,2,3,2],['DB_COT','Energie Cottbus',53,1,2,1],['DB_OSN','VfL Osnabrück',52,1,2,1]
+        ['DB_DUS','Fortuna Düsseldorf',67,3,4,3],['DB_S04','Schalke 04',66,4,4,3],['DB_FCK','Hansa Rostock',60,3,3,2],['DB_HAN','Hannover 96',66,3,4,3],['DB_DAR','SV Darmstadt 98',60,2,3,2],['DB_KAI','1. FC Kaiserslautern',62,3,3,2],['DB_HER','Hertha BSC',68,4,4,3],['DB_NUE','1. FC Nürnberg',63,3,3,2],['DB_BOC','VfL Bochum',65,3,3,3],['DB_KAR','Karlsruher SC',59,2,3,2],['DB_DRE','Dynamo Dresden',60,3,3,2],['DB_HOL','Holstein Kiel',61,3,3,2],['DB_ARM','Arminia Bielefeld',58,2,3,2],['DB_MAG','1. FC Magdeburg',60,2,3,2],['DB_BRA','Eintracht Braunschweig',55,2,2,1],['DB_FUR','Greuther Fürth',56,2,3,2],['DB_COT','Energie Cottbus',53,1,2,1],['DB_OSN','VfL Osnabrück',52,1,2,1]
     ].map(c=>makeClub(c[0],c[1],'Allemagne','DE_B2',2,c[2],c[3],c[4],c[5]))
 ];
 
@@ -72,6 +72,35 @@ const higherOf = { FR_L2:'FR_L1', EN_CH:'EN_PL', ES_SD:'ES_LA', IT_B:'IT_A', DE_
 
 function blankRow(club) {
     return { clubId: club.id, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0 };
+}
+
+
+function applyClubAssignments(assignments = {}) {
+    for (const club of CLUBS) {
+        const leagueId = assignments[club.id];
+        if (!leagueId || !LEAGUES[leagueId]) continue;
+        club.leagueId = leagueId;
+        club.tier = LEAGUES[leagueId].tier;
+    }
+}
+
+function captureClubAssignments() {
+    return Object.fromEntries(CLUBS.map(club => [club.id, club.leagueId]));
+}
+
+function syncPlayerClubFields(state) {
+    const player = state?.player;
+    if (!player || Number(player.age) < 18 || player.isYouthPlayer) return null;
+    const club = CLUBS.find(c => c.id === player.clubId) || CLUBS.find(c => c.name === player.club);
+    if (!club) return null;
+    player.clubId = club.id;
+    player.club = club.name;
+    player.clubCountry = club.country;
+    player.clubLevel = club.tier;
+    player.leagueId = club.leagueId;
+    player.clubPrestige = club.prestige;
+    player.centerStars = club.centerStars;
+    return club;
 }
 
 function sortRows(rows) {
@@ -152,7 +181,11 @@ export const WorldSystem = {
     },
 
     ensureWorld(state) {
-        state.world ||= { version: 1, leagues: {}, lastSeasonFinalized: null };
+        state.world ||= { version: 2, leagues: {}, lastSeasonFinalized: null, clubAssignments: {} };
+        state.world.version = Math.max(2, Number(state.world.version) || 2);
+        state.world.leagues ||= {};
+        state.world.clubAssignments ||= captureClubAssignments();
+        applyClubAssignments(state.world.clubAssignments);
         for (const league of Object.values(LEAGUES)) {
             const clubs = this.getClubs(league.id);
             if (!state.world.leagues[league.id]) {
@@ -170,6 +203,8 @@ export const WorldSystem = {
             }
         }
         if (state.player && Number(state.player.age) >= 18) this.normalizeCareerClub(state.player);
+        state.world.clubAssignments = captureClubAssignments();
+        syncPlayerClubFields(state);
         return state.world;
     },
 
@@ -230,6 +265,24 @@ export const WorldSystem = {
         return results;
     },
 
+    simulateAllLeaguesMonth(state, seed = 1) {
+        this.ensureWorld(state);
+        const results = [];
+        const month = Number(state?.calendar?.currentMonth) || 8;
+        if ([6, 7].includes(month)) return results;
+        let index = 0;
+        for (const league of Object.values(LEAGUES)) {
+            const leagueResults = this.simulateLeagueMonth(
+                state,
+                league.id,
+                Number(seed) + index * 9973 + month * 131
+            );
+            results.push(...leagueResults);
+            index += 1;
+        }
+        return results;
+    },
+
     recordPlayerMatches(state, scheduledMatches = [], summary = {}) {
         this.ensureWorld(state);
         const playerClubId = state.player?.clubId || this.getClub(state.player?.club)?.id;
@@ -258,29 +311,69 @@ export const WorldSystem = {
     finalizeSeason(state) {
         this.ensureWorld(state);
         const movements = [];
-        for (const [leagueId, league] of Object.entries(LEAGUES)) {
-            if (!higherOf[leagueId] && !lowerOf[leagueId]) continue;
-            const table = this.getTable(state, leagueId);
-            const higher = higherOf[leagueId];
-            const lower = lowerOf[leagueId];
-            if (higher) {
-                const promoted = table.slice(0, league.promotion || 0);
-                movements.push({ type: 'promotion', from: leagueId, to: higher, clubs: promoted.map(r => r.clubId) });
+
+        for (const topLeague of Object.values(LEAGUES).filter(league => league.tier === 1)) {
+            const lowerId = lowerOf[topLeague.id];
+            if (!lowerId) continue;
+            const lowerLeague = LEAGUES[lowerId];
+            if (!lowerLeague) continue;
+
+            const topTable = sortRows(state.world.leagues[topLeague.id].table).map((row, index) => ({ ...row, rank: index + 1 }));
+            const lowerTable = sortRows(state.world.leagues[lowerId].table).map((row, index) => ({ ...row, rank: index + 1 }));
+            const count = Math.min(
+                Number(topLeague.relegation) || 0,
+                Number(lowerLeague.promotion) || 0
+            );
+            if (count <= 0) continue;
+
+            const relegated = topTable.slice(-count).map(row => row.clubId);
+            const promoted = lowerTable.slice(0, count).map(row => row.clubId);
+
+            const pairs = [];
+            for (let i = 0; i < count; i += 1) {
+                const downId = relegated[i];
+                const upId = promoted[i];
+                const downClub = CLUBS.find(club => club.id === downId);
+                const upClub = CLUBS.find(club => club.id === upId);
+                if (!downClub || !upClub) continue;
+
+                downClub.leagueId = lowerId;
+                downClub.tier = lowerLeague.tier;
+                upClub.leagueId = topLeague.id;
+                upClub.tier = topLeague.tier;
+
+                pairs.push({
+                    promoted: { id: upClub.id, name: upClub.name, from: lowerId, to: topLeague.id },
+                    relegated: { id: downClub.id, name: downClub.name, from: topLeague.id, to: lowerId }
+                });
             }
-            if (lower) {
-                const relegated = table.slice(-league.relegation);
-                movements.push({ type: 'relegation', from: leagueId, to: lower, clubs: relegated.map(r => r.clubId) });
+
+            if (pairs.length) {
+                movements.push({
+                    type: 'division_exchange',
+                    higherLeague: topLeague.id,
+                    lowerLeague: lowerId,
+                    promoted: pairs.map(pair => pair.promoted),
+                    relegated: pairs.map(pair => pair.relegated),
+                    pairs
+                });
             }
         }
-        // À cette phase, on enregistre les mouvements sans réécrire encore les
-        // calendriers historiques. La migration de divisions sera activée avec
-        // le moteur complet de montée/relégation de Phase 2C.
-        state.world.lastSeasonFinalized = { year: state.calendar.currentSeasonYear, movements };
+
+        state.world.clubAssignments = captureClubAssignments();
+        state.world.lastSeasonFinalized = {
+            year: state.calendar.currentSeasonYear,
+            movements,
+            finalizedAt: Date.now()
+        };
+
+        syncPlayerClubFields(state);
         return movements;
     },
 
     resetSeasonTables(state, newYear) {
         this.ensureWorld(state);
+        applyClubAssignments(state.world.clubAssignments || {});
         for (const league of Object.values(LEAGUES)) {
             const worldLeague = state.world.leagues[league.id];
             worldLeague.seasonYear = newYear;
