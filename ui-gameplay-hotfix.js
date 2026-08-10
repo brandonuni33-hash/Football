@@ -1,8 +1,6 @@
 // ui-gameplay-hotfix.js
-// Restaure les interactions de gameplay qui avaient été perdues lors du remplacement UI v3.
-// 1) Dilemmes avant match via MatchChoiceManager.
-// 2) Affichage des conséquences après un choix événement/coach/média.
-// 3) Le bouton de bloc reste compatible avec ui-hotfix.js.
+// Couche gameplay temporaire : dilemmes avant match et résolution des décisions.
+// Elle reste autonome : aucun autre hotfix UI n'est requis.
 
 import { UserInterface } from './ui.js';
 import { MatchChoiceManager } from './matchChoices.js';
@@ -147,7 +145,8 @@ UserInterface.prototype.openDecisionModal = function(item, kind) {
     document.getElementById('stp-close-modal')?.addEventListener('click', () => document.getElementById('stp-modal')?.remove());
 };
 
-const originalPlayBlockSafely = UserInterface.prototype.playBlockSafely;
+// Gestion unique du lancement d'un bloc.
+// Le précédent ui-hotfix.js n'est plus nécessaire.
 UserInterface.prototype.playBlockSafely = function(choice = null) {
     if (!choice && !this._pendingMatchDilemma && this.engine?.state?.player) {
         const match = getNextMatch(this.engine.state);
@@ -163,24 +162,22 @@ UserInterface.prototype.playBlockSafely = function(choice = null) {
             }
         }
     }
-    if (choice) {
-        if (this.launching || !this.engine?.state?.player) return;
-        this.launching = true;
-        try {
-            const result = this.engine.playBlock(choice);
-            this.notice = null;
-            if (result?.event) this.notice = 'Un événement demande ton attention.';
-            else if (result?.coachEvent) this.notice = 'Ton entraîneur souhaite te parler.';
-            else if (result?.transferOffer) this.notice = 'Une nouvelle offre est disponible.';
-            this.launching = false;
-            this.renderDashboard();
-        } catch (error) {
-            console.error('[UI Gameplay] playBlock error:', error);
-            this.launching = false;
-            this.notice = `Le bloc n’a pas pu être simulé : ${error?.message || 'erreur inconnue'}`;
-            this.renderDashboard();
-        }
-        return;
+
+    if (this.launching || !this.engine?.state?.player) return;
+
+    this.launching = true;
+    try {
+        const result = this.engine.playBlock(choice);
+        this.notice = null;
+        if (result?.event) this.notice = 'Un événement demande ton attention.';
+        else if (result?.coachEvent) this.notice = 'Ton entraîneur souhaite te parler.';
+        else if (result?.transferOffer) this.notice = 'Une nouvelle offre est disponible.';
+        this.launching = false;
+        this.renderDashboard();
+    } catch (error) {
+        console.error('[UI Gameplay] playBlock error:', error);
+        this.launching = false;
+        this.notice = `Le bloc n’a pas pu être simulé : ${error?.message || 'erreur inconnue'}`;
+        this.renderDashboard();
     }
-    return originalPlayBlockSafely.call(this);
 };
