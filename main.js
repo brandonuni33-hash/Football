@@ -1,8 +1,6 @@
 // main.js
 // Point d'entrée web minimal : le bootstrap applicatif vit dans application/.
 import { GameEngine } from './application/gameEngine.js';
-import './ui-gameplay-hotfix.js?v=4';
-import './ui-interactive-match.js?v=1';
 import { AwardsSystem } from './awardsSystem.js';
 
 function showFatalError(error) {
