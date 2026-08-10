@@ -54,11 +54,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         window.gameApp.start();
 
-        // Contrat UI : les vues disposent d'une façade applicative stable.
+        // Contrat UI : toutes les actions de gameplay passent par l'application.
         window.gameUI = new UIGateway({
             application: window.gameApp,
             engine: window.game
         });
+        window.game.ui.engine = window.gameUI;
 
         AwardsSystem.ensure(window.game.state);
 
@@ -69,7 +70,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         await import('./awardsIntegration.js?v=4');
-        console.log("✅ Street to Pro prêt — architecture UI gateway.");
+        console.log("✅ Street to Pro prêt — UI gateway active.");
     } catch (error) {
         showFatalError(error);
     }
