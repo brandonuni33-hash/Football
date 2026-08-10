@@ -1,6 +1,6 @@
 // awardsIntegration.js
 // Branche le système de récompenses et transforme les performances collectives
-// (championnat + coupe nationale) en palmarès permanent.
+// (championnat + coupe nationale + Europe) en palmarès permanent.
 import { GameEngine } from './gameEngine.js';
 import { AwardsSystem } from './awardsSystem.js';
 import { StateManager } from './state.js';
@@ -25,7 +25,6 @@ function captureLeagueAchievement(state, seasonLabel) {
     const playerClubId = player?.clubId;
     if (!player || !playerClubId || !state?.world?.leagues) return null;
 
-    // Lecture AVANT la remise à zéro des tableaux de la nouvelle saison.
     for (const league of Object.values(state.world.leagues)) {
         const table = Array.isArray(league?.table) ? league.table : [];
         const ranked = [...table]
@@ -68,6 +67,42 @@ function captureCupAchievements(state, seasonLabel, cupHistory) {
         }));
 }
 
+function captureEuropeanAchievement(state, seasonLabel) {
+    const player = state?.player;
+    const tournament = state?.europeanTournament;
+    if (!player || !tournament || tournament.eliminated) return null;
+
+    const won = tournament.phase === 'winner'
+        || tournament.history?.some(entry => entry?.round === 'Finale' && entry?.result === 'Vainqueur');
+
+    if (!won) {
+        if (tournament.phase === 'eliminated') {
+            return {
+                type: 'european_run',
+                season: seasonLabel,
+                competition: tournament.competition,
+                competitionName: tournament.competition === 'CHAMPIONS_LEAGUE' ? 'Ligue des Champions' : 'Ligue Europa',
+                club: player.club,
+                clubId: player.clubId || null,
+                result: 'Éliminé',
+                rank: Number(tournament.rank || 0) || null
+            };
+        }
+        return null;
+    }
+
+    return {
+        type: 'european_title',
+        season: seasonLabel,
+        competition: tournament.competition,
+        competitionName: tournament.competition === 'CHAMPIONS_LEAGUE' ? 'Ligue des Champions' : 'Ligue Europa',
+        club: player.club,
+        clubId: player.clubId || null,
+        result: 'Vainqueur',
+        rank: Number(tournament.rank || 0) || null
+    };
+}
+
 GameEngine.prototype.startCareer = function (...args) {
     const result = originalStartCareer.apply(this, args);
     AwardsSystem.ensure(this.state);
@@ -94,10 +129,11 @@ GameEngine.prototype.archiveAndResetSeason = function (...args) {
 
     ensureClubPalmares(this.state);
 
-    // Les classements de la saison sont encore disponibles ici.
+    // Tous les classements et le parcours européen sont encore disponibles ici,
+    // avant que le moteur ne prépare la nouvelle saison.
     const leagueAchievement = captureLeagueAchievement(this.state, season.seasonLabel);
+    const europeanAchievement = captureEuropeanAchievement(this.state, season.seasonLabel);
 
-    // Le moteur original finalise les coupes puis remet les statistiques à zéro.
     const result = originalArchiveAndResetSeason.apply(this, args);
     const cupHistory = this.state.career?.lastCupHistory || [];
     const cupAchievements = captureCupAchievements(this.state, season.seasonLabel, cupHistory);
@@ -114,11 +150,22 @@ GameEngine.prototype.archiveAndResetSeason = function (...args) {
         this.state.career.palmares.nationalCups += 1;
     }
 
+    if (europeanAchievement) {
+        this.state.career.clubAchievements.push(europeanAchievement);
+        if (europeanAchievement.type === 'european_title') {
+            this.state.career.palmares.europeanTitles += 1;
+        }
+    }
+
     this.state.career.lastClubAchievementReport = {
         season: season.seasonLabel,
         league: leagueAchievement,
         cups: cupAchievements,
-        trophiesWon: (leagueAchievement?.type === 'league_title' ? 1 : 0) + cupAchievements.length
+        european: europeanAchievement,
+        trophiesWon:
+            (leagueAchievement?.type === 'league_title' ? 1 : 0) +
+            cupAchievements.length +
+            (europeanAchievement?.type === 'european_title' ? 1 : 0)
     };
 
     // Calcul individuel après la finalisation collective, avec le snapshot de saison.
