@@ -165,11 +165,13 @@ function patchDashboard() {
     const statGrid = widget.querySelector('.widget-stats-grid');
     if (!statGrid) return;
 
-    const oldBalance = Array.from(statGrid.querySelectorAll('.stat-pill')).find((pill) =>
-        /Solde/i.test(pill.textContent || '')
-    );
-
-    if (oldBalance) oldBalance.remove();
+    // Le solde et l'âge ne sont plus affichés dans les tuiles principales :
+    // l'âge est placé directement après le nom et les quatre statistiques
+    // sportives prennent leur place.
+    Array.from(statGrid.querySelectorAll('.stat-pill')).forEach((pill) => {
+        const text = pill.textContent || '';
+        if (/Solde|Âge/i.test(text)) pill.remove();
+    });
 
     let seasonStats = statGrid.querySelector('.dashboard-season-stats');
     if (!seasonStats) {
@@ -237,8 +239,6 @@ function start() {
     const observer = new MutationObserver(() => patchUI());
     observer.observe(document.body, { childList: true, subtree: true });
 
-    // Le moteur est créé au chargement de main.js. Cette petite attente
-    // garantit que le patch fonctionne aussi après une navigation d'app.
     let attempts = 0;
     const timer = setInterval(() => {
         patchUI();
