@@ -44,6 +44,7 @@ export class ViewCoordinator {
         };
         this.presentationHandlers = [];
         this.installed = false;
+        this.delegatedClickHandler = null;
     }
 
     install() {
@@ -60,7 +61,7 @@ export class ViewCoordinator {
             const viewMap = { social: 'media', transfers: 'transfer', training: 'training', career: 'career' };
             const viewName = viewMap[this.ui.activeApp];
             if (MIGRATED_APPS.has(this.ui.activeApp) && this.views[viewName]) {
-                return this.views[viewName].render(this.gateway.state);
+                return this.views[viewName].render(this.gateway.state, this.getTrainingFocusTypes());
             }
             return legacyRenderSpecificAppContent?.() || '';
         };
@@ -80,6 +81,13 @@ export class ViewCoordinator {
                 window.addEventListener(eventName, handler);
                 this.presentationHandlers.push(() => window.removeEventListener(eventName, handler));
             });
+
+            // Les vues rendent du HTML pour rester indépendantes du shell historique.
+            // Une délégation unique permet de conserver leurs interactions même lorsque
+            // ui.js remplace le contenu du DOM après chaque navigation.
+            this.delegatedClickHandler = (event) => this.handleDelegatedClick(event);
+            window.addEventListener('click', this.delegatedClickHandler);
+            this.presentationHandlers.push(() => window.removeEventListener('click', this.delegatedClickHandler));
         }
 
         this.ui.destroyViewCoordinator = () => this.destroy();
@@ -87,12 +95,69 @@ export class ViewCoordinator {
         return this;
     }
 
+    getTrainingFocusTypes() {
+        return this.gateway.application?.registry?.trainingSystem?.getFocusTypes?.() || {};
+    }
+
+    handleDelegatedClick(event) {
+        const target = event?.target?.closest?.('[data-event-choice],[data-coach-choice],[data-media-choice],[data-transfer-action],[data-training-focus],[data-career-action]');
+        if (!target) return;
+
+        if (target.dataset.eventChoice !== undefined) {
+            event.preventDefault();
+            const result = this.gateway.resolveEventChoice(Number(target.dataset.eventChoice));
+            this.ui.handleBlockResult?.(result);
+            return;
+        }
+
+        if (target.dataset.coachChoice !== undefined) {
+            event.preventDefault();
+            const result = this.gateway.resolveCoachChoice(Number(target.dataset.coachChoice));
+            this.ui.handleBlockResult?.(result);
+            return;
+        }
+
+        if (target.dataset.mediaChoice !== undefined) {
+            event.preventDefault();
+            const result = this.gateway.resolveMediaDilemma(Number(target.dataset.mediaChoice));
+            this.ui.handleBlockResult?.(result);
+            return;
+        }
+
+        if (target.dataset.transferAction === 'accept') {
+            event.preventDefault();
+            const result = this.gateway.acceptTransferOffer();
+            this.ui.handleBlockResult?.(result);
+            return;
+        }
+
+        if (target.dataset.transferAction === 'reject') {
+            event.preventDefault();
+            this.gateway.rejectTransferOffer();
+            this.ui.renderDashboard?.();
+            return;
+        }
+
+        if (target.dataset.trainingFocus !== undefined) {
+            event.preventDefault();
+            this.gateway.setTrainingFocus(target.dataset.trainingFocus);
+            this.ui.renderDashboard?.();
+            return;
+        }
+
+        if (target.dataset.careerAction === 'retire') {
+            event.preventDefault();
+            const result = this.gateway.retireCareer();
+            this.ui.handleBlockResult?.(result);
+        }
+    }
+
     renderDashboard(state = this.gateway.state) { return this.views.dashboard.render(state); }
     renderEvent(event) { return this.views.event.render(event); }
     renderCoach(event) { return this.views.coach.render(event); }
     renderMedia(state = this.gateway.state) { return this.views.media.render(state); }
     renderTransfer(offer = this.gateway.state?.pendingTransferOffer) { return this.views.transfer.render(offer); }
-    renderTraining(state = this.gateway.state) { return this.views.training.render(state); }
+    renderTraining(state = this.gateway.state) { return this.views.training.render(state, this.getTrainingFocusTypes()); }
     renderCareer(state = this.gateway.state) { return this.views.career.render(state); }
 
     bind(viewName, root, payload) {
@@ -102,6 +167,7 @@ export class ViewCoordinator {
     destroy() {
         this.presentationHandlers.forEach((remove) => remove());
         this.presentationHandlers.length = 0;
+        this.delegatedClickHandler = null;
         this.installed = false;
     }
 }
