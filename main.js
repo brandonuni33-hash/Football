@@ -2,6 +2,7 @@
 import { GameEngine } from './gameEngine.js';
 import { UserInterface } from './ui.js';
 import './ui-gameplay-hotfix.js?v=4';
+import './ui-interactive-match.js?v=1';
 import { AwardsSystem } from './awardsSystem.js';
 
 function showFatalError(error) {
@@ -22,21 +23,12 @@ function showFatalError(error) {
 
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("⚡ Démarrage de Street to Pro...");
-
     try {
         window.game = new GameEngine();
         AwardsSystem.ensure(window.game.state);
-
-        if (window.game.ui && typeof window.game.ui.init === 'function') {
-            window.game.ui.init();
-        } else {
-            throw new Error("L'interface utilisateur n'a pas pu être initialisée.");
-        }
-
+        if (window.game.ui && typeof window.game.ui.init === 'function') window.game.ui.init();
+        else throw new Error("L'interface utilisateur n'a pas pu être initialisée.");
         await import('./awardsIntegration.js?v=4');
-
         console.log("✅ Street to Pro prêt.");
-    } catch (error) {
-        showFatalError(error);
-    }
+    } catch (error) { showFatalError(error); }
 });
