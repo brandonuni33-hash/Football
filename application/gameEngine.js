@@ -3,7 +3,7 @@
 // réservée au point d'entrée web et aux compatibilités encore nécessaires.
 
 import { UserInterface } from '../ui.js';
-import { StateManager } from '../state.js';
+import { StateManager } from '../state/stateManager.js';
 import GameApplication from './gameApplication.js';
 import { UIGateway } from './uiGateway.js';
 import { createSystemRegistry } from './systemRegistry.js';
@@ -26,25 +26,15 @@ export class GameEngine {
 
         bindEngineToRegistry(this, this.gameSystems);
 
-        this.gameApp = new GameApplication({
-            engine: this,
-            registry: this.gameSystems
-        });
+        this.gameApp = new GameApplication({ engine: this, registry: this.gameSystems });
         this.gameApp.start();
 
-        this.gameUI = new UIGateway({
-            application: this.gameApp,
-            engine: this
-        });
-
+        this.gameUI = new UIGateway({ application: this.gameApp, engine: this });
         this.ui = new UserInterface(this);
         this.ui.engine = this.gameUI;
         this.ui.gateway = this.gameUI;
 
-        this.viewCoordinator = new ViewCoordinator({
-            ui: this.ui,
-            gateway: this.gameUI
-        }).install();
+        this.viewCoordinator = new ViewCoordinator({ ui: this.ui, gateway: this.gameUI }).install();
     }
 }
 
