@@ -1,6 +1,6 @@
 // domain/career/inheritedNetworkDynamics.js
-// Fait décroître progressivement la dépendance au réseau du parent.
-// Le réseau personnel du joueur devient progressivement dominant.
+// Fait évoluer le poids du réseau hérité vers le réseau personnel.
+// Aucun effet direct sur le potentiel ou les performances sportives.
 
 const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, value));
 
@@ -10,35 +10,68 @@ export class InheritedNetworkDynamics {
 
         const age = Number(career.age ?? 14);
         const years = Math.max(0, age - 14);
-        const parentWeight = clamp(100 - years * 8);
-        const personalWeight = clamp(20 + years * 8);
         const activity = clamp(Number(context.personalNetworkActivity ?? 50));
         const success = clamp(Number(context.careerSuccess ?? 50));
+        const meetings = clamp(Number(context.personalContacts ?? 0));
+        const media = clamp(Number(context.mediaExposure ?? 0));
 
-        const inherited = career.socialContext.inheritedNetwork || { people: [], clubs: [], socialCapital: 0 };
+        // Le réseau du parent reste utile mais perd naturellement du poids avec l'âge.
+        const ageShift = years * 7;
+        const parentWeight = clamp(100 - ageShift - activity * 0.08);
+        const personalWeight = clamp(100 - parentWeight);
+
+        const inherited = career.socialContext.inheritedNetwork || {
+            people: [],
+            clubs: [],
+            socialCapital: 0
+        };
         const childhood = career.socialContext.childhoodNetwork || [];
         const personal = career.socialContext.personalNetwork || [];
 
-        const personalGrowth = Math.max(0, Math.round((activity * 0.06 + success * 0.04)));
-        for (let i = 0; i < personalGrowth; i += 1) {
+        // Les rencontres personnelles créent de vrais contacts persistants.
+        const contactGrowth = Math.max(0, Math.round(
+            activity * 0.04 +
+            success * 0.025 +
+            meetings * 0.08 +
+            media * 0.015
+        ));
+
+        for (let i = 0; i < contactGrowth; i += 1) {
             personal.push({
+                id: `personal_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
                 source: 'career_activity',
-                createdAt: new Date().toISOString(),
-                strength: 20
+                strength: clamp(20 + success * 0.15),
+                createdAt: new Date().toISOString()
             });
         }
 
         career.socialContext.personalNetwork = personal.slice(-100);
+
+        const inheritedCapital = clamp(
+            Number(inherited.socialCapital ?? 0) * parentWeight / 100
+        );
+        const personalCapital = clamp(
+            personal.length * 2 + childhood.length + meetings * 0.5
+        );
+
+        const independentIdentity = clamp(
+            personalCapital * 0.55 +
+            success * 0.25 +
+            activity * 0.10 +
+            media * 0.10
+        );
+
         career.socialContext.networkBalance = {
-            inheritedWeight: parentWeight,
-            personalWeight: personalWeight,
-            inheritedCapital: Math.round(clamp(Number(inherited.socialCapital ?? 0) * parentWeight / 100)),
-            personalCapital: Math.round(clamp(personal.length * 2 + childhood.length))
+            inheritedWeight: Math.round(parentWeight),
+            personalWeight: Math.round(personalWeight),
+            inheritedCapital: Math.round(inheritedCapital),
+            personalCapital: Math.round(personalCapital),
+            independentIdentity: Math.round(independentIdentity)
         };
 
         career.socialContext.networkIdentity =
-            personalWeight >= 75 ? 'personal_dominant' :
-            personalWeight >= 50 ? 'transitioning' :
+            personalWeight >= 75 && independentIdentity >= 60 ? 'personal_dominant' :
+            personalWeight >= 45 ? 'transitioning' :
             'family_influenced';
 
         return career.socialContext.networkBalance;
