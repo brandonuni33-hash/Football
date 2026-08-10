@@ -24,13 +24,13 @@ export class UIGateway {
         catch{return[];}
     }
     startInteractiveMatch(match,index=0){
-        const manager=this.application.registry?.matchBlockManager;
+        const manager=this.application.registry?.interactiveMatchSystem;
         const session=manager?.startInteractiveMatch?.(this.state,match,index);
         if(session)this.state.activeMatchSession=session;
         return session;
     }
     resolveInteractiveMatchDecision(choiceIndex){
-        const manager=this.application.registry?.matchBlockManager; const session=this.state?.activeMatchSession;
+        const manager=this.application.registry?.interactiveMatchSystem; const session=this.state?.activeMatchSession;
         if(!manager||!session)throw new Error('Aucun match interactif actif.');
         const result=manager.resolveInteractiveDecision(this.state,session,choiceIndex);
         if(result.finished){
