@@ -41,16 +41,12 @@ state/ + core/
 - `ui/blockResultController.js` : orchestration de l'après-bloc.
 - `ui/views/` : écrans spécialisés et sans logique métier.
 - `ui.js` : façade de compatibilité mince.
+- `cupSystem.js` : propriétaire canonique des coupes nationales.
+- `application/systemRegistry.js` : publication des dépendances UI/application, dont `MatchChoiceManager`.
 
 ## Ce qui reste à nettoyer
 
-### Priorité 1 — couches UI historiques
-
-`ui.js` ne contient plus le dashboard, les applications ni les modales : il délègue désormais à `ui/`.
-
-`ui-live-polish.js` et `ui-live-polish.css` restent temporairement chargés pour conserver certains enrichissements visuels historiques. Ils devront être absorbés dans les vues canoniques puis supprimés.
-
-### Priorité 2 — modules historiques racine
+### Priorité 1 — modules historiques racine
 
 Les systèmes historiques suivants restent des dépendances de compatibilité :
 
@@ -58,9 +54,13 @@ Les systèmes historiques suivants restent des dépendances de compatibilité :
 
 Règle : aucune nouvelle mécanique ne doit être ajoutée directement dans ces fichiers lorsqu'un propriétaire de domaine existe.
 
-### Priorité 3 — façades restantes
+### Priorité 2 — façades restantes
 
 `matchBlock.js` reste une façade de compatibilité. Elle pourra être supprimée lorsque les derniers imports historiques auront été migrés.
+
+### Priorité 3 — assets UI historiques
+
+`ui-enhancement.css` et `ui-live-polish.css` restent des feuilles de style héritées. Elles peuvent être consolidées plus tard dans `ui/coreStyles.js` et des feuilles de style UI nommées par responsabilité, sans modifier le comportement métier.
 
 ## Nettoyage déjà effectué
 
@@ -72,8 +72,12 @@ Règle : aucune nouvelle mécanique ne doit être ajoutée directement dans ces 
 - suppression de `creation-ui-polish.js`, `ui-creation-constants-bridge.js` et `ui-creation-ux-v2.js` ;
 - suppression de `ui-gameplay-hotfix.js` ;
 - suppression de `ui-interactive-match.js` ;
+- suppression de `ui-successor-transition.js` ;
+- suppression de `ui-live-polish.js` et de son `MutationObserver` ;
 - réduction de `ui.js` à une façade ;
-- extraction des vues `messages`, `bank`, `stats` et `settings`.
+- extraction des vues `messages`, `bank`, `stats` et `settings` ;
+- absorption de l'ancienne implémentation `cupSystemV2.js` dans `cupSystem.js` ;
+- exposition de `MatchChoiceManager` depuis le registry canonique.
 
 ## Règles permanentes
 
