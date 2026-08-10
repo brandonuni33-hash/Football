@@ -1,67 +1,40 @@
-/* STREET TO PRO — DASHBOARD UX V4 */
-
-/* Identité : le nom doit toujours être visible. */
-.live-player-name-line{display:flex!important;align-items:center!important;gap:7px!important;flex-wrap:nowrap!important;font-size:1.20rem!important;line-height:1.15!important;font-weight:850!important;letter-spacing:-.02em!important}
-.player-main-info .widget-title > .live-player-name{display:inline!important;visibility:visible!important;color:#f8fafc!important;white-space:nowrap!important}
-.live-player-flag{font-size:1.08rem!important;line-height:1!important;flex:none!important}
-
-/* Poste + âge : l'âge n'apparaît plus à côté du nom. */
+/* STREET TO PRO — DASHBOARD UX V5 */
+.player-widget-enhanced .player-main-info{display:none!important}
+.live-identity-block{display:block!important;width:100%!important;margin:0!important;padding:0 0 4px!important;color:#f8fafc!important}
+.live-player-name-line{display:flex!important;align-items:center!important;gap:7px!important;flex-wrap:nowrap!important;font-size:1.20rem!important;line-height:1.15!important;font-weight:850!important;letter-spacing:-.02em!important;color:#f8fafc!important;min-height:28px!important}
+.live-player-name{display:block!important;visibility:visible!important;opacity:1!important;color:#f8fafc!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+.live-player-flag{display:inline-flex!important;visibility:visible!important;opacity:1!important;font-size:1.08rem!important;line-height:1!important;flex:none!important}
 .live-player-position-row{display:flex!important;align-items:center!important;justify-content:space-between!important;margin-top:5px!important;line-height:1.2!important}
 .live-player-position{font-size:.86rem!important;font-weight:750!important;color:#f8fafc!important}
 .live-player-age{font-size:.78rem!important;font-weight:650!important;color:#94a3b8!important;white-space:nowrap!important}
-
 .live-club-line{font-size:.80rem!important;color:#d4dbe6!important;margin-top:7px!important;line-height:1.25!important}
 .live-league-line{font-size:.76rem!important;color:#aeb9ca!important;margin-top:5px!important;line-height:1.25!important}
-
-/* Une seule ligne Centre de formation + étoiles. */
 .live-academy-line{display:flex!important;align-items:center!important;gap:9px!important;margin-top:7px!important;font-size:.74rem!important;color:#aeb9ca!important;line-height:1.2!important}
 .live-academy-stars{font-size:.70rem!important;letter-spacing:.7px!important;color:#64748b!important;white-space:nowrap!important}
 .live-contract-line{font-size:.73rem!important;color:#9aa7b9!important;margin-top:7px!important;line-height:1.2!important}
-
-/* Statut principal. */
 .live-core-stats{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:7px!important;margin-top:12px!important}
 .live-core-stats .stat-pill{min-width:0!important;padding:9px 4px!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:4px!important;text-align:center!important;background:rgba(255,255,255,.045)!important;border:1px solid rgba(255,255,255,.07)!important;border-radius:13px!important}
 .live-core-stats .stat-pill span{font-size:.60rem!important;color:#94a3b8!important;font-weight:800!important;letter-spacing:.03em!important}
 .live-core-stats .stat-pill strong{font-size:.98rem!important;color:#f8fafc!important;line-height:1!important}
-
-/* Potentiel : étoiles nettement plus petites que les chiffres. */
-.live-core-stats .stat-pill strong.live-potential-stars{font-size:.58rem!important;letter-spacing:.55px!important;line-height:1!important;white-space:nowrap!important;color:#f8fafc!important}
-
-/* UNE SEULE ligne de statistiques de carrière. */
-.live-career-stats{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:0!important;margin-top:10px!important;padding:12px 0 2px!important;border-top:1px solid rgba(255,255,255,.07)!important;border-bottom:0!important}
-.live-career-stat{min-width:0!important;padding:0 5px!important;text-align:center!important;border-right:1px solid rgba(255,255,255,.09)!important;border-radius:0!important;background:transparent!important;border-top:0!important;border-bottom:0!important;border-left:0!important}
+.live-core-stats .stat-pill strong.live-potential-stars{font-size:.58rem!important;letter-spacing:.45px!important;line-height:1!important;white-space:nowrap!important;color:#f8fafc!important}
+.live-career-stats{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:0!important;margin-top:10px!important;padding:12px 0 2px!important;border-top:1px solid rgba(255,255,255,.07)!important}
+.live-career-stat{min-width:0!important;padding:0 5px!important;text-align:center!important;border-right:1px solid rgba(255,255,255,.09)!important;background:transparent!important}
 .live-career-stat:last-child{border-right:0!important}
 .live-career-stat span{display:block!important;color:#94a3b8!important;font-size:.58rem!important;font-weight:800!important;line-height:1.15!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
 .live-career-stat strong{display:block!important;margin-top:4px!important;font-size:1rem!important;color:#fff!important;line-height:1!important}
-
-/* Défense contre les anciennes lignes de stats. */
 .player-widget-enhanced .dashboard-career-stats,.player-widget-enhanced .career-stats,.player-widget-enhanced .player-career-stats,.player-widget-enhanced .career-stat-row{display:none!important}
-
-.live-section-title{display:flex;align-items:center;justify-content:space-between;padding:0 3px;margin:2px 0 0!important}
-.live-section-title span{font-size:.90rem;font-weight:850;letter-spacing:.01em}
+.live-section-title{display:flex!important;align-items:center!important;justify-content:space-between!important;padding:0 3px!important;margin:2px 0 0!important}
+.live-section-title span{font-size:.90rem!important;font-weight:850!important;letter-spacing:.01em!important}
 .widget-secret-tag,.player-secret,.player-balance,.balance-widget,#settings-floating-btn{display:none!important}
-
-/* Zone dédiée aux notifications. */
 .dashboard-notification-zone{min-height:18px!important;margin:12px 0 17px!important;display:flex!important;flex-direction:column!important;gap:8px!important}
 .dashboard-notification-zone:empty{display:block!important;min-height:18px!important}
 .dashboard-notification-zone .dashboard-notification-card,.dashboard-notification-zone .notification-card,.dashboard-notification-zone .notification-panel{width:100%!important;margin:0!important}
-
-/* Applications. */
 .apps-grid{position:relative!important;display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:16px 8px!important;padding:2px 1px 18px!important;max-height:none!important;overflow:visible!important}
 .app-logo{width:56px!important;height:56px!important;border-radius:17px!important;border:1px solid rgba(255,255,255,.11)!important;box-shadow:0 8px 18px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.10)!important}
 .app-label{font-size:.67rem!important;color:#e8edf5!important;font-weight:650!important;margin-top:6px!important;line-height:1.15!important}
 .notification-badge{top:-4px!important;right:0!important}
-
-/* Avancer : même taille qu'une application. */
-.apps-grid #play-block-btn,.apps-grid .app-advance-icon{position:static!important;left:auto!important;bottom:auto!important;transform:none!important;width:56px!important;height:56px!important;min-height:56px!important;margin:0 auto!important;padding:28px 0 0!important;border-radius:17px!important;display:flex!important;align-items:center!important;justify-content:center!important;background:linear-gradient(145deg,rgba(16,185,129,.24),rgba(16,185,129,.08))!important;border:1px solid rgba(52,211,153,.30)!important;box-shadow:0 8px 18px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.10)!important;color:#dfffee!important;font-size:.68rem!important;font-weight:750!important;line-height:1.1!important;text-align:center!important}
+/* Avancer occupe les deux colonnes centrales : centre réel sur une grille de 4 colonnes. */
+.apps-grid #play-block-btn,.apps-grid .app-advance-icon{grid-column:2 / span 2!important;justify-self:center!important;align-self:start!important;position:static!important;left:auto!important;right:auto!important;bottom:auto!important;transform:none!important;width:56px!important;height:56px!important;min-width:56px!important;max-width:56px!important;min-height:56px!important;margin:0!important;padding:28px 0 0!important;border-radius:17px!important;display:flex!important;align-items:center!important;justify-content:center!important;background:linear-gradient(145deg,rgba(16,185,129,.24),rgba(16,185,129,.08))!important;border:1px solid rgba(52,211,153,.30)!important;box-shadow:0 8px 18px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.10)!important;color:#dfffee!important;font-size:.68rem!important;font-weight:750!important;line-height:1.1!important;text-align:center!important}
 .apps-grid #play-block-btn::before,.apps-grid .app-advance-icon::before{content:'»'!important;position:absolute!important;margin-top:-16px!important;font-size:1.7rem!important;line-height:1!important;color:#34d399!important}
 .apps-grid #play-block-btn:active,.apps-grid .app-advance-icon:active{transform:scale(.94)!important}
-
-@media(max-width:380px){
-    .live-player-name-line{font-size:1.10rem!important}
-    .live-core-stats,.live-career-stats{gap:4px}
-    .live-career-stat{padding:0 3px!important}
-    .live-career-stat span{font-size:.54rem!important}
-    .live-core-stats .stat-pill strong.live-potential-stars{font-size:.52rem!important;letter-spacing:.4px!important}
-    .app-logo,.apps-grid #play-block-btn,.apps-grid .app-advance-icon{width:52px!important;height:52px!important;min-height:52px!important}
-}
+@media(max-width:380px){.live-player-name-line{font-size:1.10rem!important}.live-core-stats,.live-career-stats{gap:4px!important}.live-career-stat{padding:0 3px!important}.live-career-stat span{font-size:.54rem!important}.live-core-stats .stat-pill strong.live-potential-stars{font-size:.52rem!important;letter-spacing:.35px!important}.app-logo,.apps-grid #play-block-btn,.apps-grid .app-advance-icon{width:52px!important;height:52px!important;min-width:52px!important;max-width:52px!important;min-height:52px!important}}
