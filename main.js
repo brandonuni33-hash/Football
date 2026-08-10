@@ -1,5 +1,7 @@
 // main.js
 import { GameEngine } from './gameEngine.js';
+import { UserInterface } from './ui.js';
+import './ui-hotfix.js';
 import { AwardsSystem } from './awardsSystem.js';
 
 // L'intégration des récompenses monkey-patche GameEngine et importe lui-même
