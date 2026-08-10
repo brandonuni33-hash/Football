@@ -349,11 +349,14 @@ export class GameEngine {
     advanceCalendar() {
         const calendar = this.state.calendar;
 
-        // Les autres clubs jouent aussi : le monde évolue même lorsque le joueur
-        // ne regarde pas tous les matchs.
-        const playerLeague = WorldSystem.getLeagueForClub(this.state.player?.clubId || this.state.player?.club);
-        if (playerLeague && !WorldSystem.isOffSeason?.(calendar.currentMonth)) {
-            WorldSystem.simulateLeagueMonth(this.state, playerLeague.id, Number(calendar.currentSeasonYear) + Number(calendar.currentMonth));
+        // Le monde entier évolue : chaque division des cinq championnats
+        // joue ses rencontres du mois. Le club du joueur est protégé contre
+        // une double simulation et est alimenté par MatchBlockManager.
+        if (!WorldSystem.isOffSeason?.(calendar.currentMonth)) {
+            WorldSystem.simulateAllLeaguesMonth(
+                this.state,
+                Number(calendar.currentSeasonYear) * 100 + Number(calendar.currentMonth)
+            );
         }
 
         calendar.currentMonth += 1;
@@ -365,7 +368,8 @@ export class GameEngine {
         let seasonChanged = false;
 
         if (calendar.currentMonth === 8) {
-            WorldSystem.finalizeSeason(this.state);
+            const divisionMovements = WorldSystem.finalizeSeason(this.state);
+            this.state.career.lastDivisionMovements = divisionMovements;
             this.archiveAndResetSeason();
             calendar.currentSeasonYear += 1;
             calendar.seasonSchedule = null;
