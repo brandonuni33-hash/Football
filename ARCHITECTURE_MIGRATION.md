@@ -34,6 +34,7 @@ state/ + core/
 - `domain/match/blockMatchSimulator.js` : simulation des matchs d'un bloc, statistiques et progression liée au bloc.
 - `domain/match/matchHelpers.js` : fonctions pures partagées par les moteurs de match.
 - `domain/notification/notificationSystem.js` : notifications.
+- `ui/creationEnhancements.js` : unique module de présentation de la création de carrière.
 
 ## Ce qui reste à nettoyer
 
@@ -53,7 +54,9 @@ Règle : aucune nouvelle mécanique ne doit être ajoutée directement dans ces 
 
 ### Priorité 3 — UI multi-couches
 
-Les fichiers racine de type `ui-*`, `*-v2`, `*-hotfix`, `*-polish` doivent progressivement être remplacés par des modules nommés par responsabilité dans `ui/`, `ui/views/`, `ui/controllers/` ou `ui/components/`.
+La création de carrière a été regroupée dans `ui/creationEnhancements.js`. Les anciens `creation-ui-polish.js`, `ui-creation-constants-bridge.js` et `ui-creation-ux-v2.js` ont été supprimés.
+
+Les autres fichiers racine de type `ui-*`, `*-v2`, `*-hotfix`, `*-polish` doivent progressivement être remplacés par des modules nommés par responsabilité dans `ui/`, `ui/views/`, `ui/controllers/` ou `ui/components/`.
 
 ## Règles permanentes
 
@@ -70,4 +73,4 @@ Les fichiers racine de type `ui-*`, `*-v2`, `*-hotfix`, `*-polish` doivent progr
 
 ## État de cette reprise
 
-Le moteur de match interactif et la simulation de bloc ont été réellement découpés sans modifier le contrat public historique : `matchBlock.js` ne contient plus que la façade. La prochaine étape structurante est maintenant le découpage réel de `ui.js`, en conservant `UserInterface` comme contrat stable pendant la migration.
+Le moteur de match interactif et la simulation de bloc ont été réellement découpés sans modifier le contrat public historique : `matchBlock.js` ne contient plus que la façade. La création de carrière a également été regroupée dans un module UI unique. La prochaine étape structurante est maintenant le découpage réel de `ui.js`, en conservant `UserInterface` comme contrat stable pendant la migration.
