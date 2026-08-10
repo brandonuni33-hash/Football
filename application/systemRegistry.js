@@ -24,6 +24,7 @@ import SecondGenerationSystem from '../domain/career/secondGenerationSystem.js';
 import ChildCareerSystem from '../domain/career/childCareerSystem.js';
 import GenerationSimulationFacade from '../domain/career/generationSimulationFacade.js';
 import { FamilyLifeSystem } from '../domain/family/familyLifeSystem.js';
+import FamilySystem from '../domain/family/familySystem.js';
 import RelationshipSystem from '../domain/relationship/relationshipSystem.js';
 import NetworkEvolutionSystem from '../domain/relationship/networkEvolutionSystem.js';
 import CareerApplication from './careerApplication.js';
@@ -39,9 +40,12 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
     const trainingSystem = new TrainingSystem(TrainingManager);
     const matchSystem = new MatchSystem(MatchBlockManager);
 
+    // Vie relationnelle / familiale : une source de vérité métier par domaine.
     const relationshipSystem = new RelationshipSystem({ eventBus: EventEngine });
     const networkEvolutionSystem = new NetworkEvolutionSystem();
+    const familySystem = new FamilySystem();
     const familyLifeSystem = new FamilyLifeSystem();
+
     const secondGenerationSystem = new SecondGenerationSystem();
     const childCareerSystem = new ChildCareerSystem();
     const generationSimulationFacade = new GenerationSimulationFacade({ childCareer: childCareerSystem });
@@ -119,6 +123,7 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
         matchSystem,
         relationshipSystem,
         networkEvolutionSystem,
+        familySystem,
         familyLifeSystem,
         secondGenerationSystem,
         childCareerSystem,
