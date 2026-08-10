@@ -1,12 +1,10 @@
 // application/gameApplication.js
-// Façade applicative : point d'entrée entre l'UI et le domaine.
-// Les commandes migrées sont enregistrées ici ; le bridge garde un fallback
-// contrôlé vers GameEngine pour les fonctionnalités non migrées.
+// Façade applicative : point d'entrée unique entre l'UI et le domaine.
 
 import { CommandBus } from '../core/commandBus.js';
-import { LegacyGameBridge } from './legacyGameBridge.js';
 import { NotificationSystem } from './notificationSystem.js';
 import { registerCareerHandlers } from './handlers/careerHandlers.js';
+import { registerGameplayHandlers } from './handlers/gameplayHandlers.js';
 import { registerApplicationEventSubscribers } from './eventSubscribers.js';
 import { registerDomainEventSubscribers } from './domainEventSubscribers.js';
 
@@ -15,7 +13,6 @@ export class GameApplication {
         this.engine = engine;
         this.state = state || engine?.state || null;
         this.registry = registry;
-        this.bridge = engine ? new LegacyGameBridge(engine, registry) : null;
         this.notifications = null;
         this.unregisterHandlers = [];
         this.unsubscribeEvents = null;
@@ -26,20 +23,13 @@ export class GameApplication {
     start() {
         if (this.started) return;
 
-        // Le state peut avoir été remplacé pendant la migration/restauration
-        // entre le constructeur et start(). Toutes les dépendances applicatives
-        // doivent donc pointer vers la version canonique actuelle.
         this.state = this.engine?.state || this.state || null;
-
-        this.bridge?.start();
         this.unregisterHandlers.push(
-            ...registerCareerHandlers({ application: this, registry: this.registry })
+            ...registerCareerHandlers({ application: this, registry: this.registry }),
+            ...registerGameplayHandlers({ application: this, registry: this.registry, engine: this.engine })
         );
 
-        if (this.state) {
-            this.notifications = new NotificationSystem({ state: this.state });
-            this.notifications.start();
-        }
+        this.startNotifications();
 
         this.unsubscribeEvents = registerApplicationEventSubscribers({
             registry: this.registry,
@@ -53,15 +43,21 @@ export class GameApplication {
         this.started = true;
     }
 
+    startNotifications() {
+        if (!this.state || this.notifications) return;
+        this.notifications = new NotificationSystem({ state: this.state });
+        this.notifications.start();
+    }
+
     stop() {
         this.unregisterHandlers.forEach((unsubscribe) => unsubscribe?.());
         this.unregisterHandlers = [];
         this.notifications?.stop();
+        this.notifications = null;
         this.unsubscribeEvents?.();
         this.unsubscribeEvents = null;
         this.unsubscribeDomainEvents?.();
         this.unsubscribeDomainEvents = null;
-        this.bridge?.stop();
         this.started = false;
     }
 
