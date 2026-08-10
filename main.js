@@ -36,6 +36,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             cupSystem: window.game.cupSystem
         });
 
+        // Alias temporaires de compatibilité pour les modules UI historiques.
+        window.game.socialSystem = window.gameSystems.socialSystem;
+        window.game.mediaSystem = window.gameSystems.mediaSystem;
+        window.game.worldSystem = window.gameSystems.seasonSystem.worldSystem;
+        window.game.competitionSystem = window.gameSystems.calendarSystem.competitionSystem;
+        window.game.cupSystem = window.gameSystems.seasonSystem.cupSystem;
+
         // La restauration/migration appartient désormais à l'application,
         // avant de démarrer les services qui conservent une référence au state.
         if (window.game.state?.player) {
