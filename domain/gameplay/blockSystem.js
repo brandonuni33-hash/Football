@@ -6,8 +6,8 @@ import { EVENTS } from '../../core/events.js';
 import { finalizeInteractiveBlock } from './interactiveBlockFinalizer.js';
 
 export class BlockSystem {
-    constructor({ trainingManager, matchBlockManager, worldSystem, socialSystem, mediaSystem, eventEngine, coachSystem, careerSystem, transferMarket, stateManager, familyLifeSystem = null, advanceCalendar } = {}) {
-        Object.assign(this, { trainingManager, matchBlockManager, worldSystem, socialSystem, mediaSystem, eventEngine, coachSystem, careerSystem, transferMarket, stateManager, familyLifeSystem, advanceCalendar });
+    constructor({ trainingManager, matchBlockManager, worldSystem, socialSystem, mediaSystem, eventEngine, coachSystem, careerSystem, transferMarket, stateManager, familyLifeSystem = null, consequenceSystem = null, advanceCalendar } = {}) {
+        Object.assign(this, { trainingManager, matchBlockManager, worldSystem, socialSystem, mediaSystem, eventEngine, coachSystem, careerSystem, transferMarket, stateManager, familyLifeSystem, consequenceSystem, advanceCalendar });
     }
 
     execute(state, selectedChoice = null) {
@@ -15,9 +15,11 @@ export class BlockSystem {
         EventBus.emit(EVENTS.GAME_BLOCK_STARTED, { state, playerId: state.player.id });
         try {
             const player = state.player;
+            const revealedConsequences = this.consequenceSystem?.resolvePending?.(state, 'block_start') || [];
+
             if (player.retired || player.careerEnded || Number(player.age) >= 42) {
                 player.careerEnded = true;
-                const result = { careerEnded: true, report: { summary: { rating: 0, goals: 0, assists: 0, passes: 0, tackles: 0, yellowCards: 0, finance: null } } };
+                const result = { careerEnded: true, revealedConsequences, report: { summary: { rating: 0, goals: 0, assists: 0, passes: 0, tackles: 0, yellowCards: 0, finance: null } } };
                 EventBus.emit(EVENTS.CAREER_ENDED, { reason: 'age_or_retirement', playerId: player.id });
                 return result;
             }
@@ -27,7 +29,7 @@ export class BlockSystem {
                 if (player.injuryDuration <= 0) { player.isInjured = false; player.injuryDuration = 0; EventBus.emit(EVENTS.PLAYER_RECOVERED, { playerId: player.id }); }
                 const calendar = this.advanceCalendar(state);
                 this.stateManager.save(state);
-                const result = { recoveryOnly: true, report: { summary: { rating: 0, goals: 0, assists: 0, passes: 0, tackles: 0, yellowCards: 0, finance: null } }, calendar, event: null, coachEvent: null, familyBirths: [] };
+                const result = { recoveryOnly: true, revealedConsequences, report: { summary: { rating: 0, goals: 0, assists: 0, passes: 0, tackles: 0, yellowCards: 0, finance: null } }, calendar, event: null, coachEvent: null, familyBirths: [] };
                 EventBus.emit(EVENTS.GAME_BLOCK_COMPLETED, { state, playerId: player.id, result });
                 return result;
             }
@@ -46,6 +48,7 @@ export class BlockSystem {
             state.pendingEvent = this.eventEngine.checkAndTriggerEvent(state);
             state.pendingCoachEvent = state.pendingEvent ? null : this.coachSystem.checkCoachInteraction(state);
             this.careerSystem.refreshStage(player);
+            this.careerSystem.detectRole(player);
             const discoveredRole = this.careerSystem.detectRole(player);
             const positionProposal = this.careerSystem.evaluatePositionChange(player);
             state.pendingPositionProposal = positionProposal || null;
@@ -58,7 +61,7 @@ export class BlockSystem {
             const familyBirths = this.familyLifeSystem?.evaluateBirths?.({ state, player, season }) || [];
             const calendar = this.advanceCalendar(state);
             this.stateManager.save(state);
-            const result = { report: { ...report, training: trainingReport }, calendar, event: state.pendingEvent, coachEvent: state.pendingCoachEvent, transferOffer: state.pendingTransferOffer, mediaDilemma: state.media?.recentDilemma || null, positionProposal: state.pendingPositionProposal, discoveredRole, familyBirths };
+            const result = { report: { ...report, training: trainingReport }, revealedConsequences, calendar, event: state.pendingEvent, coachEvent: state.pendingCoachEvent, transferOffer: state.pendingTransferOffer, mediaDilemma: state.media?.recentDilemma || null, positionProposal: state.pendingPositionProposal, discoveredRole, familyBirths };
             EventBus.emit(EVENTS.GAME_BLOCK_COMPLETED, { state, playerId: player.id, result });
             return result;
         } catch (error) {
