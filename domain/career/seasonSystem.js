@@ -2,6 +2,9 @@
 // Gestion de la clôture d'une saison.
 // Les dépendances métier sont injectées : aucune dépendance vers l'UI ou la persistance.
 
+import { EventBus } from '../../core/eventBus.js';
+import { EVENTS } from '../../core/events.js';
+
 export class SeasonSystem {
     constructor({ playerLogic, potentialSystem, careerSystem, cupSystem, worldSystem } = {}) {
         this.playerLogic = playerLogic;
@@ -18,6 +21,7 @@ export class SeasonSystem {
 
         const currentYear = calendar.currentSeasonYear;
         const seasonLabel = `${currentYear}/${currentYear + 1}`;
+        EventBus.emit(EVENTS.SEASON_COMPLETED, { state, season: seasonLabel, playerId: player.id });
 
         state.career ||= {};
         state.career.seasonHistory ||= [];
@@ -46,7 +50,6 @@ export class SeasonSystem {
             type: 'finSaison',
             vieillirDUnAn: false
         });
-
         this.potentialSystem?.advanceAge?.(player);
 
         if (Number(player.age) >= 18 && player.isYouthPlayer) {
@@ -56,21 +59,22 @@ export class SeasonSystem {
 
         this.careerSystem?.refreshStage?.(player);
         this.playerLogic?.syncProgressionFromCanonical?.(player);
-
         player.canRetire = player.age >= 34;
         player.careerEnded = player.age >= 42;
 
         state.career.lastPotentialReport = potentialReport;
         state.career.lastCupHistory = this.cupSystem?.finalizeSeason?.(state);
-
         this.resetSeasonStats(player);
 
-        if (
-            state.social?.coachData &&
-            player.club !== state.social.youthClubName
-        ) {
+        if (state.social?.coachData && player.club !== state.social.youthClubName) {
             state.social.coachData.hasLeftClub = true;
         }
+
+        EventBus.emit(EVENTS.SEASON_STARTED, {
+            state,
+            season: `${currentYear + 1}/${currentYear + 2}`,
+            playerId: player.id
+        });
 
         return {
             seasonLabel,
@@ -88,7 +92,6 @@ export class SeasonSystem {
         player.stats.tackles = 0;
         player.stats.yellowCards = 0;
         player.stats.averageRating = 0;
-
         player.fitness = Math.min(100, (player.fitness || 60) + 20);
         player.isInjured = false;
         player.injuryDuration = 0;
