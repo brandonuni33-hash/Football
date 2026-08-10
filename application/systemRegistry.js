@@ -30,6 +30,7 @@ import NetworkEvolutionSystem from '../domain/relationship/networkEvolutionSyste
 import NotificationSystem from '../domain/notification/notificationSystem.js';
 import CareerApplication from './careerApplication.js';
 import { MatchSystem } from '../domain/match/matchSystem.js';
+import SimulatedMatchSystem from '../domain/match/simulatedMatchSystem.js';
 import { TrainingSystem } from '../domain/training/trainingSystem.js';
 import { BlockSystem } from '../domain/gameplay/blockSystem.js';
 import { InteractionSystem } from '../domain/interactions/interactionSystem.js';
@@ -39,6 +40,7 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
     const socialSystem = new SocialSystem(engine);
     const mediaSystem = new MediaSystem(engine);
     const trainingSystem = new TrainingSystem(TrainingManager);
+    const simulatedMatchSystem = new SimulatedMatchSystem(MatchBlockManager);
     const matchSystem = new MatchSystem(MatchBlockManager);
 
     const relationshipSystem = new RelationshipSystem();
@@ -56,7 +58,7 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
 
     const blockSystem = new BlockSystem({
         trainingManager: TrainingManager,
-        matchBlockManager: matchSystem,
+        matchBlockManager: simulatedMatchSystem,
         worldSystem,
         socialSystem,
         mediaSystem,
@@ -80,12 +82,11 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
 
     notificationSystem.start();
 
-    // Les deux niveaux sont exposés volontairement :
-    // - matchSystem = façade commune pour les blocs simulés
-    // - matchBlockManager = API des matchs interactifs
     return Object.freeze({
         socialSystem, mediaSystem, trainingSystem,
-        matchSystem, matchBlockManager: MatchBlockManager,
+        matchSystem: simulatedMatchSystem,
+        matchBlockManager: MatchBlockManager,
+        legacyMatchSystem: matchSystem,
         competitionSystem, cupSystem,
         relationshipSystem, networkEvolutionSystem,
         familySystem, familyLifeSystem, notificationSystem,
