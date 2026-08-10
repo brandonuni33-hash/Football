@@ -3,13 +3,14 @@
 // Le réseau hérité est social ; les attributs sportifs restent propres au fils.
 
 import NetworkInheritance from './networkInheritance.js';
+import { PotentialSystem } from '../../potentialSystem.js';
 
 const START_AGE = 14;
-const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, value));
 
 export class ChildCareerBootstrap {
-    constructor({ networkInheritance = new NetworkInheritance() } = {}) {
+    constructor({ networkInheritance = new NetworkInheritance(), potentialSystem = PotentialSystem } = {}) {
         this.networkInheritance = networkInheritance;
+        this.potentialSystem = potentialSystem;
     }
 
     build({ state, playerId, childId, world = {}, profile = {} }) {
@@ -23,6 +24,10 @@ export class ChildCareerBootstrap {
 
         const inheritedNetwork = this.networkInheritance.build({ state, playerId, world });
         const preCareer = child.preCareer || {};
+
+        // Important : aucun argument `base` n'est transmis au moteur de potentiel.
+        // Le fils reçoit donc un profil sportif entièrement indépendant de son père.
+        const potentialProfile = this.potentialSystem.createProfile();
 
         const career = {
             generation: Number(state?.careerGeneration ?? 1) + 1,
@@ -44,9 +49,11 @@ export class ChildCareerBootstrap {
             },
             sportingProfile: {
                 overall: null,
-                potential: null,
+                potential: potentialProfile.current,
+                potentialProfile,
                 position: profile.position || null,
-                generatedIndependently: true
+                generatedIndependently: true,
+                inheritedFromParent: false
             },
             status: 'ready_to_start'
         };
