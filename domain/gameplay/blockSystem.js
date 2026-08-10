@@ -48,7 +48,6 @@ export class BlockSystem {
             state.pendingEvent = this.eventEngine.checkAndTriggerEvent(state);
             state.pendingCoachEvent = state.pendingEvent ? null : this.coachSystem.checkCoachInteraction(state);
             this.careerSystem.refreshStage(player);
-            this.careerSystem.detectRole(player);
             const discoveredRole = this.careerSystem.detectRole(player);
             const positionProposal = this.careerSystem.evaluatePositionChange(player);
             state.pendingPositionProposal = positionProposal || null;
