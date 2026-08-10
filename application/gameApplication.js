@@ -1,19 +1,18 @@
 // application/gameApplication.js
 // Façade applicative : point d'entrée entre l'UI et le domaine.
-//
-// Pendant la migration, cette couche peut encore piloter le GameEngine
-// historique via LegacyGameBridge. Elle deviendra progressivement le seul
-// point d'entrée des commandes de l'interface.
+// Pendant la migration, les commandes non migrées restent compatibles avec
+// le GameEngine historique via LegacyGameBridge.
 
 import { CommandBus } from '../core/commandBus.js';
 import { LegacyGameBridge } from './legacyGameBridge.js';
 import { NotificationSystem } from './notificationSystem.js';
 
 export class GameApplication {
-    constructor({ engine = null, state = null } = {}) {
+    constructor({ engine = null, state = null, registry = null } = {}) {
         this.engine = engine;
         this.state = state || engine?.state || null;
-        this.bridge = engine ? new LegacyGameBridge(engine) : null;
+        this.registry = registry;
+        this.bridge = engine ? new LegacyGameBridge(engine, registry) : null;
         this.notifications = this.state
             ? new NotificationSystem({ state: this.state })
             : null;
@@ -44,7 +43,8 @@ export class GameApplication {
         return CommandBus.dispatch(commandName, payload, {
             ...context,
             engine: this.engine,
-            state: this.state
+            state: this.state,
+            registry: this.registry
         });
     }
 }
