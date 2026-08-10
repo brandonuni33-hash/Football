@@ -54,7 +54,7 @@ export class DashboardView {
 
                 <div class="dashboard-actions">
                     <button class="btn-primary" data-dashboard-action="next-block" type="button" ${player.careerEnded ? 'disabled' : ''}>
-                        ${player.careerEnded ? 'Carrière terminée' : 'Lancer le prochain bloc'}
+                        ${player.careerEnded ? 'Carrière terminée' : 'Avancer'}
                     </button>
                 </div>
 
