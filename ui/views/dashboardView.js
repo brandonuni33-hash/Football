@@ -12,6 +12,8 @@ export class DashboardView {
         const stats = player.stats || {};
         const calendar = state?.calendar || {};
         const media = state?.media || {};
+        const notifications = Array.isArray(state?.notifications) ? state.notifications.filter(n => !n?.read) : [];
+        const next = notifications[0];
 
         return `
             <section class="dashboard-view" data-view="dashboard">
@@ -35,8 +37,21 @@ export class DashboardView {
                     </div>
                 </div>
 
+                ${next ? `
+                    <button class="dashboard-notification-card" data-notification-id="${next.id || ''}" type="button">
+                        <span class="dashboard-notification-icon">🔔</span>
+                        <span class="dashboard-notification-copy">
+                            <strong>${next.title || next.type || 'Nouvelle notification'}</strong>
+                            <small>${next.message || next.description || 'Une nouvelle information nécessite votre attention.'}</small>
+                        </span>
+                        <span>›</span>
+                    </button>
+                ` : ''}
+
                 <div class="dashboard-actions">
-                    <button class="btn-primary" data-dashboard-action="next-block">Lancer le prochain bloc</button>
+                    <button class="btn-primary" data-dashboard-action="next-block" type="button" ${player.careerEnded ? 'disabled' : ''}>
+                        ${player.careerEnded ? 'Carrière terminée' : 'Lancer le prochain bloc'}
+                    </button>
                 </div>
 
                 <div class="dashboard-summary">
@@ -53,6 +68,11 @@ export class DashboardView {
         root?.querySelector('[data-dashboard-action="next-block"]')?.addEventListener('click', () => {
             const result = this.gateway.playNextBlock();
             this.ui?.handleBlockResult?.(result);
+        });
+
+        root?.querySelector('[data-notification-id]')?.addEventListener('click', (event) => {
+            const id = event.currentTarget.dataset.notificationId;
+            this.ui?.openNotification?.(id);
         });
     }
 }
