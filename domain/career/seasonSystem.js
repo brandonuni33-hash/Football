@@ -45,11 +45,16 @@ export class SeasonSystem {
             averageRating: player.stats?.averageRating || 0
         });
 
+        // La progression canonique appartient désormais au playerSystem.
+        // Ici on ne fait qu'appliquer une éventuelle progression de fin de saison.
         this.playerLogic?.applyProgression?.(player, {
-            xp: 0,
+            rating: player.stats?.averageRating || 0,
+            goals: player.stats?.goals || 0,
+            assists: player.stats?.assists || 0,
             type: 'finSaison',
-            vieillirDUnAn: false
+            ageTick: false
         });
+
         this.potentialSystem?.advanceAge?.(player);
 
         if (Number(player.age) >= 18 && player.isYouthPlayer) {
@@ -58,7 +63,6 @@ export class SeasonSystem {
         }
 
         this.careerSystem?.refreshStage?.(player);
-        this.playerLogic?.syncProgressionFromCanonical?.(player);
         player.canRetire = player.age >= 34;
         player.careerEnded = player.age >= 42;
 
