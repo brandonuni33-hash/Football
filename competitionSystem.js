@@ -1,7 +1,6 @@
 // competitionSystem.js
-// Phase 2A — calendrier saisonnier persistant.
+// Calendrier saisonnier persistant + compétitions européennes.
 // Le calendrier est généré UNE fois par saison puis conservé dans state.calendar.
-// Il n'y a plus de règle "4 matchs par mois".
 
 import { WorldSystem } from './worldSystem.js';
 import { CupSystem } from './cupSystem.js';
@@ -20,14 +19,14 @@ export const COMPETITIONS = {
     DE_B1: { id: 'DE_B1', name: 'Bundesliga', country: 'Allemagne', level: 1, type: 'league', matches: 34 },
     DE_B2: { id: 'DE_B2', name: '2. Bundesliga', country: 'Allemagne', level: 2, type: 'league', matches: 34 },
     NATIONAL_CUP: { id: 'NATIONAL_CUP', name: 'Coupe nationale', type: 'cup', matches: null },
-    CHAMPIONS_LEAGUE: { id: 'CHAMPIONS_LEAGUE', name: 'Ligue des Champions', type: 'continental', matches: null },
+    CHAMPIONS_LEAGUE: { id: 'CHAMPIONS_LEAGUE', name: 'Ligue des Champions', type: 'continental', matches: 8 },
+    EUROPA_LEAGUE: { id: 'EUROPA_LEAGUE', name: 'Ligue Europa', type: 'continental', matches: 8 },
     EURO: { id: 'EURO', name: 'Euro', type: 'international', matches: null },
     WORLD_CUP: { id: 'WORLD_CUP', name: 'Coupe du Monde', type: 'international', matches: null }
 };
 
 const SEASON_MONTHS = [8, 9, 10, 11, 12, 1, 2, 3, 4, 5];
 const ALL_MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-
 const MONTH_INFO = {
     1: { label: 'Janvier', phase: 'season', period: 'Seconde partie de saison' },
     2: { label: 'Février', phase: 'season', period: 'Seconde partie de saison' },
@@ -43,9 +42,7 @@ const MONTH_INFO = {
     12: { label: 'Décembre', phase: 'season', period: 'Trêve hivernale / première partie de saison' }
 };
 
-function seasonLabel(year) {
-    return `${year}/${year + 1}`;
-}
+function seasonLabel(year) { return `${year}/${year + 1}`; }
 
 function hashSeed(input) {
     let h = 2166136261;
@@ -70,44 +67,27 @@ function seededRandom(seed) {
 function distributeExact(total, weights, random) {
     const result = Object.fromEntries(SEASON_MONTHS.map(month => [month, 0]));
     if (total <= 0) return result;
-
-    const normalized = SEASON_MONTHS.map(month => ({
-        month,
-        weight: Math.max(0.001, Number(weights[month] || 0.1))
-    }));
-
+    const normalized = SEASON_MONTHS.map(month => ({ month, weight: Math.max(0.001, Number(weights[month] || 0.1)) }));
     let assigned = 0;
-    const raw = normalized.map(item => ({
-        ...item,
-        exact: total * item.weight
-    }));
-
+    const raw = normalized.map(item => ({ ...item, exact: total * item.weight }));
     for (const item of raw) {
         result[item.month] = Math.floor(item.exact);
         assigned += result[item.month];
     }
-
     let remaining = total - assigned;
     raw.sort((a, b) => {
         const fraction = (b.exact - Math.floor(b.exact)) - (a.exact - Math.floor(a.exact));
-        if (fraction !== 0) return fraction;
-        return random() - 0.5;
+        return fraction !== 0 ? fraction : random() - 0.5;
     });
-
-    for (let i = 0; i < remaining; i += 1) {
-        result[raw[i % raw.length].month] += 1;
-    }
-
+    for (let i = 0; i < remaining; i += 1) result[raw[i % raw.length].month] += 1;
     return result;
 }
 
 function createMatch({ competition, month, index, seasonYear, random, importance = 'normal' }) {
     const monthInfo = MONTH_INFO[month];
     const isHome = random() >= 0.5;
-    const matchId = `${seasonYear}-${month}-${competition.id}-${index + 1}`;
-
     return {
-        id: matchId,
+        id: `${seasonYear}-${month}-${competition.id}-${index + 1}`,
         competitionId: competition.id,
         competitionName: competition.name,
         type: competition.type,
@@ -130,6 +110,31 @@ function importanceFor(month, index, total, random) {
     return 'normal';
 }
 
+function clubEuropeanStrength(club) {
+    return Number(club?.strength || 50) + Number(club?.prestige || 0) * 2;
+}
+
+function getEuropeanQualification(player, competition) {
+    if (!player || Number(player.age) < 18 || Number(player.clubLevel) !== 1) {
+        return { championsLeague: false, europaLeague: false, rank: null };
+    }
+
+    const clubs = WorldSystem.getClubs(competition.id);
+    const playerClub = WorldSystem.getClub(player.clubId || player.club);
+    if (!playerClub || !clubs.length) return { championsLeague: false, europaLeague: false, rank: null };
+
+    const ranking = [...clubs]
+        .sort((a, b) => clubEuropeanStrength(b) - clubEuropeanStrength(a))
+        .map(club => club.id);
+    const rank = ranking.indexOf(playerClub.id) + 1;
+
+    return {
+        championsLeague: rank >= 1 && rank <= 4,
+        europaLeague: rank >= 5 && rank <= 6,
+        rank
+    };
+}
+
 function buildYouthSchedule(player, seasonYear, random) {
     const age = Number(player?.age) || 14;
     const category = age <= 15 ? 'U15' : age === 16 ? 'U16' : 'U17/U19';
@@ -141,38 +146,73 @@ function buildYouthSchedule(player, seasonYear, random) {
 
     for (const month of SEASON_MONTHS) {
         for (let i = 0; i < monthly[month]; i += 1) {
-            const competition = {
-                id: `YOUTH_${category.replace('/', '_')}`,
-                name: `${category} Formation`,
-                type: 'youth'
-            };
-            matches.push(createMatch({
-                competition,
-                month,
-                index: matches.length,
-                seasonYear,
-                random,
-                importance: importanceFor(month, i, monthly[month], random)
-            }));
+            const competition = { id: `YOUTH_${category.replace('/', '_')}`, name: `${category} Formation`, type: 'youth' };
+            matches.push(createMatch({ competition, month, index: matches.length, seasonYear, random, importance: importanceFor(month, i, monthly[month], random) }));
         }
     }
+    return { category, totalLeagueMatches: total, matches, extras: [] };
+}
 
-    return {
-        category,
-        totalLeagueMatches: total,
-        matches,
-        extras: []
-    };
+function buildEuropeanSchedule(player, seasonYear, random, qualification) {
+    if (!qualification.championsLeague && !qualification.europaLeague) return [];
+
+    const competition = qualification.championsLeague ? COMPETITIONS.CHAMPIONS_LEAGUE : COMPETITIONS.EUROPA_LEAGUE;
+    const targetLeague = qualification.championsLeague ? 'CHAMPIONS_LEAGUE' : null;
+    const countries = ['France', 'Angleterre', 'Espagne', 'Italie', 'Allemagne'];
+    const allClubs = countries.flatMap(country => {
+        const ids = Object.values(COMPETITIONS)
+            .filter(def => def.type === 'league' && def.country === country && def.level === 1)
+            .map(def => def.id);
+        return ids.flatMap(id => WorldSystem.getClubs(id));
+    });
+
+    const playerClub = WorldSystem.getClub(player?.clubId || player?.club);
+    const pool = allClubs
+        .filter(club => club?.id && club.id !== playerClub?.id)
+        .sort((a, b) => clubEuropeanStrength(b) - clubEuropeanStrength(a));
+
+    // Nouveau format : 8 adversaires différents en phase de ligue.
+    // Les rencontres sont réparties de septembre à janvier/février.
+    const months = [9, 9, 10, 10, 11, 12, 1, 1];
+    const opponents = [];
+    let cursor = 0;
+    while (opponents.length < 8 && cursor < pool.length) {
+        const candidate = pool[cursor++];
+        if (!opponents.some(club => club.id === candidate.id)) opponents.push(candidate);
+    }
+
+    return opponents.map((opponent, index) => {
+        const isHome = index % 2 === 0;
+        const match = createMatch({
+            competition,
+            month: months[index],
+            index,
+            seasonYear,
+            random,
+            importance: index >= 6 ? 'major' : 'important'
+        });
+        match.competitionType = 'continental';
+        match.phase = 'league_phase';
+        match.matchday = index + 1;
+        match.playerClubId = playerClub?.id || player?.clubId || null;
+        match.opponentClubId = opponent.id;
+        match.opponent = opponent.name;
+        match.venue = isHome ? 'Domicile' : 'Extérieur';
+        match.homeClubId = isHome ? match.playerClubId : opponent.id;
+        match.awayClubId = isHome ? opponent.id : match.playerClubId;
+        match.homeClub = isHome ? playerClub?.name : opponent.name;
+        match.awayClub = isHome ? opponent.name : playerClub?.name;
+        match.europeanSlot = qualification.championsLeague ? 'UCL' : 'UEL';
+        match.europeanRound = 'Phase de ligue';
+        match.played = false;
+        return match;
+    });
 }
 
 function buildSeniorSchedule(player, seasonYear, random, competition) {
-    const leagueWeights = {
-        8: .08, 9: .10, 10: .11, 11: .10, 12: .07,
-        1: .10, 2: .11, 3: .10, 4: .12, 5: .11
-    };
+    const leagueWeights = { 8: .08, 9: .10, 10: .11, 11: .10, 12: .07, 1: .10, 2: .11, 3: .10, 4: .12, 5: .11 };
     const monthly = distributeExact(competition.matches, leagueWeights, random);
     const matches = [];
-
     const clubs = WorldSystem.getClubs(competition.id);
     const playerClub = WorldSystem.getClub(player?.clubId || player?.club);
     const opponents = clubs.filter(c => !playerClub || c.id !== playerClub.id);
@@ -181,14 +221,7 @@ function buildSeniorSchedule(player, seasonYear, random, competition) {
     for (const month of SEASON_MONTHS) {
         for (let i = 0; i < monthly[month]; i += 1) {
             const opponent = opponents.length ? opponents[opponentCursor++ % opponents.length] : null;
-            const match = createMatch({
-                competition,
-                month,
-                index: matches.length,
-                seasonYear,
-                random,
-                importance: importanceFor(month, i, monthly[month], random)
-            });
+            const match = createMatch({ competition, month, index: matches.length, seasonYear, random, importance: importanceFor(month, i, monthly[month], random) });
             match.leagueId = competition.id;
             match.playerClubId = playerClub?.id || player?.clubId || null;
             match.opponent = opponent?.name || 'Adversaire de championnat';
@@ -199,32 +232,13 @@ function buildSeniorSchedule(player, seasonYear, random, competition) {
         }
     }
 
-    // La Coupe nationale n'est plus un bonus aléatoire : elle est pilotée
-    // par CupSystem et injectée dans le bloc au moment réel du tour.
-    const extras = [];
+    const qualification = getEuropeanQualification(player, competition);
+    player.inEurope = qualification.championsLeague || qualification.europaLeague;
+    player.europeanCompetition = qualification.championsLeague ? 'CHAMPIONS_LEAGUE' : qualification.europaLeague ? 'EUROPA_LEAGUE' : null;
+    player.europeanRank = qualification.rank;
 
-    if (player?.inEurope) {
-        const europeanMatches = 2 + Math.floor(random() * 7);
-        for (let i = 0; i < europeanMatches; i += 1) {
-            const possibleMonths = [9, 10, 11, 12, 2, 3, 4, 5];
-            const month = possibleMonths[Math.floor(random() * possibleMonths.length)];
-            extras.push(createMatch({
-                competition: COMPETITIONS.CHAMPIONS_LEAGUE,
-                month,
-                index: i,
-                seasonYear,
-                random,
-                importance: i >= europeanMatches - 2 ? 'major' : 'important'
-            }));
-        }
-    }
-
-    return {
-        category: 'Senior',
-        totalLeagueMatches: competition.matches,
-        matches: [...matches, ...extras],
-        extras
-    };
+    const extras = buildEuropeanSchedule(player, seasonYear, random, qualification);
+    return { category: 'Senior', totalLeagueMatches: competition.matches, matches: [...matches, ...extras], extras, europeanQualification: qualification };
 }
 
 function sortMatches(matches) {
@@ -251,6 +265,8 @@ export const CompetitionSystem = {
         return map[country] || COMPETITIONS.FR_L1;
     },
 
+    getEuropeanQualification,
+
     getYouthCategory(age) {
         if (age <= 15) return 'U15';
         if (age === 16) return 'U16';
@@ -258,17 +274,9 @@ export const CompetitionSystem = {
         return null;
     },
 
-    getPeriodName(month) {
-        return MONTH_INFO[Number(month)]?.period || 'Période de carrière';
-    },
-
-    getMonthLabel(month) {
-        return MONTH_INFO[Number(month)]?.label || `Mois ${month}`;
-    },
-
-    isOffSeason(month) {
-        return [6, 7].includes(Number(month));
-    },
+    getPeriodName(month) { return MONTH_INFO[Number(month)]?.period || 'Période de carrière'; },
+    getMonthLabel(month) { return MONTH_INFO[Number(month)]?.label || `Mois ${month}`; },
+    isOffSeason(month) { return [6, 7].includes(Number(month)); },
 
     createSeasonSchedule(player, seasonYear) {
         const seed = hashSeed(`${seasonYear}|${player?.club || ''}|${player?.country || ''}|${player?.age || 14}|${player?.position || ''}`);
@@ -288,7 +296,6 @@ export const CompetitionSystem = {
     finalizeSchedule(player, seasonYear, matches, category, seed) {
         const ordered = sortMatches(matches);
         const byMonth = {};
-
         for (const month of ALL_MONTHS) {
             byMonth[month] = {
                 month,
@@ -298,13 +305,9 @@ export const CompetitionSystem = {
                 matches: []
             };
         }
-
-        ordered.forEach(match => {
-            byMonth[match.month].matches.push(match);
-        });
-
+        ordered.forEach(match => byMonth[match.month].matches.push(match));
         return {
-            version: 2,
+            version: 3,
             seasonYear,
             seasonLabel: seasonLabel(seasonYear),
             generatedForAge: Number(player?.age) || 14,
@@ -316,7 +319,7 @@ export const CompetitionSystem = {
                 allMatches: ordered.length,
                 leagueMatches: ordered.filter(m => m.type === 'league').length,
                 cupMatches: ordered.filter(m => m.competitionId === 'NATIONAL_CUP').length,
-                europeanMatches: ordered.filter(m => m.competitionId === 'CHAMPIONS_LEAGUE').length
+                europeanMatches: ordered.filter(m => ['CHAMPIONS_LEAGUE', 'EUROPA_LEAGUE'].includes(m.competitionId)).length
             }
         };
     },
@@ -326,11 +329,7 @@ export const CompetitionSystem = {
         const year = Number(state.calendar.currentSeasonYear) || new Date().getFullYear();
         const existing = state.calendar.seasonSchedule;
 
-        if (
-            existing &&
-            Number(existing.seasonYear) === year &&
-            Array.isArray(existing.matches)
-        ) {
+        if (existing && Number(existing.seasonYear) === year && Array.isArray(existing.matches) && Number(existing.version || 0) >= 3) {
             return existing;
         }
 
@@ -346,31 +345,19 @@ export const CompetitionSystem = {
         const calendar = state?.calendar || {};
         const month = Number(calendar.currentMonth) || 8;
         const seasonYear = Number(calendar.currentSeasonYear) || new Date().getFullYear();
-
         const schedule = this.ensureSeasonSchedule(state);
         const monthData = schedule?.byMonth?.[month];
 
         if (this.isOffSeason(month)) {
             return {
-                type: 'offseason',
-                month,
-                monthLabel: this.getMonthLabel(month),
-                season: seasonYear,
-                seasonLabel: seasonLabel(seasonYear),
-                matches: 0,
-                scheduledMatches: [],
-                activities: month === 7
-                    ? ['repos', 'mercato', 'programme_individuel', 'preparation_saison']
-                    : ['bilan', 'selection_internationale', 'repos', 'recovery'],
-                importance: 'none',
-                mode: 'career_activity'
+                type: 'offseason', month, monthLabel: this.getMonthLabel(month), season: seasonYear,
+                seasonLabel: seasonLabel(seasonYear), matches: 0, scheduledMatches: [],
+                activities: month === 7 ? ['repos', 'mercato', 'programme_individuel', 'preparation_saison'] : ['bilan', 'selection_internationale', 'repos', 'recovery'],
+                importance: 'none', mode: 'career_activity'
             };
         }
 
-        const scheduledMatches = [
-            ...(monthData?.matches || []),
-            ...CupSystem.getPlayerFixtures(state)
-        ];
+        const scheduledMatches = [...(monthData?.matches || []), ...CupSystem.getPlayerFixtures(state)];
         const hasMajor = scheduledMatches.some(match => match.importance === 'major');
         const hasImportant = scheduledMatches.some(match => match.importance === 'important');
 
@@ -384,17 +371,13 @@ export const CompetitionSystem = {
             matches: scheduledMatches.length,
             scheduledMatches,
             competition: scheduledMatches[0]?.competitionName || null,
-            activities: scheduledMatches.length
-                ? [player.age < 18 ? 'match_jeunes' : 'match', 'entrainement']
-                : ['entrainement', 'evenement'],
+            activities: scheduledMatches.length ? [player.age < 18 ? 'match_jeunes' : 'match', 'entrainement'] : ['entrainement', 'evenement'],
             importance: hasMajor ? 'major' : hasImportant ? 'important' : scheduledMatches.length >= 4 ? 'normal' : 'low',
             mode: hasMajor ? 'major' : hasImportant ? 'mixed' : scheduledMatches.length ? 'simulation' : 'career_activity'
         };
     },
 
-    getCurrentMatches(state) {
-        return this.getBlockPlan(state).scheduledMatches || [];
-    },
+    getCurrentMatches(state) { return this.getBlockPlan(state).scheduledMatches || []; },
 
     getSeasonSkeleton(player, year) {
         const schedule = this.createSeasonSchedule(player, year);
