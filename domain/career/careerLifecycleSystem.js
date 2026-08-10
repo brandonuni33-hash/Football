@@ -1,21 +1,37 @@
 // domain/career/careerLifecycleSystem.js
-// Encapsule les opérations de cycle de vie de carrière qui ne sont pas
-// liées à la simulation d'un bloc.
+// Cycle de vie terminal de carrière. Aucune dépendance à l'UI.
 
 export class CareerLifecycleSystem {
     constructor({ stateManager, playerLogic } = {}) {
         Object.assign(this, { stateManager, playerLogic });
     }
 
-    retire(state, retireHandler) {
+    retire(state) {
         if (!state?.player) return null;
-        const result = retireHandler(state);
+
+        const player = state.player;
+        if (Number(player.age) < 34) {
+            return {
+                retired: false,
+                reason: 'Retraite disponible à partir de 34 ans.'
+            };
+        }
+
+        player.retired = true;
+        player.careerEnded = true;
         this.stateManager.save(state);
-        return result;
+
+        return {
+            retired: true,
+            age: player.age,
+            overall: player.overall,
+            potential: player.potential
+        };
     }
 
-    reset(resetHandler) {
-        return resetHandler();
+    reset() {
+        this.stateManager.clear();
+        return null;
     }
 }
 
