@@ -1,18 +1,24 @@
+// domain/family/familyLifeSystem.js
 // Vie de couple et famille : évolution lente, événements majeurs et arbitrages carrière/vie privée.
 
 import RelationshipDynamics from '../relationship/relationshipDynamics.js';
 import RelationshipMemory from '../relationship/relationshipMemory.js';
+import FamilySystem from './familySystem.js';
 
 const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, value));
 const MALE_NAMES = ['Lucas', 'Hugo', 'Gabriel', 'Noah', 'Léo', 'Nathan', 'Ethan', 'Jules', 'Arthur', 'Louis'];
 const FEMALE_NAMES = ['Emma', 'Chloé', 'Léa', 'Jade', 'Louise', 'Alice', 'Mia', 'Rose', 'Anna', 'Inès'];
-
 const randomName = list => list[Math.floor(Math.random() * list.length)];
 
 export class FamilyLifeSystem {
-    constructor({ dynamics = new RelationshipDynamics(), memory = new RelationshipMemory() } = {}) {
+    constructor({
+        dynamics = new RelationshipDynamics(),
+        memory = new RelationshipMemory(),
+        familySystem = new FamilySystem()
+    } = {}) {
         this.dynamics = dynamics;
         this.memory = memory;
+        this.familySystem = familySystem;
     }
 
     ensure(state) {
@@ -35,7 +41,8 @@ export class FamilyLifeSystem {
             relationshipId: relationshipId || null,
             status: 'together',
             createdAt,
-            lastReviewAt: createdAt
+            lastReviewAt: createdAt,
+            familyDesire: 50
         };
         family.couples.push(couple);
         return couple;
@@ -47,11 +54,9 @@ export class FamilyLifeSystem {
         const communication = clamp(Number(context.communication ?? 50));
         const careerPressure = clamp(Number(context.careerPressure ?? 0));
         const distance = clamp(Number(context.distance ?? 0));
-        const familyDesire = clamp(Number(context.familyDesire ?? 50));
-
+        const familyDesire = clamp(Number(context.familyDesire ?? couple.familyDesire ?? 50));
         const pressure = clamp(careerPressure * 0.35 + distance * 0.35 + (100 - communication) * 0.20 + (100 - stability) * 0.10);
         const resilience = clamp(communication * 0.35 + stability * 0.35 + (100 - pressure) * 0.20 + familyDesire * 0.10);
-
         return {
             pressure: Math.round(pressure),
             resilience: Math.round(resilience),
@@ -64,10 +69,8 @@ export class FamilyLifeSystem {
         const before = { status: couple.status };
         const relationship = context.relationship;
         if (relationship) this.dynamics.apply(relationship, impact, context);
-
         if (event === 'separation') couple.status = 'separated';
         if (event === 'reconciliation') couple.status = 'together';
-
         const record = {
             id: `family_event_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
             type: event,
@@ -80,23 +83,10 @@ export class FamilyLifeSystem {
             context: { ...context }
         };
         family.events.push(record);
-        this.memory.remember({
-            state,
-            relationshipId: couple.relationshipId,
-            actorId: couple.playerId,
-            targetId: couple.partnerId,
-            event: `family_${event}`,
-            impact,
-            context
-        });
+        this.memory.remember({ state, relationshipId: couple.relationshipId, actorId: couple.playerId, targetId: couple.partnerId, event: `family_${event}`, impact, context });
         return record;
     }
 
-    /**
-     * Vérifie une fois par saison si un couple stable peut accueillir un enfant.
-     * La naissance reste rare et dépend de la stabilité du couple, de l'âge
-     * du joueur et de son désir de famille. Aucun enfant n'est créé sans couple.
-     */
     evaluateBirths({ state, player, season }) {
         const family = this.ensure(state);
         const age = Number(player?.age ?? 0);
@@ -109,9 +99,7 @@ export class FamilyLifeSystem {
             if (couple.playerId !== player.id || couple.status !== 'together') continue;
             if (family.children.some(child => child.parentPlayerId === player.id && child.birthSeason === season)) continue;
 
-            const relationship = couple.relationshipId
-                ? state?.relationships?.[couple.relationshipId]
-                : null;
+            const relationship = couple.relationshipId ? state?.relationships?.[couple.relationshipId] : null;
             const axes = relationship?.axes || {};
             const stability = clamp(Number(axes.trust ?? 50) * 0.35 + Number(axes.affection ?? 50) * 0.45 + Number(axes.respect ?? 50) * 0.20);
             const familyDesire = clamp(Number(couple.familyDesire ?? 50));
@@ -120,43 +108,28 @@ export class FamilyLifeSystem {
             const desireBonus = Math.max(0, familyDesire - 50) * 0.001;
             const ageModifier = age >= 28 && age <= 35 ? 1.15 : 1;
             const chance = (baseChance + stabilityBonus + desireBonus) * ageModifier;
-
             if (Math.random() >= chance) continue;
 
             const gender = Math.random() < 0.51 ? 'male' : 'female';
             const firstName = gender === 'male' ? randomName(MALE_NAMES) : randomName(FEMALE_NAMES);
-            const birthDate = new Date().toISOString();
-            const child = {
-                id: `child_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            const child = this.familySystem.registerBirth({
+                state,
                 parentPlayerId: player.id,
-                partnerId: couple.partnerId,
                 firstName,
                 gender,
                 birthSeason: Number(season),
-                birthDate,
-                age: 0,
-                createdAt: birthDate
-            };
+                birthDate: new Date().toISOString()
+            });
+            child.partnerId = couple.partnerId;
 
-            family.children.push(child);
-            const event = {
-                id: `family_birth_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-                type: 'child_born',
-                childId: child.id,
-                playerId: player.id,
-                partnerId: couple.partnerId,
-                season: Number(season),
-                createdAt: birthDate
-            };
-            family.events.push(event);
+            const event = family.events[family.events.length - 1];
             births.push({ child, event });
         }
-
         return births;
     }
 
     children(state, playerId) {
-        return (state?.family?.children || []).filter(child => child.parentPlayerId === playerId);
+        return this.familySystem.getChildren(state, playerId);
     }
 }
 
