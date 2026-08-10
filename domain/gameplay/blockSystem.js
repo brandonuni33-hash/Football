@@ -17,6 +17,7 @@ export class BlockSystem {
         careerSystem,
         transferMarket,
         stateManager,
+        familyLifeSystem = null,
         advanceCalendar
     } = {}) {
         Object.assign(this, {
@@ -30,6 +31,7 @@ export class BlockSystem {
             careerSystem,
             transferMarket,
             stateManager,
+            familyLifeSystem,
             advanceCalendar
         });
     }
@@ -57,7 +59,7 @@ export class BlockSystem {
                 }
                 const calendar = this.advanceCalendar(state);
                 this.stateManager.save(state);
-                const result = { recoveryOnly: true, report: { summary: { rating: 0, goals: 0, assists: 0, passes: 0, tackles: 0, yellowCards: 0, finance: null } }, calendar, event: null, coachEvent: null };
+                const result = { recoveryOnly: true, report: { summary: { rating: 0, goals: 0, assists: 0, passes: 0, tackles: 0, yellowCards: 0, finance: null } }, calendar, event: null, coachEvent: null, familyBirths: [] };
                 EventBus.emit(EVENTS.GAME_BLOCK_COMPLETED, { state, playerId: player.id, result });
                 return result;
             }
@@ -87,6 +89,14 @@ export class BlockSystem {
                 }
             }
 
+            // La naissance est un fait familial, pas un événement arbitraire de bloc.
+            // Elle est évaluée au maximum une fois par saison par FamilyLifeSystem.
+            const familyBirths = this.familyLifeSystem?.evaluateBirths?.({
+                state,
+                player,
+                season: state.season ?? state.career?.season ?? 1
+            }) || [];
+
             const calendar = this.advanceCalendar(state);
             this.stateManager.save(state);
 
@@ -98,7 +108,8 @@ export class BlockSystem {
                 transferOffer: state.pendingTransferOffer,
                 mediaDilemma: state.media?.recentDilemma || null,
                 positionProposal: state.pendingPositionProposal,
-                discoveredRole
+                discoveredRole,
+                familyBirths
             };
             EventBus.emit(EVENTS.GAME_BLOCK_COMPLETED, { state, playerId: player.id, result });
             return result;
