@@ -21,6 +21,7 @@ import { CalendarSystem } from '../domain/calendar/calendarSystem.js';
 import { SeasonSystem } from '../domain/career/seasonSystem.js';
 import { CareerLifecycleSystem } from '../domain/career/careerLifecycleSystem.js';
 import SecondGenerationSystem from '../domain/career/secondGenerationSystem.js';
+import ChildCareerSystem from '../domain/career/childCareerSystem.js';
 import GenerationSimulationFacade from '../domain/career/generationSimulationFacade.js';
 import { FamilyLifeSystem } from '../domain/family/familyLifeSystem.js';
 import RelationshipSystem from '../domain/relationship/relationshipSystem.js';
@@ -42,7 +43,8 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
     const networkEvolutionSystem = new NetworkEvolutionSystem();
     const familyLifeSystem = new FamilyLifeSystem();
     const secondGenerationSystem = new SecondGenerationSystem();
-    const generationSimulationFacade = new GenerationSimulationFacade({ childCareer: secondGenerationSystem });
+    const childCareerSystem = new ChildCareerSystem();
+    const generationSimulationFacade = new GenerationSimulationFacade({ childCareer: childCareerSystem });
 
     const seasonSystem = new SeasonSystem({
         playerLogic: PlayerLogic,
@@ -119,6 +121,7 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
         networkEvolutionSystem,
         familyLifeSystem,
         secondGenerationSystem,
+        childCareerSystem,
         generationSimulationFacade,
         seasonSystem,
         calendarSystem,
