@@ -2,6 +2,7 @@
 import { GameEngine } from './gameEngine.js';
 import { AwardsSystem } from './awardsSystem.js';
 import GameApplication from './application/gameApplication.js';
+import { UIGateway } from './application/uiGateway.js';
 import { createSystemRegistry } from './application/systemRegistry.js';
 import { bindEngineToRegistry } from './application/engineFacade.js';
 import './ui-hotfix.js?v=5';
@@ -27,7 +28,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log("⚡ Démarrage de Street to Pro...");
 
     try {
-        // Composition root unique : les systèmes sont assemblés une seule fois.
         window.game = new GameEngine();
         window.gameSystems = createSystemRegistry({
             engine: window.game,
@@ -36,21 +36,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             cupSystem: window.game.cupSystem
         });
 
-        // Alias temporaires de compatibilité pour les modules UI historiques.
         window.game.socialSystem = window.gameSystems.socialSystem;
         window.game.mediaSystem = window.gameSystems.mediaSystem;
         window.game.worldSystem = window.gameSystems.seasonSystem.worldSystem;
         window.game.competitionSystem = window.gameSystems.calendarSystem.competitionSystem;
         window.game.cupSystem = window.gameSystems.seasonSystem.cupSystem;
 
-        // La restauration/migration appartient désormais à l'application,
-        // avant de démarrer les services qui conservent une référence au state.
         if (window.game.state?.player) {
             window.game.state = window.gameSystems.careerApplication.migrate(window.game.state);
         }
 
-        // Compatibilité transitoire : l'UI garde son API historique alors que
-        // les workflows principaux sont exécutés par les systèmes de domaine.
         bindEngineToRegistry(window.game, window.gameSystems);
 
         window.gameApp = new GameApplication({
@@ -58,6 +53,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             registry: window.gameSystems
         });
         window.gameApp.start();
+
+        // Contrat UI : les vues disposent d'une façade applicative stable.
+        window.gameUI = new UIGateway({
+            application: window.gameApp,
+            engine: window.game
+        });
 
         AwardsSystem.ensure(window.game.state);
 
@@ -68,7 +69,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         await import('./awardsIntegration.js?v=4');
-        console.log("✅ Street to Pro prêt — architecture phase 4.");
+        console.log("✅ Street to Pro prêt — architecture UI gateway.");
     } catch (error) {
         showFatalError(error);
     }
