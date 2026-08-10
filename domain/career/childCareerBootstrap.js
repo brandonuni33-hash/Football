@@ -1,16 +1,19 @@
 // domain/career/childCareerBootstrap.js
 // Construit l'identité de départ du fils à 14 ans sans copier la carrière du père.
-// Le réseau hérité est social ; les attributs sportifs restent propres au fils.
+// Le réseau hérité est social ; les attributs sportifs passent par une façade dédiée.
 
 import NetworkInheritance from './networkInheritance.js';
-import { PotentialSystem } from '../../potentialSystem.js';
+import ChildPotentialBootstrap from './childPotentialBootstrap.js';
 
 const START_AGE = 14;
 
 export class ChildCareerBootstrap {
-    constructor({ networkInheritance = new NetworkInheritance(), potentialSystem = PotentialSystem } = {}) {
+    constructor({
+        networkInheritance = new NetworkInheritance(),
+        potentialBootstrap = new ChildPotentialBootstrap()
+    } = {}) {
         this.networkInheritance = networkInheritance;
-        this.potentialSystem = potentialSystem;
+        this.potentialBootstrap = potentialBootstrap;
     }
 
     build({ state, playerId, childId, world = {}, profile = {} }) {
@@ -24,10 +27,8 @@ export class ChildCareerBootstrap {
 
         const inheritedNetwork = this.networkInheritance.build({ state, playerId, world });
         const preCareer = child.preCareer || {};
-
-        // Important : aucun argument `base` n'est transmis au moteur de potentiel.
-        // Le fils reçoit donc un profil sportif entièrement indépendant de son père.
-        const potentialProfile = this.potentialSystem.createProfile();
+        const sportingSeed = {};
+        const sportingProfile = this.potentialBootstrap.create({ player: sportingSeed, profile });
 
         const career = {
             generation: Number(state?.careerGeneration ?? 1) + 1,
@@ -48,9 +49,9 @@ export class ChildCareerBootstrap {
                 socialConfidence: Number(preCareer.traits?.socialConfidence ?? 45)
             },
             sportingProfile: {
-                overall: null,
-                potential: potentialProfile.current,
-                potentialProfile,
+                ...sportingSeed,
+                potential: sportingProfile.potential,
+                potentialProfile: sportingProfile.potentialProfile,
                 position: profile.position || null,
                 generatedIndependently: true,
                 inheritedFromParent: false
