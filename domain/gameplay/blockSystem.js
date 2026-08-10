@@ -90,12 +90,37 @@ export class BlockSystem {
             }
 
             // La naissance est un fait familial, pas un événement arbitraire de bloc.
-            // Elle est évaluée au maximum une fois par saison par FamilyLifeSystem.
+            // Une seule vérification par saison est assurée par FamilyLifeSystem.
+            const season = Number(
+                state.calendar?.currentSeasonYear ??
+                state.season ??
+                state.career?.season ??
+                1
+            );
             const familyBirths = this.familyLifeSystem?.evaluateBirths?.({
                 state,
                 player,
-                season: state.season ?? state.career?.season ?? 1
+                season
             }) || [];
+
+            // Les naissances récentes alimentent une notification persistante,
+            // consommable par le Dashboard sans créer une seconde UI.
+            if (familyBirths.length) {
+                state.notifications ||= [];
+                for (const birth of familyBirths) {
+                    const child = birth.child;
+                    state.notifications.push({
+                        id: `birth_${child.id}`,
+                        type: 'family',
+                        kind: 'child_born',
+                        title: 'Une naissance dans votre famille',
+                        message: `${child.firstName} est né(e).`,
+                        childId: child.id,
+                        createdAt: child.createdAt,
+                        unread: true
+                    });
+                }
+            }
 
             const calendar = this.advanceCalendar(state);
             this.stateManager.save(state);
