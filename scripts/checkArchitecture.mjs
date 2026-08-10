@@ -7,13 +7,14 @@ const EXCLUDED_DIRS = new Set(['.git', 'node_modules', 'simulation-results']);
 const LOGIC_EXTENSIONS = new Set(['.js', '.mjs']);
 const DATA_PATTERNS = [/catalog/i, /constants?/i, /fixtures?/i, /data/i, /mock/i];
 const ALLOWED_COMPAT_FACADES = new Set(['player.js', 'state.js']);
-const WARN_LOGIC_LINES = 400;
-const HARD_LOGIC_LINES = 900;
 const LEGACY_ROOT_MODULES = new Set([
     'player.js', 'state.js', 'careerSystem.js', 'competitionSystem.js', 'worldSystem.js',
     'coachSystem.js', 'media.js', 'events.js', 'economy.js', 'entrainement.js', 'transferMarket.js',
     'potentialSystem.js', 'consequenceSystem.js', 'cupSystem.js', 'matchChoices.js'
 ]);
+const ROOT_COMPAT_HINTS = /(?:^|[-_])(v\d+|legacy|hotfix|patch|polish)(?:[-_.]|$)/i;
+const WARN_LOGIC_LINES = 350;
+const HARD_LOGIC_LINES = 600;
 
 function walk(dir) {
     const output = [];
@@ -52,10 +53,23 @@ for (const [base, paths] of groups) {
 
 for (const file of jsFiles) {
     const rel = relative(file);
+    const basename = path.basename(file);
     const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/).length;
-    if (DATA_PATTERNS.some(pattern => pattern.test(path.basename(file)))) continue;
-    if (lines > HARD_LOGIC_LINES) errors.push(`Logic file is too large (${lines} lines): ${rel}`);
-    else if (lines > WARN_LOGIC_LINES) warnings.push(`Large logic file (${lines} lines): ${rel}`);
+    if (DATA_PATTERNS.some(pattern => pattern.test(basename))) continue;
+
+    if (lines > HARD_LOGIC_LINES) {
+        errors.push(`Logic file is too large (${lines} lines): ${rel}`);
+    } else if (lines > WARN_LOGIC_LINES) {
+        warnings.push(`Large logic file (${lines} lines): ${rel}`);
+    }
+
+    if (!rel.includes('/') && ROOT_COMPAT_HINTS.test(basename)) {
+        warnings.push(`Versioned/patch-style root filename should be migrated to a canonical module: ${rel}`);
+    }
+
+    if (!rel.includes('/') && LEGACY_ROOT_MODULES.has(basename) && lines > HARD_LOGIC_LINES) {
+        errors.push(`Legacy root module exceeds the hard size limit and must be split before new features are added: ${rel}`);
+    }
 }
 
 for (const file of jsFiles) {
