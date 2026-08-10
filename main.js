@@ -36,8 +36,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             cupSystem: window.game.cupSystem
         });
 
+        // La restauration/migration appartient désormais à l'application,
+        // avant de démarrer les services qui conservent une référence au state.
+        if (window.game.state?.player) {
+            window.game.state = window.gameSystems.careerApplication.migrate(window.game.state);
+        }
+
         // Compatibilité transitoire : l'UI garde son API historique alors que
-        // les workflows principaux sont désormais exécutés par le domaine.
+        // les workflows principaux sont exécutés par les systèmes de domaine.
         bindEngineToRegistry(window.game, window.gameSystems);
 
         window.gameApp = new GameApplication({
@@ -55,7 +61,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         await import('./awardsIntegration.js?v=4');
-        console.log("✅ Street to Pro prêt — architecture phase 2.");
+        console.log("✅ Street to Pro prêt — architecture phase 4.");
     } catch (error) {
         showFatalError(error);
     }
