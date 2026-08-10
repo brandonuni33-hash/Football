@@ -5,7 +5,7 @@ import { SocialSystem } from '../social.js';
 import { MediaSystem } from '../media.js';
 import { TrainingManager } from '../entrainement.js';
 import { PlayerLogic } from '../player.js';
-import { StateManager, SCHEMA_VERSION } from '../state.js';
+import { StateManager, SCHEMA_VERSION } from '../state/stateManager.js';
 import { EventEngine } from '../events.js';
 import { CoachSystem } from '../coachSystem.js';
 import { TransferMarket } from '../transferMarket.js';
