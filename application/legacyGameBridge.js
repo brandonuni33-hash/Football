@@ -1,16 +1,14 @@
 // application/legacyGameBridge.js
 // Adaptateur temporaire entre le nouveau CommandBus et le GameEngine historique.
-// Les systèmes extraits sont enregistrés ici mais restent derrière des flags de
-// migration tant que leur parité fonctionnelle n'a pas été validée.
+// Les systèmes extraits sont activables individuellement afin de migrer sans
+// casser la parité fonctionnelle du jeu.
 
 import { CommandBus } from '../core/commandBus.js';
 import { COMMANDS } from '../core/commands.js';
 
 export class LegacyGameBridge {
     constructor(engine, registry = null, options = {}) {
-        if (!engine) {
-            throw new Error('LegacyGameBridge requires a GameEngine instance');
-        }
+        if (!engine) throw new Error('LegacyGameBridge requires a GameEngine instance');
 
         this.engine = engine;
         this.registry = registry;
@@ -18,10 +16,12 @@ export class LegacyGameBridge {
             useMigratedBlock: false,
             useMigratedInteractions: false,
             useMigratedTransfers: false,
+            useMigratedCareer: true,
             ...options
         };
         this.unregister = [];
         this.started = false;
+        this.originals = {};
     }
 
     start() {
@@ -41,40 +41,28 @@ export class LegacyGameBridge {
 
         this.register(COMMANDS.RESOLVE_EVENT_CHOICE, (payload) => {
             if (this.options.useMigratedInteractions && this.registry?.interactionSystem && this.engine.state) {
-                return this.registry.interactionSystem.resolveEventChoice(
-                    this.engine.state,
-                    payload?.choiceIndex ?? payload
-                );
+                return this.registry.interactionSystem.resolveEventChoice(this.engine.state, payload?.choiceIndex ?? payload);
             }
             return this.engine.resolveEventChoice(payload?.choiceIndex ?? payload);
         });
 
         this.register(COMMANDS.RESOLVE_COACH_CHOICE, (payload) => {
             if (this.options.useMigratedInteractions && this.registry?.interactionSystem && this.engine.state) {
-                return this.registry.interactionSystem.resolveCoachChoice(
-                    this.engine.state,
-                    payload?.choiceIndex ?? payload
-                );
+                return this.registry.interactionSystem.resolveCoachChoice(this.engine.state, payload?.choiceIndex ?? payload);
             }
             return this.engine.resolveCoachChoice(payload?.choiceIndex ?? payload);
         });
 
         this.register(COMMANDS.RESOLVE_MEDIA_CHOICE, (payload) => {
             if (this.options.useMigratedInteractions && this.registry?.interactionSystem && this.engine.state) {
-                return this.registry.interactionSystem.resolveMediaChoice(
-                    this.engine.state,
-                    payload?.choiceIndex ?? payload
-                );
+                return this.registry.interactionSystem.resolveMediaChoice(this.engine.state, payload?.choiceIndex ?? payload);
             }
             return this.engine.resolveMediaDilemma(payload?.choiceIndex ?? payload);
         });
 
         this.register(COMMANDS.RESOLVE_POSITION_PROPOSAL, (payload) => {
             if (this.options.useMigratedInteractions && this.registry?.interactionSystem && this.engine.state) {
-                return this.registry.interactionSystem.resolvePositionProposal(
-                    this.engine.state,
-                    Boolean(payload?.accepted ?? payload)
-                );
+                return this.registry.interactionSystem.resolvePositionProposal(this.engine.state, Boolean(payload?.accepted ?? payload));
             }
             return this.engine.resolvePositionProposal(Boolean(payload?.accepted ?? payload));
         });
@@ -93,18 +81,32 @@ export class LegacyGameBridge {
             return this.engine.rejectTransferOffer();
         });
 
-        this.register(COMMANDS.RETIRE, () =>
-            this.engine.retireCareer()
-        );
+        this.register(COMMANDS.RETIRE, () => {
+            if (this.options.useMigratedCareer && this.registry?.careerLifecycleSystem && this.engine.state) {
+                return this.registry.careerLifecycleSystem.retire(this.engine.state, () => this.engine.retireCareer());
+            }
+            return this.engine.retireCareer();
+        });
 
         this.register(COMMANDS.RESET_CAREER, () =>
             this.engine.resetCareer()
         );
 
+        // Transition directe pour les anciens appels UI : startCareer() est
+        // progressivement déplacé vers CareerApplication sans modifier encore
+        // tout le code historique de l'interface.
+        if (this.options.useMigratedCareer && this.registry?.careerApplication) {
+            this.originals.startCareer = this.engine.startCareer;
+            this.engine.startCareer = (selectedData = {}) =>
+                this.registry.careerApplication.create(selectedData);
+        }
+
         this.started = true;
     }
 
     stop() {
+        if (this.originals.startCareer) this.engine.startCareer = this.originals.startCareer;
+        this.originals = {};
         this.unregister.forEach((unsubscribe) => unsubscribe?.());
         this.unregister = [];
         this.started = false;
