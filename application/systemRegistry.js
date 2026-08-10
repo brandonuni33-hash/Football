@@ -1,5 +1,5 @@
 // application/systemRegistry.js
-// Composition root de transition : toutes les dépendances des domaines sont assemblées ici.
+// Composition root : toutes les dépendances des domaines sont assemblées ici.
 
 import { EconomyManager } from '../economy.js';
 import { SocialSystem } from '../social.js';
@@ -20,6 +20,12 @@ import { CupSystem } from '../cupSystem.js';
 import { CalendarSystem } from '../domain/calendar/calendarSystem.js';
 import { SeasonSystem } from '../domain/career/seasonSystem.js';
 import { CareerLifecycleSystem } from '../domain/career/careerLifecycleSystem.js';
+import SecondGenerationSystem from '../domain/career/secondGenerationSystem.js';
+import ChildCareerSystem from '../domain/career/childCareerSystem.js';
+import GenerationSimulationFacade from '../domain/career/generationSimulationFacade.js';
+import { FamilyLifeSystem } from '../domain/family/familyLifeSystem.js';
+import RelationshipSystem from '../domain/relationship/relationshipSystem.js';
+import NetworkEvolutionSystem from '../domain/relationship/networkEvolutionSystem.js';
 import CareerApplication from './careerApplication.js';
 import { MatchSystem } from '../domain/match/matchSystem.js';
 import { TrainingSystem } from '../domain/training/trainingSystem.js';
@@ -32,6 +38,13 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
     const mediaSystem = new MediaSystem(engine);
     const trainingSystem = new TrainingSystem(TrainingManager);
     const matchSystem = new MatchSystem(MatchBlockManager);
+
+    const relationshipSystem = new RelationshipSystem({ eventBus: EventEngine });
+    const networkEvolutionSystem = new NetworkEvolutionSystem();
+    const familyLifeSystem = new FamilyLifeSystem();
+    const secondGenerationSystem = new SecondGenerationSystem();
+    const childCareerSystem = new ChildCareerSystem();
+    const generationSimulationFacade = new GenerationSimulationFacade({ childCareer: childCareerSystem });
 
     const seasonSystem = new SeasonSystem({
         playerLogic: PlayerLogic,
@@ -104,6 +117,12 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
         mediaSystem,
         trainingSystem,
         matchSystem,
+        relationshipSystem,
+        networkEvolutionSystem,
+        familyLifeSystem,
+        secondGenerationSystem,
+        childCareerSystem,
+        generationSimulationFacade,
         seasonSystem,
         calendarSystem,
         blockSystem,
