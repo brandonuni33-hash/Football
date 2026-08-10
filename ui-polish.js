@@ -1,7 +1,7 @@
 // ui-polish.js
 // Companion optionnel de ui.js v3.
-// Aucun MutationObserver : l'UI principale est responsable de son rendu.
-// Ce fichier reste volontairement léger pendant la migration architecturale.
+// Aucun MutationObserver : l'UI principale est désormais responsable de son rendu.
+// Ce fichier est volontairement léger pour éviter les boucles DOM et les écrans noirs.
 
 (() => {
     if (window.__STP_UI_POLISH_V3__) return;
