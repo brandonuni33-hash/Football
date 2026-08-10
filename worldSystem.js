@@ -290,20 +290,32 @@ export const WorldSystem = {
         const leagueMatches = scheduledMatches.filter(m => m.type === 'league' && m.leagueId);
         if (!leagueMatches.length) return [];
 
-        const totalPlayerGoals = Number(summary.goals || 0);
+        const matchResults = Array.isArray(summary.matchResults) ? summary.matchResults : [];
         const results = [];
         for (const match of leagueMatches) {
             if (!match.opponentClubId) continue;
-            const playerGoals = Math.random() < 0.35 ? 1 : 0;
+
+            const individual = matchResults.find(
+                result => Number(result.matchIndex) === Number(scheduledMatches.indexOf(match))
+            );
+            const playerGoals = Math.max(0, Number(individual?.goals || 0));
+            const teamSupportGoals = Math.floor(Math.random() * 2);
+
             const homeGoals = match.homeClubId === playerClubId
-                ? Math.min(5, playerGoals + Math.floor(Math.random() * 2))
-                : Math.floor(Math.random() * 2);
+                ? Math.min(5, playerGoals + teamSupportGoals)
+                : Math.floor(Math.random() * 3);
             const awayGoals = match.awayClubId === playerClubId
-                ? Math.min(5, playerGoals + Math.floor(Math.random() * 2))
-                : Math.floor(Math.random() * 2);
-            const fixture = { ...match, leagueId: match.leagueId, homeClubId: match.homeClubId, awayClubId: match.awayClubId };
+                ? Math.min(5, playerGoals + teamSupportGoals)
+                : Math.floor(Math.random() * 3);
+
+            const fixture = {
+                ...match,
+                leagueId: match.leagueId,
+                homeClubId: match.homeClubId,
+                awayClubId: match.awayClubId
+            };
             this.recordMatch(state, fixture, homeGoals, awayGoals);
-            results.push({ fixture, homeGoals, awayGoals });
+            results.push({ fixture, homeGoals, awayGoals, playerGoals });
         }
         return results;
     },
