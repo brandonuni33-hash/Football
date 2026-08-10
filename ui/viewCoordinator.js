@@ -9,10 +9,11 @@ import {
     MediaView,
     TransferView,
     TrainingView,
-    CareerView
+    CareerView,
+    FamilyView
 } from './views/index.js';
 
-const MIGRATED_APPS = new Set(['career', 'social', 'training', 'transfers']);
+const MIGRATED_APPS = new Set(['career', 'social', 'training', 'transfers', 'family']);
 
 const PRESENTATION_EVENTS = [
     'game:game.block.completed',
@@ -47,7 +48,8 @@ export class ViewCoordinator {
             media: new MediaView({ ui, gateway }),
             transfer: new TransferView({ ui, gateway }),
             training: new TrainingView({ ui, gateway }),
-            career: new CareerView({ ui, gateway })
+            career: new CareerView({ ui, gateway }),
+            family: new FamilyView({ ui, gateway })
         };
         this.presentationHandlers = [];
         this.installed = false;
@@ -66,13 +68,22 @@ export class ViewCoordinator {
         this.ui.openNotification = (id) => this.openNotification(id);
 
         this.ui.renderSpecificAppContent = () => {
-            const viewMap = { social: 'media', transfers: 'transfer', training: 'training', career: 'career' };
+            const viewMap = { social: 'media', transfers: 'transfer', training: 'training', career: 'career', family: 'family' };
             const viewName = viewMap[this.ui.activeApp];
             if (MIGRATED_APPS.has(this.ui.activeApp) && this.views[viewName]) {
                 return this.views[viewName].render(this.gateway.state, this.getTrainingFocusTypes());
             }
             return legacyRenderSpecificAppContent?.() || '';
         };
+
+        const legacyRender = this.ui.render?.bind(this.ui);
+        if (legacyRender) {
+            this.ui.render = () => {
+                const result = legacyRender();
+                this.ensureFamilyShortcut();
+                return result;
+            };
+        }
 
         this.ui.renderDomainEvent = (event) => this.renderEvent(event);
         this.ui.renderCoachEvent = (event) => this.renderCoach(event);
@@ -100,6 +111,26 @@ export class ViewCoordinator {
         return this;
     }
 
+    ensureFamilyShortcut() {
+        if (this.ui.activeApp !== 'home') return;
+        const grid = document.querySelector('.apps-grid');
+        if (!grid || grid.querySelector('[data-app="family"]')) return;
+
+        const button = document.createElement('button');
+        button.className = 'app-icon';
+        button.dataset.app = 'family';
+        button.type = 'button';
+        button.innerHTML = `
+            <div class="app-logo" style="background: linear-gradient(135deg, #be185d, #ec4899);">👨‍👩‍👦</div>
+            <span class="app-label">Famille</span>
+        `;
+        button.addEventListener('click', () => {
+            this.ui.activeApp = 'family';
+            this.ui.render();
+        });
+        grid.appendChild(button);
+    }
+
     getTrainingFocusTypes() {
         return this.gateway.application?.registry?.trainingSystem?.getFocusTypes?.() || {};
     }
@@ -122,11 +153,9 @@ export class ViewCoordinator {
         const type = String(notification.type || notification.category || '').toLowerCase();
         const app = type.includes('transfer') || type.includes('mercato') ? 'transfers'
             : type.includes('media') ? 'social'
+            : type.includes('family') || type.includes('famille') || type.includes('birth') || type.includes('naissance') || type.includes('child') ? 'family'
             : null;
 
-        // Relations et famille ne disposent pas encore d'une vue migrée.
-        // Ne jamais naviguer vers une application inexistante : afficher le
-        // contexte dans une modale et laisser l'utilisateur revenir au jeu.
         if (app && this.ui) {
             this.ui.activeApp = app;
             this.ui.render?.();
@@ -154,12 +183,32 @@ export class ViewCoordinator {
     }
 
     handleDelegatedClick(event) {
-        const target = event?.target?.closest?.('[data-event-choice],[data-coach-choice],[data-media-choice],[data-transfer-action],[data-training-focus],[data-career-action],[data-notification-id]');
+        const target = event?.target?.closest?.('[data-event-choice],[data-coach-choice],[data-media-choice],[data-transfer-action],[data-training-focus],[data-career-action],[data-notification-id],[data-family-action]');
         if (!target) return;
 
         if (target.dataset.notificationId !== undefined) {
             event.preventDefault();
             this.openNotification(target.dataset.notificationId);
+            return;
+        }
+
+        if (target.dataset.familyAction === 'simulate') {
+            event.preventDefault();
+            const result = this.gateway.simulateChildTo14(target.dataset.childId);
+            this.ui.render?.();
+            this.ui.afficherMessageModal?.('⏩ Simulation terminée', result ? 'Votre enfant a atteint l’âge requis pour commencer sa carrière.' : 'La simulation n’a pas pu être effectuée.');
+            return;
+        }
+
+        if (target.dataset.familyAction === 'start') {
+            event.preventDefault();
+            const result = this.gateway.startSuccessorCareer(target.dataset.childId);
+            if (result) {
+                this.ui.activeApp = 'career';
+                this.ui.render?.();
+            } else {
+                this.ui.afficherMessageModal?.('🔒 Seconde génération', 'Votre fils n’est pas encore éligible pour commencer sa carrière.');
+            }
             return;
         }
 
@@ -219,6 +268,7 @@ export class ViewCoordinator {
     renderTransfer(offer = this.gateway.state?.pendingTransferOffer) { return this.views.transfer.render(offer); }
     renderTraining(state = this.gateway.state) { return this.views.training.render(state, this.getTrainingFocusTypes()); }
     renderCareer(state = this.gateway.state) { return this.views.career.render(state); }
+    renderFamily(state = this.gateway.state) { return this.views.family.render(state); }
 
     bind(viewName, root, payload) {
         this.views[viewName]?.bind?.(root, payload);
