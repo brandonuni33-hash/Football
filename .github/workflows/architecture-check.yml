@@ -1,0 +1,31 @@
+name: Architecture Check
+
+on:
+  push:
+    paths:
+      - '**/*.js'
+      - '**/*.mjs'
+      - 'ARCHITECTURE.md'
+      - 'scripts/checkArchitecture.mjs'
+      - '.github/workflows/architecture-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  architecture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Architecture guard
+        run: node scripts/checkArchitecture.mjs
