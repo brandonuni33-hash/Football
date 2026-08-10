@@ -6,6 +6,13 @@
 const START_AGE = 14;
 const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, value));
 
+const currentSeasonOf = state => {
+    const calendarYear = Number(state?.calendar?.currentSeasonYear);
+    if (Number.isFinite(calendarYear) && calendarYear > 0) return calendarYear;
+    const season = Number(state?.season ?? state?.career?.season);
+    return Number.isFinite(season) ? season : null;
+};
+
 export class PreCareerSimulationSystem {
     simulateToStart({ state, playerId, childId, currentAge, targetAge = START_AGE, world = {} }) {
         const child = state?.family?.children?.find(item => item.id === childId);
@@ -84,7 +91,6 @@ export class PreCareerSimulationSystem {
             preCareer.familiarity[clubId] = clamp(Number(preCareer.familiarity[clubId] ?? 0) + 8);
         }
 
-        // Le football peut faire partie de son enfance, sans simuler une carrière pro.
         const footballExposure = clamp(
             Number(preCareer.traits.footballExposure ?? 0) +
             (fatherNetwork.length ? 7 : 3) +
@@ -122,11 +128,21 @@ export class PreCareerSimulationSystem {
     }
 
     #ageOf(child, state) {
-        if (Number.isFinite(Number(child.age))) return Number(child.age);
+        const currentSeason = currentSeasonOf(state);
         const birthSeason = Number(child.birthSeason);
-        const currentSeason = Number(state?.season ?? state?.career?.season);
         if (Number.isFinite(birthSeason) && Number.isFinite(currentSeason)) {
             return Math.max(0, currentSeason - birthSeason);
+        }
+        if (Number.isFinite(Number(child.age))) return Number(child.age);
+        if (child.birthDate) {
+            const birth = new Date(child.birthDate);
+            if (!Number.isNaN(birth.getTime())) {
+                const now = new Date();
+                let age = now.getUTCFullYear() - birth.getUTCFullYear();
+                const month = now.getUTCMonth() - birth.getUTCMonth();
+                if (month < 0 || (month === 0 && now.getUTCDate() < birth.getUTCDate())) age -= 1;
+                return Math.max(0, age);
+            }
         }
         return 0;
     }
