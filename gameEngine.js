@@ -1,9 +1,6 @@
 // gameEngine.js
 // Shell de compatibilité historique.
-//
-// Les workflows métier sont désormais délégués par application/engineFacade.js
-// vers les systèmes de domaine. GameEngine ne doit plus contenir de règles de
-// carrière, match, calendrier, transfert ou interaction.
+// Les workflows métier sont délégués par application/engineFacade.js.
 
 import { UserInterface } from './ui.js';
 import { StateManager } from './state.js';
