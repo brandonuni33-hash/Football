@@ -8,6 +8,7 @@ import { LegacyGameBridge } from './legacyGameBridge.js';
 import { NotificationSystem } from './notificationSystem.js';
 import { registerCareerHandlers } from './handlers/careerHandlers.js';
 import { registerApplicationEventSubscribers } from './eventSubscribers.js';
+import { registerDomainEventSubscribers } from './domainEventSubscribers.js';
 
 export class GameApplication {
     constructor({ engine = null, state = null, registry = null } = {}) {
@@ -18,6 +19,7 @@ export class GameApplication {
         this.notifications = null;
         this.unregisterHandlers = [];
         this.unsubscribeEvents = null;
+        this.unsubscribeDomainEvents = null;
         this.started = false;
     }
 
@@ -38,6 +40,10 @@ export class GameApplication {
             registry: this.registry,
             state: this.state
         });
+        this.unsubscribeDomainEvents = registerDomainEventSubscribers({
+            registry: this.registry,
+            state: this.state
+        });
 
         this.started = true;
     }
@@ -48,6 +54,8 @@ export class GameApplication {
         this.notifications?.stop();
         this.unsubscribeEvents?.();
         this.unsubscribeEvents = null;
+        this.unsubscribeDomainEvents?.();
+        this.unsubscribeDomainEvents = null;
         this.bridge?.stop();
         this.started = false;
     }
