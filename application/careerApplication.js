@@ -1,6 +1,37 @@
 // application/careerApplication.js
 // Orchestration applicative de création et de restauration d'une carrière.
 
+const LEGACY_ATTRIBUTES = ['vitesse', 'tir', 'passe', 'dribble', 'defense', 'physique', 'mental'];
+
+function isCanonicalPlayer(player) {
+    const keys = ['vitesse','acceleration','endurance','puissance','finition','tir','passe','controle','dribble','vision','placement','defense'];
+    return Boolean(
+        player?.potentialProfile &&
+        player?.attributes &&
+        keys.every(key => player.attributes[key] !== undefined)
+    );
+}
+
+function copyLegacyAttributes(target, source) {
+    if (!source) return;
+    for (const key of LEGACY_ATTRIBUTES) {
+        if (source[key] !== undefined) target.attributes[key] = source[key];
+    }
+
+    // Complète les nouveaux attributs à partir des anciens sans écraser ceux
+    // qui existent déjà. Cela permet aux anciennes sauvegardes de rejoindre
+    // le modèle canonique sans recréer un joueur aléatoire.
+    const a = target.attributes;
+    const avg = values => values.reduce((s, v) => s + Number(v || 0), 0) / Math.max(1, values.length);
+    a.acceleration ??= a.vitesse ?? 50;
+    a.endurance ??= avg([a.physique, a.vitesse, a.mental]);
+    a.puissance ??= a.physique ?? 50;
+    a.finition ??= a.tir ?? 50;
+    a.controle ??= avg([a.dribble, a.passe, a.mental]);
+    a.vision ??= avg([a.passe, a.mental]);
+    a.placement ??= avg([a.defense, a.mental]);
+}
+
 export class CareerApplication {
     constructor({
         stateManager,
@@ -17,18 +48,9 @@ export class CareerApplication {
         schemaVersion
     } = {}) {
         Object.assign(this, {
-            stateManager,
-            playerLogic,
-            economyManager,
-            socialSystem,
-            mediaSystem,
-            consequenceSystem,
-            potentialSystem,
-            careerSystem,
-            competitionSystem,
-            worldSystem,
-            cupSystem,
-            schemaVersion
+            stateManager, playerLogic, economyManager, socialSystem, mediaSystem,
+            consequenceSystem, potentialSystem, careerSystem, competitionSystem,
+            worldSystem, cupSystem, schemaVersion
         });
     }
 
@@ -60,31 +82,17 @@ export class CareerApplication {
         player.isYouthPlayer = Number(player.age) < 18;
 
         if (!player.isYouthPlayer) this.worldSystem.normalizeCareerClub(player);
-
-        this.careerSystem.initialize(
-            player,
-            youthClub || (player.clubId ? this.worldSystem.getClub(player.clubId) : null)
-        );
+        this.careerSystem.initialize(player, youthClub || (player.clubId ? this.worldSystem.getClub(player.clubId) : null));
 
         player.contract = { ...player.contract, ...contract };
-        player.salary = Number(
-            youthClub?.salary ??
-            youthClub?.weeklySalary ??
-            contract.weeklySalary ??
-            150
-        );
+        player.salary = Number(youthClub?.salary ?? youthClub?.weeklySalary ?? contract.weeklySalary ?? 150);
         player.coachName = coachName;
         player.coachVision = coachVision;
 
         const social = this.socialSystem.initSocialData(coachName);
         social.coachVision = coachVision;
         social.youthClubName = youthClubName;
-        social.coachData = {
-            name: coachName,
-            relation: 50,
-            opinion: 'Neutre',
-            hasLeftClub: false
-        };
+        social.coachData = { name: coachName, relation: 50, opinion: 'Neutre', hasLeftClub: false };
 
         const state = {
             schemaVersion: this.schemaVersion,
@@ -92,16 +100,8 @@ export class CareerApplication {
             trainingFocus: 'TECHNIQUE',
             social,
             media: this.mediaSystem.initMediaData(),
-            career: {
-                balance: contract.signingBonus || 0,
-                seasonHistory: [],
-                totalCareerIncome: contract.signingBonus || 0
-            },
-            contract: {
-                weeklySalary: player.salary,
-                signingBonus: contract.signingBonus || 0,
-                durationYears: contract.durationYears || 2
-            },
+            career: { balance: contract.signingBonus || 0, seasonHistory: [], totalCareerIncome: contract.signingBonus || 0 },
+            contract: { weeklySalary: player.salary, signingBonus: contract.signingBonus || 0, durationYears: contract.durationYears || 2 },
             calendar: {
                 currentMonth: 8,
                 currentSeasonYear: new Date().getFullYear(),
@@ -130,7 +130,6 @@ export class CareerApplication {
         this.cupSystem.ensure(state);
         state.careerStructure = state.player.careerProfile || null;
         this.stateManager.save(state);
-
         return state;
     }
 
@@ -138,42 +137,38 @@ export class CareerApplication {
         if (!state?.player) return state;
         const player = state.player;
 
-        if (!player.progression) {
+        if (!isCanonicalPlayer(player)) {
+            const legacy = { ...player };
             const migrated = this.playerLogic.createPlayerProfile({
-                firstname: player.firstname || player.firstName,
-                lastname: player.lastname || player.lastName,
-                nationality: player.nationality || player.country,
-                country: player.country || player.nationality,
-                position: player.position || 'BU',
-                origin: player.origin || 'CENTRE_FORMATION',
-                heartClub: player.heartClub
+                firstname: legacy.firstname || legacy.firstName,
+                lastname: legacy.lastname || legacy.lastName,
+                nationality: legacy.nationality || legacy.country,
+                country: legacy.country || legacy.nationality,
+                position: legacy.position || 'BU',
+                origin: legacy.origin || 'CENTRE_FORMATION',
+                heartClub: legacy.heartClub
             });
 
-            if (player.attributes) {
-                migrated.attributes = {
-                    ...migrated.attributes,
-                    ...Object.fromEntries(
-                        ['vitesse', 'tir', 'passe', 'dribble', 'defense', 'physique', 'mental']
-                            .filter(key => player.attributes[key] !== undefined)
-                            .map(key => [key, player.attributes[key]])
-                    )
-                };
-            }
-
-            migrated.overall = player.overall ?? migrated.overall;
-            migrated.potential = player.potential ?? migrated.potential;
-            migrated.age = player.age ?? migrated.age;
-            migrated.club = player.club ?? null;
-            migrated.salary = player.salary ?? 0;
-            migrated.fame = player.fame ?? 10;
-            migrated.morale = player.morale ?? 80;
-            migrated.fitness = player.fitness ?? 90;
-            migrated.isInjured = !!player.isInjured;
-            migrated.injuryDuration = player.injuryDuration ?? 0;
-            migrated.stats = { ...migrated.stats, ...(player.stats || {}) };
-            migrated.hidden = { ...migrated.hidden, ...(player.hidden || {}) };
-            this.playerLogic.syncProgressionFromCanonical(migrated);
+            copyLegacyAttributes(migrated, legacy.attributes || {});
+            migrated.id = legacy.id ?? migrated.id;
+            migrated.overall = legacy.overall ?? migrated.overall;
+            migrated.potential = legacy.potential ?? migrated.potential;
+            migrated.potentialProfile = legacy.potentialProfile || migrated.potentialProfile;
+            migrated.age = Math.max(14, Number(legacy.age) || migrated.age);
+            migrated.club = legacy.club ?? null;
+            migrated.clubCountry = legacy.clubCountry ?? migrated.clubCountry;
+            migrated.salary = legacy.salary ?? 0;
+            migrated.fame = legacy.fame ?? 10;
+            migrated.morale = legacy.morale ?? 80;
+            migrated.fitness = legacy.fitness ?? 90;
+            migrated.isInjured = Boolean(legacy.isInjured);
+            migrated.injuryDuration = Number(legacy.injuryDuration) || 0;
+            migrated.stats = { ...migrated.stats, ...(legacy.stats || {}) };
+            migrated.hidden = { ...migrated.hidden, ...(legacy.hidden || {}) };
+            this.playerLogic.ensure(migrated);
             state.player = migrated;
+        } else {
+            this.playerLogic.ensure(player);
         }
 
         if (!state.player.careerProfile) {
