@@ -23,6 +23,12 @@ export class UIGateway {
         return this.application.registry?.blockSystem?.execute?.(this.state, choice) ?? null;
     }
 
+    // Nom explicite utilisé par DashboardView. L'ancien playBlock reste
+    // disponible pour la compatibilité avec les vues historiques.
+    playNextBlock(choice = null) {
+        return this.playBlock(choice);
+    }
+
     advanceCalendar() {
         return this.application.registry?.calendarSystem?.advance?.(this.state) ?? null;
     }
