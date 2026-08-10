@@ -56,7 +56,10 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
 
     const blockSystem = new BlockSystem({
         trainingManager: TrainingManager,
-        matchBlockManager: MatchBlockManager,
+        // Le façade MatchSystem est désormais la porte d'entrée des blocs :
+        // MatchBlockManager conserve l'orchestration historique, mais toutes
+        // les performances passent par le moteur commun.
+        matchBlockManager: matchSystem,
         worldSystem,
         socialSystem,
         mediaSystem,
