@@ -1,7 +1,7 @@
 // application/engineFacade.js
 // Compatibilité de transition entre l'ancienne API GameEngine et la nouvelle
-// architecture applicative. L'UI conserve son API historique pendant que
-// l'exécution migre vers les systèmes de domaine.
+// architecture applicative. L'UI conserve son API historique pendant que les
+// implémentations métier sont déplacées hors du moteur.
 
 export function bindEngineToRegistry(engine, registry) {
     if (!engine || !registry) {
@@ -16,6 +16,8 @@ export function bindEngineToRegistry(engine, registry) {
         resolveCoachChoice: engine.resolveCoachChoice?.bind(engine),
         resolveMediaDilemma: engine.resolveMediaDilemma?.bind(engine),
         resolvePositionProposal: engine.resolvePositionProposal?.bind(engine),
+        acceptTransferOffer: engine.acceptTransferOffer?.bind(engine),
+        rejectTransferOffer: engine.rejectTransferOffer?.bind(engine),
         retireCareer: engine.retireCareer?.bind(engine),
         resetCareer: engine.resetCareer?.bind(engine)
     };
@@ -64,6 +66,18 @@ export function bindEngineToRegistry(engine, registry) {
         return interactions.resolvePositionProposal(engine.state, accepted);
     };
 
+    engine.acceptTransferOffer = () => {
+        const transfer = registry.transferSystem;
+        if (!transfer?.accept) return legacy.acceptTransferOffer?.() ?? null;
+        return transfer.accept(engine.state);
+    };
+
+    engine.rejectTransferOffer = () => {
+        const transfer = registry.transferSystem;
+        if (!transfer?.reject) return legacy.rejectTransferOffer?.() ?? false;
+        return transfer.reject(engine.state);
+    };
+
     engine.retireCareer = () => {
         const lifecycle = registry.careerLifecycleSystem;
         if (!lifecycle?.retire) return legacy.retireCareer?.() ?? null;
@@ -86,6 +100,8 @@ export function bindEngineToRegistry(engine, registry) {
             'resolveCoachChoice',
             'resolveMediaDilemma',
             'resolvePositionProposal',
+            'acceptTransferOffer',
+            'rejectTransferOffer',
             'retireCareer',
             'resetCareer'
         ]
