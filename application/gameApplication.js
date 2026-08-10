@@ -7,6 +7,7 @@ import { CommandBus } from '../core/commandBus.js';
 import { LegacyGameBridge } from './legacyGameBridge.js';
 import { NotificationSystem } from './notificationSystem.js';
 import { registerCareerHandlers } from './handlers/careerHandlers.js';
+import { registerApplicationEventSubscribers } from './eventSubscribers.js';
 
 export class GameApplication {
     constructor({ engine = null, state = null, registry = null } = {}) {
@@ -16,6 +17,7 @@ export class GameApplication {
         this.bridge = engine ? new LegacyGameBridge(engine, registry) : null;
         this.notifications = null;
         this.unregisterHandlers = [];
+        this.unsubscribeEvents = null;
         this.started = false;
     }
 
@@ -32,6 +34,11 @@ export class GameApplication {
             this.notifications.start();
         }
 
+        this.unsubscribeEvents = registerApplicationEventSubscribers({
+            registry: this.registry,
+            state: this.state
+        });
+
         this.started = true;
     }
 
@@ -39,6 +46,8 @@ export class GameApplication {
         this.unregisterHandlers.forEach((unsubscribe) => unsubscribe?.());
         this.unregisterHandlers = [];
         this.notifications?.stop();
+        this.unsubscribeEvents?.();
+        this.unsubscribeEvents = null;
         this.bridge?.stop();
         this.started = false;
     }
