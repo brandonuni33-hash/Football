@@ -1,7 +1,5 @@
 // application/careerApplication.js
 // Orchestration applicative de création et de restauration d'une carrière.
-// Cette façade reprend volontairement les règles historiques sans les modifier.
-// GameEngine pourra ensuite déléguer startCareer()/migrateLoadedState() ici.
 
 export class CareerApplication {
     constructor({
@@ -211,6 +209,7 @@ export class CareerApplication {
             hasLeftClub: false
         };
 
+        this.stateManager.save(state);
         return state;
     }
 }
