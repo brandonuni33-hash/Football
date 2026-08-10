@@ -27,9 +27,15 @@ function countryFlag(player) {
     return typeof name === 'string' ? (COUNTRY_FLAGS[name] || '') : '';
 }
 function potentialStars(value) {
-    const n = Number(value); if (!Number.isFinite(n)) return '☆☆☆☆☆';
+    const n = Number(value);
+    if (!Number.isFinite(n)) return '☆☆☆☆☆';
     const stars = Math.max(1, Math.min(5, Math.ceil(n / 20)));
     return '★'.repeat(stars) + '☆'.repeat(5 - stars);
+}
+function stars(value, fallback = 3) {
+    const n = Number(value);
+    const count = Number.isFinite(n) ? Math.max(0, Math.min(5, Math.round(n))) : fallback;
+    return '★'.repeat(count) + '☆'.repeat(5 - count);
 }
 function roleStats(player) {
     const stats = player?.stats || {}, position = String(player?.position || player?.positionId || '').toUpperCase();
@@ -41,30 +47,68 @@ function roleStats(player) {
     if (['DC','CB','DD','RB','DG','LB'].includes(position)) return [['MATCHS',matches],['TACLES',tackles],['PASSES D.',assists],['NOTE MOY.',ratingFromStats(stats)]];
     return [['MATCHS',matches],['BUTS',goals],['PASSES D.',assists],['NOTE MOY.',ratingFromStats(stats)]];
 }
+function firstValue(...values) {
+    return values.find(v => v !== undefined && v !== null && String(v).trim() !== '');
+}
+function academyStars(player) {
+    return firstValue(player?.academyStars, player?.trainingCenterStars, player?.trainingCentreStars, player?.formationCenterStars, player?.academyRating, player?.trainingCenterRating, player?.trainingCentreRating) ?? 3;
+}
+function leagueName(player, state) {
+    const league = player?.league;
+    return firstValue(
+        player?.championshipName, player?.championship, player?.leagueName,
+        typeof league === 'object' ? league?.name : league,
+        player?.competitionName,
+        state?.club?.league?.name,
+        state?.club?.championship?.name,
+        state?.competition?.name
+    ) || '';
+}
+function contractLine(player) {
+    const level = firstValue(player?.youthLevel, player?.teamLevel, player?.academyLevel, player?.category) || 'U15';
+    const contract = firstValue(player?.contractType, player?.contractName, player?.contract?.type) || 'Contrat jeune';
+    const status = firstValue(player?.developmentPath, player?.academyStatus, player?.trainingStatus) || 'Centre';
+    return `${level} · ${contract} · ${status}`;
+}
 function loadLiveStyles() {
     if (document.getElementById('street-live-polish-css')) return;
-    const link = document.createElement('link'); link.id = 'street-live-polish-css'; link.rel = 'stylesheet'; link.href = './ui-live-polish.css?v=2'; document.head.appendChild(link);
+    const link = document.createElement('link'); link.id = 'street-live-polish-css'; link.rel = 'stylesheet'; link.href = './ui-live-polish.css?v=3'; document.head.appendChild(link);
 }
 function enhanceDashboard() {
     const app = document.getElementById('app'), state = window.UI?.engine?.state;
     const screen = app?.querySelector('.phone-home-screen'), widget = screen?.querySelector('.player-widget-enhanced');
-    if (!screen || !widget || !state?.player || widget.dataset.livePolished === '2') return;
-    widget.dataset.livePolished = '2';
-    const player = state.player, flag = countryFlag(player), name = `${player.firstname || ''} ${player.lastname || ''}`.trim() || 'Joueur';
+    if (!screen || !widget || !state?.player) return;
+    const player = state.player;
+    const flag = countryFlag(player), name = `${player.firstname || ''} ${player.lastname || ''}`.trim() || 'Joueur';
 
-    const title = widget.querySelector('.widget-title');
-    if (title) title.innerHTML = `${flag ? `<span class="live-player-flag" aria-label="Nationalité">${flag}</span>` : ''}<span>${name}</span><span class="live-player-age">${player.age ?? '—'} ans</span>`;
-    widget.querySelectorAll('.widget-secret-tag,.player-secret,.player-balance,.balance-widget').forEach(el => el.remove());
+    // Identité : nom + drapeau, puis poste + âge, puis club / championnat / formation.
+    const info = widget.querySelector('.player-main-info');
+    if (info) {
+        info.innerHTML = `
+            <div class="widget-title live-player-name-line">
+                ${flag ? `<span class="live-player-flag" aria-label="Nationalité">${flag}</span>` : ''}
+                <span>${name}</span>
+            </div>
+            <div class="live-player-position-row">
+                <span class="live-player-position">${player.position || player.positionId || '—'}</span>
+                <span class="live-player-age">${player.age ?? '—'} ans</span>
+            </div>
+            <div class="player-club-sub live-club-line">${player.club || 'Sans club'}</div>
+            ${leagueName(player, state) ? `<div class="live-league-line">${leagueName(player, state)}</div>` : ''}
+            <div class="live-academy-line"><span>Centre de formation</span><span class="live-academy-stars">${stars(academyStars(player))}</span></div>
+            <div class="live-contract-line">${contractLine(player)}</div>
+        `;
+    }
 
-    const clubSub = widget.querySelector('.player-club-sub');
-    if (clubSub) clubSub.textContent = `${player.club || 'Sans club'} · ${player.position || player.positionId || '—'}`;
+    // Nettoyage agressif des anciennes lignes qui provoquaient les doublons / emojis jaunes.
+    widget.querySelectorAll('.widget-secret-tag,.player-secret,.player-balance,.balance-widget,.dashboard-career-stats,.career-stats,.player-career-stats,.career-stat-row').forEach(el => el.remove());
 
     const oldGrid = widget.querySelector('.widget-stats-grid');
     if (oldGrid) {
         oldGrid.className = 'widget-stats-grid live-core-stats';
         oldGrid.innerHTML = `<div class="stat-pill"><span>GEN</span><strong>${player.overall ?? '—'}</strong></div><div class="stat-pill"><span>POTENTIEL</span><strong class="live-potential-stars">${potentialStars(player.potential)}</strong></div><div class="stat-pill"><span>FORME</span><strong>${player.fitness ?? '—'}</strong></div><div class="stat-pill"><span>MORAL</span><strong>${player.morale ?? '—'}</strong></div>`;
         widget.querySelectorAll('.live-career-stats').forEach(el => el.remove());
-        const career = document.createElement('div'); career.className = 'live-career-stats'; career.setAttribute('aria-label','Statistiques de saison');
+        const career = document.createElement('div'); career.className = 'live-career-stats'; career.setAttribute('aria-label','Statistiques de carrière');
         career.innerHTML = roleStats(player).map(([label,value]) => `<div class="live-career-stat"><span>${label}</span><strong>${value}</strong></div>`).join('');
         oldGrid.insertAdjacentElement('afterend', career);
     }
