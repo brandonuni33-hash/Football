@@ -28,6 +28,13 @@ const PRESENTATION_EVENTS = [
     'game:career.ended'
 ];
 
+const escapeHtml = (value) => String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+
 export class ViewCoordinator {
     constructor({ ui, gateway } = {}) {
         if (!ui || !gateway) throw new Error('ViewCoordinator requires ui and gateway.');
@@ -56,6 +63,7 @@ export class ViewCoordinator {
         const legacyRenderSpecificAppContent = this.ui.renderSpecificAppContent?.bind(this.ui);
         this.ui.__legacyRenderSpecificAppContent = legacyRenderSpecificAppContent;
         this.ui.viewCoordinator = this;
+        this.ui.openNotification = (id) => this.openNotification(id);
 
         this.ui.renderSpecificAppContent = () => {
             const viewMap = { social: 'media', transfers: 'transfer', training: 'training', career: 'career' };
@@ -82,9 +90,6 @@ export class ViewCoordinator {
                 this.presentationHandlers.push(() => window.removeEventListener(eventName, handler));
             });
 
-            // Les vues rendent du HTML pour rester indépendantes du shell historique.
-            // Une délégation unique permet de conserver leurs interactions même lorsque
-            // ui.js remplace le contenu du DOM après chaque navigation.
             this.delegatedClickHandler = (event) => this.handleDelegatedClick(event);
             window.addEventListener('click', this.delegatedClickHandler);
             this.presentationHandlers.push(() => window.removeEventListener('click', this.delegatedClickHandler));
@@ -99,9 +104,54 @@ export class ViewCoordinator {
         return this.gateway.application?.registry?.trainingSystem?.getFocusTypes?.() || {};
     }
 
+    openNotification(id) {
+        const notifications = Array.isArray(this.gateway.state?.notifications) ? this.gateway.state.notifications : [];
+        const notification = notifications.find(item => String(item?.id) === String(id));
+        if (!notification) return null;
+
+        notification.read = true;
+        notification.readAt = new Date().toISOString();
+
+        const type = String(notification.type || notification.category || '').toLowerCase();
+        const app = type.includes('transfer') || type.includes('mercato') ? 'transfers'
+            : type.includes('media') ? 'social'
+            : type.includes('relation') || type.includes('family') ? 'messages'
+            : null;
+
+        if (app) {
+            this.ui.activeApp = app;
+            this.ui.renderDashboard?.();
+            return notification;
+        }
+
+        const title = escapeHtml(notification.title || 'Notification');
+        const message = escapeHtml(notification.message || notification.description || '');
+        const overlay = document.createElement('div');
+        overlay.className = 'event-modal-overlay';
+        overlay.dataset.notificationModal = 'true';
+        overlay.innerHTML = `
+            <div class="event-modal-card" role="dialog" aria-modal="true" aria-label="${title}">
+                <div class="event-modal-category">NOTIFICATION</div>
+                <h2 class="event-modal-title">${title}</h2>
+                <p class="event-modal-desc">${message}</p>
+                <button type="button" class="btn-event-choice" data-close-notification>Fermer</button>
+            </div>
+        `;
+        const root = document.getElementById('app');
+        (root || document.body).appendChild(overlay);
+        overlay.querySelector('[data-close-notification]')?.addEventListener('click', () => overlay.remove());
+        return notification;
+    }
+
     handleDelegatedClick(event) {
-        const target = event?.target?.closest?.('[data-event-choice],[data-coach-choice],[data-media-choice],[data-transfer-action],[data-training-focus],[data-career-action]');
+        const target = event?.target?.closest?.('[data-event-choice],[data-coach-choice],[data-media-choice],[data-transfer-action],[data-training-focus],[data-career-action],[data-notification-id]');
         if (!target) return;
+
+        if (target.dataset.notificationId !== undefined) {
+            event.preventDefault();
+            this.openNotification(target.dataset.notificationId);
+            return;
+        }
 
         if (target.dataset.eventChoice !== undefined) {
             event.preventDefault();
