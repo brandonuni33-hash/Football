@@ -126,7 +126,14 @@ function applyStateTarget(state, consequence) {
     const value = consequence.magnitude;
     const player = state.player;
 
-    if (EMOTIONAL.has(target)) return write(player, target, value);
+    if (EMOTIONAL.has(target)) {
+        const result = write(player, target, value);
+        if (target === 'relationCoach' && state.social?.coachData) {
+            state.social.coachData.relation = read(player, 'relationCoach');
+            state.player.stats.relationCoach = state.social.coachData.relation;
+        }
+        return result;
+    }
 
     if (target === 'fitness') {
         const before = num(player.fitness, 90);
@@ -140,6 +147,20 @@ function applyStateTarget(state, consequence) {
         const before = num(state.career.balance);
         state.career.balance = before + value;
         return { stat: target, before, after: state.career.balance, delta: value, type: 'economy' };
+    }
+
+    if (target === 'media.hypeLevel') {
+        state.media ||= { followers: 0, hypeLevel: 0, feed: [], recentDilemma: null };
+        const before = num(state.media.hypeLevel);
+        state.media.hypeLevel = clamp(before + value, 0, 100);
+        return { stat: target, before, after: state.media.hypeLevel, delta: state.media.hypeLevel - before, type: 'media' };
+    }
+
+    if (target === 'media.followers') {
+        state.media ||= { followers: 0, hypeLevel: 0, feed: [], recentDilemma: null };
+        const before = num(state.media.followers);
+        state.media.followers = Math.max(0, Math.round(before + value));
+        return { stat: target, before, after: state.media.followers, delta: state.media.followers - before, type: 'media' };
     }
 
     if (target === 'isInjured') {
@@ -208,37 +229,21 @@ export const ConsequenceSystem = {
     LABELS,
     initialize(player) { ensure(player); return player; },
     normalizeChoice: normalize,
-
-    apply(player, choice = {}, options = {}) {
-        return queueChoice(options.state || { player }, choice, options);
-    },
-
+    apply(player, choice = {}, options = {}) { return queueChoice(options.state || { player }, choice, options); },
     applyToState(state, choice = {}, options = {}) { return queueChoice(state, choice, options); },
     applyCoachChoice(state, choice = {}) { return queueChoice(state, choice, { source: 'Coach' }); },
     applyEventChoice(state, choice = {}) { return queueChoice(state, choice, { source: 'Événement' }); },
+    applyMediaChoice(state, choice = {}) { return queueChoice(state, choice, { source: 'Média' }); },
 
-    // Les décisions prises pendant un match sont déjà consommées par
-    // MatchBlockManager : on ne les double-enregistre pas dans le ledger carrière.
+    // Les décisions prises pendant un match sont déjà consommées par MatchBlockManager.
     applyMatchChoice(player, choice = {}) {
         ensure(player);
         return { choiceId: choice.id || null, source: 'Match', hidden: true, revealed: false, queued: 0 };
     },
 
     resolvePending(state, trigger = 'block_start') { return resolvePending(state, trigger); },
-
-    getTemporaryModifier(player, stat) {
-        ensure(player);
-        return player.temporaryEffects.filter(effect => effect.stat === stat).reduce((sum, effect) => sum + num(effect.value), 0);
-    },
-
-    getActiveModifiers(player) {
-        ensure(player);
-        return player.temporaryEffects.reduce((result, effect) => {
-            result[effect.stat] = (result[effect.stat] || 0) + num(effect.value);
-            return result;
-        }, {});
-    },
-
+    getTemporaryModifier(player, stat) { ensure(player); return player.temporaryEffects.filter(effect => effect.stat === stat).reduce((sum, effect) => sum + num(effect.value), 0); },
+    getActiveModifiers(player) { ensure(player); return player.temporaryEffects.reduce((result, effect) => { result[effect.stat] = (result[effect.stat] || 0) + num(effect.value); return result; }, {}); },
     advanceMatch(player) {
         ensure(player);
         const expired = [];
@@ -249,17 +254,8 @@ export const ConsequenceSystem = {
         });
         return expired;
     },
-
-    preview() {
-        return { hidden: true, message: 'Cette décision aura des conséquences. Certaines se révéleront plus tard.' };
-    },
-
-    sanitize(choice = {}) {
-        const copy = JSON.parse(JSON.stringify(choice));
-        delete copy.xp;
-        delete copy.experience;
-        return copy;
-    }
+    preview() { return { hidden: true, message: 'Cette décision aura des conséquences. Certaines se révéleront plus tard.' }; },
+    sanitize(choice = {}) { const copy = JSON.parse(JSON.stringify(choice)); delete copy.xp; delete copy.experience; return copy; }
 };
 
 export default ConsequenceSystem;
