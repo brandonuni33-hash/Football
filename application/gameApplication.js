@@ -1,11 +1,12 @@
 // application/gameApplication.js
 // Façade applicative : point d'entrée entre l'UI et le domaine.
-// Pendant la migration, les commandes non migrées restent compatibles avec
-// le GameEngine historique via LegacyGameBridge.
+// Les commandes migrées sont enregistrées ici ; le bridge garde un fallback
+// contrôlé vers GameEngine pour les fonctionnalités non migrées.
 
 import { CommandBus } from '../core/commandBus.js';
 import { LegacyGameBridge } from './legacyGameBridge.js';
 import { NotificationSystem } from './notificationSystem.js';
+import { registerCareerHandlers } from './handlers/careerHandlers.js';
 
 export class GameApplication {
     constructor({ engine = null, state = null, registry = null } = {}) {
@@ -13,9 +14,8 @@ export class GameApplication {
         this.state = state || engine?.state || null;
         this.registry = registry;
         this.bridge = engine ? new LegacyGameBridge(engine, registry) : null;
-        this.notifications = this.state
-            ? new NotificationSystem({ state: this.state })
-            : null;
+        this.notifications = null;
+        this.unregisterHandlers = [];
         this.started = false;
     }
 
@@ -23,11 +23,21 @@ export class GameApplication {
         if (this.started) return;
 
         this.bridge?.start();
-        this.notifications?.start();
+        this.unregisterHandlers.push(
+            ...registerCareerHandlers({ application: this, registry: this.registry })
+        );
+
+        if (this.state) {
+            this.notifications = new NotificationSystem({ state: this.state });
+            this.notifications.start();
+        }
+
         this.started = true;
     }
 
     stop() {
+        this.unregisterHandlers.forEach((unsubscribe) => unsubscribe?.());
+        this.unregisterHandlers = [];
         this.notifications?.stop();
         this.bridge?.stop();
         this.started = false;
