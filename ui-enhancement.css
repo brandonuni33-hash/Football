@@ -1,7 +1,8 @@
-/* STREET TO PRO — UI ENHANCEMENT v2 */
+/* STREET TO PRO — UI ENHANCEMENT v3 */
 :root {
-  --ui-bg:#070b14; --ui-card:rgba(15,23,42,.82); --ui-card-strong:rgba(15,23,42,.94);
-  --ui-border:rgba(255,255,255,.12); --ui-text:#f8fafc; --ui-muted:#94a3b8;
+  --ui-bg:#070b14; --ui-card:rgba(15,23,42,.86); --ui-card-strong:rgba(15,23,42,.96);
+  --ui-border:rgba(255,255,255,.10); --ui-border-strong:rgba(255,255,255,.16);
+  --ui-text:#f8fafc; --ui-muted:#94a3b8; --ui-subtle:#64748b;
   --ui-green:#10b981; --ui-blue:#3b82f6; --ui-gold:#f59e0b; --ui-red:#ef4444;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -10,32 +11,63 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Ro
 button,input,select{font:inherit}
 button{touch-action:manipulation}
 
-/* Écran mobile */
+/* Écran mobile : une colonne lisible et respirante */
 .phone-frame{width:min(100%,430px)!important;height:100dvh!important;max-height:none!important;margin:0 auto!important;border-radius:0!important;border:0!important;background:linear-gradient(180deg,#08111f,#050812)!important;box-shadow:none!important}
 .phone-home-screen,.app-content-body{scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
-.phone-home-screen{padding:12px 14px calc(112px + env(safe-area-inset-bottom,0px))!important;gap:14px!important}
+.phone-home-screen{padding:12px 14px calc(112px + env(safe-area-inset-bottom,0px))!important;gap:12px!important}
 
-/* Cartes premium */
-.player-widget-enhanced,.app-pane,.event-modal-card{background:linear-gradient(145deg,rgba(20,31,52,.9),rgba(8,14,27,.9))!important;border:1px solid var(--ui-border)!important;box-shadow:0 16px 40px rgba(0,0,0,.32),inset 0 1px rgba(255,255,255,.05)!important;backdrop-filter:blur(22px)!important;-webkit-backdrop-filter:blur(22px)!important}
-.player-widget-enhanced{border-radius:24px!important;padding:18px!important}
-.widget-header-line{color:#60a5fa!important;letter-spacing:.04em}
-.player-main-info .widget-title{font-size:1.18rem!important}
+/* Cartes : séparation nette entre les blocs d'information */
+.player-widget-enhanced,.app-pane,.event-modal-card{background:linear-gradient(145deg,rgba(20,31,52,.92),rgba(8,14,27,.94))!important;border:1px solid var(--ui-border)!important;box-shadow:0 14px 34px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.04)!important;backdrop-filter:blur(22px)!important;-webkit-backdrop-filter:blur(22px)!important}
+.player-widget-enhanced{border-radius:22px!important;padding:16px!important}
+.widget-header-line{color:#93c5fd!important;letter-spacing:.05em!important;font-size:.72rem!important;text-transform:uppercase}
+.player-main-info .widget-title{font-size:1.15rem!important;line-height:1.25!important}
 .player-club-sub{color:#a8b4c7!important}
-.stat-pill{background:rgba(255,255,255,.055)!important;border-color:rgba(255,255,255,.08)!important;min-height:42px}
-.stat-pill strong{color:#fff!important}
 
-/* Applications */
-.apps-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:18px 10px!important;padding:8px 2px 80px!important;max-height:none!important;overflow:visible!important}
-.app-icon{min-width:0!important}
-.app-logo{width:62px!important;height:62px!important;border-radius:19px!important;background:linear-gradient(145deg,rgba(255,255,255,.16),rgba(255,255,255,.045))!important;border:1px solid rgba(255,255,255,.16)!important;box-shadow:0 10px 22px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.18)!important}
-.app-icon:active{transform:scale(.9)!important}
-.app-label{font-size:.72rem!important;color:#f8fafc!important;margin-top:7px!important;line-height:1.15!important}
-.notification-badge{top:-5px!important;right:1px!important;background:var(--ui-red)!important;border-color:#08101d!important}
+/* Identité joueur */
+.player-card-banner{display:flex;align-items:center;gap:12px!important;padding:4px 0 14px!important;border-bottom:1px solid rgba(255,255,255,.07)!important}
+.player-image-badge{width:48px!important;height:48px!important;border-radius:14px!important;background:rgba(255,255,255,.06)!important;border:1px solid rgba(255,255,255,.10)!important;box-shadow:none!important;flex:0 0 auto}
+.player-main-info{min-width:0}
+.player-main-info .widget-title{display:flex!important;align-items:baseline!important;flex-wrap:wrap!important;gap:7px!important}
+.player-country-flag{font-size:1.05rem!important;line-height:1!important}
+.player-age{font-size:.78rem!important;color:var(--ui-muted)!important;font-weight:600!important;white-space:nowrap}
 
-/* Action principale : toujours accessible */
-.btn-play-block{position:fixed!important;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(calc(100% - 28px),402px)!important;z-index:50;padding:15px 18px!important;border-radius:18px!important;background:linear-gradient(135deg,#16c784,#079669)!important;box-shadow:0 12px 30px rgba(16,185,129,.28),0 4px 12px rgba(0,0,0,.35)!important;font-size:1rem!important;letter-spacing:.01em}
+/* Stats principales : 4 blocs réguliers */
+.dashboard-core-stats{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:7px!important;margin-top:12px!important}
+.dashboard-core-stats>div{min-width:0!important;padding:9px 5px!important;border-radius:12px!important;background:rgba(255,255,255,.045)!important;border:1px solid rgba(255,255,255,.06)!important;text-align:center!important;font-size:.62rem!important;color:var(--ui-muted)!important;line-height:1.15!important}
+.dashboard-core-stats strong{display:block!important;margin-top:4px!important;color:#fff!important;font-size:1.02rem!important;line-height:1!important}
+
+/* Statistiques de carrière : lecture immédiate */
+.dashboard-career-stats{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:7px!important;margin-top:8px!important;padding-top:8px!important;border-top:1px solid rgba(255,255,255,.06)!important}
+.dashboard-career-stat{min-width:0!important;text-align:center!important;padding:7px 3px!important}
+.dashboard-career-stat span{display:block!important;color:var(--ui-subtle)!important;font-size:.58rem!important;font-weight:700!important;letter-spacing:.03em!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+.dashboard-career-stat strong{display:block!important;margin-top:3px!important;color:#f8fafc!important;font-size:.95rem!important}
+
+/* Notification : une vraie priorité visuelle, sans dominer le Dashboard */
+.dashboard-notification-card{display:flex!important;align-items:center!important;gap:10px!important;width:100%!important;margin:0!important;padding:12px 13px!important;border-radius:16px!important;background:rgba(59,130,246,.075)!important;border:1px solid rgba(96,165,250,.18)!important;color:#fff!important;text-align:left!important;box-shadow:none!important}
+.dashboard-notification-icon{width:32px;height:32px;display:grid;place-items:center;border-radius:10px;background:rgba(59,130,246,.14);flex:0 0 auto}
+.dashboard-notification-copy{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.dashboard-notification-copy strong{font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dashboard-notification-copy small{font-size:.70rem;line-height:1.3;color:#aebbd0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Action principale : clairement identifiable */
+.dashboard-actions{padding:2px 0!important}
+.dashboard-actions .btn-primary{width:100%!important;min-height:48px!important;border-radius:15px!important;font-size:1rem!important;background:linear-gradient(135deg,#16c784,#079669)!important;box-shadow:0 10px 24px rgba(16,185,129,.20)!important}
+.btn-play-block{position:fixed!important;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(calc(100% - 28px),402px)!important;z-index:50;padding:15px 18px!important;border-radius:18px!important;background:linear-gradient(135deg,#16c784,#079669)!important;box-shadow:0 12px 30px rgba(16,185,129,.24),0 4px 12px rgba(0,0,0,.35)!important;font-size:1rem!important;letter-spacing:.01em}
 .btn-play-block:active{transform:translateX(-50%) scale(.975)!important}
-.btn-settings-floating{bottom:calc(82px + env(safe-area-inset-bottom,0px))!important;right:18px!important;width:44px!important;height:44px!important;background:rgba(15,23,42,.9)!important;backdrop-filter:blur(16px)!important}
+
+/* Résumé secondaire : plus discret pour ne pas concurrencer les statistiques */
+.dashboard-summary{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important;margin-top:0!important}
+.dashboard-summary>div{padding:9px 11px!important;border-radius:12px!important;background:rgba(255,255,255,.025)!important;border:1px solid rgba(255,255,255,.05)!important;display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important}
+.dashboard-summary span{font-size:.67rem!important;color:var(--ui-muted)!important}
+.dashboard-summary strong{font-size:.82rem!important;color:#e2e8f0!important}
+
+/* Applications : organisation claire, sans effet de surcharge */
+.apps-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:16px 9px!important;padding:6px 1px 76px!important;max-height:none!important;overflow:visible!important}
+.app-icon{min-width:0!important}
+.app-logo{width:56px!important;height:56px!important;border-radius:17px!important;background:linear-gradient(145deg,rgba(255,255,255,.13),rgba(255,255,255,.035))!important;border:1px solid rgba(255,255,255,.13)!important;box-shadow:0 7px 16px rgba(0,0,0,.28),inset 0 1px rgba(255,255,255,.14)!important}
+.app-icon:active{transform:scale(.93)!important}
+.app-label{font-size:.68rem!important;color:#e8edf5!important;margin-top:6px!important;line-height:1.15!important;font-weight:600!important}
+.notification-badge{top:-4px!important;right:0!important;background:var(--ui-red)!important;border-color:#08101d!important}
 
 /* Navigation / titres */
 .pane-title{font-size:1.08rem!important;letter-spacing:-.01em}
@@ -65,4 +97,4 @@ button{touch-action:manipulation}
 
 /* Responsive */
 @media (min-width:700px){body{padding:18px}.phone-frame{border-radius:32px!important;box-shadow:0 25px 70px rgba(0,0,0,.45)!important}.btn-play-block{position:absolute!important}}
-@media (max-width:360px){.app-logo{width:56px!important;height:56px!important}.apps-grid{gap:15px 6px!important}.player-widget-enhanced{padding:14px!important}}
+@media (max-width:360px){.app-logo{width:52px!important;height:52px!important}.apps-grid{gap:14px 5px!important}.player-widget-enhanced{padding:14px!important}.dashboard-core-stats{gap:5px!important}.dashboard-career-stats{gap:4px!important}}
