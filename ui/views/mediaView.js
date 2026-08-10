@@ -46,7 +46,7 @@ export class MediaView {
             button.addEventListener('click', () => {
                 const result = this.gateway.resolveMediaDilemma(Number(button.dataset.mediaChoice));
 
-                if (result && (result.changes?.length || result.temporary?.length || result.xp)) {
+                if (result?.responseText || result?.immediateReaction || result?.changes?.length || result?.temporary?.length || result?.xp) {
                     this.ui?.afficherModaleConsequences?.(result, () => {
                         this.ui?.renderDashboard?.();
                         this.ui?.handlePostInteraction?.();
