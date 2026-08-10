@@ -3,6 +3,7 @@ import { GameEngine } from './gameEngine.js';
 import { AwardsSystem } from './awardsSystem.js';
 import GameApplication from './application/gameApplication.js';
 import { createSystemRegistry } from './application/systemRegistry.js';
+import { bindEngineToRegistry } from './application/engineFacade.js';
 import './ui-hotfix.js?v=5';
 import './ui-gameplay-hotfix.js?v=2';
 
@@ -35,6 +36,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             cupSystem: window.game.cupSystem
         });
 
+        // Compatibilité transitoire : l'UI garde son API historique alors que
+        // les workflows principaux sont désormais exécutés par le domaine.
+        bindEngineToRegistry(window.game, window.gameSystems);
+
         window.gameApp = new GameApplication({
             engine: window.game,
             registry: window.gameSystems
@@ -50,7 +55,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         await import('./awardsIntegration.js?v=4');
-        console.log("✅ Street to Pro prêt.");
+        console.log("✅ Street to Pro prêt — architecture phase 2.");
     } catch (error) {
         showFatalError(error);
     }
