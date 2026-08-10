@@ -9,53 +9,56 @@ class EventBusImpl {
     }
 
     on(eventName, handler) {
+        this.#assertEventName(eventName);
         if (typeof handler !== 'function') {
             throw new TypeError(`EventBus.on('${eventName}') requires a function`);
         }
 
-        if (!this.listeners.has(eventName)) {
-            this.listeners.set(eventName, new Set());
-        }
-
+        if (!this.listeners.has(eventName)) this.listeners.set(eventName, new Set());
         const handlers = this.listeners.get(eventName);
         handlers.add(handler);
-
         return () => this.off(eventName, handler);
     }
 
     once(eventName, handler) {
+        this.#assertEventName(eventName);
         let unsubscribe;
-
         const wrappedHandler = (payload) => {
             unsubscribe?.();
-            handler(payload);
+            return handler(payload);
         };
-
         unsubscribe = this.on(eventName, wrappedHandler);
         return unsubscribe;
     }
 
     off(eventName, handler) {
+        this.#assertEventName(eventName);
         const handlers = this.listeners.get(eventName);
-        if (!handlers) return;
-
-        handlers.delete(handler);
-        if (handlers.size === 0) {
-            this.listeners.delete(eventName);
-        }
+        if (!handlers) return false;
+        const removed = handlers.delete(handler);
+        if (handlers.size === 0) this.listeners.delete(eventName);
+        return removed;
     }
 
     emit(eventName, payload = undefined) {
-        if (!eventName || typeof eventName !== 'string') {
-            throw new TypeError('EventBus.emit requires a non-empty event name');
-        }
-
+        this.#assertEventName(eventName);
         const handlers = this.listeners.get(eventName);
-        if (!handlers) return;
+        if (!handlers?.size) return { delivered: 0, errors: [] };
 
-        // Snapshot : un handler peut s'abonner/se désabonner pendant la notification
-        // sans modifier la liste parcourue pour cette émission.
-        [...handlers].forEach((handler) => handler(payload));
+        const errors = [];
+        let delivered = 0;
+        [...handlers].forEach((handler) => {
+            try {
+                handler(payload);
+                delivered += 1;
+            } catch (error) {
+                errors.push(error);
+                // Un subscriber ne doit pas interrompre les autres réactions à un fait métier.
+                console.error(`[EventBus] subscriber failed for '${eventName}'`, error);
+            }
+        });
+
+        return { delivered, errors };
     }
 
     clear(eventName = null) {
@@ -63,8 +66,22 @@ class EventBusImpl {
             this.listeners.clear();
             return;
         }
-
+        this.#assertEventName(eventName);
         this.listeners.delete(eventName);
+    }
+
+    listenerCount(eventName = null) {
+        if (eventName === null) {
+            return [...this.listeners.values()].reduce((total, handlers) => total + handlers.size, 0);
+        }
+        this.#assertEventName(eventName);
+        return this.listeners.get(eventName)?.size || 0;
+    }
+
+    #assertEventName(eventName) {
+        if (typeof eventName !== 'string' || !eventName.trim()) {
+            throw new TypeError('EventBus requires a non-empty event name');
+        }
     }
 }
 
