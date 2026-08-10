@@ -2,6 +2,7 @@
 
 import { EventBus } from './core/eventBus.js';
 import { EVENTS } from './core/events.js';
+import { ConsequenceSystem } from './consequenceSystem.js';
 
 export class MediaSystem {
     initMediaData() {
@@ -60,23 +61,14 @@ export class MediaSystem {
         if (!choice) return null;
 
         const eff = choice.effect || {};
-        const changes = [];
-        const addChange = (label, delta) => {
-            if (Number(delta)) changes.push({ label, delta: Number(delta) });
+        const impacts = {
+            'media.hypeLevel': Number(eff.hypeDelta) || 0,
+            'media.followers': Number(eff.followerDelta) || 0,
+            morale: Number(eff.moraleDelta) || 0,
+            relationCoach: Number(eff.coachDelta) || 0,
+            vestiaire: Number(eff.relationshipDelta) || 0
         };
-
-        if (eff.hypeDelta) {
-            state.media.hypeLevel = Math.max(0, Math.min(100, state.media.hypeLevel + eff.hypeDelta));
-            addChange('Hype', eff.hypeDelta);
-        }
-        if (eff.followerDelta) {
-            state.media.followers += eff.followerDelta;
-            addChange('Abonnés', eff.followerDelta);
-        }
-        if (eff.moraleDelta) {
-            state.player.morale = Math.max(0, Math.min(100, state.player.morale + eff.moraleDelta));
-            addChange('Moral', eff.moraleDelta);
-        }
+        const result = ConsequenceSystem.applyMediaChoice(state, { id: dilemma.id, consequences: { permanent: impacts } });
 
         state.media.recentDilemma = null;
         EventBus.emit(EVENTS.MEDIA_DILEMMA_RESOLVED, {
@@ -84,15 +76,12 @@ export class MediaSystem {
             playerId: state.player?.id,
             dilemmaId: dilemma.id,
             choiceIndex,
-            effects: { coachDelta: eff.coachDelta || 0, relationshipDelta: eff.relationshipDelta || 0 }
+            effects: { hidden: true }
         });
 
         return {
-            title: '📱 Conséquences du choix média',
+            ...result,
             message: `Choix : ${choice.text || choice.texte || 'Décision'}`,
-            changes,
-            temporary: [],
-            xp: 0,
             dilemmaId: dilemma.id,
             choiceIndex
         };
