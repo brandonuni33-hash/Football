@@ -1,6 +1,6 @@
 // application/domainEventSubscribers.js
-// Adaptateurs temporaires : ils traduisent les faits du domaine en mises à jour
-// applicatives. Les domaines restent ignorants de l'UI et des notifications.
+// Adaptateurs applicatifs : les domaines publient des faits, cette couche
+// coordonne les systèmes qui doivent réagir à ces faits.
 
 import { EventBus } from '../core/eventBus.js';
 import { EVENTS } from '../core/events.js';
@@ -18,16 +18,19 @@ export function registerDomainEventSubscribers({ state, registry } = {}) {
             const target = eventState || state;
             if (!target) return;
             target.social ||= {};
-            target.social.lastRelationshipConflict = {
-                relation: relation || null,
-                at: Date.now()
-            };
+            target.social.lastRelationshipConflict = { relation: relation || null, at: Date.now() };
         }),
         EventBus.on(EVENTS.RELATIONSHIP_ADVICE, ({ state: eventState, advice } = {}) => {
             const target = eventState || state;
             if (!target) return;
             target.social ||= {};
             target.social.lastRelationshipAdvice = advice || null;
+        }),
+        EventBus.on(EVENTS.MEDIA_DILEMMA_RESOLVED, ({ state: eventState, effects = {} } = {}) => {
+            const target = eventState || state;
+            if (!target || !registry?.socialSystem) return;
+            if (effects.coachDelta) registry.socialSystem.modifyRelationship(target, 'coach', effects.coachDelta);
+            if (effects.relationshipDelta) registry.socialSystem.modifyRelationship(target, 'vestiaire', effects.relationshipDelta);
         }),
         EventBus.on(EVENTS.SEASON_STARTED, ({ state: eventState, season } = {}) => {
             const target = eventState || state;
