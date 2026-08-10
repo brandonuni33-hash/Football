@@ -81,21 +81,20 @@ export class CoachSystem {
         const coachState = state.social?.coachData;
         const result = ConsequenceSystem.applyCoachChoice(state, choice);
         if (choice.opinionChange && coachState) coachState.opinion = choice.opinionChange;
+
+        // La relation chiffrée ne bouge qu'à la résolution différée de la conséquence.
+        // En revanche, la réaction humaine du coach est immédiate et visible.
         if (coachState) {
-            coachState.relation = Math.min(100, Math.max(0, Number(state.player.stats?.relationCoach ?? state.player.relationCoach ?? coachState.relation ?? 50)));
+            coachState.relation = Math.min(100, Math.max(0, Number(coachState.relation ?? state.player.stats?.relationCoach ?? 50)));
             state.player.stats ||= {};
             state.player.stats.relationCoach = coachState.relation;
-            const coachRel = state.social?.relationships?.find(r => r.id === 'coach');
-            if (coachRel) {
-                coachRel.score = coachState.relation;
-                coachRel.status = coachState.relation >= 80 ? 'Allié / Ami' : coachState.relation <= 20 ? 'Rival / Tendu' : 'Neutre';
-            }
         }
         EventBus.emit(EVENTS.RELATIONSHIP_CHANGED, { state, relation: 'coach', score: coachState?.relation ?? null, playerId: state.player.id });
         EventBus.emit(EVENTS.RELATIONSHIP_ADVICE, { state, relation: 'coach', advice: choice.opinionChange || null, playerId: state.player.id });
         return {
             ...result,
-            responseText: choice.response,
+            responseText: choice.response || result.responseText,
+            relationshipHint: choice.opinionChange || 'Le coach garde ta réponse en tête.',
             newRelation: coachState?.relation ?? 50,
             newOpinion: coachState?.opinion || 'Neutre'
         };
