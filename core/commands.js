@@ -5,6 +5,7 @@
 export const COMMANDS = Object.freeze({
     START_GAME: 'game.start',
     START_BLOCK: 'game.block.start',
+    ADVANCE_CALENDAR: 'calendar.advance',
     SET_TRAINING_FOCUS: 'training.focus.set',
 
     RESOLVE_EVENT_CHOICE: 'event.choice.resolve',
