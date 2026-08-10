@@ -48,9 +48,16 @@ function getStrength(club) {
     return Number(club.strength || 50) + Number(club.prestige || 0) * 0.35;
 }
 
-function roundName(matchCount) {
-    const names = { 32: '32es de finale', 16: '16es de finale', 8: 'Quarts de finale', 4: 'Demi-finales', 2: 'Finale' };
-    return names[matchCount] || `${matchCount * 2}es de finale`;
+function roundName(clubCount) {
+    const names = {
+        64: '32es de finale',
+        32: '16es de finale',
+        16: '8es de finale',
+        8: 'Quarts de finale',
+        4: 'Demi-finales',
+        2: 'Finale'
+    };
+    return names[clubCount] || `${Math.ceil(clubCount / 2)}es de finale`;
 }
 
 function createMatch(home, away, round, seasonYear, index, month) {
@@ -123,18 +130,23 @@ function buildRound(cup, ids) {
     const clubs = ids.map(id => WorldSystem.getClub(id)).filter(Boolean);
     if (clubs.length <= 1) return { matches: [], byes: clubs.map(c => c.id), round: 'Finale' };
 
-    // We reduce to the next power of two by giving byes to the strongest clubs.
+    // On réduit au prochain tableau de puissance de deux : les clubs les plus faibles
+    // jouent le tour préliminaire et les plus forts bénéficient d'un tour de repos.
     const target = 2 ** Math.floor(Math.log2(clubs.length));
     const matchClubCount = clubs.length === target
         ? clubs.length
         : Math.max(2, (clubs.length - target) * 2);
     const ordered = [...clubs].sort((a, b) => getStrength(b) - getStrength(a));
     const byeClubs = ordered.slice(0, clubs.length - matchClubCount);
-    const drawPool = shuffle(ordered.slice(clubs.length - matchClubCount), seededRandom(hashSeed(`${cup.seasonYear}|${cup.id}|${cup.roundIndex}`)));
+    const drawPool = shuffle(
+        ordered.slice(clubs.length - matchClubCount),
+        seededRandom(hashSeed(`${cup.seasonYear}|${cup.id}|${cup.roundIndex}`))
+    );
     const matchesCount = drawPool.length / 2;
     const month = ROUND_MONTHS[Math.min(cup.roundIndex, ROUND_MONTHS.length - 1)];
     const round = roundName(Math.max(2, target));
     const matches = [];
+
     for (let i = 0; i < drawPool.length; i += 2) {
         const home = drawPool[i];
         const away = drawPool[i + 1];
@@ -145,6 +157,7 @@ function buildRound(cup, ids) {
         match.venue = home.id === cup.playerClubId ? 'Domicile' : 'Extérieur';
         matches.push(match);
     }
+
     if (matchesCount === 1 && target === 2) matches[0].importance = 'major';
     return { matches, byes: byeClubs.map(c => c.id), round };
 }
@@ -159,10 +172,12 @@ export const CupSystem = {
     ensure(state) {
         state.cups ||= {};
         const seasonYear = Number(state.calendar?.currentSeasonYear) || new Date().getFullYear();
+
         for (const country of Object.keys(COUNTRIES)) {
             const def = COUNTRIES[country];
             const clubs = def.leagueIds.flatMap(id => WorldSystem.getClubs(id));
             const existing = state.cups[def.id];
+
             if (!existing || Number(existing.seasonYear) !== seasonYear) {
                 state.cups[def.id] = {
                     id: def.id,
@@ -185,6 +200,7 @@ export const CupSystem = {
                 };
             }
         }
+
         return state.cups;
     },
 
@@ -197,38 +213,46 @@ export const CupSystem = {
     prepareRound(state, country = countryForPlayer(state)) {
         const cup = this.getCup(state, country);
         if (!cup || cup.status === 'finished' || cup.matches.length) return cup?.matches || [];
+
         cup.playerClubId = state.player?.clubId || WorldSystem.getClub(state.player?.club)?.id || null;
         const ids = getActiveIds(cup);
+
         if (ids.length <= 1) {
             cup.status = 'finished';
             cup.winnerId = ids[0] || null;
             cup.champion = WorldSystem.getClub(ids[0])?.name || null;
             return [];
         }
+
         const built = buildRound(cup, ids);
         cup.currentRound = built.round;
         cup.roundMonth = ROUND_MONTHS[Math.min(cup.roundIndex, ROUND_MONTHS.length - 1)];
         cup.matches = built.matches;
         cup.byeClubIds = built.byes;
-        // Byes are already qualified for this round; they are not eliminated.
         cup.pendingWinnerIds = [...built.byes];
-        if (built.matches.length === 0) this._finishRound(state, country, []);
+
+        if (built.matches.length === 0) this._finishRound(state, country, cup.pendingWinnerIds);
         return cup.matches;
     },
 
     getPlayerMatch(state, country = countryForPlayer(state)) {
         const playerClubId = state.player?.clubId || WorldSystem.getClub(state.player?.club)?.id;
         if (!playerClubId) return null;
+
         const cup = this.getCup(state, country);
         if (!cup || cup.status === 'finished') return null;
         if (!cup.matches.length) this.prepareRound(state, country);
-        return cup.matches.find(m => !m.played && (m.homeClubId === playerClubId || m.awayClubId === playerClubId)) || null;
+
+        return cup.matches.find(
+            m => !m.played && (m.homeClubId === playerClubId || m.awayClubId === playerClubId)
+        ) || null;
     },
 
     getPlayerFixtures(state) {
         const country = countryForPlayer(state);
         const cup = this.getCup(state, country);
         if (!cup || cup.status === 'finished') return [];
+
         const currentMonth = Number(state.calendar?.currentMonth) || 8;
         const match = this.getPlayerMatch(state, country);
         if (!match || Number(match.month) !== currentMonth) return [];
@@ -237,9 +261,11 @@ export const CupSystem = {
 
     resolvePlayerMatch(state, match, performance = {}) {
         if (!match || match.played) return match?.result || null;
+
         const country = countryForPlayer(state);
         const cup = this.getCup(state, country);
         if (!cup) return null;
+
         const home = WorldSystem.getClub(match.homeClubId);
         const away = WorldSystem.getClub(match.awayClubId);
         if (!home || !away) return null;
@@ -251,10 +277,12 @@ export const CupSystem = {
         const playerAssists = Math.max(0, Number(performance.assists || 0));
         const base = simulateGoals(home, away);
         const impact = clamp((rating - 6) * 0.22 + playerAssists * 0.08, -0.5, 1.1);
+
         let playerScore = playerIsHome ? base.homeGoals : base.awayGoals;
         playerScore = Math.max(0, Math.round(playerScore + impact));
         playerScore = Math.min(5, Math.max(playerScore, Math.min(3, playerGoals)));
-        let opponentScore = playerIsHome ? base.awayGoals : base.homeGoals;
+
+        const opponentScore = playerIsHome ? base.awayGoals : base.homeGoals;
         const forced = playerIsHome
             ? { homeGoals: playerScore, awayGoals: opponentScore }
             : { homeGoals: opponentScore, awayGoals: playerScore };
@@ -268,9 +296,16 @@ export const CupSystem = {
     simulateCurrentRound(state, country = countryForPlayer(state)) {
         const cup = this.getCup(state, country);
         if (!cup || cup.status === 'finished') return null;
-        if (!cup.matches.length) this.prepareRound(state, country);
+
+        // Important : ne jamais préparer automatiquement le tour suivant ici.
+        // Le prochain tour doit attendre son mois prévu dans ROUND_MONTHS.
+        if (!cup.matches.length) return cup;
+
         const playerClubId = state.player?.clubId || WorldSystem.getClub(state.player?.club)?.id;
-        const playerMatch = cup.matches.find(m => !m.played && (m.homeClubId === playerClubId || m.awayClubId === playerClubId));
+        const playerMatch = cup.matches.find(
+            m => !m.played && (m.homeClubId === playerClubId || m.awayClubId === playerClubId)
+        );
+
         for (const match of [...cup.matches]) {
             if (match.played || match.id === playerMatch?.id) continue;
             const home = WorldSystem.getClub(match.homeClubId);
@@ -278,6 +313,7 @@ export const CupSystem = {
             if (!home || !away) continue;
             this._recordMatch(cup, match, resolveMatch(home, away));
         }
+
         this._finishRoundIfReady(state, country);
         return cup;
     },
@@ -291,7 +327,13 @@ export const CupSystem = {
         match.wentToPenalties = result.wentToPenalties;
         match.result = result;
         cup.history.push({ ...match });
-        if (result.winnerClubId && !cup.pendingWinnerIds.includes(result.winnerClubId)) cup.pendingWinnerIds.push(result.winnerClubId);
+
+        cup.pendingWinnerIds ||= [];
+        cup.eliminatedClubIds ||= [];
+        if (result.winnerClubId && !cup.pendingWinnerIds.includes(result.winnerClubId)) {
+            cup.pendingWinnerIds.push(result.winnerClubId);
+        }
+
         const loserId = result.winnerClubId === match.homeClubId ? match.awayClubId : match.homeClubId;
         if (!cup.eliminatedClubIds.includes(loserId)) cup.eliminatedClubIds.push(loserId);
     },
@@ -299,6 +341,7 @@ export const CupSystem = {
     _finishRoundIfReady(state, country) {
         const cup = this.getCup(state, country);
         if (!cup || cup.matches.some(m => !m.played)) return false;
+
         const winners = [...new Set(cup.pendingWinnerIds || [])];
         this._finishRound(state, country, winners);
         return true;
@@ -307,15 +350,20 @@ export const CupSystem = {
     _finishRound(state, country, winners) {
         const cup = this.getCup(state, country);
         if (!cup) return null;
+
         cup.qualifiedClubIds = [...new Set(winners)];
         cup.matches = [];
         cup.pendingWinnerIds = [];
+
         if (cup.qualifiedClubIds.length <= 1) {
             cup.status = 'finished';
             cup.winnerId = cup.qualifiedClubIds[0] || null;
             cup.champion = WorldSystem.getClub(cup.winnerId)?.name || null;
+            cup.currentRound = 'Finale';
+            cup.roundMonth = 5;
             return cup;
         }
+
         cup.roundIndex += 1;
         cup.currentRound = null;
         cup.roundMonth = null;
@@ -326,6 +374,7 @@ export const CupSystem = {
     getSummary(state, country = countryForPlayer(state)) {
         const cup = this.getCup(state, country);
         if (!cup) return null;
+
         const playerClubId = state.player?.clubId || WorldSystem.getClub(state.player?.club)?.id;
         return {
             id: cup.id,
@@ -344,9 +393,19 @@ export const CupSystem = {
     finalizeSeason(state) {
         this.ensure(state);
         state.cupHistory ||= [];
+
         for (const cup of Object.values(state.cups)) {
-            state.cupHistory.push({ id: cup.id, name: cup.name, country: cup.country, seasonYear: cup.seasonYear, champion: cup.champion, winnerId: cup.winnerId, history: cup.history });
+            state.cupHistory.push({
+                id: cup.id,
+                name: cup.name,
+                country: cup.country,
+                seasonYear: cup.seasonYear,
+                champion: cup.champion,
+                winnerId: cup.winnerId,
+                history: cup.history
+            });
         }
+
         state.cups = {};
         return state.cupHistory;
     }
