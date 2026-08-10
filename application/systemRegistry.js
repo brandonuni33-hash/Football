@@ -13,17 +13,19 @@ import { CoachSystem } from '../coachSystem.js';
 import { TransferMarket } from '../transferMarket.js';
 import { PotentialSystem } from '../potentialSystem.js';
 import { CareerSystem } from '../careerSystem.js';
+import { CompetitionSystem } from '../competitionSystem.js';
 import { CupSystem } from '../cupSystem.js';
 import { CalendarSystem } from '../domain/calendar/calendarSystem.js';
 import { SeasonSystem } from '../domain/career/seasonSystem.js';
 import { CareerLifecycleSystem } from '../domain/career/careerLifecycleSystem.js';
+import CareerApplication from './careerApplication.js';
 import { MatchSystem } from '../domain/match/matchSystem.js';
 import { TrainingSystem } from '../domain/training/trainingSystem.js';
 import { BlockSystem } from '../domain/gameplay/blockSystem.js';
 import { InteractionSystem } from '../domain/interactions/interactionSystem.js';
 import { TransferSystem } from '../domain/transfer/transferSystem.js';
 
-export function createSystemRegistry({ engine, worldSystem, competitionSystem, cupSystem = CupSystem } = {}) {
+export function createSystemRegistry({ engine, worldSystem, competitionSystem = CompetitionSystem, cupSystem = CupSystem } = {}) {
     const socialSystem = new SocialSystem(engine);
     const mediaSystem = new MediaSystem(engine);
     const trainingSystem = new TrainingSystem(TrainingManager);
@@ -79,6 +81,21 @@ export function createSystemRegistry({ engine, worldSystem, competitionSystem, c
         playerLogic: PlayerLogic
     });
 
+    const careerApplication = new CareerApplication({
+        stateManager: StateManager,
+        playerLogic: PlayerLogic,
+        economyManager: engine?.economyManager,
+        socialSystem,
+        mediaSystem,
+        consequenceSystem: engine?.consequenceSystem,
+        potentialSystem: PotentialSystem,
+        careerSystem: CareerSystem,
+        competitionSystem,
+        worldSystem,
+        cupSystem,
+        schemaVersion: engine?.schemaVersion
+    });
+
     return Object.freeze({
         socialSystem,
         mediaSystem,
@@ -89,7 +106,8 @@ export function createSystemRegistry({ engine, worldSystem, competitionSystem, c
         blockSystem,
         interactionSystem,
         transferSystem,
-        careerLifecycleSystem
+        careerLifecycleSystem,
+        careerApplication
     });
 }
 
