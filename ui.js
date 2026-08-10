@@ -1,55 +1,119 @@
 // ui.js
-import { CompetitionSystem } from './competitionSystem.js';
-import { POSITIONS as _POSITIONS, CONTINENTS as _CONTINENTS, ORIGINS as _ORIGINS, HEART_CLUBS as _HEART_CLUBS, YOUTH_CLUBS_POOL as _YOUTH_CLUBS_POOL, COACH_VISIONS as _COACH_VISIONS, COACH_NAMES as _COACH_NAMES } from './constants.js';
-import { EventEngine as _EventEngine } from './events.js';
-import { TrainingManager as _TrainingManager } from './entrainement.js';
-import { MatchChoiceManager as _MatchChoiceManager } from './matchChoices.js';
-import { TransferMarket as _TransferMarket } from './transferMarket.js';
-import { CoachSystem as _CoachSystem } from './coachSystem.js';
-import { ConsequenceSystem as _ConsequenceSystem } from './consequenceSystem.js';
-import { CareerSystem as _CareerSystem } from './careerSystem.js';
-import { WorldSystem } from './worldSystem.js';
+// Street to Pro — UI v3 SAFE
+// Remplacement complet de l'interface.
+// Objectifs :
+// - éviter les écrans noirs lors du lancement d'une carrière
+// - conserver les systèmes existants du moteur
+// - identité : drapeau + prénom nom + âge, sans étoiles / H H / solde
+// - offres : drapeau du pays du club
+// - dashboard : matchs, note moyenne, buts, passes D
+// - calendrier / compétitions / coupes / international visibles
+// - entraînement, mercato, coach, événements et statistiques accessibles
+//
+// IMPORTANT : cette UI ne réécrit jamais le state du moteur pendant un render.
+// Les appels moteur sont protégés par try/catch afin qu'une erreur affiche un
+// message dans l'interface au lieu de vider l'écran.
 
-// Sécurisation des données importées
+import { CompetitionSystem } from './competitionSystem.js';
+import {
+    POSITIONS as _POSITIONS,
+    CONTINENTS as _CONTINENTS,
+    ORIGINS as _ORIGINS,
+    HEART_CLUBS as _HEART_CLUBS,
+    YOUTH_CLUBS_POOL as _YOUTH_CLUBS_POOL,
+    COACH_VISIONS as _COACH_VISIONS,
+    COACH_NAMES as _COACH_NAMES
+} from './constants.js';
+import { TrainingManager as _TrainingManager } from './entrainement.js';
+import { CareerSystem as _CareerSystem } from './careerSystem.js';
+import { CoachSystem as _CoachSystem } from './coachSystem.js';
+import { TransferMarket as _TransferMarket } from './transferMarket.js';
+
 const POSITIONS = Array.isArray(_POSITIONS) ? _POSITIONS : Object.values(_POSITIONS || {});
 const CONTINENTS = _CONTINENTS || {};
 const ORIGINS = _ORIGINS || {};
 const HEART_CLUBS = _HEART_CLUBS || {};
-const YOUTH_CLUBS_POOL = Array.isArray(_YOUTH_CLUBS_POOL) ? _YOUTH_CLUBS_POOL : Object.values(_YOUTH_CLUBS_POOL || {});
-const COACH_VISIONS = _COACH_VISIONS || [{ title: 'Équilibré' }];
-const COACH_NAMES = _COACH_NAMES || ['Thomas Tuchel', 'Pep Guardiola'];
+const YOUTH_CLUBS_POOL = Array.isArray(_YOUTH_CLUBS_POOL)
+    ? _YOUTH_CLUBS_POOL
+    : Object.values(_YOUTH_CLUBS_POOL || {});
+const COACH_VISIONS = Array.isArray(_COACH_VISIONS)
+    ? _COACH_VISIONS
+    : Object.values(_COACH_VISIONS || {});
+const COACH_NAMES = Array.isArray(_COACH_NAMES)
+    ? _COACH_NAMES
+    : Object.values(_COACH_NAMES || {});
 
-const EventEngine = _EventEngine || { checkAndTriggerEvent: () => null };
-const TrainingManager = _TrainingManager || { FOCUS_TYPES: { TECHNIQUE: { name: 'Technique', description: 'Améliore la maîtrise globale du ballon' } } };
-const MatchChoiceManager = _MatchChoiceManager || {
-    shouldTriggerDilemma: () => true,
-    getMatchDilemma: (type = 'standard', opponent = '') => ({
-        title: 'Match sous Haute Tension',
-        description: `Face à ${opponent || "l'adversaire"}, chaque décision comptera.`,
-        choices: [
-            { texte: '🛡️ Analyse & Rigueur', impacts: {} },
-            { texte: '⚡ Offensive Totale', impacts: {} }
-        ]
-    })
+const TrainingManager = _TrainingManager || { FOCUS_TYPES: {} };
+const CareerSystem = _CareerSystem || {};
+const CoachSystem = _CoachSystem || {};
+const TransferMarket = _TransferMarket || {};
+
+const FLAGS = {
+    France: '🇫🇷',
+    Angleterre: '🇬🇧',
+    Espagne: '🇪🇸',
+    Italie: '🇮🇹',
+    Allemagne: '🇩🇪',
+    Portugal: '🇵🇹',
+    Belgique: '🇧🇪',
+    'Pays-Bas': '🇳🇱',
+    Suisse: '🇨🇭',
+    Autriche: '🇦🇹',
+    Brésil: '🇧🇷',
+    Argentine: '🇦🇷',
+    Uruguay: '🇺🇾',
+    Colombie: '🇨🇴',
+    Mexique: '🇲🇽',
+    Japon: '🇯🇵',
+    'Corée du Sud': '🇰🇷',
+    Sénégal: '🇸🇳',
+    Maroc: '🇲🇦',
+    Algérie: '🇩🇿',
+    Tunisie: '🇹🇳',
+    Cameroun: '🇨🇲',
+    Ghana: '🇬🇭',
+    Nigeria: '🇳🇬',
+    'Côte d’Ivoire': '🇨🇮',
+    "Côte d'Ivoire": '🇨🇮',
+    Canada: '🇨🇦',
+    'États-Unis': '🇺🇸'
 };
-const TransferMarket = _TransferMarket || {
-    calculateMarketValue: () => 100000,
-    formatPrice: (p) => `${(p || 0).toLocaleString('fr-FR')} €`,
-    generateTransferOffer: () => null
+
+const escapeHTML = (value) => String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+const safeNumber = (value, fallback = 0) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
 };
-const ConsequenceSystem = _ConsequenceSystem || { preview: () => ({ effects: [] }) };
-const CareerSystem = _CareerSystem || { getStage: age => age < 16 ? 'academy' : age < 18 ? 'semi_pro' : 'professional', positionName: id => id };
-const CoachSystem = _CoachSystem || {
-    getCoachData: () => null,
-    checkCoachInteraction: () => null,
-    resolveCoachChoice: () => null
-};
+
+const flagFor = (country) => FLAGS[country] || '🌍';
+
+const getPlayerName = (player) =>
+    `${player?.firstname || player?.firstName || ''} ${player?.lastname || player?.lastName || ''}`.trim() || 'Joueur';
+
+function safeCall(fn, fallback = null) {
+    try {
+        return typeof fn === 'function' ? fn() : fallback;
+    } catch (error) {
+        console.error('[UI] appel protégé en erreur:', error);
+        return fallback;
+    }
+}
 
 export class UserInterface {
     constructor(gameEngine) {
         this.engine = gameEngine;
         this.currentStep = 1;
         this.activeApp = 'home';
+        this.notice = null;
+        this.rendering = false;
+        this.launching = false;
+        this.randomYouthClubs = [];
         this.selectedData = {
             firstname: '',
             lastname: '',
@@ -62,349 +126,13 @@ export class UserInterface {
             coachVision: null,
             coachName: null
         };
-        this.randomYouthClubs = [];
-        this.injectStyles();
+
         this.initDOM();
+        this.injectStyles();
     }
 
     init() {
         this.render();
-    }
-
-    injectStyles() {
-        if (document.getElementById('pro-ui-styles')) return;
-        const style = document.createElement('style');
-        style.id = 'pro-ui-styles';
-        style.innerHTML = `
-            :root {
-                --bg-glass: rgba(15, 23, 42, 0.85);
-                --bg-card: rgba(30, 41, 59, 0.9);
-                --border-glass: rgba(255, 255, 255, 0.25);
-                --accent-green: #10b981;
-                --accent-blue: #3b82f6;
-                --accent-purple: #8b5cf6;
-                --accent-gold: #f59e0b;
-                --text-main: #ffffff;
-                --text-sub: #e2e8f0;
-            }
-
-            .phone-frame {
-                width: 100%;
-                max-width: 430px;
-                height: 100dvh;
-                max-height: 900px;
-                margin: 0 auto;
-                border-radius: 36px;
-                background: rgba(10, 15, 30, 0.5);
-                border: 1.5px solid var(--border-glass);
-                display: flex;
-                flex-direction: column;
-                overflow: hidden;
-                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
-                position: relative;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                color: var(--text-main);
-                backdrop-filter: blur(12px);
-            }
-
-            .phone-status-bar {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: calc(env(safe-area-inset-top, 12px) + 6px) 20px 8px;
-                font-size: 0.8rem;
-                font-weight: 700;
-                color: #ffffff;
-                background: rgba(15, 23, 42, 0.75);
-                backdrop-filter: blur(16px);
-                z-index: 10;
-            }
-
-            .phone-home-screen, .app-content-body {
-                flex: 1;
-                overflow-y: auto;
-                padding: 16px;
-                padding-bottom: calc(20px + env(safe-area-inset-bottom, 10px));
-                display: flex;
-                flex-direction: column;
-                gap: 16px;
-                scrollbar-width: thin;
-            }
-
-            /* Widget Hero Joueur */
-            .player-widget-enhanced {
-                background: rgba(15, 23, 42, 0.88);
-                border: 1px solid var(--border-glass);
-                border-radius: 24px;
-                padding: 18px;
-                backdrop-filter: blur(20px);
-                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            }
-
-            .widget-header-line {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                font-size: 0.8rem;
-                color: var(--accent-blue);
-                font-weight: 800;
-                margin-bottom: 12px;
-            }
-
-            .player-card-banner {
-                display: flex;
-                align-items: center;
-                gap: 14px;
-                margin-bottom: 14px;
-            }
-
-            .player-image-badge {
-                width: 56px;
-                height: 56px;
-                border-radius: 18px;
-                background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                box-shadow: 0 4px 16px rgba(59, 130, 246, 0.5);
-            }
-
-            .jersey-number {
-                font-size: 1.4rem;
-                font-weight: 900;
-                color: #fff;
-            }
-
-            .player-main-info .widget-title {
-                font-weight: 800;
-                font-size: 1.25rem;
-                display: flex;
-                align-items: center;
-                gap: 8px;
-            }
-
-            .player-club-sub {
-                font-size: 0.88rem;
-                color: var(--text-sub);
-                margin-top: 2px;
-            }
-
-            .widget-stats-grid {
-                display: grid;
-                grid-template-columns: repeat(2, 1fr);
-                gap: 8px;
-            }
-
-            .stat-pill {
-                background: rgba(255, 255, 255, 0.1);
-                border: 1px solid rgba(255, 255, 255, 0.15);
-                border-radius: 12px;
-                padding: 8px 12px;
-                font-size: 0.85rem;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-            }
-
-            .stat-pill strong {
-                font-size: 0.95rem;
-                color: #fff;
-            }
-
-            .widget-secret-tag {
-                margin-top: 12px;
-                padding-top: 10px;
-                border-top: 1px dashed rgba(255, 255, 255, 0.2);
-                font-size: 0.8rem;
-                color: #fbbf24;
-                font-weight: 600;
-                display: flex;
-                align-items: center;
-                gap: 6px;
-            }
-
-            /* Grille d'Applications iOS Ultra Visibles */
-            .apps-grid {
-                display: grid;
-                grid-template-columns: repeat(4, 1fr);
-                gap: 14px;
-                margin-top: 6px;
-            }
-
-            .app-icon {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                background: transparent;
-                border: none;
-                cursor: pointer;
-                position: relative;
-                transition: transform 0.15s ease, filter 0.15s ease;
-            }
-
-            .app-icon:active {
-                transform: scale(0.92);
-            }
-
-            .app-logo {
-                width: 62px;
-                height: 62px;
-                border-radius: 18px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 1.7rem;
-                background: #1e293b;
-                border: 1.5px solid rgba(255, 255, 255, 0.3);
-                box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
-                margin-bottom: 6px;
-            }
-
-            .app-label {
-                font-size: 0.75rem;
-                font-weight: 700;
-                color: #ffffff;
-                text-align: center;
-                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
-            }
-
-            .notification-badge {
-                position: absolute;
-                top: -2px;
-                right: 4px;
-                background: #ef4444;
-                color: white;
-                font-size: 0.7rem;
-                font-weight: 900;
-                width: 20px;
-                height: 20px;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                border: 2px solid #0f172a;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.5);
-            }
-
-            /* Bouton Paramètres Flottant */
-            .btn-settings-floating {
-                position: absolute;
-                right: 20px;
-                bottom: calc(90px + env(safe-area-inset-bottom, 0px));
-                width: 46px;
-                height: 46px;
-                border-radius: 50%;
-                background: #1e293b;
-                border: 1.5px solid var(--border-glass);
-                color: #fff;
-                font-size: 1.3rem;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-                box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
-                z-index: 5;
-            }
-
-            /* Actions Principales */
-            .btn-play-block {
-                width: 100%;
-                padding: 16px;
-                border-radius: 20px;
-                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-                color: #fff;
-                font-weight: 800;
-                font-size: 1rem;
-                border: none;
-                cursor: pointer;
-                box-shadow: 0 10px 25px -4px rgba(16, 185, 129, 0.6);
-            }
-
-            .btn-play-block:active {
-                transform: scale(0.98);
-            }
-
-            /* Style des Vues Applicatives */
-            .app-pane {
-                background: rgba(15, 23, 42, 0.9);
-                border: 1px solid var(--border-glass);
-                border-radius: 20px;
-                padding: 16px;
-                backdrop-filter: blur(16px);
-            }
-
-            .pane-title {
-                font-size: 1.15rem;
-                font-weight: 800;
-                margin-top: 0;
-                margin-bottom: 12px;
-                color: #fff;
-            }
-
-            /* Modales */
-            .event-modal-overlay {
-                position: absolute;
-                inset: 0;
-                background: rgba(2, 6, 23, 0.88);
-                backdrop-filter: blur(20px);
-                z-index: 100;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 20px;
-            }
-
-            .event-modal-card {
-                background: #1e293b;
-                border: 1.5px solid var(--border-glass);
-                border-radius: 26px;
-                padding: 22px;
-                width: 100%;
-                max-width: 360px;
-                box-shadow: 0 20px 40px rgba(0,0,0,0.8);
-            }
-
-            .event-modal-category {
-                font-size: 0.72rem;
-                font-weight: 800;
-                letter-spacing: 1px;
-                color: var(--accent-gold);
-                text-transform: uppercase;
-            }
-
-            .event-modal-title {
-                font-size: 1.25rem;
-                font-weight: 800;
-                margin: 6px 0 10px;
-                color: #fff;
-            }
-
-            .event-modal-desc {
-                font-size: 0.9rem;
-                color: var(--text-sub);
-                line-height: 1.4;
-                margin-bottom: 18px;
-            }
-
-            .btn-event-choice {
-                width: 100%;
-                padding: 14px;
-                border-radius: 14px;
-                background: rgba(255, 255, 255, 0.1);
-                border: 1px solid var(--border-glass);
-                color: var(--text-main);
-                font-weight: 700;
-                font-size: 0.9rem;
-                margin-bottom: 10px;
-                cursor: pointer;
-                text-align: left;
-            }
-
-            .btn-event-choice:active {
-                background: rgba(255, 255, 255, 0.2);
-            }
-        `;
-        document.head.appendChild(style);
     }
 
     initDOM() {
@@ -412,1041 +140,1231 @@ export class UserInterface {
         if (!app) {
             app = document.createElement('div');
             app.id = 'app';
-            if (document.body) {
-                document.body.appendChild(app);
-            }
+            document.body?.appendChild(app);
         }
         window.UI = this;
         return app;
     }
 
+    injectStyles() {
+        if (document.getElementById('stp-ui-v3-styles')) return;
+
+        const style = document.createElement('style');
+        style.id = 'stp-ui-v3-styles';
+        style.textContent = `
+            :root {
+                --stp-bg: #070b16;
+                --stp-card: rgba(17, 24, 39, .94);
+                --stp-card-2: rgba(24, 33, 52, .96);
+                --stp-line: rgba(148, 163, 184, .20);
+                --stp-text: #f8fafc;
+                --stp-muted: #94a3b8;
+                --stp-green: #10b981;
+                --stp-green-2: #059669;
+                --stp-blue: #3b82f6;
+                --stp-gold: #f5b942;
+                --stp-red: #ef4444;
+            }
+
+            * { box-sizing: border-box; }
+            html, body {
+                margin: 0;
+                min-height: 100%;
+                background: var(--stp-bg);
+                color: var(--stp-text);
+                font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+            }
+            body { overflow-x: hidden; }
+            button, input, select { font: inherit; }
+            button { -webkit-tap-highlight-color: transparent; }
+
+            .stp-shell {
+                min-height: 100dvh;
+                width: 100%;
+                max-width: 520px;
+                margin: 0 auto;
+                background:
+                    radial-gradient(circle at 20% 0%, rgba(59,130,246,.15), transparent 35%),
+                    radial-gradient(circle at 100% 50%, rgba(16,185,129,.10), transparent 35%),
+                    var(--stp-bg);
+            }
+
+            .stp-topbar {
+                position: sticky;
+                top: 0;
+                z-index: 30;
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+                min-height:58px;
+                padding: max(10px, env(safe-area-inset-top)) 16px 10px;
+                background: rgba(7,11,22,.88);
+                border-bottom:1px solid var(--stp-line);
+                backdrop-filter: blur(18px);
+            }
+
+            .stp-brand { font-weight:900; letter-spacing:-.02em; }
+            .stp-brand small { display:block; color:var(--stp-muted); font-weight:600; font-size:.68rem; }
+            .stp-top-value { color:#a7f3d0; font-weight:800; font-size:.82rem; }
+
+            .stp-content {
+                padding:16px;
+                padding-bottom: calc(30px + env(safe-area-inset-bottom));
+            }
+
+            .stp-card {
+                background: linear-gradient(145deg, var(--stp-card), rgba(10,15,28,.96));
+                border:1px solid var(--stp-line);
+                border-radius:24px;
+                padding:16px;
+                box-shadow:0 18px 40px rgba(0,0,0,.28);
+                margin-bottom:14px;
+            }
+
+            .stp-title { margin:0 0 6px; font-size:1.45rem; font-weight:900; }
+            .stp-subtitle { margin:0 0 16px; color:var(--stp-muted); line-height:1.45; }
+            .stp-section-title { margin:20px 0 10px; font-size:1rem; font-weight:900; }
+
+            .stp-player-head { display:flex; gap:14px; align-items:center; }
+            .stp-number {
+                width:58px; height:58px; border-radius:18px;
+                display:flex; align-items:center; justify-content:center;
+                background:linear-gradient(145deg,#2563eb,#1d4ed8);
+                font-size:1.45rem; font-weight:950;
+                flex:none;
+            }
+            .stp-player-name { font-size:1.25rem; font-weight:900; line-height:1.15; }
+            .stp-player-meta { color:#cbd5e1; margin-top:5px; font-size:.86rem; }
+            .stp-flag { font-size:1.1em; margin-right:5px; }
+
+            .stp-metrics {
+                display:grid;
+                grid-template-columns:repeat(2,1fr);
+                gap:8px;
+                margin-top:15px;
+            }
+            .stp-metric {
+                border:1px solid rgba(255,255,255,.09);
+                background:rgba(255,255,255,.045);
+                border-radius:14px;
+                padding:11px;
+            }
+            .stp-metric span { display:block; color:var(--stp-muted); font-size:.68rem; font-weight:700; }
+            .stp-metric strong { display:block; margin-top:3px; font-size:1.05rem; }
+
+            .stp-season-stats {
+                display:grid;
+                grid-template-columns:repeat(4,1fr);
+                gap:6px;
+                margin-top:10px;
+            }
+            .stp-season-stat {
+                text-align:center;
+                border-radius:12px;
+                padding:9px 3px;
+                background:rgba(255,255,255,.045);
+                border:1px solid rgba(255,255,255,.08);
+            }
+            .stp-season-stat span { display:block; color:var(--stp-muted); font-size:.59rem; }
+            .stp-season-stat strong { display:block; margin-top:3px; font-size:.95rem; }
+
+            .stp-highlight {
+                margin-top:12px; padding:11px 12px; border-radius:14px;
+                background:rgba(16,185,129,.08);
+                border:1px solid rgba(16,185,129,.18);
+                color:#d1fae5; font-size:.82rem; line-height:1.4;
+            }
+
+            .stp-apps {
+                display:grid;
+                grid-template-columns:repeat(4,1fr);
+                gap:12px;
+                margin:16px 0;
+            }
+            .stp-app {
+                border:0; background:transparent; color:#fff; text-align:center; cursor:pointer;
+            }
+            .stp-app-icon {
+                width:64px; height:64px; margin:0 auto 6px;
+                border-radius:19px; display:flex; align-items:center; justify-content:center;
+                font-size:1.7rem; border:1px solid rgba(255,255,255,.14);
+                box-shadow:0 10px 24px rgba(0,0,0,.35);
+            }
+            .stp-app-label { font-size:.72rem; font-weight:800; }
+
+            .stp-primary, .stp-secondary, .stp-danger {
+                border:0; border-radius:16px; padding:14px 16px;
+                font-weight:900; cursor:pointer; width:100%;
+            }
+            .stp-primary { color:#fff; background:linear-gradient(135deg,var(--stp-green),var(--stp-green-2)); }
+            .stp-secondary { color:#e2e8f0; background:#263247; border:1px solid var(--stp-line); }
+            .stp-danger { color:#fff; background:#7f1d1d; }
+            .stp-primary:disabled { opacity:.45; cursor:not-allowed; }
+            .stp-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+            .stp-alert {
+                padding:12px; border-radius:14px; margin-bottom:12px;
+                background:rgba(239,68,68,.10); border:1px solid rgba(239,68,68,.28);
+                color:#fecaca; font-size:.82rem; line-height:1.45;
+            }
+            .stp-success {
+                background:rgba(16,185,129,.10); border-color:rgba(16,185,129,.28); color:#bbf7d0;
+            }
+
+            .stp-grid { display:grid; gap:10px; }
+            .stp-grid-2 { grid-template-columns:repeat(2,1fr); }
+            .stp-grid-3 { grid-template-columns:repeat(3,1fr); }
+
+            .stp-choice, .stp-option {
+                width:100%; text-align:left; color:#fff; cursor:pointer;
+                border:1px solid var(--stp-line); background:rgba(255,255,255,.045);
+                border-radius:16px; padding:13px;
+            }
+            .stp-choice.selected, .stp-option.selected {
+                border-color:rgba(16,185,129,.7);
+                background:rgba(16,185,129,.12);
+            }
+
+            .stp-input, .stp-select {
+                width:100%; color:#fff; background:#111827;
+                border:1px solid var(--stp-line); border-radius:14px;
+                padding:13px; outline:none;
+            }
+            .stp-label { display:block; color:#cbd5e1; font-size:.78rem; font-weight:800; margin:0 0 6px; }
+            .stp-field { margin-bottom:12px; }
+
+            .stp-pitch {
+                position:relative; height:330px; border-radius:24px;
+                overflow:hidden;
+                background:linear-gradient(180deg,#159447,#0d7a3a);
+                border:2px solid rgba(255,255,255,.28);
+                box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);
+            }
+            .stp-pitch:before, .stp-pitch:after {
+                content:""; position:absolute; border:2px solid rgba(255,255,255,.6); pointer-events:none;
+            }
+            .stp-pitch:before { inset:10px; border-radius:12px; }
+            .stp-pitch:after { left:25%; right:25%; top:50%; height:0; }
+            .stp-node {
+                position:absolute; transform:translate(-50%,-50%);
+                width:52px; height:52px; border-radius:50%; border:2px solid #fff;
+                background:#0f172a; color:#fff; font-weight:900; cursor:pointer;
+                box-shadow:0 7px 16px rgba(0,0,0,.35);
+            }
+            .stp-node.selected { background:var(--stp-green); transform:translate(-50%,-50%) scale(1.08); }
+            .stp-node small { display:block; font-size:.62rem; }
+
+            .stp-offer {
+                position:relative;
+                cursor:pointer;
+                border:1px solid var(--stp-line);
+                background:linear-gradient(145deg,#121a2a,#0c1220);
+                border-radius:20px;
+                padding:15px;
+            }
+            .stp-offer.selected { border-color:var(--stp-green); box-shadow:0 0 0 1px rgba(16,185,129,.25); }
+            .stp-offer-head { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
+            .stp-offer-club { font-size:1.08rem; font-weight:900; }
+            .stp-offer-country { color:#cbd5e1; font-size:.78rem; margin-top:4px; }
+            .stp-offer-row { display:flex; justify-content:space-between; gap:8px; padding:9px 0; border-top:1px solid rgba(255,255,255,.07); font-size:.8rem; }
+            .stp-offer-row span { color:var(--stp-muted); }
+            .stp-offer-prestige { color:#fcd34d; font-weight:900; font-size:.78rem; }
+
+            .stp-back { margin-bottom:12px; width:auto; padding:9px 12px; }
+            .stp-list { display:grid; gap:8px; }
+            .stp-list-item { padding:12px; border:1px solid var(--stp-line); border-radius:14px; background:rgba(255,255,255,.035); }
+            .stp-list-item strong { display:block; }
+            .stp-list-item span { color:var(--stp-muted); font-size:.78rem; }
+
+            .stp-tabs { display:flex; gap:7px; overflow:auto; padding-bottom:4px; margin-bottom:12px; }
+            .stp-tab { white-space:nowrap; border:1px solid var(--stp-line); background:rgba(255,255,255,.04); color:#cbd5e1; border-radius:999px; padding:8px 11px; font-size:.76rem; font-weight:800; }
+            .stp-tab.active { background:rgba(59,130,246,.15); border-color:rgba(59,130,246,.45); color:#bfdbfe; }
+
+            .stp-modal {
+                position:fixed; inset:0; z-index:100;
+                background:rgba(2,6,23,.88); backdrop-filter:blur(16px);
+                display:flex; align-items:center; justify-content:center; padding:18px;
+            }
+            .stp-modal-card { width:min(430px,100%); max-height:88dvh; overflow:auto; border-radius:24px; background:#111827; border:1px solid var(--stp-line); padding:18px; }
+            .stp-modal-title { margin:0 0 8px; font-size:1.2rem; font-weight:900; }
+            .stp-modal-text { color:#cbd5e1; line-height:1.5; font-size:.88rem; }
+
+            @media (max-width:390px) {
+                .stp-apps { gap:7px; }
+                .stp-app-icon { width:58px; height:58px; }
+                .stp-season-stat span { font-size:.54rem; }
+                .stp-season-stat strong { font-size:.85rem; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
     render() {
+        if (this.rendering) return;
+        this.rendering = true;
+
         try {
             const app = this.initDOM();
 
-            if (this.engine?.state) {
+            if (this.engine?.state?.player) {
                 this.renderDashboard();
-                return;
+            } else {
+                this.renderCreation();
             }
-
-            app.innerHTML = `
-                <div class="career-container">
-                    <header class="career-header">
-                        <h1>⚡ Street to Pro</h1>
-                        <div class="progress-bar">
-                            <div class="progress" style="width: ${(this.currentStep / 5) * 100}%"></div>
-                        </div>
-                    </header>
-                    <main class="career-content">
-                        ${this.renderStepContent()}
-                    </main>
-                    <footer class="career-footer">
-                        ${this.currentStep > 1 ? '<button id="prev-btn" class="btn-secondary">Précédent</button>' : ''}
-                        ${this.currentStep < 5 ? '<button id="next-btn" class="btn-primary" disabled>Suivant</button>' : '<button id="start-btn" class="btn-success" disabled>Lancer</button>'}
-                    </footer>
-                </div>
-            `;
-            this.bindStepEvents();
         } catch (error) {
-            console.error("💥 Erreur lors du rendu UI :", error);
+            console.error('[UI] render error:', error);
+            this.showFatalUI(error);
+        } finally {
+            this.rendering = false;
         }
     }
 
-    renderStepContent() {
-        switch(this.currentStep) {
-            case 1: {
-                return `
-                    <h2>Étape 1 : Identité & Poste</h2>
-                    <div class="form-group">
-                        <label for="firstname">Prénom :</label>
-                        <input type="text" id="firstname" value="${this.selectedData.firstname || ''}" placeholder="ex: Kylian">
-                    </div>
-                    <div class="form-group">
-                        <label for="lastname">Nom :</label>
-                        <input type="text" id="lastname" value="${this.selectedData.lastname || ''}" placeholder="ex: Mbappé">
-                    </div>
-                    <div class="form-group">
-                        <label>Choisis ton poste sur le terrain :</label>
-                        <div class="proclubs-pitch-container">
-                            <div class="proclubs-soccer-pitch">
-                                ${POSITIONS.map(p => {
-                                    let coords = { top: '50%', left: '50%' };
-                                    const id = p?.id;
-                                    if (id === 'GK') coords = { top: '86%', left: '50%' };
-                                    else if (['DC', 'CB'].includes(id)) coords = { top: '70%', left: '50%' };
-                                    else if (['DD', 'RB'].includes(id)) coords = { top: '65%', left: '85%' };
-                                    else if (['DG', 'LB'].includes(id)) coords = { top: '65%', left: '15%' };
-                                    else if (['MDC', 'CDM'].includes(id)) coords = { top: '50%', left: '50%' };
-                                    else if (['MC', 'CM'].includes(id)) coords = { top: '40%', left: '50%' };
-                                    else if (['MO', 'CAM'].includes(id)) coords = { top: '28%', left: '50%' };
-                                    else if (['AD', 'RW'].includes(id)) coords = { top: '22%', left: '80%' };
-                                    else if (['AG', 'LW'].includes(id)) coords = { top: '22%', left: '20%' };
-                                    else if (['BU', 'ST'].includes(id)) coords = { top: '12%', left: '50%' };
-
-                                    const isSelected = this.selectedData.position === id ? 'selected' : '';
-
-                                    return `
-                                        <button class="proclubs-node ${isSelected}" data-pos="${id}" style="top: ${coords.top}; left: ${coords.left};" title="${p?.name || id}">
-                                            <div class="proclubs-jersey">👕</div>
-                                            <span class="proclubs-pos-name">${id}</span>
-                                        </button>
-                                    `;
-                                }).join('')}
-                            </div>
+    showFatalUI(error) {
+        const app = this.initDOM();
+        app.innerHTML = `
+            <div class="stp-shell">
+                <div class="stp-content">
+                    <div class="stp-card">
+                        <h1 class="stp-title">Street to Pro</h1>
+                        <div class="stp-alert">
+                            L'interface a rencontré une erreur, mais le jeu n'a pas été volontairement effacé.
                         </div>
+                        <p class="stp-subtitle">${escapeHTML(error?.message || 'Erreur inconnue')}</p>
+                        <button class="stp-secondary" id="stp-retry">Réessayer</button>
                     </div>
-                `;
-            }
-            case 2: {
-                const selectedOriginObj = Object.values(ORIGINS).find(o => o?.id === this.selectedData.origin);
-                
-                return `
-                    <h2>Étape 2 : Origine</h2>
-                    <p class="subtitle">Comment avez-vous façonné votre jeu ?</p>
-                    <div class="grid-origins-compact">
-                        ${Object.values(ORIGINS).map(o => {
-                            if (!o) return '';
-                            let emoji = '⚡';
-                            const traitLower = o.trait ? o.trait.toLowerCase() : '';
-                            if (traitLower.includes('technique') || traitLower.includes('dribble')) emoji = '✨';
-                            else if (traitLower.includes('physique') || traitLower.includes('force')) emoji = '💪';
-                            else if (traitLower.includes('mental') || traitLower.includes('leader')) emoji = '🧠';
-                            else if (traitLower.includes('vitesse') || traitLower.includes('rapide')) emoji = '🏃‍♂️';
+                </div>
+            </div>
+        `;
+        document.getElementById('stp-retry')?.addEventListener('click', () => this.render());
+    }
 
-                            return `
-                                <div class="origin-card-compact ${this.selectedData.origin === o.id ? 'selected' : ''}" data-origin="${o.id}">
-                                    <div class="origin-icon-small">${emoji}</div>
-                                    <div class="origin-info-small">
-                                        <h3>${o.name || ''}</h3>
-                                        <span class="trait-tag">${o.trait || ''}</span>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-                    <div class="origin-description-box">
-                        ${selectedOriginObj ? `<p>📖 ${selectedOriginObj.desc || ''}</p>` : `<p class="placeholder-text">👉 Clique sur une origine pour découvrir son histoire.</p>`}
-                    </div>
-                `;
-            }
-            case 3: {
-                const paysList = this.selectedData.continent && CONTINENTS[this.selectedData.continent]
-                    ? (Array.isArray(CONTINENTS[this.selectedData.continent]) ? CONTINENTS[this.selectedData.continent] : Object.values(CONTINENTS[this.selectedData.continent]))
-                    : [];
+    renderCreation() {
+        const app = this.initDOM();
 
-                return `
-                    <h2>Étape 3 : Région & Pays</h2>
-                    <div class="grid-continents">
-                        ${Object.keys(CONTINENTS).map(continent => `
-                            <button class="chip-continent ${this.selectedData.continent === continent ? 'selected' : ''}" data-continent="${continent}">${continent}</button>
-                        `).join('')}
-                    </div>
-                    ${this.selectedData.continent && paysList.length > 0 ? `
-                        <h3>Pays :</h3>
-                        <div class="grid-countries">
-                            ${paysList.map(c => `
-                                <button class="chip-country ${this.selectedData.country === c?.name ? 'selected' : ''}" data-country="${c?.name || ''}">${c?.flag || ''} ${c?.name || ''}</button>
-                            `).join('')}
-                        </div>
-                    ` : ''}
-                `;
-            }
-            case 4: {
-                return `
-                    <h2>Étape 4 : Club de Cœur</h2>
-                    <div class="form-group">
-                        <label for="heart-club-select">Club de cœur :</label>
-                        <select id="heart-club-select">
-                            <option value="">-- Choisir un club --</option>
-                            ${Object.entries(HEART_CLUBS).map(([league, clubs]) => {
-                                const clubArray = Array.isArray(clubs) ? clubs : Object.values(clubs || {});
-                                return `
-                                    <optgroup label="${league}">
-                                        ${clubArray.map(c => `<option value="${c?.name || ''}" ${this.selectedData.heartClub === c?.name ? 'selected' : ''}>${c?.name || ''}</option>`).join('')}
-                                    </optgroup>
-                                `;
-                            }).join('')}
-                        </select>
-                    </div>
-                `;
-            }
-            case 5: {
-                if (this.randomYouthClubs.length === 0 && YOUTH_CLUBS_POOL.length > 0) {
-                    const shuffled = [...YOUTH_CLUBS_POOL].sort(() => 0.5 - Math.random());
-                    const count = Math.floor(Math.random() * 3) + 4;
-                    
-                    this.randomYouthClubs = shuffled.slice(0, count).map(yc => {
-                        const randomVision = COACH_VISIONS[Math.floor(Math.random() * COACH_VISIONS.length)];
-                        const randomCoachName = COACH_NAMES[Math.floor(Math.random() * COACH_NAMES.length)];
-                        const salary = Math.round(100 + (Math.random() * 200));
-                        const playtimeOptions = ["Temps de jeu limité", "Joueur de rotation", "Espoir / Prêt potentiel", "Titulaire en jeunes"];
-                        const playtime = playtimeOptions[Math.floor(Math.random() * playtimeOptions.length)];
-                        const targetRating = Math.min(75, 55 + Math.round((yc?.prestige || 50) / 4));
+        app.innerHTML = `
+            <div class="stp-shell">
+                <div class="stp-topbar">
+                    <div class="stp-brand">⚡ Street to Pro<small>Création du joueur</small></div>
+                    <div class="stp-top-value">${this.currentStep}/5</div>
+                </div>
 
-                        return {
-                            ...yc,
-                            coachName: randomCoachName,
-                            coachVision: randomVision?.title || 'Équilibré',
-                            salary,
-                            playtime,
-                            targetRating
-                        };
-                    });
-                }
-
-                return `
-                    <h2>Étape 5 : Offres de Contrat Jeune</h2>
-                    <p class="subtitle">Analysez les propositions et choisissez votre point de chute :</p>
-                    <div class="grid-youth-clubs">
-                        ${this.randomYouthClubs.map(yc => `
-                            <div class="card-select club-card ${this.selectedData.youthClub?.name === yc?.name ? 'selected' : ''}" data-club-name="${yc?.name || ''}">
-                                <div class="club-header-info">
-                                    <h3>${yc?.name || ''}</h3>
-                                    <span class="league-tag">🏆 ${yc?.league || ''} (${yc?.country || ''})</span>
-                                </div>
-                                <div class="contract-details">
-                                    <p><strong>👨‍💼 Entraîneur :</strong> ${yc?.coachName || ''} <em>(${yc?.coachVision || ''})</em></p>
-                                    <p><strong>💶 Salaire :</strong> ${yc?.salary || 0} € / semaine</p>
-                                    <p><strong>⏱️ Temps de jeu :</strong> ${yc?.playtime || ''}</p>
-                                    <p><strong>🎯 Objectif :</strong> Atteindre ${yc?.targetRating || 60} Général</p>
-                                </div>
-                                <div class="prestige-badge">Prestige : ${yc?.prestige || 0}</div>
-                            </div>
-                        `).join('')}
+                <main class="stp-content">
+                    ${this.notice ? `<div class="stp-alert stp-success">${escapeHTML(this.notice)}</div>` : ''}
+                    <div class="stp-card">
+                        <h1 class="stp-title">${this.creationTitle()}</h1>
+                        <p class="stp-subtitle">${this.creationSubtitle()}</p>
+                        ${this.renderStep()}
                     </div>
-                `;
-            }
+
+                    <div class="stp-actions">
+                        ${this.currentStep > 1 ? '<button class="stp-secondary" id="stp-prev">Précédent</button>' : '<div></div>'}
+                        ${this.currentStep < 5
+                            ? '<button class="stp-primary" id="stp-next">Suivant</button>'
+                            : '<button class="stp-primary" id="stp-launch">Lancer</button>'}
+                    </div>
+                </main>
+            </div>
+        `;
+
+        this.bindCreation();
+    }
+
+    creationTitle() {
+        return [
+            'Créer ton joueur',
+            'Ton origine',
+            'Ton pays',
+            'Ton club de cœur',
+            'Choisis ton point de départ'
+        ][this.currentStep - 1] || 'Créer ton joueur';
+    }
+
+    creationSubtitle() {
+        return [
+            'Construis ton identité et choisis ton poste.',
+            'Ton histoire influence ton profil de départ.',
+            'Le pays choisi devient aussi ta nationalité.',
+            'Un club important pour ton histoire.',
+            'Compare les offres avant de lancer ta carrière.'
+        ][this.currentStep - 1] || '';
+    }
+
+    renderStep() {
+        switch (this.currentStep) {
+            case 1:
+                return this.renderCreationStep1();
+            case 2:
+                return this.renderCreationStep2();
+            case 3:
+                return this.renderCreationStep3();
+            case 4:
+                return this.renderCreationStep4();
+            case 5:
+                return this.renderCreationStep5();
             default:
-                return `<p>Chargement...</p>`;
+                return '';
         }
     }
 
-    bindStepEvents() {
-        const nextBtn = document.getElementById('next-btn');
-        const prevBtn = document.getElementById('prev-btn');
-        const startBtn = document.getElementById('start-btn');
+    renderCreationStep1() {
+        return `
+            <div class="stp-field">
+                <label class="stp-label">Prénom</label>
+                <input class="stp-input" id="stp-firstname" value="${escapeHTML(this.selectedData.firstname)}" placeholder="Ex. Kylian">
+            </div>
+            <div class="stp-field">
+                <label class="stp-label">Nom</label>
+                <input class="stp-input" id="stp-lastname" value="${escapeHTML(this.selectedData.lastname)}" placeholder="Ex. Mbappé">
+            </div>
+            <div class="stp-section-title">Choisis ton poste</div>
+            <div class="stp-pitch">
+                ${this.renderPositionNodes()}
+            </div>
+        `;
+    }
 
-        if (nextBtn) nextBtn.disabled = !this.isStepValid();
-        if (startBtn) startBtn.disabled = !this.isStepValid();
+    renderPositionNodes() {
+        const positions = POSITIONS.length ? POSITIONS : [
+            { id:'GK', name:'Gardien' }, { id:'DC', name:'Défenseur' },
+            { id:'MC', name:'Milieu' }, { id:'MO', name:'Milieu offensif' },
+            { id:'AD', name:'Ailier droit' }, { id:'AG', name:'Ailier gauche' },
+            { id:'BU', name:'Buteur' }
+        ];
 
-        const firstnameInput = document.getElementById('firstname');
-        const lastnameInput = document.getElementById('lastname');
-        
-        if (firstnameInput) {
-            firstnameInput.addEventListener('input', (e) => {
-                this.selectedData.firstname = e.target.value.trim();
-                if (nextBtn) nextBtn.disabled = !this.isStepValid();
-            });
-        }
-        if (lastnameInput) {
-            lastnameInput.addEventListener('input', (e) => {
-                this.selectedData.lastname = e.target.value.trim();
-                if (nextBtn) nextBtn.disabled = !this.isStepValid();
-            });
-        }
+        const coords = {
+            GK:[50,90], DC:[50,70], DD:[83,67], DG:[17,67],
+            MDC:[50,55], MC:[50,43], MO:[50,30],
+            AD:[78,22], AG:[22,22], BU:[50,10]
+        };
 
-        document.querySelectorAll('.proclubs-node').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.proclubs-node').forEach(b => b.classList.remove('selected'));
-                const targetBtn = e.currentTarget;
-                targetBtn.classList.add('selected');
-                this.selectedData.position = targetBtn.getAttribute('data-pos');
-                if (nextBtn) nextBtn.disabled = !this.isStepValid();
+        return positions.map(p => {
+            const id = p?.id || p?.name;
+            const [left, top] = coords[id] || [50,50];
+            const selected = this.selectedData.position === id ? 'selected' : '';
+            return `
+                <button class="stp-node ${selected}" data-position="${escapeHTML(id)}"
+                    style="left:${left}%;top:${top}%">
+                    ${escapeHTML(id)}
+                    <small>${escapeHTML(p?.name || id)}</small>
+                </button>
+            `;
+        }).join('');
+    }
+
+    renderCreationStep2() {
+        const origins = Object.values(ORIGINS);
+        return `
+            <div class="stp-grid">
+                ${origins.map(origin => `
+                    <button class="stp-choice ${this.selectedData.origin === origin?.id ? 'selected' : ''}"
+                        data-origin="${escapeHTML(origin?.id)}">
+                        <strong>${escapeHTML(origin?.name || origin?.id)}</strong>
+                        <div style="color:#94a3b8;margin-top:4px;font-size:.78rem">${escapeHTML(origin?.trait || '')}</div>
+                    </button>
+                `).join('')}
+            </div>
+            ${this.selectedData.origin ? `
+                <div class="stp-highlight">
+                    ${escapeHTML(Object.values(ORIGINS).find(o => o?.id === this.selectedData.origin)?.desc || '')}
+                </div>` : ''}
+        `;
+    }
+
+    renderCreationStep3() {
+        const continentKeys = Object.keys(CONTINENTS);
+        const countries = this.selectedData.continent
+            ? (Array.isArray(CONTINENTS[this.selectedData.continent])
+                ? CONTINENTS[this.selectedData.continent]
+                : Object.values(CONTINENTS[this.selectedData.continent] || {}))
+            : [];
+
+        return `
+            <div class="stp-grid stp-grid-2">
+                ${continentKeys.map(continent => `
+                    <button class="stp-choice ${this.selectedData.continent === continent ? 'selected' : ''}"
+                        data-continent="${escapeHTML(continent)}">${escapeHTML(continent)}</button>
+                `).join('')}
+            </div>
+            ${countries.length ? `
+                <div class="stp-section-title">Pays</div>
+                <div class="stp-grid stp-grid-2">
+                    ${countries.map(country => `
+                        <button class="stp-choice ${this.selectedData.country === country?.name ? 'selected' : ''}"
+                            data-country="${escapeHTML(country?.name)}">
+                            ${escapeHTML(country?.flag || flagFor(country?.name))} ${escapeHTML(country?.name)}
+                        </button>
+                    `).join('')}
+                </div>` : ''}
+        `;
+    }
+
+    renderCreationStep4() {
+        return `
+            <div class="stp-field">
+                <label class="stp-label">Club de cœur</label>
+                <select class="stp-select" id="stp-heart">
+                    <option value="">Choisir</option>
+                    ${Object.entries(HEART_CLUBS).map(([league, clubs]) => {
+                        const list = Array.isArray(clubs) ? clubs : Object.values(clubs || {});
+                        return `<optgroup label="${escapeHTML(league)}">
+                            ${list.map(c => `<option value="${escapeHTML(c?.name)}" ${this.selectedData.heartClub === c?.name ? 'selected' : ''}>${escapeHTML(c?.name)}</option>`).join('')}
+                        </optgroup>`;
+                    }).join('')}
+                </select>
+            </div>
+        `;
+    }
+
+    buildOffers() {
+        if (this.randomYouthClubs.length) return;
+
+        const pool = [...YOUTH_CLUBS_POOL].sort(() => Math.random() - .5);
+        const count = Math.min(pool.length, 4 + Math.floor(Math.random() * 3));
+
+        this.randomYouthClubs = pool.slice(0, count).map(club => {
+            const vision = COACH_VISIONS[Math.floor(Math.random() * Math.max(1, COACH_VISIONS.length))] || { title:'Équilibré' };
+            const coachName = COACH_NAMES[Math.floor(Math.random() * Math.max(1, COACH_NAMES.length))] || 'L’entraîneur';
+            const prestige = safeNumber(club?.prestige, 40);
+            return {
+                ...club,
+                coachName,
+                coachVision: vision?.title || 'Équilibré',
+                salary: Math.round(100 + Math.random() * 200),
+                playtime: ['Temps de jeu limité','Joueur de rotation','Espoir / Prêt potentiel','Titulaire en jeunes'][Math.floor(Math.random()*4)],
+                targetRating: Math.min(75, 55 + Math.round(prestige / 4))
+            };
+        });
+    }
+
+    renderCreationStep5() {
+        this.buildOffers();
+
+        return `
+            <div class="stp-grid">
+                ${this.randomYouthClubs.map(club => {
+                    const selected = this.selectedData.youthClub?.name === club?.name ? 'selected' : '';
+                    return `
+                        <button class="stp-offer ${selected}" data-youth-club="${escapeHTML(club?.name)}">
+                            <div class="stp-offer-head">
+                                <div>
+                                    <div class="stp-offer-club">
+                                        <span class="stp-flag">${flagFor(club?.country)}</span>${escapeHTML(club?.name)}
+                                    </div>
+                                    <div class="stp-offer-country">${escapeHTML(club?.league || '')} · ${escapeHTML(club?.country || '')}</div>
+                                </div>
+                                <div class="stp-offer-prestige">Prestige ${safeNumber(club?.prestige)}</div>
+                            </div>
+                            <div style="height:10px"></div>
+                            <div class="stp-offer-row"><span>Entraîneur</span><strong>${escapeHTML(club?.coachName)}</strong></div>
+                            <div class="stp-offer-row"><span>Vision</span><strong>${escapeHTML(club?.coachVision)}</strong></div>
+                            <div class="stp-offer-row"><span>Salaire</span><strong>${safeNumber(club?.salary)} € / semaine</strong></div>
+                            <div class="stp-offer-row"><span>Temps de jeu</span><strong>${escapeHTML(club?.playtime)}</strong></div>
+                            <div class="stp-offer-row"><span>Objectif</span><strong>${safeNumber(club?.targetRating)} Général</strong></div>
+                        </button>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    }
+
+    bindCreation() {
+        const next = document.getElementById('stp-next');
+        const prev = document.getElementById('stp-prev');
+        const launch = document.getElementById('stp-launch');
+
+        const validate = () => {
+            const ok = this.isStepValid();
+            if (next) next.disabled = !ok;
+            if (launch) launch.disabled = !ok || this.launching;
+        };
+
+        document.getElementById('stp-firstname')?.addEventListener('input', e => {
+            this.selectedData.firstname = e.target.value.trim();
+            validate();
+        });
+        document.getElementById('stp-lastname')?.addEventListener('input', e => {
+            this.selectedData.lastname = e.target.value.trim();
+            validate();
+        });
+
+        document.querySelectorAll('[data-position]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.selectedData.position = btn.dataset.position;
+                this.renderCreation();
             });
         });
 
-        document.querySelectorAll('.origin-card-compact').forEach(card => {
-            card.addEventListener('click', () => {
-                this.selectedData.origin = card.getAttribute('data-origin');
-                this.render();
+        document.querySelectorAll('[data-origin]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.selectedData.origin = btn.dataset.origin;
+                this.renderCreation();
             });
         });
 
-        document.querySelectorAll('.chip-continent').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                this.selectedData.continent = e.target.getAttribute('data-continent');
+        document.querySelectorAll('[data-continent]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.selectedData.continent = btn.dataset.continent;
                 this.selectedData.country = null;
-                this.render();
+                this.renderCreation();
             });
         });
 
-        document.querySelectorAll('.chip-country').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.chip-country').forEach(b => b.classList.remove('selected'));
-                e.target.classList.add('selected');
-                this.selectedData.country = e.target.getAttribute('data-country');
-                if (nextBtn) nextBtn.disabled = !this.isStepValid();
+        document.querySelectorAll('[data-country]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.selectedData.country = btn.dataset.country;
+                validate();
+                this.renderCreation();
             });
         });
 
-        const heartSelect = document.getElementById('heart-club-select');
-        if (heartSelect) {
-            heartSelect.addEventListener('change', (e) => {
-                this.selectedData.heartClub = e.target.value;
-                if (nextBtn) nextBtn.disabled = !this.isStepValid();
-            });
-        }
+        document.getElementById('stp-heart')?.addEventListener('change', e => {
+            this.selectedData.heartClub = e.target.value;
+            validate();
+        });
 
-        document.querySelectorAll('.grid-youth-clubs .card-select').forEach(card => {
-            card.addEventListener('click', () => {
-                document.querySelectorAll('.grid-youth-clubs .card-select').forEach(c => c.classList.remove('selected'));
-                card.classList.add('selected');
-                const clubName = card.getAttribute('data-club-name');
-                
-                const chosenOffer = this.randomYouthClubs.find(yc => yc?.name === clubName);
-                if (chosenOffer) {
-                    this.selectedData.youthClub = chosenOffer;
-                    this.selectedData.coachVision = chosenOffer.coachVision;
-                    this.selectedData.coachName = chosenOffer.coachName;
+        document.querySelectorAll('[data-youth-club]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.selectedData.youthClub = this.randomYouthClubs.find(
+                    club => club?.name === btn.dataset.youthClub
+                ) || null;
+
+                if (this.selectedData.youthClub) {
+                    this.selectedData.coachName = this.selectedData.youthClub.coachName;
+                    this.selectedData.coachVision = this.selectedData.youthClub.coachVision;
                 }
 
-                if (startBtn) startBtn.disabled = !this.isStepValid();
+                this.renderCreation();
             });
         });
 
-        if (nextBtn) {
-            nextBtn.addEventListener('click', () => {
-                if (this.currentStep < 5) {
-                    this.currentStep++;
-                    this.render();
-                }
-            });
-        }
+        next?.addEventListener('click', () => {
+            if (!this.isStepValid()) return;
+            this.currentStep = Math.min(5, this.currentStep + 1);
+            this.notice = null;
+            this.renderCreation();
+        });
 
-        if (prevBtn) {
-            prevBtn.addEventListener('click', () => {
-                if (this.currentStep > 1) {
-                    this.currentStep--;
-                    this.render();
-                }
-            });
-        }
+        prev?.addEventListener('click', () => {
+            this.currentStep = Math.max(1, this.currentStep - 1);
+            this.notice = null;
+            this.renderCreation();
+        });
 
-        if (startBtn) {
-            startBtn.addEventListener('click', () => {
-                if (typeof this.engine?.startCareer === 'function') {
-                    this.engine.startCareer(this.selectedData);
-                    this.renderDashboard();
-                }
-            });
-        }
+        launch?.addEventListener('click', () => this.launchCareerSafely());
+        validate();
     }
 
     isStepValid() {
-        switch(this.currentStep) {
+        switch (this.currentStep) {
             case 1:
-                return (this.selectedData.firstname?.length || 0) > 0 && 
-                       (this.selectedData.lastname?.length || 0) > 0 && 
-                       this.selectedData.position !== null;
+                return !!this.selectedData.firstname &&
+                    !!this.selectedData.lastname &&
+                    !!this.selectedData.position;
             case 2:
-                return this.selectedData.origin !== null;
+                return !!this.selectedData.origin;
             case 3:
-                return this.selectedData.continent !== null && this.selectedData.country !== null;
+                return !!this.selectedData.continent && !!this.selectedData.country;
             case 4:
-                return this.selectedData.heartClub !== null && this.selectedData.heartClub !== '';
+                return !!this.selectedData.heartClub;
             case 5:
-                return this.selectedData.youthClub !== null;
+                return !!this.selectedData.youthClub;
             default:
                 return false;
         }
     }
 
+    launchCareerSafely() {
+        if (this.launching || !this.engine || typeof this.engine.startCareer !== 'function') return;
+
+        this.launching = true;
+        this.notice = 'Création de ta carrière…';
+
+        const app = this.initDOM();
+        const launchButton = document.getElementById('stp-launch');
+        if (launchButton) {
+            launchButton.disabled = true;
+            launchButton.textContent = 'Création…';
+        }
+
+        try {
+            const result = this.engine.startCareer({ ...this.selectedData });
+
+            if (!result || !this.engine.state?.player) {
+                throw new Error('La carrière n’a pas été initialisée correctement.');
+            }
+
+            this.activeApp = 'home';
+            this.notice = null;
+
+            // On laisse le navigateur terminer le clic avant de reconstruire
+            // toute l'interface : cela évite les états intermédiaires sur iOS.
+            requestAnimationFrame(() => {
+                try {
+                    this.renderDashboard();
+                } catch (error) {
+                    console.error('[UI] erreur après lancement:', error);
+                    this.showFatalUI(error);
+                } finally {
+                    this.launching = false;
+                }
+            });
+        } catch (error) {
+            console.error('[UI] startCareer error:', error);
+            this.launching = false;
+            this.notice = `Impossible de lancer la carrière : ${error?.message || 'erreur inconnue'}`;
+            this.renderCreation();
+        }
+    }
+
     renderDashboard() {
+        const app = this.initDOM();
+        const state = this.engine?.state;
+
+        if (!state?.player) {
+            this.renderCreation();
+            return;
+        }
+
+        const player = state.player;
+        const calendar = state.calendar || {};
+        const stats = player.stats || {};
+        const plan = safeCall(
+            () => CompetitionSystem.getBlockPlan(state),
+            { type:'career_activity', matches:0, scheduledMatches:[], activities:[] }
+        );
+        const nextMatch = plan?.scheduledMatches?.[0] || null;
+
+        const country = player.country || player.nationality || '';
+        const clubCountry = player.clubCountry || country;
+        const currentSeason = safeNumber(calendar.currentSeasonYear, new Date().getFullYear());
+
+        app.innerHTML = `
+            <div class="stp-shell">
+                <div class="stp-topbar">
+                    <div class="stp-brand">⚽ Street to Pro<small>${escapeHTML(calendar.currentPeriod || 'Saison')}</small></div>
+                    <div class="stp-top-value">${currentSeason}/${currentSeason + 1}</div>
+                </div>
+
+                <main class="stp-content">
+                    ${this.notice ? `<div class="stp-alert stp-success">${escapeHTML(this.notice)}</div>` : ''}
+
+                    <section class="stp-card">
+                        <div class="stp-player-head">
+                            <div class="stp-number">${safeNumber(player.number, 33)}</div>
+                            <div>
+                                <div class="stp-player-name">
+                                    <span class="stp-flag">${flagFor(country)}</span>${escapeHTML(getPlayerName(player))}
+                                    <span style="font-size:.8rem;color:#cbd5e1;font-weight:800">· ${safeNumber(player.age)} ans</span>
+                                </div>
+                                <div class="stp-player-meta">
+                                    ${flagFor(clubCountry)} ${escapeHTML(player.club || 'Centre de Formation')}
+                                    · ${escapeHTML(player.position || 'BU')}
+                                </div>
+                                <div class="stp-player-meta">
+                                    ${escapeHTML(player.careerProfile?.youthCategory || player.careerProfile?.stage || 'Formation')}
+                                    · ${escapeHTML(player.contract?.label || 'Contrat')}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stp-metrics">
+                            <div class="stp-metric"><span>GÉNÉRAL</span><strong>${safeNumber(player.overall)}</strong></div>
+                            <div class="stp-metric"><span>POTENTIEL</span><strong>${safeNumber(player.potential)}</strong></div>
+                            <div class="stp-metric"><span>FORME</span><strong>${safeNumber(player.fitness)}%</strong></div>
+                            <div class="stp-metric"><span>MORAL</span><strong>${safeNumber(player.morale)}%</strong></div>
+                        </div>
+
+                        <div class="stp-season-stats">
+                            <div class="stp-season-stat"><span>Matchs joués</span><strong>${safeNumber(stats.matchesPlayed)}</strong></div>
+                            <div class="stp-season-stat"><span>Note moyenne</span><strong>${safeNumber(stats.averageRating) ? safeNumber(stats.averageRating).toFixed(1) : '—'}</strong></div>
+                            <div class="stp-season-stat"><span>Buts</span><strong>${safeNumber(stats.goals)}</strong></div>
+                            <div class="stp-season-stat"><span>Passes D</span><strong>${safeNumber(stats.assists)}</strong></div>
+                        </div>
+
+                        <div class="stp-highlight">
+                            ${plan?.type === 'offseason'
+                                ? `Intersaison · ${escapeHTML(plan?.monthLabel || '')} · ${(plan?.activities || []).join(' · ')}`
+                                : `${safeNumber(plan?.matches)} match${safeNumber(plan?.matches) > 1 ? 's' : ''} prévu${safeNumber(plan?.matches) > 1 ? 's' : ''} ce mois${nextMatch ? ` · ${escapeHTML(nextMatch.competitionName || '')}` : ''}`}
+                        </div>
+                    </section>
+
+                    ${this.renderPendingState(state)}
+
+                    <div class="stp-apps">
+                        ${this.appButton('career','⚽','Carrière')}
+                        ${this.appButton('calendar','📅','Calendrier')}
+                        ${this.appButton('stats','📊','Stats')}
+                        ${this.appButton('training','🏋️','Entraînement')}
+                        ${this.appButton('transfers','🔄','Mercato')}
+                        ${this.appButton('coach','🧑‍🏫','Coach')}
+                        ${this.appButton('social','💬','Relations')}
+                        ${this.appButton('settings','⚙️','Réglages')}
+                    </div>
+
+                    <button class="stp-primary" id="stp-play" ${player.careerEnded || this.launching ? 'disabled' : ''}>
+                        ${player.careerEnded ? 'Carrière terminée' : '▶ Lancer le prochain bloc'}
+                    </button>
+                </main>
+            </div>
+        `;
+
+        this.bindDashboard();
+    }
+
+    appButton(id, icon, label) {
+        return `
+            <button class="stp-app" data-app="${escapeHTML(id)}">
+                <div class="stp-app-icon">${icon}</div>
+                <div class="stp-app-label">${escapeHTML(label)}</div>
+            </button>
+        `;
+    }
+
+    renderPendingState(state) {
+        const pending = [];
+
+        if (state.pendingEvent) pending.push(['Événement', state.pendingEvent.title || 'Un événement demande une décision.']);
+        if (state.pendingCoachEvent) pending.push(['Coach', state.pendingCoachEvent.title || 'Ton entraîneur attend une réponse.']);
+        if (state.pendingTransferOffer) pending.push(['Offre', `Une proposition est arrivée pour ${state.pendingTransferOffer.club || 'un nouveau club'}.`]);
+        if (state.pendingPositionProposal) pending.push(['Position', 'Une évolution de poste est proposée.']);
+        if (state.media?.recentDilemma) pending.push(['Média', state.media.recentDilemma.title || 'Une décision médiatique est disponible.']);
+
+        if (!pending.length) return '';
+
+        return `
+            <section class="stp-card">
+                <h2 class="stp-section-title" style="margin-top:0">À traiter</h2>
+                <div class="stp-list">
+                    ${pending.map(([title, text]) => `
+                        <button class="stp-list-item" data-pending="${escapeHTML(title)}">
+                            <strong>${escapeHTML(title)}</strong>
+                            <span>${escapeHTML(text)}</span>
+                        </button>
+                    `).join('')}
+                </div>
+            </section>
+        `;
+    }
+
+    bindDashboard() {
+        document.querySelectorAll('[data-app]').forEach(button => {
+            button.addEventListener('click', () => {
+                this.activeApp = button.dataset.app;
+                this.renderApp();
+            });
+        });
+
+        document.querySelectorAll('[data-pending]').forEach(button => {
+            button.addEventListener('click', () => this.openPending(button.dataset.pending));
+        });
+
+        document.getElementById('stp-play')?.addEventListener('click', () => this.playBlockSafely());
+    }
+
+    playBlockSafely() {
+        if (this.launching || !this.engine?.state?.player) return;
+        this.launching = true;
+
+        try {
+            const result = this.engine.playBlock();
+            this.notice = null;
+
+            if (result?.event) this.notice = 'Un événement demande ton attention.';
+            else if (result?.coachEvent) this.notice = 'Ton entraîneur souhaite te parler.';
+            else if (result?.transferOffer) this.notice = 'Une nouvelle offre est disponible.';
+
+            this.renderDashboard();
+        } catch (error) {
+            console.error('[UI] playBlock error:', error);
+            this.notice = `Le bloc n’a pas pu être simulé : ${error?.message || 'erreur inconnue'}`;
+            this.renderDashboard();
+        } finally {
+            this.launching = false;
+        }
+    }
+
+    openPending(type) {
         const state = this.engine?.state;
         if (!state) return;
 
+        if (type === 'Événement') return this.openDecisionModal(state.pendingEvent, 'event');
+        if (type === 'Coach') return this.openDecisionModal(state.pendingCoachEvent, 'coach');
+        if (type === 'Média') return this.openDecisionModal(state.media?.recentDilemma, 'media');
+        if (type === 'Offre') return this.renderApp('transfers');
+        if (type === 'Position') return this.openPositionModal();
+    }
+
+    openDecisionModal(item, kind) {
+        if (!item) return;
+
+        const choices = item.choices || item.options || [];
         const app = this.initDOM();
 
-        if (!this.activeApp || this.activeApp === 'home') {
-            app.innerHTML = `
-                <div class="phone-frame">
-                    <div class="phone-status-bar">
-                        <span>9:41</span>
-                        <span>⚽ Street to Pro</span>
-                        <span>🔋 100%</span>
+        app.insertAdjacentHTML('beforeend', `
+            <div class="stp-modal" id="stp-modal">
+                <div class="stp-modal-card">
+                    <h2 class="stp-modal-title">${escapeHTML(item.title || 'Décision')}</h2>
+                    <p class="stp-modal-text">${escapeHTML(item.description || item.desc || 'Choisis une option.')}</p>
+                    <div class="stp-grid" style="margin-top:14px">
+                        ${choices.map((choice, index) => `
+                            <button class="stp-choice" data-decision="${index}">
+                                <strong>${escapeHTML(choice.texte || choice.text || choice.label || `Choix ${index + 1}`)}</strong>
+                            </button>
+                        `).join('')}
                     </div>
-                    <div class="phone-home-screen">
-                        <div class="player-widget-enhanced">
-                            <div class="widget-header-line">
-                                <span>📅 Saison ${state.calendar?.currentSeasonYear || 2026}/${(state.calendar?.currentSeasonYear || 2026) + 1}</span>
-                                <span>${state.calendar?.currentPeriod || 'Pré-saison'}</span>
-                            </div>
-                            
-                            <div class="player-card-banner">
-                                <div class="player-image-badge">
-                                    <span class="jersey-number">${state.player?.number || 33}</span>
-                                </div>
-                                <div class="player-main-info">
-                                    <div class="widget-title">
-                                        <span>${state.player?.firstname || ''} ${state.player?.lastname || ''}</span>
-                                        <span style="font-size:0.85rem; opacity:0.9;">⭐ ${state.player?.workRates || 'H H'}</span>
-                                    </div>
-                                    <div class="player-club-sub">📍 ${state.player?.club || 'Bayer Leverkusen U19'} (${state.player?.position || 'BU'})</div>
-                            <div style="margin-top:6px; font-size:0.78rem; color:#cbd5e1;">🎓 ${state.player?.careerProfile?.youthCategory || ''} · ${state.player?.contract?.label || 'Contrat jeune'} · 🏟️ Centre ${'⭐'.repeat(state.player?.careerProfile?.centerStars || 1)}</div>
-                            ${state.player?.careerProfile?.role ? `<div style="margin-top:4px; font-size:0.78rem; color:#fbbf24;">🎯 Rôle : ${state.player.careerProfile.role}</div>` : ''}
-                                </div>
-                            </div>
-
-                            <div class="widget-stats-grid">
-                                <div class="stat-pill"><span>⚡ OVR</span><strong>${state.player?.overall || 47}</strong></div>
-                                <div class="stat-pill"><span>✨ Pot</span><strong>${state.player?.potential || 78}</strong></div>
-                                <div class="stat-pill"><span>🔋 Forme</span><strong>${state.player?.fitness || 90}%</strong></div>
-                                <div class="stat-pill"><span>❤️ Moral</span><strong>${state.player?.morale || 80}%</strong></div>
-                                <div class="stat-pill"><span>🎂 Âge</span><strong>${state.player?.age || 14} ans</strong></div>
-                                <div class="stat-pill"><span>💰 Solde</span><strong>${(state.career?.balance || 750).toLocaleString('fr-FR')} €</strong></div>
-                            </div>
-
-                            ${(() => {
-                                const plan = this.engine?.state ? CompetitionSystem.getBlockPlan(this.engine.state) : null;
-                                const next = plan?.scheduledMatches?.[0];
-                                if (!plan) return '';
-                                if (plan.type === 'offseason') {
-                                    return `<div class="widget-secret-tag">☀️ ${plan.monthLabel} · ${plan.activities.join(' · ')}</div>`;
-                                }
-                                return `<div class="widget-secret-tag">⚽ ${plan.matches} match${plan.matches > 1 ? 's' : ''} prévu${plan.matches > 1 ? 's' : ''} ce mois · ${next ? `${next.competitionName} · ${next.venue}` : 'activité de carrière'}</div>`;
-                            })()}
-
-                            <div class="widget-secret-tag">
-                                🚀 Développement : fenêtre d'explosion inconnue
-                            </div>
-                        </div>
-
-                        <div class="apps-grid">
-                            <button class="app-icon" data-app="career">
-                                <div class="app-logo" style="background: linear-gradient(135deg, #1e3a8a, #3b82f6);">⚽</div>
-                                <span class="app-label">Carrière</span>
-                            </button>
-
-                            <button class="app-icon" data-app="social">
-                                <div class="app-logo" style="background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045);">📱</div>
-                                <span class="app-label">Instafoot</span>
-                                ${state.media?.recentDilemma ? '<span class="notification-badge">1</span>' : ''}
-                            </button>
-
-                            <button class="app-icon" data-app="messages">
-                                <div class="app-logo" style="background: linear-gradient(135deg, #059669, #10b981);">💬</div>
-                                <span class="app-label">Messages</span>
-                            </button>
-
-                            <button class="app-icon" data-app="bank">
-                                <div class="app-logo" style="background: linear-gradient(135deg, #d97706, #f59e0b);">🏦</div>
-                                <span class="app-label">Banque</span>
-                            </button>
-
-                            <button class="app-icon" data-app="stats">
-                                <div class="app-logo" style="background: linear-gradient(135deg, #4f46e5, #6366f1);">📊</div>
-                                <span class="app-label">Stats</span>
-                            </button>
-
-                            <button class="app-icon" data-app="training">
-                                <div class="app-logo" style="background: linear-gradient(135deg, #dc2626, #ef4444);">🏋️‍♂️</div>
-                                <span class="app-label">Entraînement</span>
-                            </button>
-
-                            <button class="app-icon" data-app="transfers">
-                                <div class="app-logo" style="background: linear-gradient(135deg, #0891b2, #06b6d4);">🔄</div>
-                                <span class="app-label">Mercato</span>
-                            </button>
-
-                            <button class="app-icon" data-app="settings">
-                                <div class="app-logo" style="background: linear-gradient(135deg, #475569, #64748b);">⚙️</div>
-                                <span class="app-label">Réglages</span>
-                            </button>
-                        </div>
-
-                        <button id="settings-floating-btn" class="btn-settings-floating" title="Réglages">⚙️</button>
-
-                        <button id="play-block-btn" class="btn-play-block" ${state.player?.careerEnded ? 'disabled' : ''}>
-                            ${state.player?.careerEnded ? '🏁 Carrière terminée' : '▶️ Lancer le prochain bloc'}
-                        </button>
-                    </div>
+                    <button class="stp-secondary" id="stp-close-modal" style="margin-top:10px">Fermer</button>
                 </div>
-            `;
-        } else {
-            app.innerHTML = `
-                <div class="phone-frame">
-                    <div class="phone-status-bar">
-                        <span>9:41</span>
-                        <span>⚡ Street to Pro</span>
-                        <span>🔋 100%</span>
-                    </div>
-                    <div class="phone-app-view" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
-                        <div class="app-header-bar" style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-glass); background: rgba(15, 23, 42, 0.85);">
-                            <button class="btn-back-home" id="back-home-btn" style="background: rgba(255,255,255,0.1); border: 1px solid var(--border-glass); border-radius: 10px; padding: 6px 12px; color: #fff; font-weight: 700; cursor: pointer; font-size: 0.85rem;">⬅️ Accueil</button>
-                            <span class="app-title-header" style="font-weight: 800; font-size:1.05rem; text-transform: capitalize;">${this.activeApp}</span>
-                            <span style="width: 60px;"></span>
-                        </div>
-                        <div id="app-content-body" class="app-content-body">
-                            ${this.renderSpecificAppContent()}
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
+            </div>
+        `);
 
-        this.bindDashboardEvents();
-    }
-
-    renderSpecificAppContent() {
-        const state = this.engine?.state || {};
-        const socialState = state.social || { romance: { unlocked: false }, relationships: [] };
-        const mediaState = state.media || { followers: 0, hypeLevel: 0, feed: [], recentDilemma: null };
-        const attr = state.player?.attributes || {};
-
-        const marketValue = TransferMarket.calculateMarketValue(state.player || {});
-        const coachInfo = CoachSystem && typeof CoachSystem.getCoachData === 'function' ? CoachSystem.getCoachData(state) : null;
-
-        switch(this.activeApp) {
-            case 'career':
-                return `
-                    <div class="app-pane">
-                        <h3 class="pane-title">⚽ Gestion Carrière</h3>
-                        <p><strong>Joueur :</strong> ${state.player?.firstname || ''} ${state.player?.lastname || ''} (#${state.player?.number || 33})</p>
-                        <p><strong>Club :</strong> ${state.player?.club || 'Libre'}</p>
-                        <p><strong>Poste :</strong> ${state.player?.position || ''} | <strong>Rendement :</strong> ⭐ ${state.player?.workRates || 'H H'}</p>
-                        <p><strong>Parcours :</strong> ${state.player?.careerProfile?.youthCategory || 'U15'} · ${state.player?.contract?.label || 'Contrat jeune'}</p>
-                        <p><strong>Centre :</strong> ${'⭐'.repeat(state.player?.careerProfile?.centerStars || 1)} · <strong>Rôle :</strong> ${state.player?.careerProfile?.role || 'Profil encore en développement'}</p>
-                        <p><strong>Saison :</strong> ${state.calendar?.currentSeasonYear || 2026} (${state.calendar?.currentPeriod || 'Pré-saison'})</p>
-                        <hr style="border-color: var(--border-glass); margin: 12px 0;">
-                        <p><strong>Valeur estimée :</strong> 🏷️ ${TransferMarket.formatPrice(marketValue)}</p>
-                        <p><strong>Condition physique :</strong> ${state.player?.fitness || 90}%</p>
-                        <p><strong>Moral du joueur :</strong> ${state.player?.morale || 80}%</p>
-                        <p><strong>Pic de développement :</strong> Inconnu</p>
-                        
-                        ${coachInfo ? `
-                            <hr style="border-color: var(--border-glass); margin: 12px 0;">
-                            <h4 style="margin: 0 0 6px; color: var(--accent-gold);">👨‍💼 Entraîneur : ${coachInfo.name || ''}</h4>
-                            <p style="margin:4px 0;"><strong>Philosophie :</strong> ${coachInfo.vision || ''}</p>
-                            <p style="margin:4px 0;"><strong>Confiance du coach :</strong> ${coachInfo.relationshipScore || 50}/100</p>
-                        ` : ''}
-                    </div>
-                `;
-            case 'social':
-                return `
-                    <div class="app-pane">
-                        <h3 class="pane-title">📱 Instafoot & Réseaux</h3>
-                        <div style="display:flex; justify-content:space-between; background: rgba(255,255,255,0.05); padding:10px; border-radius:12px; margin-bottom:12px;">
-                            <span>👥 Abonnés : <strong>${(mediaState.followers || 0).toLocaleString()}</strong></span>
-                            <span>🔥 Hype : <strong>${mediaState.hypeLevel || 0}/100</strong></span>
-                        </div>
-
-                        ${mediaState.recentDilemma ? `
-                            <div style="background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; border-radius:16px; padding:12px; margin-bottom:14px;">
-                                <h4 style="color: #ef4444; margin:0 0 6px;">⚠️ ${mediaState.recentDilemma.title || 'Dilemma Média'}</h4>
-                                <p style="font-size:0.85rem; margin:0 0 10px;">${mediaState.recentDilemma.description || ''}</p>
-                                <div style="display:flex; flex-direction:column; gap:6px;">
-                                    ${(mediaState.recentDilemma.choices || []).map((choice, idx) => `
-                                        <button class="btn-dilemma" data-choice-idx="${idx}" style="padding:10px; border-radius:10px; background: rgba(255,255,255,0.15); border:1px solid var(--border-glass); color:#fff; cursor:pointer; font-weight:600; text-align:left;">
-                                            👉 ${choice?.text || choice?.texte || ''}
-                                        </button>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        ` : ''}
-                        
-                        <div class="feed-list">
-                            ${(mediaState.feed && mediaState.feed.length > 0) ? mediaState.feed.map(post => `
-                                <div style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); border-radius:12px; padding:12px; margin-bottom:10px;">
-                                    <div style="display:flex; justify-content:space-between; font-size:0.75rem; color: var(--text-sub); margin-bottom:6px;">
-                                        <span>📢 ${post?.source || 'Instafoot'}</span>
-                                        <span>${post?.date || ''}</span>
-                                    </div>
-                                    <p style="font-size:0.88rem; margin:0 0 8px;">${post?.content || ''}</p>
-                                    <div style="font-size:0.75rem; color: var(--accent-gold); display:flex; gap:14px;">
-                                        <span>❤️ ${post?.likes || 0} likes</span>
-                                        <span>💬 ${post?.commentsCount || 0} commentaires</span>
-                                    </div>
-                                </div>
-                            `).join('') : '<p style="font-size:0.85rem; color: var(--text-sub);">Aucun post récent sur votre fil d\'actualité.</p>'}
-                        </div>
-                    </div>
-                `;
-            case 'messages':
-                return `
-                    <div class="app-pane">
-                        <h3 class="pane-title">💬 Messages & Vestiaire</h3>
-                        <p><strong>Statut personnel :</strong> ${socialState.romance?.unlocked ? (socialState.romance.partnerName || 'En couple') : 'Célibataire'}</p>
-                        <hr style="border-color: var(--border-glass); margin: 12px 0;">
-                        <h4 style="margin:0 0 8px;">Relations d'équipe :</h4>
-                        <div style="display:flex; flex-direction:column; gap:8px;">
-                            ${(socialState.relationships && socialState.relationships.length > 0) ? socialState.relationships.map(rel => `
-                                <div style="display:flex; justify-content:space-between; background:rgba(255,255,255,0.05); padding:8px 12px; border-radius:10px; font-size:0.85rem;">
-                                    <span>${rel?.role || 'Coéquipier'} (${rel?.name || 'Inconnu'})</span>
-                                    <strong>${rel?.score || 50}/100</strong>
-                                </div>
-                            `).join('') : '<p style="font-size:0.85rem; color: var(--text-sub);">Aucune interaction récente dans le vestiaire.</p>'}
-                        </div>
-                    </div>
-                `;
-            case 'bank':
-                return `
-                    <div class="app-pane">
-                        <h3 class="pane-title">🏦 Banque & Finances</h3>
-                        <div style="background: linear-gradient(135deg, #10b981, #047857); padding:20px; border-radius:20px; text-align:center; margin-bottom:14px; box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);">
-                            <span style="font-size:0.8rem; text-transform:uppercase; letter-spacing:1px; opacity:0.9;">Solde Disponible</span>
-                            <div style="font-size:2rem; font-weight:900; margin-top:4px;">${(state.career?.balance || 750).toLocaleString('fr-FR')} €</div>
-                        </div>
-                        <p style="font-size:0.88rem;"><strong>Salaire hebdomadaire :</strong> ${(state.player?.salary || 150).toLocaleString('fr-FR')} € / sem.</p>
-                    </div>
-                `;
-            case 'stats':
-                return `
-                    <div class="app-pane">
-                        <h3 class="pane-title">📊 Statistiques & Attributs</h3>
-                        <div style="display:flex; justify-content:space-around; background:rgba(255,255,255,0.05); padding:10px; border-radius:12px; text-align:center; font-size:0.85rem; margin-bottom:12px;">
-                            <div>🎮 Matchs<br><strong>${state.player?.stats?.matchesPlayed || 0}</strong></div>
-                            <div>⚽ Buts<br><strong>${state.player?.stats?.goals || 0}</strong></div>
-                            <div>🎯 Passes<br><strong>${state.player?.stats?.assists || 0}</strong></div>
-                        </div>
-                        <hr style="border-color: var(--border-glass); margin: 12px 0;">
-                        <h4 style="margin:0 0 10px;">⚡ Général (${state.player?.overall || 47}) | Potentiel (${state.player?.potential || 78})</h4>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                            <div class="stat-pill">🏃‍♂️ Vitesse <strong>${attr.vitesse || 50}</strong></div>
-                            <div class="stat-pill">🎯 Tir <strong>${attr.tir || 50}</strong></div>
-                            <div class="stat-pill">🎯 Passe <strong>${attr.passe || 50}</strong></div>
-                            <div class="stat-pill">✨ Dribble <strong>${attr.dribble || 50}</strong></div>
-                            <div class="stat-pill">🛡️ Défense <strong>${attr.defense || 50}</strong></div>
-                            <div class="stat-pill">💪 Physique <strong>${attr.physique || 50}</strong></div>
-                        </div>
-                    </div>
-                `;
-            case 'training':
-                return `
-                    <div class="app-pane">
-                        <h3 class="pane-title">🏋️‍♂️ Programme d'Entraînement</h3>
-                        <p style="font-size:0.85rem; color: var(--text-sub); margin-bottom:12px;">Sélectionnez le domaine à développer en priorité :</p>
-                        <div style="display:flex; flex-direction:column; gap:8px;">
-                            ${Object.entries(TrainingManager.FOCUS_TYPES || {}).map(([key, focusObj]) => `
-                                <div class="card-select training-card ${state.trainingFocus === key ? 'selected' : ''}" data-focus-key="${key}" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); padding:12px; border-radius:14px; cursor:pointer;">
-                                    <h4 style="margin:0; font-size:0.95rem; color:#fff;">${focusObj?.name || key}</h4>
-                                    <p style="margin:4px 0 0; font-size:0.8rem; color: var(--text-sub);">${focusObj?.description || ''}</p>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
-            case 'transfers':
-                return `
-                    <div class="app-pane">
-                        <h3 class="pane-title">🔄 Marché des Transferts</h3>
-                        <p><strong>Valeur marchand estimée :</strong> ${TransferMarket.formatPrice(marketValue)}</p>
-                        <p style="font-size:0.85rem; color: var(--text-sub); margin-top:10px; line-height:1.4;">
-                            Les propositions d'autres clubs apparaîtront automatiquement sous forme de modales de négociation lors des périodes de mercato.
-                        </p>
-                    </div>
-                `;
-            case 'settings':
-                return `
-                    <div class="app-pane">
-                        <h3 class="pane-title">⚙️ Réglages Carrière</h3>
-                        <div style="display:flex; flex-direction:column; gap:10px; margin-top:14px;">
-                            ${state.player?.canRetire && !state.player?.careerEnded ? `
-                                <button id="retire-career-btn" style="padding:14px; border-radius:14px; background:rgba(239,68,68,0.25); border:1px solid #ef4444; color:#fff; font-weight:700; cursor:pointer;">
-                                    🏁 Prendre sa retraite (${state.player.age} ans)
-                                </button>
-                            ` : ''}
-                            <button id="reset-career-btn" style="padding:14px; border-radius:14px; background:rgba(255,255,255,0.1); border:1px solid var(--border-glass); color:#fff; font-weight:700; cursor:pointer;">
-                                🗑️ Recommencer la carrière
-                            </button>
-                        </div>
-                    </div>
-                `;
-            default:
-                return `<p style="font-size:0.85rem; color:var(--text-sub);">Application en cours de chargement...</p>`;
-        }
-    }
-
-    bindDashboardEvents() {
-        const playBtn = document.getElementById('play-block-btn');
-        if (playBtn) {
-            playBtn.addEventListener('click', () => {
-                const state = this.engine?.state;
-                if (!state) return;
-
-                if (state.player?.isInjured) {
-                    const result = this.engine.playBlock(null);
-                    this.handleBlockResult(result);
-                    return;
-                }
-
-                const isFinalPeriod = state.calendar?.currentMonth === 5;
-                const matchType = isFinalPeriod ? 'final' : 'standard';
-
-                const shouldAsk = MatchChoiceManager.shouldTriggerDilemma(matchType);
-
-                if (shouldAsk) {
-                    const dilemma = MatchChoiceManager.getMatchDilemma(matchType, "l'adversaire");
-
-                    this.afficherModaleMatchDilemma(dilemma, (selectedChoice) => {
-                        const result = this.engine.playBlock(selectedChoice);
-                        this.handleBlockResult(result);
-                    });
-                } else {
-                    const result = this.engine.playBlock(null);
-                    this.handleBlockResult(result);
-                }
-            });
-        }
-
-        const settingsFloatingBtn = document.getElementById('settings-floating-btn');
-        if (settingsFloatingBtn) {
-            settingsFloatingBtn.addEventListener('click', () => {
-                this.activeApp = 'settings';
-                this.renderDashboard();
-            });
-        }
-
-        const retireCareerBtn = document.getElementById('retire-career-btn');
-        if (retireCareerBtn) {
-            retireCareerBtn.addEventListener('click', () => {
-                if (window.confirm(`Prendre sa retraite à ${this.engine?.state?.player?.age || 34} ans ?`)) {
-                    this.engine.retireCareer();
+        document.querySelectorAll('[data-decision]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const index = Number(btn.dataset.decision);
+                try {
+                    if (kind === 'event') this.engine.resolveEventChoice(index);
+                    if (kind === 'coach') this.engine.resolveCoachChoice(index);
+                    if (kind === 'media') this.engine.resolveMediaDilemma(index);
+                    document.getElementById('stp-modal')?.remove();
+                    this.renderDashboard();
+                } catch (error) {
+                    console.error('[UI] decision error:', error);
+                    document.getElementById('stp-modal')?.remove();
+                    this.notice = `Décision impossible : ${error?.message || 'erreur inconnue'}`;
                     this.renderDashboard();
                 }
             });
-        }
-
-        const resetCareerBtn = document.getElementById('reset-career-btn');
-        if (resetCareerBtn) {
-            resetCareerBtn.addEventListener('click', () => {
-                if (window.confirm('Réinitialiser la carrière et recommencer à zéro ?')) {
-                    this.engine.resetCareer();
-                }
-            });
-        }
-
-        document.querySelectorAll('.app-icon').forEach(icon => {
-            icon.addEventListener('click', (e) => {
-                this.activeApp = e.currentTarget.getAttribute('data-app');
-                this.renderDashboard();
-            });
         });
 
-        const backBtn = document.getElementById('back-home-btn');
-        if (backBtn) {
-            backBtn.addEventListener('click', () => {
-                this.activeApp = 'home';
-                this.renderDashboard();
-            });
-        }
-
-        document.querySelectorAll('.btn-dilemma').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const choiceIdx = parseInt(e.currentTarget.getAttribute('data-choice-idx'), 10);
-                if (typeof this.engine?.resolveMediaDilemma === 'function') {
-                    this.engine.resolveMediaDilemma(choiceIdx);
-                }
-                this.renderDashboard();
-            });
-        });
-
-        document.querySelectorAll('.training-card').forEach(card => {
-            card.addEventListener('click', (e) => {
-                document.querySelectorAll('.training-card').forEach(c => c.classList.remove('selected'));
-                const cardEl = e.currentTarget;
-                cardEl.classList.add('selected');
-                const focusKey = cardEl.getAttribute('data-focus-key');
-                this.selectedFocus = focusKey;
-                if (typeof this.engine?.setTrainingFocus === 'function') {
-                    this.engine.setTrainingFocus(focusKey);
-                }
-            });
+        document.getElementById('stp-close-modal')?.addEventListener('click', () => {
+            document.getElementById('stp-modal')?.remove();
         });
     }
 
-    handleBlockResult(result) {
-        this.renderDashboard();
+    openPositionModal() {
+        const proposal = this.engine?.state?.pendingPositionProposal;
+        if (!proposal) return;
 
-        if (!result) return;
-
-        if (result.recoveryOnly) {
-            this.afficherMessageModal(
-                '🏥 Récupération Médicale',
-                'Période dédiée aux soins intensifs et à la rééducation.'
-            );
-            return;
-        }
-
-        const openPendingInteraction = () => {
-            if (result.event) {
-                this.afficherModaleEvent(result.event, (choiceIndex) => {
-                    const consequence = this.engine.resolveEventChoice(choiceIndex);
-
-                    const finish = () => {
-                        this.renderDashboard();
-                        this.handlePostInteraction();
-                    };
-
-                    if (consequence?.changes?.length || consequence?.temporary?.length || consequence?.xp) {
-                        this.afficherModaleConsequences(consequence, finish);
-                    } else {
-                        finish();
-                    }
-                });
-                return;
-            }
-
-            if (result.coachEvent) {
-                this.afficherModaleCoach(result.coachEvent, (choiceIndex) => {
-                    const consequence = this.engine.resolveCoachChoice(choiceIndex);
-
-                    const finish = () => {
-                        this.renderDashboard();
-                        this.handlePostInteraction();
-                    };
-
-                    if (consequence?.changes?.length || consequence?.temporary?.length || consequence?.xp) {
-                        this.afficherModaleConsequences(consequence, finish);
-                    } else {
-                        finish();
-                    }
-                });
-                return;
-            }
-
-            this.handlePostInteraction();
-        };
-
-        if (result.report?.summary?.choiceConsequences) {
-            this.afficherModaleConsequences(
-                result.report.summary.choiceConsequences,
-                openPendingInteraction
-            );
-            return;
-        }
-
-        openPendingInteraction();
-
-        if (result.transferOffer) {
-            this.afficherModaleTransfer(result.transferOffer);
-            return;
-        }
-
-        this.handlePostInteraction();
-    }
-
-    handlePostInteraction() {
-        const state = this.engine?.state;
-        if (!state) return;
-
-        if (state.pendingPositionProposal) {
-            const proposal = state.pendingPositionProposal;
-            this.afficherModaleMatchDilemma({
-                title: '🧠 Le coach vous voit autrement',
-                description: proposal.message,
-                choices: [
-                    { text: `✅ Essayer ${CareerSystem.positionName(proposal.to)}`, impacts: {} },
-                    { text: '❌ Rester à mon poste', impacts: {} }
-                ]
-            }, (choice) => {
-                this.engine.resolvePositionProposal(choice === 0);
-                this.renderDashboard();
-                this.handlePostInteraction();
-            });
-            return;
-        }
-
-        if (state.pendingTransferOffer) {
-            this.afficherModaleTransfer(state.pendingTransferOffer);
-        }
-    }
-
-    afficherMessageModal(title, description) {
-        this.afficherModaleMatchDilemma({
-            title,
-            description,
-            choices: [{ text: 'Continuer', impacts: {} }]
-        }, () => this.renderDashboard());
-    }
-
-    afficherModaleEvent(event, onChoiceMade) {
-        this.afficherModaleMatchDilemma({
-            title: event?.titre || 'Événement Carrière',
-            description: event?.description || '',
-            choices: (event?.choix || []).map(choice => ({
-                ...choice,
-                text: choice?.texte || 'Valider'
-            }))
-        }, (_, index) => {
-            const choices = event?.choix || [];
-            const selectedIndex = choices.findIndex(choice => choice === _);
-            onChoiceMade(selectedIndex >= 0 ? selectedIndex : index);
-        });
-    }
-
-    afficherModaleCoach(event, onChoiceMade) {
-        this.afficherModaleMatchDilemma({
-            title: event?.title || 'Entretien avec le Coach',
-            description: event?.description || '',
-            choices: event?.choices || []
-        }, (choice, index) => {
-            const choices = event?.choices || [];
-            const selectedIndex = choices.findIndex(item => item === choice);
-            onChoiceMade(selectedIndex >= 0 ? selectedIndex : index);
-        });
-    }
-
-    afficherModaleTransfer(offer) {
-        let modal = document.getElementById('event-modal-container');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'event-modal-container';
-            modal.className = 'event-modal-overlay';
-            document.body.appendChild(modal);
-        }
-
-        modal.innerHTML = `
-            <div class="event-modal-card">
-                <span class="event-modal-category">🔄 OFFRE DE TRANSFERT</span>
-                <h3 class="event-modal-title">${offer?.club || 'Club intéressé'}</h3>
-                <p class="event-modal-desc">${offer?.message || 'Une offre ferme a été déposée sur la table des négociations.'}</p>
-                <div style="background: rgba(255,255,255,0.05); padding:12px; border-radius:12px; margin-bottom:16px; font-size:0.85rem;">
-                    <p style="margin:4px 0;"><strong>Rôle proposé :</strong> ${offer?.rolePropose || 'Titulaire'}</p>
-                    <p style="margin:4px 0;"><strong>Salaire :</strong> ${(offer?.salaireHebdo || 0).toLocaleString('fr-FR')} € / sem.</p>
-                    <p style="margin:4px 0;"><strong>Indemnité :</strong> ${(offer?.montant || 0).toLocaleString('fr-FR')} €</p>
-                </div>
-                <div class="event-modal-choices">
-                    <button class="btn-event-choice" data-transfer="accept">✅ Accepter l'Offre</button>
-                    <button class="btn-event-choice" data-transfer="reject" style="opacity:0.7;">❌ Refuser</button>
+        const app = this.initDOM();
+        app.insertAdjacentHTML('beforeend', `
+            <div class="stp-modal" id="stp-modal">
+                <div class="stp-modal-card">
+                    <h2 class="stp-modal-title">Évolution de poste</h2>
+                    <p class="stp-modal-text">${escapeHTML(proposal.description || 'Une nouvelle position est proposée.')}</p>
+                    <div class="stp-actions" style="margin-top:14px">
+                        <button class="stp-secondary" id="position-no">Refuser</button>
+                        <button class="stp-primary" id="position-yes">Accepter</button>
+                    </div>
                 </div>
             </div>
-        `;
+        `);
 
-        modal.querySelector('[data-transfer="accept"]')?.addEventListener('click', () => {
-            const result = this.engine.acceptTransferOffer();
-            modal.remove();
+        document.getElementById('position-no')?.addEventListener('click', () => {
+            this.engine.resolvePositionProposal(false);
+            document.getElementById('stp-modal')?.remove();
             this.renderDashboard();
-            this.afficherMessageModal(
-                '✈️ Transfert Bouclé !',
-                result
-                    ? `Nouveau club : ${result.newClub}. Ton nouveau salaire est fixé à ${result.salary.toLocaleString('fr-FR')} € / semaine.`
-                    : 'Transfert accepté.'
-            );
         });
-
-        modal.querySelector('[data-transfer="reject"]')?.addEventListener('click', () => {
-            this.engine.rejectTransferOffer();
-            modal.remove();
+        document.getElementById('position-yes')?.addEventListener('click', () => {
+            this.engine.resolvePositionProposal(true);
+            document.getElementById('stp-modal')?.remove();
             this.renderDashboard();
         });
     }
 
-    afficherModaleConsequences(result, onContinue = null) {
-        let modal = document.getElementById('event-modal-container');
+    renderApp() {
+        const app = this.initDOM();
+        const state = this.engine?.state || {};
 
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'event-modal-container';
-            modal.className = 'event-modal-overlay';
-            document.body.appendChild(modal);
-        }
-
-        const changes = result?.changes || [];
-        const temporary = result?.temporary || [];
-        const effects = [
-            ...changes.map(change => ({
-                label: change.label || change.stat,
-                delta: change.delta,
-                type: 'permanent'
-            })),
-            ...temporary.map(effect => ({
-                label: effect.label || effect.stat,
-                delta: effect.value,
-                type: 'temporary',
-                duration: effect.duration
-            }))
-        ];
-
-        if (result?.xp) {
-            effects.push({
-                label: 'XP Gagné',
-                delta: result.xp,
-                type: 'xp'
-            });
-        }
-
-        const html = effects.map(effect => {
-            const positive = Number(effect.delta) > 0;
-            const sign = positive ? '+' : '';
-            const value = effect.type === 'temporary'
-                ? `${sign}${Math.round(Number(effect.delta) * 100)}%`
-                : `${sign}${effect.delta}`;
-
-            const duration = effect.type === 'temporary'
-                ? `<small style="opacity:0.6;"> · ${effect.duration} match(s)</small>`
-                : '';
-
-            return `
-                <div class="consequence-result-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size:0.85rem; color: ${positive ? '#10b981' : '#ef4444'};">
-                    <span>${positive ? '▲' : '▼'} ${effect.label}</span>
-                    <strong>${value}${duration}</strong>
+        app.innerHTML = `
+            <div class="stp-shell">
+                <div class="stp-topbar">
+                    <button class="stp-secondary stp-back" id="stp-home">Accueil</button>
+                    <div class="stp-brand">${escapeHTML(this.appLabel(this.activeApp))}<small>Street to Pro</small></div>
+                    <div></div>
                 </div>
-            `;
-        }).join('');
-
-        modal.innerHTML = `
-            <div class="event-modal-card">
-                <span class="event-modal-category">📊 IMPACT & BILAN</span>
-                <h3 class="event-modal-title">${result?.title || 'Résultats'}</h3>
-                ${result?.message ? `<p class="event-modal-desc">${result.message}</p>` : ''}
-                <div class="consequence-result-list" style="margin-bottom:16px;">
-                    ${html || '<p style="font-size:0.85rem; color:var(--text-sub);">Aucun changement direct sur vos statistiques.</p>'}
-                </div>
-                <div class="event-modal-choices">
-                    <button class="btn-event-choice consequence-continue" style="text-align:center;">Continuer</button>
-                </div>
+                <main class="stp-content">
+                    ${this.renderAppContent(state)}
+                </main>
             </div>
         `;
 
-        modal.querySelector('.consequence-continue')?.addEventListener('click', () => {
-            modal.remove();
-            if (typeof onContinue === 'function') {
-                onContinue();
-            }
+        document.getElementById('stp-home')?.addEventListener('click', () => {
+            this.activeApp = 'home';
+            this.renderDashboard();
         });
+
+        this.bindAppActions();
     }
 
-    afficherModaleMatchDilemma(dilemma, onChoiceMade) {
-        let modal = document.getElementById('event-modal-container');
+    appLabel(app) {
+        return {
+            career:'Carrière', calendar:'Calendrier', stats:'Statistiques',
+            training:'Entraînement', transfers:'Mercato', coach:'Coach',
+            social:'Relations', settings:'Réglages'
+        }[app] || 'Application';
+    }
 
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'event-modal-container';
-            modal.className = 'event-modal-overlay';
-            document.body.appendChild(modal);
+    renderAppContent(state) {
+        const player = state.player || {};
+        const stats = player.stats || {};
+
+        switch (this.activeApp) {
+            case 'career':
+                return this.renderCareerApp(state);
+            case 'calendar':
+                return this.renderCalendarApp(state);
+            case 'stats':
+                return this.renderStatsApp(state);
+            case 'training':
+                return this.renderTrainingApp(state);
+            case 'transfers':
+                return this.renderTransfersApp(state);
+            case 'coach':
+                return this.renderCoachApp(state);
+            case 'social':
+                return this.renderSocialApp(state);
+            case 'settings':
+                return this.renderSettingsApp(state);
+            default:
+                return `<div class="stp-card"><h1 class="stp-title">Street to Pro</h1><p class="stp-subtitle">Application inconnue.</p></div>`;
         }
+    }
 
-        modal.innerHTML = `
-            <div class="event-modal-card">
-                <span class="event-modal-category">⚡ ÉVÉNEMENT & TACTIQUE</span>
-                <h3 class="event-modal-title">${dilemma?.title || 'Décision'}</h3>
-                <p class="event-modal-desc">${dilemma?.description || ''}</p>
+    renderCareerApp(state) {
+        const p = state.player;
+        const history = state.career?.seasonHistory || [];
 
-                <div class="event-modal-choices">
-                    ${(dilemma?.choices || []).map((choix, index) => `
-                        <button class="btn-event-choice" data-choice-index="${index}" type="button">
-                            👉 ${choix?.texte || choix?.text || choix?.label || 'Valider'}
-                        </button>
+        return `
+            <div class="stp-card">
+                <h1 class="stp-title">Carrière</h1>
+                <p class="stp-subtitle">${escapeHTML(getPlayerName(p))} · ${safeNumber(p.age)} ans · ${safeNumber(p.overall)} Général</p>
+                <div class="stp-metrics">
+                    <div class="stp-metric"><span>Club</span><strong>${escapeHTML(p.club || '—')}</strong></div>
+                    <div class="stp-metric"><span>Potentiel</span><strong>${safeNumber(p.potential)}</strong></div>
+                    <div class="stp-metric"><span>Étape</span><strong>${escapeHTML(safeCall(() => CareerSystem.getStage?.(p.age), 'Carrière'))}</strong></div>
+                    <div class="stp-metric"><span>Valeur</span><strong>${escapeHTML(safeCall(() => TransferMarket.formatPrice?.(TransferMarket.calculateMarketValue?.(p)), '—'))}</strong></div>
+                </div>
+            </div>
+
+            <div class="stp-card">
+                <h2 class="stp-section-title" style="margin-top:0">Historique des saisons</h2>
+                <div class="stp-list">
+                    ${history.length ? [...history].reverse().map(s => `
+                        <div class="stp-list-item">
+                            <strong>${escapeHTML(s.seasonLabel || 'Saison')} · ${escapeHTML(s.club || '')}</strong>
+                            <span>${safeNumber(s.age)} ans · ${safeNumber(s.overall)} Général · ${safeNumber(s.matches)} matchs · ${safeNumber(s.goals)} buts · ${safeNumber(s.assists)} passes · ${safeNumber(s.averageRating) ? safeNumber(s.averageRating).toFixed(1) : '—'}</span>
+                        </div>
+                    `).join('') : '<div class="stp-list-item"><span>Aucune saison archivée.</span></div>'}
+                </div>
+            </div>
+        `;
+    }
+
+    renderCalendarApp(state) {
+        const plan = safeCall(() => CompetitionSystem.getBlockPlan(state), null);
+        const schedule = state.calendar?.seasonSchedule;
+        const byMonth = schedule?.byMonth || {};
+        const month = safeNumber(state.calendar?.currentMonth, 8);
+
+        return `
+            <div class="stp-card">
+                <h1 class="stp-title">Calendrier</h1>
+                <p class="stp-subtitle">${escapeHTML(state.calendar?.currentPeriod || '')}</p>
+                <div class="stp-highlight">
+                    ${plan?.type === 'offseason'
+                        ? `Intersaison · ${(plan.activities || []).join(' · ')}`
+                        : `${safeNumber(plan?.matches)} match(s) prévus ce mois.`}
+                </div>
+            </div>
+
+            <div class="stp-card">
+                <h2 class="stp-section-title" style="margin-top:0">Saison ${safeNumber(state.calendar?.currentSeasonYear)}/${safeNumber(state.calendar?.currentSeasonYear)+1}</h2>
+                <div class="stp-list">
+                    ${Object.entries(byMonth).map(([key, data]) => `
+                        <div class="stp-list-item" style="${Number(key) === month ? 'border-color:rgba(59,130,246,.55)' : ''}">
+                            <strong>${escapeHTML(data.label || `Mois ${key}`)}</strong>
+                            <span>${escapeHTML(data.period || '')} · ${Array.isArray(data.matches) ? data.matches.length : 0} match(s)</span>
+                        </div>
+                    `).join('') || '<div class="stp-list-item"><span>Calendrier en préparation.</span></div>'}
+                </div>
+            </div>
+        `;
+    }
+
+    renderStatsApp(state) {
+        const p = state.player || {};
+        const s = p.stats || {};
+        const attributes = p.attributes || {};
+
+        return `
+            <div class="stp-card">
+                <h1 class="stp-title">Statistiques</h1>
+                <div class="stp-season-stats">
+                    <div class="stp-season-stat"><span>Matchs</span><strong>${safeNumber(s.matchesPlayed)}</strong></div>
+                    <div class="stp-season-stat"><span>Note</span><strong>${safeNumber(s.averageRating) ? safeNumber(s.averageRating).toFixed(1) : '—'}</strong></div>
+                    <div class="stp-season-stat"><span>Buts</span><strong>${safeNumber(s.goals)}</strong></div>
+                    <div class="stp-season-stat"><span>Passes</span><strong>${safeNumber(s.assists)}</strong></div>
+                </div>
+            </div>
+
+            <div class="stp-card">
+                <h2 class="stp-section-title" style="margin-top:0">Profil technique</h2>
+                <div class="stp-grid stp-grid-2">
+                    ${Object.entries(attributes).map(([key, value]) => `
+                        <div class="stp-metric"><span>${escapeHTML(key)}</span><strong>${safeNumber(value)}</strong></div>
                     `).join('')}
                 </div>
             </div>
         `;
+    }
 
-        modal.querySelectorAll('.btn-event-choice').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const choiceIndex = parseInt(
-                    e.currentTarget.getAttribute('data-choice-index'),
-                    10
-                );
+    renderTrainingApp(state) {
+        const focusTypes = TrainingManager.FOCUS_TYPES || {};
+        const current = state.trainingFocus || 'TECHNIQUE';
 
-                const choixSelectionne = dilemma?.choices?.[choiceIndex];
+        return `
+            <div class="stp-card">
+                <h1 class="stp-title">Entraînement</h1>
+                <p class="stp-subtitle">Choisis l'axe qui guidera le prochain bloc.</p>
+                <div class="stp-grid">
+                    ${Object.entries(focusTypes).map(([key, focus]) => `
+                        <button class="stp-choice ${current === key ? 'selected' : ''}" data-training="${escapeHTML(key)}">
+                            <strong>${escapeHTML(focus?.name || key)}</strong>
+                            <div style="color:#94a3b8;margin-top:4px;font-size:.78rem">${escapeHTML(focus?.description || '')}</div>
+                        </button>
+                    `).join('') || '<div class="stp-list-item"><span>Les entraînements sont gérés par le moteur.</span></div>'}
+                </div>
+            </div>
+        `;
+    }
 
-                modal.remove();
+    renderTransfersApp(state) {
+        const offer = state.pendingTransferOffer;
 
-                if (typeof onChoiceMade === 'function') {
-                    onChoiceMade(choixSelectionne, choiceIndex);
-                }
+        return `
+            <div class="stp-card">
+                <h1 class="stp-title">Mercato</h1>
+                <p class="stp-subtitle">Offres, évolution de club et trajectoire professionnelle.</p>
+            </div>
+
+            ${offer ? `
+                <div class="stp-card">
+                    <h2 class="stp-section-title" style="margin-top:0">Nouvelle offre</h2>
+                    <div class="stp-offer">
+                        <div class="stp-offer-club">
+                            ${flagFor(offer.country || state.player?.clubCountry)}
+                            ${escapeHTML(offer.club || 'Nouveau club')}
+                        </div>
+                        <div class="stp-offer-row"><span>Salaire</span><strong>${safeNumber(offer.salaireHebdo)} € / semaine</strong></div>
+                        <div class="stp-offer-row"><span>Motif</span><strong>${escapeHTML(offer.reason || 'Opportunité')}</strong></div>
+                    </div>
+                    <div class="stp-actions" style="margin-top:10px">
+                        <button class="stp-secondary" id="stp-reject-transfer">Refuser</button>
+                        <button class="stp-primary" id="stp-accept-transfer">Accepter</button>
+                    </div>
+                </div>
+            ` : `
+                <div class="stp-card"><div class="stp-list-item"><strong>Aucune offre en attente</strong><span>Les opportunités apparaissent après les blocs et selon ta carrière.</span></div></div>
+            `}
+        `;
+    }
+
+    renderCoachApp(state) {
+        const data = safeCall(() => CoachSystem.getCoachData?.(state), null);
+        const coach = state.social?.coachData || {};
+
+        return `
+            <div class="stp-card">
+                <h1 class="stp-title">Coach</h1>
+                <p class="stp-subtitle">Ta relation avec ton entraîneur.</p>
+                <div class="stp-metrics">
+                    <div class="stp-metric"><span>Entraîneur</span><strong>${escapeHTML(coach.name || state.player?.coachName || '—')}</strong></div>
+                    <div class="stp-metric"><span>Relation</span><strong>${safeNumber(coach.relation, safeNumber(state.player?.stats?.relationCoach,50))}/100</strong></div>
+                    <div class="stp-metric"><span>Opinion</span><strong>${escapeHTML(coach.opinion || 'Neutre')}</strong></div>
+                    <div class="stp-metric"><span>Vision</span><strong>${escapeHTML(state.player?.coachVision || data?.vision || '—')}</strong></div>
+                </div>
+            </div>
+
+            ${state.pendingCoachEvent ? `
+                <div class="stp-card">
+                    <h2 class="stp-section-title" style="margin-top:0">Interaction en attente</h2>
+                    <button class="stp-primary" id="stp-open-coach">Ouvrir</button>
+                </div>` : ''}
+        `;
+    }
+
+    renderSocialApp(state) {
+        const social = state.social || {};
+        const relationships = Array.isArray(social.relationships) ? social.relationships : [];
+
+        return `
+            <div class="stp-card">
+                <h1 class="stp-title">Relations</h1>
+                <p class="stp-subtitle">Le réseau autour du joueur évolue avec la carrière.</p>
+                <div class="stp-list">
+                    <div class="stp-list-item">
+                        <strong>Coach</strong>
+                        <span>${escapeHTML(social.coachData?.name || state.player?.coachName || '—')} · relation ${safeNumber(social.coachData?.relation,50)}/100</span>
+                    </div>
+                    ${relationships.map(r => `
+                        <div class="stp-list-item">
+                            <strong>${escapeHTML(r.name || r.type || 'Relation')}</strong>
+                            <span>${escapeHTML(r.role || '')} · ${safeNumber(r.relation,50)}/100</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    renderSettingsApp() {
+        return `
+            <div class="stp-card">
+                <h1 class="stp-title">Réglages</h1>
+                <p class="stp-subtitle">Actions techniques de la carrière.</p>
+                <div class="stp-grid">
+                    <button class="stp-secondary" id="stp-refresh-ui">Rafraîchir l'interface</button>
+                    <button class="stp-danger" id="stp-reset-career">Réinitialiser la carrière</button>
+                </div>
+            </div>
+        `;
+    }
+
+    bindAppActions() {
+        document.querySelectorAll('[data-training]').forEach(button => {
+            button.addEventListener('click', () => {
+                const focus = button.dataset.training;
+                const ok = safeCall(() => this.engine.setTrainingFocus(focus), false);
+                this.notice = ok ? 'Entraînement mis à jour.' : 'Impossible de modifier l’entraînement.';
+                this.renderApp();
             });
+        });
+
+        document.getElementById('stp-accept-transfer')?.addEventListener('click', () => {
+            safeCall(() => this.engine.acceptTransferOffer());
+            this.renderApp();
+        });
+
+        document.getElementById('stp-reject-transfer')?.addEventListener('click', () => {
+            safeCall(() => this.engine.rejectTransferOffer());
+            this.renderApp();
+        });
+
+        document.getElementById('stp-open-coach')?.addEventListener('click', () => {
+            this.openDecisionModal(this.engine?.state?.pendingCoachEvent, 'coach');
+        });
+
+        document.getElementById('stp-refresh-ui')?.addEventListener('click', () => {
+            this.activeApp = 'home';
+            this.renderDashboard();
+        });
+
+        document.getElementById('stp-reset-career')?.addEventListener('click', () => {
+            if (confirm('Réinitialiser complètement cette carrière ?')) {
+                safeCall(() => this.engine.resetCareer());
+                this.render();
+            }
         });
     }
 }
+
+export default UserInterface;
