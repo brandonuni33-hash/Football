@@ -4,7 +4,6 @@ import { EconomyManager } from '../economy.js';
 import { SocialSystem } from '../social.js';
 import { MediaSystem } from '../media.js';
 import { TrainingManager } from '../entrainement.js';
-import { MatchChoiceManager } from '../matchChoices.js';
 import { PlayerLogic } from '../player.js';
 import { StateManager, SCHEMA_VERSION } from '../state/stateManager.js';
 import { EventEngine } from '../events.js';
@@ -16,6 +15,7 @@ import { CareerSystem } from '../careerSystem.js';
 import { CompetitionSystem } from '../competitionSystem.js';
 import { WorldSystem } from '../worldSystem.js';
 import { CupSystem } from '../cupSystem.js';
+import { MatchChoiceManager } from '../matchChoices.js';
 import { CalendarSystem } from '../domain/calendar/calendarSystem.js';
 import { SeasonSystem } from '../domain/career/seasonSystem.js';
 import { CareerLifecycleSystem } from '../domain/career/careerLifecycleSystem.js';
@@ -84,9 +84,9 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
         socialSystem,
         mediaSystem,
         trainingSystem,
-        matchChoiceManager: MatchChoiceManager,
         simulatedMatchSystem,
         interactiveMatchSystem: InteractiveMatchSystem,
+        matchChoiceManager: MatchChoiceManager,
         competitionSystem,
         cupSystem,
         relationshipSystem,
