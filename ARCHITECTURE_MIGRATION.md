@@ -29,7 +29,10 @@ state/ + core/
 - `domain/player/playerSystem.js` : modèle joueur canonique.
 - `domain/calendar/calendarSystem.js` : orchestration du calendrier.
 - `domain/match/simulatedMatchSystem.js` : simulation de matchs non interactifs.
-- `domain/match/interactiveMatchSystem.js` : frontière canonique du moteur de match interactif pendant sa décomposition.
+- `domain/match/interactiveMatchSystem.js` : propriétaire canonique du cycle interactif d'un match.
+- `domain/match/interactiveMatchController.js` : session, décisions et résolution du résultat interactif.
+- `domain/match/blockMatchSimulator.js` : simulation des matchs d'un bloc, statistiques et progression liée au bloc.
+- `domain/match/matchHelpers.js` : fonctions pures partagées par les moteurs de match.
 - `domain/notification/notificationSystem.js` : notifications.
 
 ## Ce qui reste à nettoyer
@@ -37,9 +40,8 @@ state/ + core/
 ### Priorité 1 — gros fichiers
 
 - `ui.js` : trop de responsabilités (shell, création, rendu historique, styles injectés, modales).
-- `matchBlock.js` : session interactive, décisions, résultat, statistiques et progression encore regroupés.
 
-Ces fichiers ne doivent pas recevoir de nouvelle logique métier avant leur découpage.
+`matchBlock.js` a été réduit à une façade de compatibilité. Sa logique n'est plus à développer dans ce fichier.
 
 ### Priorité 2 — modules historiques racine
 
@@ -68,6 +70,4 @@ Les fichiers racine de type `ui-*`, `*-v2`, `*-hotfix`, `*-polish` doivent progr
 
 ## État de cette reprise
 
-La passe précédente a été volontairement interrompue lorsqu'un déplacement physique de `ui.js` a révélé que ses imports racine n'étaient pas encore migrés. Le déplacement a été annulé pour conserver `main` fonctionnel.
-
-La suite correcte est donc un découpage réel du contenu de `ui.js` et `matchBlock.js`, puis la suppression progressive des implémentations historiques racine. Aucun simple déplacement de fichier ne doit être utilisé pour masquer les dépendances.
+Le moteur de match interactif et la simulation de bloc ont été réellement découpés sans modifier le contrat public historique : `matchBlock.js` ne contient plus que la façade. La prochaine étape structurante est maintenant le découpage réel de `ui.js`, en conservant `UserInterface` comme contrat stable pendant la migration.
