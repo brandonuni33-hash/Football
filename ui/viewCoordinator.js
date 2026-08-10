@@ -2,18 +2,8 @@
 // Coordinateur unique de présentation. Les vues UI sont assemblées ici.
 
 import {
-    DashboardView,
-    EventView,
-    CoachView,
-    MediaView,
-    TransferView,
-    TrainingView,
-    CareerView,
-    FamilyView,
-    MessagesView,
-    BankView,
-    StatsView,
-    SettingsView
+    DashboardView, EventView, CoachView, MediaView, TransferView, TrainingView,
+    CareerView, FamilyView, MessagesView, BankView, StatsView, SettingsView
 } from './views/index.js';
 
 const APP_VIEWS = {
@@ -38,18 +28,12 @@ export class ViewCoordinator {
         this.ui = ui;
         this.gateway = gateway;
         this.views = {
-            dashboard: new DashboardView({ ui, gateway }),
-            event: new EventView({ ui, gateway }),
-            coach: new CoachView({ ui, gateway }),
-            media: new MediaView({ ui, gateway }),
-            transfer: new TransferView({ ui, gateway }),
-            training: new TrainingView({ ui, gateway }),
-            career: new CareerView({ ui, gateway }),
-            family: new FamilyView({ ui, gateway }),
-            messages: new MessagesView({ ui, gateway }),
-            bank: new BankView({ ui, gateway }),
-            stats: new StatsView({ ui, gateway }),
-            settings: new SettingsView({ ui, gateway })
+            dashboard: new DashboardView({ ui, gateway }), event: new EventView({ ui, gateway }),
+            coach: new CoachView({ ui, gateway }), media: new MediaView({ ui, gateway }),
+            transfer: new TransferView({ ui, gateway }), training: new TrainingView({ ui, gateway }),
+            career: new CareerView({ ui, gateway }), family: new FamilyView({ ui, gateway }),
+            messages: new MessagesView({ ui, gateway }), bank: new BankView({ ui, gateway }),
+            stats: new StatsView({ ui, gateway }), settings: new SettingsView({ ui, gateway })
         };
         this.presentationHandlers = [];
         this.installed = false;
@@ -86,31 +70,33 @@ export class ViewCoordinator {
         return this;
     }
 
-    getTrainingFocusTypes() {
-        return this.gateway.application?.registry?.trainingSystem?.getFocusTypes?.() || {};
-    }
+    getTrainingFocusTypes() { return this.gateway.application?.registry?.trainingSystem?.getFocusTypes?.() || {}; }
 
     renderDashboard(state = this.gateway.state) {
         if (!state?.player) return '';
-        const app = this.ui.initDOM();
-        app.innerHTML = this.views.dashboard.render(state);
-        this.views.dashboard.bind(app);
-        return app.innerHTML;
+        return (this.ui.activeApp && this.ui.activeApp !== 'home') ? this.renderActiveApp() : this.renderHome(state);
+    }
+
+    renderHome(state = this.gateway.state) {
+        if (!state?.player) return '';
+        const root = this.ui.initDOM();
+        root.innerHTML = this.views.dashboard.render(state);
+        this.views.dashboard.bind(root);
+        return root.innerHTML;
     }
 
     renderAppContent(appName) {
         const viewName = APP_VIEWS[appName];
         const view = viewName ? this.views[viewName] : null;
-        if (!view) return '';
-        return view.render(this.gateway.state, this.getTrainingFocusTypes());
+        return view ? view.render(this.gateway.state, this.getTrainingFocusTypes()) : '';
     }
 
     renderActiveApp() {
         const appName = this.ui.activeApp || 'home';
-        if (appName === 'home') return this.renderDashboard();
+        if (appName === 'home') return this.renderHome();
         const viewName = APP_VIEWS[appName];
         const view = viewName ? this.views[viewName] : null;
-        if (!view) return this.renderDashboard();
+        if (!view) return this.renderHome();
 
         const root = this.ui.initDOM();
         root.innerHTML = `
@@ -128,7 +114,7 @@ export class ViewCoordinator {
         `;
         root.querySelector('#back-home-btn')?.addEventListener('click', () => {
             this.ui.activeApp = 'home';
-            this.renderDashboard();
+            this.renderHome();
         });
         view.bind?.(root.querySelector('#app-content-body'), this.gateway.state);
         return root.innerHTML;
