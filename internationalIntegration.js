@@ -11,8 +11,6 @@ const originalStartCareer = GameEngine.prototype.startCareer;
 const originalPlayBlock = GameEngine.prototype.playBlock;
 const originalAdvanceCalendar = GameEngine.prototype.advanceCalendar;
 
-// Dans le calendrier du jeu, juin/juillet appartiennent à la saison commencée
-// en août précédent. Un tournoi d'été porte donc l'année suivante.
 InternationalSystem.ensure = function (state) {
     if (!state?.calendar) return originalEnsure(state);
     const month = Number(state.calendar.currentMonth);
@@ -66,14 +64,18 @@ GameEngine.prototype.playBlock = function (selectedChoice = null) {
             goals: summary.goals || 0,
             assists: summary.assists || 0
         });
+
+        // Le dernier match de groupes est joué en juin ; les huitièmes
+        // commencent en juillet afin de ne jamais être sautés par l'avance
+        // automatique du calendrier.
+        const nextFixture = current.fixtures?.find(item => !item.played && item.phase === 'knockout');
+        if (nextFixture && Number(nextFixture.month) === 6) nextFixture.month = 7;
     }
 
     InternationalSystem.ensure(state);
     return result;
 };
 
-// Extension du plan de bloc : l'international reste visible même pendant
-// juin/juillet, sans casser la logique d'intersaison existante.
 const originalGetBlockPlan = CompetitionSystem.getBlockPlan.bind(CompetitionSystem);
 CompetitionSystem.getBlockPlan = function (state) {
     const plan = originalGetBlockPlan(state);
