@@ -76,6 +76,7 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
         careerSystem: CareerSystem,
         transferMarket: TransferMarket,
         stateManager: StateManager,
+        familyLifeSystem,
         advanceCalendar: (state) => calendarSystem.advance(state)
     });
 
