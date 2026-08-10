@@ -1,6 +1,6 @@
 // domain/notification/notificationSystem.js
-// Transforme les faits du monde en signaux lisibles par le joueur.
-// Le domaine métier ne connaît jamais l'UI.
+// Transforme les faits du monde en signaux de carrière.
+// Le domaine ne connaît jamais l'UI.
 
 import { EventBus } from '../../core/eventBus.js';
 import EVENTS from '../../core/events.js';
@@ -8,23 +8,21 @@ import EVENTS from '../../core/events.js';
 const PRIORITY = Object.freeze({ feed: 20, toast: 40, important: 65, decision: 85, scene: 100 });
 const VISIBILITY = Object.freeze({ hidden: 'hidden', indirect: 'indirect', visible: 'visible', confirmed: 'confirmed' });
 
-function now() {
-    return new Date().toISOString();
-}
-
-function createId(prefix = 'signal') {
-    return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-}
+function now() { return new Date().toISOString(); }
+function createId(prefix = 'signal') { return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`; }
 
 export class NotificationSystem {
-    constructor({ eventBus = EventBus } = {}) {
+    constructor({ state = null, eventBus = EventBus } = {}) {
+        this.state = state;
         this.eventBus = eventBus;
         this.unsubscribers = [];
+        this.started = false;
     }
 
-    init() {
-        this.destroy();
+    start() { this.init(); }
 
+    init() {
+        if (this.started) this.destroy();
         this.#on(EVENTS.SCOUTING_OBSERVATION_STARTED, payload => this.#scoutingObservation(payload));
         this.#on(EVENTS.SCOUTING_OBSERVATION_COMPLETED, payload => this.#scoutingCompleted(payload));
         this.#on(EVENTS.SCOUTING_INTEREST_CREATED, payload => this.#signal(payload, {
@@ -55,31 +53,30 @@ export class NotificationSystem {
             category: 'media', priority: 'feed', title: 'Une nouvelle publication parle de vous',
             body: 'Une nouvelle réaction médiatique vient d’apparaître.', intent: 'media'
         }));
+        this.started = true;
     }
+
+    stop() { this.destroy(); }
 
     destroy() {
         this.unsubscribers.splice(0).forEach(unsubscribe => unsubscribe?.());
+        this.started = false;
     }
 
-    #on(eventName, handler) {
-        this.unsubscribers.push(this.eventBus.on(eventName, handler));
-    }
+    #on(eventName, handler) { this.unsubscribers.push(this.eventBus.on(eventName, handler)); }
+
+    #state(payload) { return payload?.state || this.state; }
 
     #scoutingObservation(payload = {}) {
         const age = Number(payload.age ?? payload.playerAge ?? 18);
         const young = age >= 14 && age < 18;
-        const visibility = payload.visibility || (young ? VISIBILITY.indirect : VISIBILITY.visible);
-
-        // Un simple passage en tribune n'est jamais une interruption critique.
         this.#signal(payload, {
-            category: 'scouting',
-            priority: young ? 'toast' : 'important',
+            category: 'scouting', priority: young ? 'toast' : 'important',
             title: young ? 'Un observateur est présent' : 'Un recruteur vous observe',
             body: young
                 ? 'Un observateur prend des notes depuis les tribunes. Votre entourage pense qu’il s’agit d’un recruteur.'
                 : 'Un recruteur professionnel suit attentivement votre prestation.',
-            intent: 'observe',
-            visibility
+            intent: 'observe', visibility: payload.visibility || (young ? VISIBILITY.indirect : VISIBILITY.visible)
         });
     }
 
@@ -93,7 +90,7 @@ export class NotificationSystem {
     #signal(payload = {}, descriptor = {}) {
         const priority = descriptor.priority || 'feed';
         const signal = {
-            id: createId('signal'),
+            id: createId(),
             threadId: payload.threadId || createId('thread'),
             createdAt: now(),
             category: descriptor.category || 'career',
@@ -113,32 +110,24 @@ export class NotificationSystem {
             archived: false,
             payload: { ...payload }
         };
-
         this.#append(signal, payload);
         this.eventBus.emit('notification.created', signal);
         return signal;
     }
 
     #append(signal, payload) {
-        const state = payload?.state;
+        const state = this.#state(payload);
         if (!state) return;
         state.notifications ||= { signals: [], threads: [], unreadCount: 0 };
         state.notifications.signals ||= [];
         state.notifications.threads ||= [];
-
         state.notifications.signals.push(signal);
         if (!signal.read) state.notifications.unreadCount = (state.notifications.unreadCount || 0) + 1;
 
         let thread = state.notifications.threads.find(item => item.id === signal.threadId);
         if (!thread) {
-            thread = {
-                id: signal.threadId,
-                category: signal.category,
-                title: signal.title,
-                createdAt: signal.createdAt,
-                updatedAt: signal.createdAt,
-                signalIds: []
-            };
+            thread = { id: signal.threadId, category: signal.category, title: signal.title,
+                createdAt: signal.createdAt, updatedAt: signal.createdAt, signalIds: [] };
             state.notifications.threads.push(thread);
         }
         thread.updatedAt = signal.createdAt;
