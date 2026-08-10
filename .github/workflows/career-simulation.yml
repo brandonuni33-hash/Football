@@ -6,8 +6,14 @@ on:
     paths:
       - 'careerSimulation.js'
       - 'player.js'
-      - 'potentialSystem.js'
       - 'progression.js'
+      - 'potentialSystem.js'
+      - 'matchBlock.js'
+      - 'competitionSystem.js'
+      - 'worldSystem.js'
+      - 'entrainement.js'
+      - 'careerSystem.js'
+      - 'cupSystemV2.js'
       - 'domain/**/*.js'
       - '.github/workflows/career-simulation.yml'
 
@@ -17,7 +23,7 @@ permissions:
 jobs:
   simulate:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
@@ -28,14 +34,14 @@ jobs:
         with:
           node-version: 20
 
-      - name: Run 1000 careers and generate report
+      - name: Run 1000 full careers
         run: |
           mkdir -p simulation-results
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
-          import { simulateCareers, printSimulationReport } from './careerSimulation.js';
+          import { simulateCareer, printSimulationReport } from './careerSimulation.js';
 
-          const result = simulateCareers(1000, { maxAge: 34 });
+          const result = simulateCareer(1000, { maxAge: 34 });
           printSimulationReport(result);
 
           fs.writeFileSync(
@@ -45,30 +51,44 @@ jobs:
 
           const rows = result.careers.map(c => ({
             id: c.id,
+            position: c.position,
+            origin: c.origin,
             initialOverall: c.initialOverall,
             initialPotential: c.initialPotential,
             peakOverall: c.peakOverall,
             peakAge: c.peakAge,
             finalOverall: c.finalOverall,
             finalPotential: c.finalPotential,
-            seasons: c.seasons
+            totalMatches: c.totalMatches,
+            averageCareerRating: Number(c.averageCareerRating || 0).toFixed(2),
+            seasons: c.seasons.length,
+            finalAge: c.finalAge
           }));
-          const columns = Object.keys(rows[0]);
-          const csv = [columns.join(','), ...rows.map(row => columns.map(key => row[key]).join(','))].join('\n');
+
+          const columns = Object.keys(rows[0] || {});
+          const csv = [
+            columns.join(','),
+            ...rows.map(row => columns.map(key => JSON.stringify(row[key] ?? '')).join(','))
+          ].join('\n');
           fs.writeFileSync('simulation-results/career-simulation-1000.csv', csv);
 
           fs.writeFileSync(
             'simulation-results/career-simulation-summary.json',
             JSON.stringify({
               generatedAt: result.generatedAt,
-              count: result.count,
+              simulatorType: result.simulatorType,
+              engines: result.engines,
+              countRequested: result.countRequested,
+              countCompleted: result.countCompleted,
+              countErrors: result.countErrors,
               maxAge: result.maxAge,
               finalOverall: result.finalOverall,
               finalPotential: result.finalPotential,
               peakOverall: result.peakOverall,
               thresholds: result.thresholds,
               rates: result.rates,
-              checkpoints: result.checkpoints
+              checkpoints: result.checkpoints,
+              errors: result.errors
             }, null, 2)
           );
           NODE
