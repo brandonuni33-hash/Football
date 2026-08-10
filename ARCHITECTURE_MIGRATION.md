@@ -34,15 +34,21 @@ state/ + core/
 - `domain/match/blockMatchSimulator.js` : simulation des matchs d'un bloc, statistiques et progression liée au bloc.
 - `domain/match/matchHelpers.js` : fonctions pures partagées par les moteurs de match.
 - `domain/notification/notificationSystem.js` : notifications.
-- `ui/creationEnhancements.js` : unique module de présentation de la création de carrière.
+- `ui/creationEnhancements.js` : présentation enrichie de la création.
+- `ui/creationController.js` : orchestration de la création.
+- `ui/viewCoordinator.js` : rendu canonique du dashboard et des applications UI.
+- `ui/modalController.js` : modales et réactions narratives.
+- `ui/blockResultController.js` : orchestration de l'après-bloc.
+- `ui/views/` : écrans spécialisés et sans logique métier.
+- `ui.js` : façade de compatibilité mince.
 
 ## Ce qui reste à nettoyer
 
-### Priorité 1 — gros fichiers
+### Priorité 1 — couches UI historiques
 
-- `ui.js` : trop de responsabilités (shell, création, rendu historique, styles injectés, modales).
+`ui.js` ne contient plus le dashboard, les applications ni les modales : il délègue désormais à `ui/`.
 
-`matchBlock.js` a été réduit à une façade de compatibilité. Sa logique n'est plus à développer dans ce fichier.
+`ui-live-polish.js` et `ui-live-polish.css` restent temporairement chargés pour conserver certains enrichissements visuels historiques. Ils devront être absorbés dans les vues canoniques puis supprimés.
 
 ### Priorité 2 — modules historiques racine
 
@@ -52,11 +58,22 @@ Les systèmes historiques suivants restent des dépendances de compatibilité :
 
 Règle : aucune nouvelle mécanique ne doit être ajoutée directement dans ces fichiers lorsqu'un propriétaire de domaine existe.
 
-### Priorité 3 — UI multi-couches
+### Priorité 3 — façades restantes
 
-La création de carrière a été regroupée dans `ui/creationEnhancements.js`. Les anciens `creation-ui-polish.js`, `ui-creation-constants-bridge.js` et `ui-creation-ux-v2.js` ont été supprimés.
+`matchBlock.js` reste une façade de compatibilité. Elle pourra être supprimée lorsque les derniers imports historiques auront été migrés.
 
-Les autres fichiers racine de type `ui-*`, `*-v2`, `*-hotfix`, `*-polish` doivent progressivement être remplacés par des modules nommés par responsabilité dans `ui/`, `ui/views/`, `ui/controllers/` ou `ui/components/`.
+## Nettoyage déjà effectué
+
+- suppression de `domain/career/consequenceSystem.js` en doublon ;
+- suppression de `gameEngine.js` racine et de l'ancien `LegacyGameBridge` ;
+- suppression du doublon `application/notificationSystem.js` ;
+- découpage réel de `matchBlock.js` ;
+- regroupement de la création dans `ui/creationEnhancements.js` + `ui/creationController.js` ;
+- suppression de `creation-ui-polish.js`, `ui-creation-constants-bridge.js` et `ui-creation-ux-v2.js` ;
+- suppression de `ui-gameplay-hotfix.js` ;
+- suppression de `ui-interactive-match.js` ;
+- réduction de `ui.js` à une façade ;
+- extraction des vues `messages`, `bank`, `stats` et `settings`.
 
 ## Règles permanentes
 
@@ -70,7 +87,3 @@ Les autres fichiers racine de type `ui-*`, `*-v2`, `*-hotfix`, `*-polish` doiven
 8. Les systèmes historiques racine servent uniquement de compatibilité pendant la migration.
 9. Les nouveaux fichiers doivent porter un nom de responsabilité, jamais une version (`V2`, `V4`) ou un état temporaire (`hotfix`, `patch`, `polish`).
 10. Toute nouvelle mécanique doit être branchée depuis `application/systemRegistry.js`.
-
-## État de cette reprise
-
-Le moteur de match interactif et la simulation de bloc ont été réellement découpés sans modifier le contrat public historique : `matchBlock.js` ne contient plus que la façade. La création de carrière a également été regroupée dans un module UI unique. La prochaine étape structurante est maintenant le découpage réel de `ui.js`, en conservant `UserInterface` comme contrat stable pendant la migration.
