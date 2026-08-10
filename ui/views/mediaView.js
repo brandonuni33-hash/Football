@@ -44,8 +44,17 @@ export class MediaView {
     bind(root) {
         root?.querySelectorAll('[data-media-choice]').forEach((button) => {
             button.addEventListener('click', () => {
-                this.gateway.resolveMediaDilemma(Number(button.dataset.mediaChoice));
-                this.ui?.renderDashboard?.();
+                const result = this.gateway.resolveMediaDilemma(Number(button.dataset.mediaChoice));
+
+                if (result && (result.changes?.length || result.temporary?.length || result.xp)) {
+                    this.ui?.afficherModaleConsequences?.(result, () => {
+                        this.ui?.renderDashboard?.();
+                        this.ui?.handlePostInteraction?.();
+                    });
+                } else {
+                    this.ui?.renderDashboard?.();
+                    this.ui?.handlePostInteraction?.();
+                }
             });
         });
     }
