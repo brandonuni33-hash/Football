@@ -1,6 +1,5 @@
 // application/systemRegistry.js
-// Composition root de transition. Les systèmes historiques sont construits ici
-// afin que GameEngine cesse progressivement de connaître toutes leurs implémentations.
+// Composition root de transition : toutes les dépendances des domaines sont assemblées ici.
 
 import { EconomyManager } from '../economy.js';
 import { SocialSystem } from '../social.js';
@@ -76,7 +75,8 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
         transferMarket: TransferMarket,
         careerSystem: CareerSystem,
         playerLogic: PlayerLogic,
-        stateManager: StateManager
+        stateManager: StateManager,
+        worldSystem
     });
 
     const careerLifecycleSystem = new CareerLifecycleSystem({
