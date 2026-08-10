@@ -1,164 +1,34 @@
 // ui-live-polish.js
 // Dashboard UX : une seule source visuelle pour l'identité, l'état et les statistiques.
 
-const COUNTRY_FLAGS = {
-    France:'🇫🇷', Espagne:'🇪🇸', Spain:'🇪🇸', Allemagne:'🇩🇪', Germany:'🇩🇪', Angleterre:'🇬🇧', England:'🇬🇧',
-    Italie:'🇮🇹', Italy:'🇮🇹', Portugal:'🇵🇹', Brésil:'🇧🇷', Brazil:'🇧🇷', Argentine:'🇦🇷', Argentina:'🇦🇷',
-    Belgique:'🇧🇪', PaysBas:'🇳🇱', 'Pays-Bas':'🇳🇱', Netherlands:'🇳🇱', Maroc:'🇲🇦', Morocco:'🇲🇦',
-    Sénégal:'🇸🇳', Senegal:'🇸🇳', CôteDIvoire:'🇨🇮', 'Côte d’Ivoire':'🇨🇮', Cameroun:'🇨🇲', Cameroon:'🇨🇲',
-    Nigeria:'🇳🇬', ÉtatsUnis:'🇺🇸', 'États-Unis':'🇺🇸', USA:'🇺🇸', Canada:'🇨🇦', Japon:'🇯🇵', Japan:'🇯🇵',
-    Corée:'🇰🇷', 'Corée du Sud':'🇰🇷', Korea:'🇰🇷'
-};
+const COUNTRY_FLAGS = { France:'🇫🇷',Espagne:'🇪🇸',Spain:'🇪🇸',Allemagne:'🇩🇪',Germany:'🇩🇪',Angleterre:'🇬🇧',England:'🇬🇧',Italie:'🇮🇹',Italy:'🇮🇹',Portugal:'🇵🇹',Brésil:'🇧🇷',Brazil:'🇧🇷',Argentine:'🇦🇷',Argentina:'🇦🇷',Belgique:'🇧🇪',PaysBas:'🇳🇱','Pays-Bas':'🇳🇱',Netherlands:'🇳🇱',Maroc:'🇲🇦',Morocco:'🇲🇦',Sénégal:'🇸🇳',Senegal:'🇸🇳','Côte d’Ivoire':'🇨🇮',Cameroun:'🇨🇲',Cameroon:'🇨🇲',Nigeria:'🇳🇬','États-Unis':'🇺🇸',USA:'🇺🇸',Canada:'🇨🇦',Japon:'🇯🇵',Japan:'🇯🇵','Corée du Sud':'🇰🇷',Korea:'🇰🇷'};
 
-function valueFromStats(stats, keys) {
-    for (const key of keys) { const n = Number(stats?.[key]); if (Number.isFinite(n)) return n; }
-    return 0;
-}
-function firstValue(...values) { return values.find(v => v !== undefined && v !== null && String(v).trim() !== ''); }
-function ratingFromStats(stats) {
-    const n = valueFromStats(stats, ['averageRating','average_rating','ratingAverage','avgRating','rating']);
-    return n > 0 ? n.toFixed(1) : '—';
-}
-function countryFlag(player) {
-    const direct = player?.countryFlag || player?.nationalityFlag || player?.flag;
-    if (direct && String(direct).length <= 4) return direct;
-    const code = player?.countryCode || player?.nationalityCode || player?.nationCode;
-    if (typeof code === 'string' && /^[A-Za-z]{2}$/.test(code)) return [...code.toUpperCase()].map(c => String.fromCodePoint(127397 + c.charCodeAt())).join('');
-    const name = player?.country?.name || player?.country || player?.nationality || player?.nation;
-    return typeof name === 'string' ? (COUNTRY_FLAGS[name] || '') : '';
-}
-function potentialStars(value) {
-    const n = Number(value); if (!Number.isFinite(n)) return '☆☆☆☆☆';
-    const count = Math.max(1, Math.min(5, Math.ceil(n / 20)));
-    return '★'.repeat(count) + '☆'.repeat(5 - count);
-}
-function academyStars(player) {
-    return firstValue(player?.academyStars, player?.trainingCenterStars, player?.trainingCentreStars, player?.formationCenterStars, player?.academyRating, player?.trainingCenterRating, player?.trainingCentreRating) ?? 3;
-}
-function academyStarText(value) {
-    const n = Number(value); const count = Number.isFinite(n) ? Math.max(0, Math.min(5, Math.round(n))) : 3;
-    return '★'.repeat(count) + '☆'.repeat(5 - count);
-}
-function leagueName(player, state) {
-    const league = player?.league;
-    const explicit = firstValue(
-        player?.championshipName, player?.championship, player?.leagueName,
-        typeof league === 'object' ? league?.name : league,
-        player?.competitionName,
-        state?.club?.league?.name, state?.club?.championship?.name,
-        state?.team?.league?.name, state?.team?.championship?.name,
-        state?.currentLeague?.name, state?.currentCompetition?.name,
-        state?.competition?.name
-    );
-    if (explicit) return explicit;
-    const club = String(player?.club || '').toLowerCase();
-    if (club.includes('bordeaux')) return 'Ligue 2 BKT';
-    if (club.includes('nuremberg') || club.includes('nürnberg')) return '2. Bundesliga';
-    return '';
-}
-function contractLine(player) {
-    const level = firstValue(player?.youthLevel, player?.teamLevel, player?.academyLevel, player?.category) || 'U15';
-    const contract = firstValue(player?.contractType, player?.contractName, player?.contract?.type) || 'Contrat jeune';
-    return `${level} · ${contract}`;
-}
-function roleStats(player) {
-    const stats = player?.stats || {}, position = String(player?.position || player?.positionId || '').toUpperCase();
-    const matches = valueFromStats(stats, ['matches','matchesPlayed','appearances','games']);
-    const goals = valueFromStats(stats, ['goals','buts']);
-    const assists = valueFromStats(stats, ['assists','passesDecisives']);
-    const tackles = valueFromStats(stats, ['tackles','tacles']);
-    const cleanSheets = valueFromStats(stats, ['cleanSheets','clean_sheets','cleanSheet','cleanSheetsCount']);
-    if (['GK','GB','G'].includes(position)) return [['MATCHS',matches],['CLEAN SHEETS',cleanSheets],['NOTE MOY.',ratingFromStats(stats)]];
-    if (['DC','CB','DD','RB','DG','LB'].includes(position)) return [['MATCHS',matches],['TACLES',tackles],['PASSES D.',assists],['NOTE MOY.',ratingFromStats(stats)]];
-    return [['MATCHS',matches],['BUTS',goals],['PASSES D.',assists],['NOTE MOY.',ratingFromStats(stats)]];
-}
-function loadLiveStyles() {
-    if (document.getElementById('street-live-polish-css')) return;
-    const link = document.createElement('link'); link.id = 'street-live-polish-css'; link.rel = 'stylesheet'; link.href = './ui-live-polish.css?v=4'; document.head.appendChild(link);
-}
-function removeDuplicateCareerRows(widget, keep) {
-    [...widget.children].forEach(child => {
-        if (child === keep) return;
-        const text = (child.textContent || '').replace(/\s+/g, ' ').toUpperCase();
-        if (text.includes('MATCHS') && text.includes('NOTE MOY.')) child.remove();
-    });
-}
-function cleanLegacyAcademyRows(widget, info) {
-    [...widget.children].forEach(child => {
-        if (child === info) return;
-        const text = (child.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
-        if (text.startsWith('centre de formation')) child.remove();
-    });
-}
-function enhanceDashboard() {
-    const app = document.getElementById('app'), state = window.UI?.engine?.state;
-    const screen = app?.querySelector('.phone-home-screen'), widget = screen?.querySelector('.player-widget-enhanced');
-    if (!screen || !widget || !state?.player) return;
-    const player = state.player;
-    const flag = countryFlag(player);
-    const name = `${player.firstname || player.firstName || ''} ${player.lastname || player.lastName || ''}`.trim() || 'Joueur';
-    const info = widget.querySelector('.player-main-info');
+const firstValue=(...v)=>v.find(x=>x!==undefined&&x!==null&&String(x).trim()!=='');
+function stat(s,keys){for(const k of keys){const n=Number(s?.[k]);if(Number.isFinite(n))return n;}return 0;}
+function flag(p){const d=p?.countryFlag||p?.nationalityFlag||p?.flag;if(d&&String(d).length<=4)return d;const c=p?.countryCode||p?.nationalityCode||p?.nationCode;if(typeof c==='string'&&/^[A-Za-z]{2}$/.test(c))return [...c.toUpperCase()].map(x=>String.fromCodePoint(127397+x.charCodeAt())).join('');const n=p?.country?.name||p?.country||p?.nationality||p?.nation;return typeof n==='string'?(COUNTRY_FLAGS[n]||''):'';}
+function potentialStars(v){const n=Number(v);if(!Number.isFinite(n))return '☆☆☆☆☆';const c=Math.max(1,Math.min(5,Math.ceil(n/20)));return '★'.repeat(c)+'☆'.repeat(5-c);}
+function academyStars(p){return firstValue(p?.academyStars,p?.trainingCenterStars,p?.trainingCentreStars,p?.formationCenterStars,p?.academyRating,p?.trainingCenterRating,p?.trainingCentreRating)??3;}
+function academyText(v){const n=Number(v),c=Number.isFinite(n)?Math.max(0,Math.min(5,Math.round(n))):3;return '★'.repeat(c)+'☆'.repeat(5-c);}
+function league(p,s){const l=p?.league;const x=firstValue(p?.championshipName,p?.championship,p?.leagueName,typeof l==='object'?l?.name:l,p?.competitionName,s?.club?.league?.name,s?.club?.championship?.name,s?.team?.league?.name,s?.team?.championship?.name,s?.currentLeague?.name,s?.competition?.name);if(x)return x;const c=String(p?.club||'').toLowerCase();if(c.includes('bordeaux'))return 'Ligue 2 BKT';if(c.includes('nuremberg')||c.includes('nürnberg'))return '2. Bundesliga';return '';}
+function contract(p){return `${firstValue(p?.youthLevel,p?.teamLevel,p?.academyLevel,p?.category)||'U15'} · ${firstValue(p?.contractType,p?.contractName,p?.contract?.type)||'Contrat jeune'}`;}
+function rating(s){const n=stat(s,['averageRating','average_rating','ratingAverage','avgRating','rating']);return n>0?n.toFixed(1):'—';}
+function careerStats(p){const s=p?.stats||{},pos=String(p?.position||p?.positionId||'').toUpperCase(),m=stat(s,['matches','matchesPlayed','appearances','games']),a=stat(s,['assists','passesDecisives']),g=stat(s,['goals','buts']),t=stat(s,['tackles','tacles']),cs=stat(s,['cleanSheets','clean_sheets','cleanSheet','cleanSheetsCount']);if(['GK','GB','G'].includes(pos))return [['MATCHS',m],['CLEAN SHEETS',cs],['NOTE MOY.',rating(s)]];if(['DC','CB','DD','RB','DG','LB'].includes(pos))return [['MATCHS',m],['TACLES',t],['PASSES D.',a],['NOTE MOY.',rating(s)]];return [['MATCHS',m],['BUTS',g],['PASSES D.',a],['NOTE MOY.',rating(s)]];}
+function loadStyles(){const id='street-live-polish-css',old=document.getElementById(id);if(old)old.remove();const l=document.createElement('link');l.id=id;l.rel='stylesheet';l.href='./ui-live-polish.css?v=6';document.head.appendChild(l);}
 
-    if (info) {
-        // Toute l'ancienne identité est remplacée : aucune ligne fantôme ne peut rester.
-        info.innerHTML = `
-            <div class="widget-title live-player-name-line">
-                ${flag ? `<span class="live-player-flag" aria-label="Nationalité">${flag}</span>` : ''}
-                <span class="live-player-name">${name}</span>
-            </div>
-            <div class="live-player-position-row">
-                <span class="live-player-position">${player.position || player.positionId || '—'}</span>
-                <span class="live-player-age">${player.age ?? '—'} ans</span>
-            </div>
-            <div class="player-club-sub live-club-line">${player.club || 'Sans club'}</div>
-            ${leagueName(player, state) ? `<div class="live-league-line">${leagueName(player, state)}</div>` : ''}
-            <div class="live-academy-line"><span>Centre de formation</span><span class="live-academy-stars">${academyStarText(academyStars(player))}</span></div>
-            <div class="live-contract-line">${contractLine(player)}</div>
-        `;
-    }
-
-    cleanLegacyAcademyRows(widget, info);
-    widget.querySelectorAll('.widget-secret-tag,.player-secret,.player-balance,.balance-widget,.dashboard-career-stats,.career-stats,.player-career-stats,.career-stat-row').forEach(el => el.remove());
-
-    const oldGrid = widget.querySelector('.widget-stats-grid');
-    if (oldGrid) {
-        oldGrid.className = 'widget-stats-grid live-core-stats';
-        oldGrid.innerHTML = `
-            <div class="stat-pill"><span>GEN</span><strong>${player.overall ?? '—'}</strong></div>
-            <div class="stat-pill"><span>POTENTIEL</span><strong class="live-potential-stars">${potentialStars(player.potential)}</strong></div>
-            <div class="stat-pill"><span>FORME</span><strong>${player.fitness ?? '—'}</strong></div>
-            <div class="stat-pill"><span>MORAL</span><strong>${player.morale ?? '—'}</strong></div>`;
-
-        widget.querySelectorAll('.live-career-stats').forEach(el => el.remove());
-        removeDuplicateCareerRows(widget, null);
-        const career = document.createElement('div');
-        career.className = 'live-career-stats';
-        career.setAttribute('aria-label','Statistiques de carrière');
-        career.innerHTML = roleStats(player).map(([label,value]) => `<div class="live-career-stat"><span>${label}</span><strong>${value}</strong></div>`).join('');
-        oldGrid.insertAdjacentElement('afterend', career);
-    }
-
-    const apps = screen.querySelector('.apps-grid');
-    if (!apps) return;
-    screen.querySelectorAll('.live-section-title').forEach((el,i) => { if (i > 0) el.remove(); });
-    let heading = screen.querySelector('.live-section-title');
-    if (!heading) { heading = document.createElement('div'); heading.className = 'live-section-title'; heading.innerHTML = '<span>Applications</span>'; apps.parentNode.insertBefore(heading, apps); }
-
-    let notificationZone = screen.querySelector('.dashboard-notification-zone');
-    if (!notificationZone) {
-        notificationZone = document.createElement('div'); notificationZone.className = 'dashboard-notification-zone'; notificationZone.setAttribute('aria-label','Notifications');
-        const existing = [...screen.querySelectorAll('.dashboard-notification-card,.notification-card,.notification-panel')];
-        existing.forEach(el => notificationZone.appendChild(el));
-        apps.parentNode.insertBefore(notificationZone, apps);
-    }
-
-    const advance = screen.querySelector('#play-block-btn');
-    if (advance) {
-        advance.textContent = player.careerEnded ? 'Carrière terminée' : 'Avancer';
-        advance.classList.add('app-advance-icon');
-        if (advance.parentNode !== apps) apps.appendChild(advance);
-    }
+function ensureIdentity(widget,player,state){
+    const old=widget.querySelector('.player-main-info');
+    if(old)old.style.display='none';
+    let info=widget.querySelector('.live-identity-block');
+    if(!info){info=document.createElement('div');info.className='live-identity-block';const anchor=widget.querySelector('.player-card-banner')||widget.firstElementChild;if(anchor)anchor.insertAdjacentElement('afterend',info);else widget.prepend(info);}
+    const name=`${player.firstname||player.firstName||''} ${player.lastname||player.lastName||''}`.trim()||'Joueur';
+    const f=flag(player),pos=player.position||player.positionId||'—';
+    info.innerHTML=`<div class="live-player-name-line"><span class="live-player-flag">${f}</span><span class="live-player-name">${name}</span></div><div class="live-player-position-row"><span class="live-player-position">${pos}</span><span class="live-player-age">${player.age??'—'} ans</span></div><div class="live-club-line">${player.club||'Sans club'}</div>${league(player,state)?`<div class="live-league-line">${league(player,state)}</div>`:''}<div class="live-academy-line"><span>Centre de formation</span><span class="live-academy-stars">${academyText(academyStars(player))}</span></div><div class="live-contract-line">${contract(player)}</div>`;
+    widget.querySelectorAll('.widget-secret-tag,.player-secret,.player-balance,.balance-widget,.dashboard-career-stats,.career-stats,.player-career-stats,.career-stat-row').forEach(e=>e.remove());
+    [...widget.children].forEach(e=>{if(e===info)return;const t=(e.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();if(t.startsWith('centre de formation'))e.remove();if(t.includes('matchs')&&t.includes('note moy.'))e.remove();});
 }
-const observer = new MutationObserver(() => requestAnimationFrame(enhanceDashboard));
-function start() { loadLiveStyles(); const app = document.getElementById('app') || document.body; observer.observe(app,{childList:true,subtree:true}); requestAnimationFrame(enhanceDashboard); }
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded',start,{once:true}); else start();
+function enhance(){const app=document.getElementById('app'),state=window.UI?.engine?.state,screen=app?.querySelector('.phone-home-screen'),widget=screen?.querySelector('.player-widget-enhanced');if(!screen||!widget||!state?.player)return;const p=state.player;ensureIdentity(widget,p,state);
+    const grid=widget.querySelector('.widget-stats-grid');
+    if(grid){grid.className='widget-stats-grid live-core-stats';grid.innerHTML=`<div class="stat-pill"><span>GEN</span><strong>${p.overall??'—'}</strong></div><div class="stat-pill"><span>POTENTIEL</span><strong class="live-potential-stars">${potentialStars(p.potential)}</strong></div><div class="stat-pill"><span>FORME</span><strong>${p.fitness??'—'}</strong></div><div class="stat-pill"><span>MORAL</span><strong>${p.morale??'—'}</strong></div>`;widget.querySelectorAll('.live-career-stats').forEach(e=>e.remove());const c=document.createElement('div');c.className='live-career-stats';c.innerHTML=careerStats(p).map(([l,v])=>`<div class="live-career-stat"><span>${l}</span><strong>${v}</strong></div>`).join('');grid.insertAdjacentElement('afterend',c);}
+    const apps=screen.querySelector('.apps-grid');if(!apps)return;let heading=screen.querySelector('.live-section-title');if(!heading){heading=document.createElement('div');heading.className='live-section-title';heading.innerHTML='<span>Applications</span>';apps.parentNode.insertBefore(heading,apps);}let zone=screen.querySelector('.dashboard-notification-zone');if(!zone){zone=document.createElement('div');zone.className='dashboard-notification-zone';const cards=[...screen.querySelectorAll('.dashboard-notification-card,.notification-card,.notification-panel')];cards.forEach(e=>zone.appendChild(e));apps.parentNode.insertBefore(zone,apps);}const advance=screen.querySelector('#play-block-btn');if(advance){advance.textContent=p.careerEnded?'Carrière terminée':'Avancer';advance.classList.add('app-advance-icon');if(advance.parentNode!==apps)apps.appendChild(advance);}
+}
+let styleLoaded=false;const observer=new MutationObserver(()=>requestAnimationFrame(enhance));function start(){if(!styleLoaded){loadStyles();styleLoaded=true;}const app=document.getElementById('app')||document.body;observer.observe(app,{childList:true,subtree:true});requestAnimationFrame(enhance);}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
