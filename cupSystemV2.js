@@ -26,18 +26,10 @@ function shuffle(items, random) { const a = [...items]; for (let i = a.length - 
 function strength(club) { return Number(club?.strength || 50) + Number(club?.prestige || 0) * 0.35; }
 function playerClubId(state) { return state?.player?.clubId || WorldSystem.getClub(state?.player?.club)?.id || null; }
 function countryForPlayer(state) { return state?.player?.clubCountry || state?.player?.country || 'France'; }
-function planIndexForCount(count) {
-    if (count > 32) return 0;
-    if (count === 32) return 1;
-    if (count === 16) return 2;
-    if (count === 8) return 3;
-    if (count === 4) return 4;
-    return 5;
-}
+function planIndexForCount(count) { if (count > 32) return 0; if (count === 32) return 1; if (count === 16) return 2; if (count === 8) return 3; if (count === 4) return 4; return 5; }
 function simulateGoals(home, away, random = Math.random) {
     const diff = strength(home) - strength(away);
-    const h = clamp(1.25 + diff / 45, .3, 2.8);
-    const a = clamp(1.05 - diff / 55, .25, 2.4);
+    const h = clamp(1.25 + diff / 45, .3, 2.8), a = clamp(1.05 - diff / 55, .25, 2.4);
     const poisson = lambda => { let g = 0; const attempts = Math.max(1, Math.round(lambda * 3)); for (let i = 0; i < attempts; i++) if (random() < lambda / attempts) g++; return Math.min(5, g); };
     return { homeGoals: poisson(h), awayGoals: poisson(a) };
 }
@@ -46,16 +38,11 @@ function resolve(home, away, random = Math.random, forced = null) {
     if (homeGoals == null || awayGoals == null) ({ homeGoals, awayGoals } = simulateGoals(home, away, random));
     if (homeGoals === awayGoals) { extra = true; homeGoals += random() < .48 ? 1 : 0; awayGoals += random() < .45 ? 1 : 0; }
     let winner;
-    if (homeGoals > awayGoals) winner = home;
-    else if (awayGoals > homeGoals) winner = away;
-    else { pens = true; winner = random() < clamp(.5 + (strength(home) - strength(away)) / 250, .35, .65) ? home : away; }
+    if (homeGoals > awayGoals) winner = home; else if (awayGoals > homeGoals) winner = away; else { pens = true; winner = random() < clamp(.5 + (strength(home) - strength(away)) / 250, .35, .65) ? home : away; }
     return { homeClubId: home.id, awayClubId: away.id, homeGoals, awayGoals, winnerClubId: winner.id, wentToExtraTime: extra, wentToPenalties: pens };
 }
 function match(home, away, cup, round, month, index) {
-    const p = cup.playerClubId;
-    const isHome = home.id === p || (away.id !== p && index % 2 === 0);
-    const h = isHome ? home : away;
-    const a = isHome ? away : home;
+    const p = cup.playerClubId, isHome = home.id === p || (away.id !== p && index % 2 === 0), h = isHome ? home : away, a = isHome ? away : home;
     return { id: `cup-${cup.seasonYear}-${cup.id}-${cup.roundIndex}-${index}-${h.id}-${a.id}`, type: 'cup', competitionType: 'national_cup', competitionId: cup.id, competitionName: cup.name, round, month, seasonYear: cup.seasonYear, matchday: index + 1, homeClubId: h.id, awayClubId: a.id, homeClub: h.name, awayClub: a.name, opponent: h.id === p ? a.name : h.name, venue: h.id === p ? 'Domicile' : 'Extérieur', importance: round === 'Finale' ? 'major' : round === 'Demi-finales' ? 'important' : 'normal', playable: true, played: false };
 }
 function buildRound(cup, ids) {
@@ -79,7 +66,7 @@ export const CupSystem = {
         const year = Number(state.calendar?.currentSeasonYear) || new Date().getFullYear();
         for (const country of Object.keys(COUNTRIES)) {
             const def = COUNTRIES[country], clubs = def.leagueIds.flatMap(id => WorldSystem.getClubs(id)), old = state.cups[def.id];
-            if (!old || Number(old.seasonYear) !== year) state.cups[def.id] = { id: def.id, name: def.name, shortName: def.shortName, country, seasonYear: year, status: 'active', roundIndex: 0, currentRound: null, roundMonth: null, qualifiedClubIds: clubs.map(c => c.id), eliminatedClubIds: [], matches: [], history: [], finalistIds: [], winnerId: null, champion: null, playerClubId: playerClubId(state) };
+            if (!old || Number(old.seasonYear) !== year) state.cups[def.id] = { id: def.id, name: def.name, shortName: def.shortName, country, seasonYear: year, status: 'active', roundIndex: 0, currentRound: null, roundMonth: 9, qualifiedClubIds: clubs.map(c => c.id), eliminatedClubIds: [], matches: [], history: [], finalistIds: [], winnerId: null, champion: null, playerClubId: playerClubId(state) };
         }
         return state.cups;
     },
@@ -97,7 +84,8 @@ export const CupSystem = {
     getPlayerMatch(state, country = countryForPlayer(state)) {
         const cup = this.getCup(state, country), pid = playerClubId(state), month = Number(state.calendar?.currentMonth) || 8;
         if (!cup || cup.status === 'finished' || !pid) return null;
-        if (!cup.matches.length && Number(cup.roundMonth) === month) this.prepareRound(state, country);
+        // Si le mois du tour est atteint (ou dépassé après un chargement), on crée le tirage.
+        if (!cup.matches.length && (!Number(cup.roundMonth) || month >= Number(cup.roundMonth))) this.prepareRound(state, country);
         return cup.matches.find(m => !m.played && (m.homeClubId === pid || m.awayClubId === pid)) || null;
     },
     getPlayerFixtures(state) { const country = countryForPlayer(state), month = Number(state.calendar?.currentMonth) || 8, cup = this.getCup(state, country); if (!cup || cup.status === 'finished') return []; const m = this.getPlayerMatch(state, country); return m && Number(m.month) === month ? [m] : []; },
@@ -106,8 +94,7 @@ export const CupSystem = {
         const cup = this.getCup(state, countryForPlayer(state)), home = WorldSystem.getClub(fixture.homeClubId), away = WorldSystem.getClub(fixture.awayClubId);
         if (!cup || !home || !away) return null;
         const pid = playerClubId(state), homePlayer = home.id === pid, rating = Number(performance.rating || 6), goals = Math.max(0, Number(performance.goals || 0)), assists = Math.max(0, Number(performance.assists || 0));
-        const base = simulateGoals(home, away);
-        let playerScore = homePlayer ? base.homeGoals : base.awayGoals;
+        const base = simulateGoals(home, away); let playerScore = homePlayer ? base.homeGoals : base.awayGoals;
         playerScore = Math.min(5, Math.max(0, Math.max(Math.round(playerScore + clamp((rating - 6) * .22 + assists * .08, -.5, 1.1)), Math.min(3, goals))));
         const opponentScore = homePlayer ? base.awayGoals : base.homeGoals;
         const forced = homePlayer ? { homeGoals: playerScore, awayGoals: opponentScore } : { homeGoals: opponentScore, awayGoals: playerScore };
