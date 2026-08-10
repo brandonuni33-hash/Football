@@ -28,6 +28,54 @@ jobs:
         with:
           node-version: 20
 
-      - name: Run 1000 careers
+      - name: Run 1000 careers and generate report
         run: |
-          node --input-type=module -e "import { simulateCareers, printSimulationReport } from './careerSimulation.js'; printSimulationReport(simulateCareers(1000, { maxAge: 34 }));"
+          mkdir -p simulation-results
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import { simulateCareers, printSimulationReport } from './careerSimulation.js';
+
+          const result = simulateCareers(1000, { maxAge: 34 });
+          printSimulationReport(result);
+
+          fs.writeFileSync(
+            'simulation-results/career-simulation-1000.json',
+            JSON.stringify(result, null, 2)
+          );
+
+          const rows = result.careers.map(c => ({
+            id: c.id,
+            initialOverall: c.initialOverall,
+            initialPotential: c.initialPotential,
+            peakOverall: c.peakOverall,
+            peakAge: c.peakAge,
+            finalOverall: c.finalOverall,
+            finalPotential: c.finalPotential,
+            seasons: c.seasons
+          }));
+          const columns = Object.keys(rows[0]);
+          const csv = [columns.join(','), ...rows.map(row => columns.map(key => row[key]).join(','))].join('\n');
+          fs.writeFileSync('simulation-results/career-simulation-1000.csv', csv);
+
+          fs.writeFileSync(
+            'simulation-results/career-simulation-summary.json',
+            JSON.stringify({
+              generatedAt: result.generatedAt,
+              count: result.count,
+              maxAge: result.maxAge,
+              finalOverall: result.finalOverall,
+              finalPotential: result.finalPotential,
+              peakOverall: result.peakOverall,
+              thresholds: result.thresholds,
+              rates: result.rates,
+              checkpoints: result.checkpoints
+            }, null, 2)
+          );
+          NODE
+
+      - name: Upload simulation report
+        uses: actions/upload-artifact@v4
+        with:
+          name: career-simulation-1000-report
+          path: simulation-results/
+          retention-days: 30
