@@ -81,17 +81,36 @@ export function bindEngineToRegistry(engine, registry) {
     engine.retireCareer = () => {
         const lifecycle = registry.careerLifecycleSystem;
         if (!lifecycle?.retire) return legacy.retireCareer?.() ?? null;
-        return lifecycle.retire(engine.state, legacy.retireCareer);
+        return lifecycle.retire(engine.state);
     };
 
     engine.resetCareer = () => {
         const lifecycle = registry.careerLifecycleSystem;
         if (!lifecycle?.reset) return legacy.resetCareer?.() ?? null;
-        return lifecycle.reset(legacy.resetCareer);
+        const result = lifecycle.reset();
+        engine.state = null;
+        if (engine.ui) {
+            engine.ui.activeApp = 'home';
+            engine.ui.currentStep = 1;
+            engine.ui.selectedData = {
+                firstname: '',
+                lastname: '',
+                position: null,
+                continent: null,
+                country: null,
+                origin: null,
+                heartClub: null,
+                youthClub: null,
+                coachVision: null,
+                coachName: null
+            };
+            engine.ui.render?.();
+        }
+        return result;
     };
 
     engine.__architecture = Object.freeze({
-        phase: 3,
+        phase: 4,
         delegated: [
             'startCareer',
             'playBlock',
