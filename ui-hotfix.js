@@ -1,11 +1,34 @@
 // ui-hotfix.js
-// Correctif temporaire : playBlockSafely rendait le bouton "Lancer le prochain bloc"
-// disabled pendant le renderDashboard(), puis libérait `launching` seulement après.
-// Résultat : le bouton restait visuellement désactivé jusqu'au rafraîchissement.
-//
-// On conserve la logique actuelle et on libère le verrou AVANT le rendu final.
+// Correctif UI temporaire et robuste pour le bouton "Lancer le prochain bloc".
+// Le verrou de lancement ne doit jamais être conservé pendant un render.
 
 import { UserInterface } from './ui.js';
+
+const originalRenderDashboard = UserInterface.prototype.renderDashboard;
+
+function syncPlayButton(ui) {
+    const button = document.getElementById('stp-play');
+    const player = ui?.engine?.state?.player;
+    if (!button || !player) return;
+
+    if (player.careerEnded || player.retired || Number(player.age) >= 42) {
+        button.disabled = true;
+        button.textContent = 'Carrière terminée';
+        return;
+    }
+
+    // Le bouton ne doit pas rester disabled à cause d'un ancien état UI.
+    button.disabled = false;
+    button.removeAttribute('aria-disabled');
+    button.textContent = '▶ Lancer le prochain bloc';
+}
+
+UserInterface.prototype.renderDashboard = function (...args) {
+    const result = originalRenderDashboard.apply(this, args);
+    // Le DOM vient d'être reconstruit : on synchronise l'état réel du joueur.
+    syncPlayButton(this);
+    return result;
+};
 
 UserInterface.prototype.playBlockSafely = function () {
     if (this.launching || !this.engine?.state?.player) return;
@@ -20,9 +43,7 @@ UserInterface.prototype.playBlockSafely = function () {
         else if (result?.coachEvent) this.notice = 'Ton entraîneur souhaite te parler.';
         else if (result?.transferOffer) this.notice = 'Une nouvelle offre est disponible.';
 
-        // IMPORTANT : le renderDashboard() utilise `launching` pour décider
-        // si le bouton doit être disabled. Il faut donc libérer le verrou
-        // avant de reconstruire le DOM.
+        // IMPORTANT : libérer AVANT le render.
         this.launching = false;
         this.renderDashboard();
     } catch (error) {
