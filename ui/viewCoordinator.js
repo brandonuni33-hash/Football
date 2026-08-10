@@ -1,6 +1,5 @@
 // ui/viewCoordinator.js
-// Coordinateur unique de présentation.
-// Les vues sont créées ici et l'UI historique reste le shell DOM.
+// Coordinateur unique de présentation. Les vues UI sont assemblées ici.
 
 import {
     DashboardView,
@@ -10,31 +9,28 @@ import {
     TransferView,
     TrainingView,
     CareerView,
-    FamilyView
+    FamilyView,
+    MessagesView,
+    BankView,
+    StatsView,
+    SettingsView
 } from './views/index.js';
 
-const MIGRATED_APPS = new Set(['career', 'social', 'training', 'transfers', 'family']);
+const APP_VIEWS = {
+    career: 'career', social: 'media', messages: 'messages', bank: 'bank',
+    stats: 'stats', training: 'training', transfers: 'transfer', settings: 'settings', family: 'family'
+};
 
 const PRESENTATION_EVENTS = [
-    'game:game.block.completed',
-    'game:relationship.changed',
-    'game:relationship.advice',
-    'game:media.post.created',
-    'game:media.dilemma.created',
-    'game:media.dilemma.resolved',
-    'game:transfer.completed',
-    'game:career.season.started',
-    'game:career.season.completed',
-    'game:player.recovered',
-    'game:career.ended'
+    'game:game.block.completed', 'game:relationship.changed', 'game:relationship.advice',
+    'game:media.post.created', 'game:media.dilemma.created', 'game:media.dilemma.resolved',
+    'game:transfer.completed', 'game:career.season.started', 'game:career.season.completed',
+    'game:player.recovered', 'game:career.ended'
 ];
 
-const escapeHtml = (value) => String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
+const escapeHtml = value => String(value ?? '')
+    .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
 
 export class ViewCoordinator {
     constructor({ ui, gateway } = {}) {
@@ -49,49 +45,32 @@ export class ViewCoordinator {
             transfer: new TransferView({ ui, gateway }),
             training: new TrainingView({ ui, gateway }),
             career: new CareerView({ ui, gateway }),
-            family: new FamilyView({ ui, gateway })
+            family: new FamilyView({ ui, gateway }),
+            messages: new MessagesView({ ui, gateway }),
+            bank: new BankView({ ui, gateway }),
+            stats: new StatsView({ ui, gateway }),
+            settings: new SettingsView({ ui, gateway })
         };
         this.presentationHandlers = [];
         this.installed = false;
-        this.delegatedClickHandler = null;
     }
 
     install() {
         if (this.installed) return this;
         this.ui.views = this.views;
         this.ui.gateway = this.gateway;
-        this.ui.presentationEvents = [];
-
-        const legacyRenderSpecificAppContent = this.ui.renderSpecificAppContent?.bind(this.ui);
-        this.ui.__legacyRenderSpecificAppContent = legacyRenderSpecificAppContent;
         this.ui.viewCoordinator = this;
-        this.ui.openNotification = (id) => this.openNotification(id);
-
-        this.ui.renderSpecificAppContent = () => {
-            const viewMap = { social: 'media', transfers: 'transfer', training: 'training', career: 'career', family: 'family' };
-            const viewName = viewMap[this.ui.activeApp];
-            if (MIGRATED_APPS.has(this.ui.activeApp) && this.views[viewName]) {
-                return this.views[viewName].render(this.gateway.state, this.getTrainingFocusTypes());
-            }
-            return legacyRenderSpecificAppContent?.() || '';
-        };
-
-        const legacyRender = this.ui.render?.bind(this.ui);
-        if (legacyRender) {
-            this.ui.render = () => {
-                const result = legacyRender();
-                this.ensureFamilyShortcut();
-                return result;
-            };
-        }
-
-        this.ui.renderDomainEvent = (event) => this.renderEvent(event);
-        this.ui.renderCoachEvent = (event) => this.renderCoach(event);
-        this.ui.renderMediaPanel = (state = this.gateway.state) => this.renderMedia(state);
+        this.ui.presentationEvents = [];
+        this.ui.openNotification = id => this.openNotification(id);
+        this.ui.renderDashboard = state => this.renderDashboard(state);
+        this.ui.renderSpecificAppContent = () => this.renderAppContent(this.ui.activeApp);
+        this.ui.renderDomainEvent = event => this.renderEvent(event);
+        this.ui.renderCoachEvent = event => this.renderCoach(event);
+        this.ui.renderMediaPanel = state => this.renderMedia(state);
 
         if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-            PRESENTATION_EVENTS.forEach((eventName) => {
-                const handler = (event) => {
+            for (const eventName of PRESENTATION_EVENTS) {
+                const handler = event => {
                     const detail = event?.detail || {};
                     this.ui.presentationEvents.push({ name: eventName, detail, at: Date.now() });
                     if (this.ui.presentationEvents.length > 50) this.ui.presentationEvents.shift();
@@ -99,11 +78,7 @@ export class ViewCoordinator {
                 };
                 window.addEventListener(eventName, handler);
                 this.presentationHandlers.push(() => window.removeEventListener(eventName, handler));
-            });
-
-            this.delegatedClickHandler = (event) => this.handleDelegatedClick(event);
-            window.addEventListener('click', this.delegatedClickHandler);
-            this.presentationHandlers.push(() => window.removeEventListener('click', this.delegatedClickHandler));
+            }
         }
 
         this.ui.destroyViewCoordinator = () => this.destroy();
@@ -111,54 +86,80 @@ export class ViewCoordinator {
         return this;
     }
 
-    ensureFamilyShortcut() {
-        if (this.ui.activeApp !== 'home') return;
-        const grid = document.querySelector('.apps-grid');
-        if (!grid || grid.querySelector('[data-app="family"]')) return;
-
-        const button = document.createElement('button');
-        button.className = 'app-icon';
-        button.dataset.app = 'family';
-        button.type = 'button';
-        button.innerHTML = `
-            <div class="app-logo" style="background: linear-gradient(135deg, #be185d, #ec4899);">👨‍👩‍👦</div>
-            <span class="app-label">Famille</span>
-        `;
-        button.addEventListener('click', () => {
-            this.ui.activeApp = 'family';
-            this.ui.render();
-        });
-        grid.appendChild(button);
-    }
-
     getTrainingFocusTypes() {
         return this.gateway.application?.registry?.trainingSystem?.getFocusTypes?.() || {};
     }
 
+    renderDashboard(state = this.gateway.state) {
+        if (!state?.player) return '';
+        const app = this.ui.initDOM();
+        app.innerHTML = this.views.dashboard.render(state);
+        this.views.dashboard.bind(app);
+        return app.innerHTML;
+    }
+
+    renderAppContent(appName) {
+        const viewName = APP_VIEWS[appName];
+        const view = viewName ? this.views[viewName] : null;
+        if (!view) return '';
+        return view.render(this.gateway.state, this.getTrainingFocusTypes());
+    }
+
+    renderActiveApp() {
+        const appName = this.ui.activeApp || 'home';
+        if (appName === 'home') return this.renderDashboard();
+        const viewName = APP_VIEWS[appName];
+        const view = viewName ? this.views[viewName] : null;
+        if (!view) return this.renderDashboard();
+
+        const root = this.ui.initDOM();
+        root.innerHTML = `
+            <div class="phone-frame">
+                <div class="phone-status-bar"><span>9:41</span><span>⚡ Street to Pro</span><span>🔋 100%</span></div>
+                <div class="phone-app-view" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+                    <div class="app-header-bar" style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border-glass);background:rgba(15,23,42,.85);">
+                        <button class="btn-back-home" id="back-home-btn" type="button">⬅️ Accueil</button>
+                        <span class="app-title-header">${appName}</span>
+                        <span style="width:60px;"></span>
+                    </div>
+                    <div id="app-content-body" class="app-content-body">${view.render(this.gateway.state, this.getTrainingFocusTypes())}</div>
+                </div>
+            </div>
+        `;
+        root.querySelector('#back-home-btn')?.addEventListener('click', () => {
+            this.ui.activeApp = 'home';
+            this.renderDashboard();
+        });
+        view.bind?.(root.querySelector('#app-content-body'), this.gateway.state);
+        return root.innerHTML;
+    }
+
+    renderEvent(event) { return this.views.event.render(event); }
+    renderCoach(event) { return this.views.coach.render(event); }
+    renderMedia(state = this.gateway.state) { return this.views.media.render(state); }
+    renderTransfer(offer = this.gateway.state?.pendingTransferOffer) { return this.views.transfer.render(offer); }
+    renderTraining(state = this.gateway.state) { return this.views.training.render(state, this.getTrainingFocusTypes()); }
+    renderCareer(state = this.gateway.state) { return this.views.career.render(state); }
+    renderFamily(state = this.gateway.state) { return this.views.family.render(state); }
+    bind(viewName, root, payload) { this.views[viewName]?.bind?.(root, payload); }
+
     openNotification(id) {
         const notificationState = this.gateway.state?.notifications;
-        const notifications = Array.isArray(notificationState)
-            ? notificationState
-            : (notificationState?.signals || []);
+        const notifications = Array.isArray(notificationState) ? notificationState : (notificationState?.signals || []);
         const notification = notifications.find(item => String(item?.id) === String(id));
         if (!notification) return null;
-
         const wasUnread = !notification.read;
         notification.read = true;
         notification.readAt = new Date().toISOString();
-        if (wasUnread && notificationState && !Array.isArray(notificationState)) {
-            notificationState.unreadCount = Math.max(0, Number(notificationState.unreadCount || 0) - 1);
-        }
+        if (wasUnread && notificationState && !Array.isArray(notificationState)) notificationState.unreadCount = Math.max(0, Number(notificationState.unreadCount || 0) - 1);
 
         const type = String(notification.type || notification.category || '').toLowerCase();
         const app = type.includes('transfer') || type.includes('mercato') ? 'transfers'
             : type.includes('media') ? 'social'
-            : type.includes('family') || type.includes('famille') || type.includes('birth') || type.includes('naissance') || type.includes('child') ? 'family'
-            : null;
-
-        if (app && this.ui) {
+            : type.includes('family') || type.includes('famille') || type.includes('birth') || type.includes('naissance') || type.includes('child') ? 'family' : null;
+        if (app) {
             this.ui.activeApp = app;
-            this.ui.render?.();
+            this.renderActiveApp();
             return notification;
         }
 
@@ -168,116 +169,15 @@ export class ViewCoordinator {
         const overlay = document.createElement('div');
         overlay.className = 'event-modal-overlay';
         overlay.dataset.notificationModal = 'true';
-        overlay.innerHTML = `
-            <div class="event-modal-card" role="dialog" aria-modal="true" aria-label="${title}">
-                <div class="event-modal-category">${category}</div>
-                <h2 class="event-modal-title">${title}</h2>
-                <p class="event-modal-desc">${message}</p>
-                <button type="button" class="btn-event-choice" data-close-notification>Fermer</button>
-            </div>
-        `;
-        const root = document.getElementById('app');
-        (root || document.body).appendChild(overlay);
+        overlay.innerHTML = `<div class="event-modal-card" role="dialog" aria-modal="true" aria-label="${title}"><div class="event-modal-category">${category}</div><h2 class="event-modal-title">${title}</h2><p class="event-modal-desc">${message}</p><button type="button" class="btn-event-choice" data-close-notification>Fermer</button></div>`;
+        (document.getElementById('app') || document.body).appendChild(overlay);
         overlay.querySelector('[data-close-notification]')?.addEventListener('click', () => overlay.remove());
         return notification;
     }
 
-    handleDelegatedClick(event) {
-        const target = event?.target?.closest?.('[data-event-choice],[data-coach-choice],[data-media-choice],[data-transfer-action],[data-training-focus],[data-career-action],[data-notification-id],[data-family-action]');
-        if (!target) return;
-
-        if (target.dataset.notificationId !== undefined) {
-            event.preventDefault();
-            this.openNotification(target.dataset.notificationId);
-            return;
-        }
-
-        if (target.dataset.familyAction === 'simulate') {
-            event.preventDefault();
-            const result = this.gateway.simulateChildTo14(target.dataset.childId);
-            this.ui.render?.();
-            this.ui.afficherMessageModal?.('⏩ Simulation terminée', result ? 'Votre enfant a atteint l’âge requis pour commencer sa carrière.' : 'La simulation n’a pas pu être effectuée.');
-            return;
-        }
-
-        if (target.dataset.familyAction === 'start') {
-            event.preventDefault();
-            const result = this.gateway.startSuccessorCareer(target.dataset.childId);
-            if (result) {
-                this.ui.activeApp = 'career';
-                this.ui.render?.();
-            } else {
-                this.ui.afficherMessageModal?.('🔒 Seconde génération', 'Votre fils n’est pas encore éligible pour commencer sa carrière.');
-            }
-            return;
-        }
-
-        if (target.dataset.eventChoice !== undefined) {
-            event.preventDefault();
-            const result = this.gateway.resolveEventChoice(Number(target.dataset.eventChoice));
-            this.ui.handleBlockResult?.(result);
-            return;
-        }
-
-        if (target.dataset.coachChoice !== undefined) {
-            event.preventDefault();
-            const result = this.gateway.resolveCoachChoice(Number(target.dataset.coachChoice));
-            this.ui.handleBlockResult?.(result);
-            return;
-        }
-
-        if (target.dataset.mediaChoice !== undefined) {
-            event.preventDefault();
-            const result = this.gateway.resolveMediaDilemma(Number(target.dataset.mediaChoice));
-            this.ui.handleBlockResult?.(result);
-            return;
-        }
-
-        if (target.dataset.transferAction === 'accept') {
-            event.preventDefault();
-            const result = this.gateway.acceptTransferOffer();
-            this.ui.handleBlockResult?.(result);
-            return;
-        }
-
-        if (target.dataset.transferAction === 'reject') {
-            event.preventDefault();
-            this.gateway.rejectTransferOffer();
-            this.ui.renderDashboard?.();
-            return;
-        }
-
-        if (target.dataset.trainingFocus !== undefined) {
-            event.preventDefault();
-            this.gateway.setTrainingFocus(target.dataset.trainingFocus);
-            this.ui.renderDashboard?.();
-            return;
-        }
-
-        if (target.dataset.careerAction === 'retire') {
-            event.preventDefault();
-            const result = this.gateway.retireCareer();
-            this.ui.handleBlockResult?.(result);
-        }
-    }
-
-    renderDashboard(state = this.gateway.state) { return this.views.dashboard.render(state); }
-    renderEvent(event) { return this.views.event.render(event); }
-    renderCoach(event) { return this.views.coach.render(event); }
-    renderMedia(state = this.gateway.state) { return this.views.media.render(state); }
-    renderTransfer(offer = this.gateway.state?.pendingTransferOffer) { return this.views.transfer.render(offer); }
-    renderTraining(state = this.gateway.state) { return this.views.training.render(state, this.getTrainingFocusTypes()); }
-    renderCareer(state = this.gateway.state) { return this.views.career.render(state); }
-    renderFamily(state = this.gateway.state) { return this.views.family.render(state); }
-
-    bind(viewName, root, payload) {
-        this.views[viewName]?.bind?.(root, payload);
-    }
-
     destroy() {
-        this.presentationHandlers.forEach((remove) => remove());
+        this.presentationHandlers.forEach(remove => remove());
         this.presentationHandlers.length = 0;
-        this.delegatedClickHandler = null;
         this.installed = false;
     }
 }
