@@ -2,7 +2,7 @@
 // Bootstrap applicatif unique. Le domaine est assemblé ici ; la racine reste
 // réservée au point d'entrée web et aux compatibilités encore nécessaires.
 
-import { UserInterface } from '../ui.js';
+import { UserInterface } from '../ui/UserInterface.js';
 import { StateManager } from '../state/stateManager.js';
 import GameApplication from './gameApplication.js';
 import { UIGateway } from './uiGateway.js';
