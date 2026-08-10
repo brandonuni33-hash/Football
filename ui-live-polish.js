@@ -13,16 +13,19 @@ function league(p,s){const l=p?.league;const x=firstValue(p?.championshipName,p?
 function contract(p){return `${firstValue(p?.youthLevel,p?.teamLevel,p?.academyLevel,p?.category)||'U15'} · ${firstValue(p?.contractType,p?.contractName,p?.contract?.type)||'Contrat jeune'}`;}
 function rating(s){const n=stat(s,['averageRating','average_rating','ratingAverage','avgRating','rating']);return n>0?n.toFixed(1):'—';}
 function careerStats(p){const s=p?.stats||{},pos=String(p?.position||p?.positionId||'').toUpperCase(),m=stat(s,['matches','matchesPlayed','appearances','games']),a=stat(s,['assists','passesDecisives']),g=stat(s,['goals','buts']),t=stat(s,['tackles','tacles']),cs=stat(s,['cleanSheets','clean_sheets','cleanSheet','cleanSheetsCount']);if(['GK','GB','G'].includes(pos))return [['MATCHS',m],['CLEAN SHEETS',cs],['NOTE MOY.',rating(s)]];if(['DC','CB','DD','RB','DG','LB'].includes(pos))return [['MATCHS',m],['TACLES',t],['PASSES D.',a],['NOTE MOY.',rating(s)]];return [['MATCHS',m],['BUTS',g],['PASSES D.',a],['NOTE MOY.',rating(s)]];}
-function loadStyles(){const id='street-live-polish-css',old=document.getElementById(id);if(old)old.remove();const l=document.createElement('link');l.id=id;l.rel='stylesheet';l.href='./ui-live-polish.css?v=6';document.head.appendChild(l);}
+function loadStyles(){const id='street-live-polish-css',old=document.getElementById(id);if(old)old.remove();const l=document.createElement('link');l.id=id;l.rel='stylesheet';l.href='./ui-live-polish.css?v=7';document.head.appendChild(l);}
 
 function ensureIdentity(widget,player,state){
     const old=widget.querySelector('.player-main-info');
     if(old)old.style.display='none';
+    const badge=widget.querySelector('.player-image-badge');
+    if(badge)badge.remove();
     let info=widget.querySelector('.live-identity-block');
-    if(!info){info=document.createElement('div');info.className='live-identity-block';const anchor=widget.querySelector('.player-card-banner')||widget.firstElementChild;if(anchor)anchor.insertAdjacentElement('afterend',info);else widget.prepend(info);}
+    if(!info){info=document.createElement('div');info.className='live-identity-block';const anchor=widget.querySelector('.player-card-banner');if(anchor)anchor.insertAdjacentElement('afterend',info);else widget.prepend(info);}
     const name=`${player.firstname||player.firstName||''} ${player.lastname||player.lastName||''}`.trim()||'Joueur';
     const f=flag(player),pos=player.position||player.positionId||'—';
-    info.innerHTML=`<div class="live-player-name-line"><span class="live-player-flag">${f}</span><span class="live-player-name">${name}</span></div><div class="live-player-position-row"><span class="live-player-position">${pos}</span><span class="live-player-age">${player.age??'—'} ans</span></div><div class="live-club-line">${player.club||'Sans club'}</div>${league(player,state)?`<div class="live-league-line">${league(player,state)}</div>`:''}<div class="live-academy-line"><span>Centre de formation</span><span class="live-academy-stars">${academyText(academyStars(player))}</span></div><div class="live-contract-line">${contract(player)}</div>`;
+    const shirtNumber=firstValue(player.number,player.shirtNumber,player.jerseyNumber);
+    info.innerHTML=`<div class="live-player-name-line"><span class="live-player-flag">${f}</span><span class="live-player-name">${name}</span></div><div class="live-player-position-row"><span class="live-player-position">${pos}</span><span class="live-player-age">${player.age??'—'} ans</span></div><div class="live-club-line">${player.club||'Sans club'}</div>${league(player,state)?`<div class="live-league-line">${league(player,state)}</div>`:''}<div class="live-academy-line"><span>Centre de formation</span><span class="live-academy-stars">${academyText(academyStars(player))}</span></div><div class="live-contract-line">${contract(player)}</div><div class="live-shirt-line">Numéro maillot : ${shirtNumber??'—'}</div>`;
     widget.querySelectorAll('.widget-secret-tag,.player-secret,.player-balance,.balance-widget,.dashboard-career-stats,.career-stats,.player-career-stats,.career-stat-row').forEach(e=>e.remove());
     [...widget.children].forEach(e=>{if(e===info)return;const t=(e.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();if(t.startsWith('centre de formation'))e.remove();if(t.includes('matchs')&&t.includes('note moy.'))e.remove();});
 }
