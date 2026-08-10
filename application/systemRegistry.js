@@ -65,6 +65,7 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
         transferMarket: TransferMarket,
         stateManager: StateManager,
         familyLifeSystem,
+        consequenceSystem: ConsequenceSystem,
         advanceCalendar: (state) => calendarSystem.advance(state)
     });
 
@@ -87,7 +88,8 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
         familySystem, familyLifeSystem, notificationSystem,
         secondGenerationSystem, childCareerSystem, generationSimulationFacade,
         seasonSystem, calendarSystem, blockSystem, interactionSystem,
-        transferSystem, careerLifecycleSystem, careerApplication
+        transferSystem, careerLifecycleSystem, careerApplication,
+        consequenceSystem: ConsequenceSystem
     });
 }
 export default createSystemRegistry;
