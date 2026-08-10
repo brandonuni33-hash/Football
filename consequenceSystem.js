@@ -1,13 +1,356 @@
-// consequenceSystem.js — choix = émotions/relations/moral; effet sportif indirect.
-const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));const num=(v,f=0)=>Number.isFinite(Number(v))?Number(v):f;
-const LIMITS={morale:[0,100],confidence:[0,100],mental:[0,100],relationCoach:[0,100],vestiaire:[0,100],discipline:[0,100],fame:[0,100],reputation:[0,100]};
-const LABELS={morale:'Moral',confidence:'Confiance',mental:'Mental',relationCoach:'Relation coach',vestiaire:'Vestiaire',discipline:'Discipline',fame:'Réputation',reputation:'Réputation'};const EMOTIONAL=new Set(Object.keys(LIMITS));
-function ensure(p){if(!p)throw new Error('ConsequenceSystem : joueur manquant.');p.stats||={};p.temporaryEffects||=[];for(const[k,v]of Object.entries({morale:50,confidence:50,mental:50,relationCoach:50,vestiaire:50,discipline:50,fame:10,reputation:10}))if(p[k]===undefined&&p.stats[k]===undefined)p[k]=v;return p;}
-function read(p,k){return p[k]!==undefined?num(p[k]):num(p.stats?.[k]);}
-function write(p,k,d){if(!EMOTIONAL.has(k))return null;const before=read(p,k),after=clamp(before+num(d),...LIMITS[k]);if(p[k]!==undefined)p[k]=after;else p.stats[k]=after;return{stat:k,label:LABELS[k]||k,before,after,delta:after-before,type:'emotional'};}
-function normalize(choice={}){const c=choice.consequences&&typeof choice.consequences==='object'?choice.consequences:{};const legacy=choice.impacts||choice;const permanent={...(c.permanent||{}),...(c.emotional||{})};for(const[k,v]of Object.entries(legacy||{}))if(EMOTIONAL.has(k)&&permanent[k]===undefined)permanent[k]=v;const temporary=[...(c.temporary||c.effects||[])];if(legacy.matchBonuses)for(const[k,v]of Object.entries(legacy.matchBonuses))if(typeof v==='number')temporary.push({stat:`matchBonus.${k}`,value:v,duration:1,label:k});return{title:c.title||choice.title||null,message:c.message||choice.message||null,permanent,temporary};}
-function addTemporary(p,e,source){if(!e?.stat||!num(e.value))return null;const d=clamp(Math.round(num(e.duration,2)),1,3),x={id:e.id||`effect_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,stat:e.stat,value:num(e.value),duration:d,remainingMatches:d,source:e.source||source||'Choix',label:e.label||e.stat,description:e.description||null};p.temporaryEffects.push(x);if(p.temporaryEffects.length>8)p.temporaryEffects.shift();return x;}
-function mentalEffect(changes){let x=0;for(const c of changes){const d=num(c.delta);if(c.stat==='morale')x+=d*.025;else if(c.stat==='confidence')x+=d*.035;else if(c.stat==='mental')x+=d*.03;else if(c.stat==='relationCoach')x+=d*.015;else if(c.stat==='discipline')x+=d*.008;}return clamp(x,-.35,.35);}
-function applyInternal(player,choice,source){ensure(player);const c=normalize(choice),changes=[],temporary=[];for(const[k,v]of Object.entries(c.permanent)){if(!EMOTIONAL.has(k)||!num(v))continue;const x=write(player,k,v);if(x)changes.push(x);}const mentalBoost=mentalEffect(changes);if(mentalBoost)temporary.push(addTemporary(player,{stat:'matchPerformance',value:mentalBoost,duration:2,label:'État mental'},source));for(const e of c.temporary){const x=addTemporary(player,e,source);if(x)temporary.push(x);}return{title:c.title||'Conséquences',message:c.message||null,source,changes,temporary:temporary.filter(Boolean),xp:0};}
-export const ConsequenceSystem={LIMITS,LABELS,initialize:ensure,normalizeChoice:normalize,apply(player,choice={},options={}){return applyInternal(player,choice,options.source||'Choix');},applyToState(state,choice={},options={}){return state?.player?applyInternal(state.player,choice,options.source||'Choix'):null;},applyCoachChoice(state,choice={}){return this.applyToState(state,choice,{source:'Coach'});},applyEventChoice(state,choice={}){return this.applyToState(state,choice,{source:'Événement'});},applyMatchChoice(player,choice={}){return applyInternal(player,choice,'Match');},getTemporaryModifier(player,stat){ensure(player);return player.temporaryEffects.filter(e=>e.stat===stat).reduce((s,e)=>s+num(e.value),0);},getActiveModifiers(player){ensure(player);return player.temporaryEffects.reduce((r,e)=>{r[e.stat]=(r[e.stat]||0)+num(e.value);return r;},{});},advanceMatch(player){ensure(player);const expired=[];player.temporaryEffects=player.temporaryEffects.filter(e=>{e.remainingMatches=num(e.remainingMatches,e.duration)-1;if(e.remainingMatches<=0){expired.push(e);return false;}return true;});return expired;},preview(choice={}){const c=normalize(choice);return{title:c.title||'Conséquences',message:c.message||null,effects:Object.entries(c.permanent).filter(([k,v])=>EMOTIONAL.has(k)&&num(v)).map(([stat,delta])=>({type:'emotional',stat,label:LABELS[stat]||stat,delta:num(delta),direction:num(delta)>0?'positive':'negative'}))};},sanitize(choice={}){const copy=JSON.parse(JSON.stringify(choice));const p=copy.permanent||copy.stats||{};for(const k of Object.keys(p))if(EMOTIONAL.has(k))p[k]=clamp(num(p[k]),-3,3);else delete p[k];delete copy.xp;delete copy.experience;return copy;}};
+// consequenceSystem.js
+// Moteur canonique des conséquences de choix.
+// Les effets ne sont jamais révélés au moment de la décision : ils sont
+// enregistrés comme conséquences latentes puis appliqués à un bloc ultérieur.
+
+const clamp = (value, min, max) => Math.min(max, Math.max(min, Number(value) || 0));
+const num = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
+
+const EMOTIONAL_LIMITS = {
+    morale: [0, 100],
+    confidence: [0, 100],
+    mental: [0, 100],
+    relationCoach: [0, 100],
+    vestiaire: [0, 100],
+    discipline: [0, 100],
+    fame: [0, 100],
+    reputation: [0, 100]
+};
+
+const LABELS = {
+    morale: 'Moral',
+    confidence: 'Confiance',
+    mental: 'Mental',
+    relationCoach: 'Relation coach',
+    vestiaire: 'Vestiaire',
+    discipline: 'Discipline',
+    fame: 'Réputation',
+    reputation: 'Réputation'
+};
+
+const EMOTIONAL = new Set(Object.keys(EMOTIONAL_LIMITS));
+const IMMEDIATE_STATE = new Set([
+    'fitness', 'balance', 'isInjured', 'injuryDuration',
+    'canRetire', 'careerEnded'
+]);
+
+function ensure(player) {
+    if (!player) throw new Error('ConsequenceSystem : joueur manquant.');
+    player.stats ||= {};
+    player.temporaryEffects ||= [];
+    for (const [key, value] of Object.entries({
+        morale: 50, confidence: 50, mental: 50,
+        relationCoach: 50, vestiaire: 50, discipline: 50,
+        fame: 10, reputation: 10
+    })) {
+        if (player[key] === undefined && player.stats[key] === undefined) player[key] = value;
+    }
+    return player;
+}
+
+function read(player, key) {
+    return player?.[key] !== undefined ? num(player[key]) : num(player?.stats?.[key]);
+}
+
+function write(player, key, delta) {
+    if (!EMOTIONAL.has(key)) return null;
+    const before = read(player, key);
+    const [min, max] = EMOTIONAL_LIMITS[key];
+    const after = clamp(before + num(delta), min, max);
+    if (player[key] !== undefined) player[key] = after;
+    else player.stats[key] = after;
+    return {
+        stat: key,
+        label: LABELS[key] || key,
+        before,
+        after,
+        delta: after - before,
+        type: 'emotional'
+    };
+}
+
+function normalize(choice = {}) {
+    const c = choice.consequences && typeof choice.consequences === 'object'
+        ? choice.consequences
+        : {};
+    const legacy = choice.impacts || {};
+    const permanent = { ...(c.permanent || {}), ...(c.emotional || {}) };
+
+    for (const [key, value] of Object.entries(legacy)) {
+        if (typeof value === 'number' && permanent[key] === undefined) permanent[key] = value;
+    }
+
+    const temporary = [
+        ...(Array.isArray(c.temporary) ? c.temporary : []),
+        ...(Array.isArray(c.effects) ? c.effects : [])
+    ];
+
+    if (legacy.matchBonuses) {
+        for (const [key, value] of Object.entries(legacy.matchBonuses)) {
+            if (typeof value === 'number') {
+                temporary.push({
+                    stat: `matchBonus.${key}`,
+                    value,
+                    duration: 1,
+                    label: key
+                });
+            }
+        }
+    }
+
+    return {
+        title: c.title || choice.title || null,
+        message: c.message || choice.message || null,
+        permanent,
+        temporary
+    };
+}
+
+function randomDelay(effect = {}, source = 'Choix') {
+    if (Number.isFinite(Number(effect.delayBlocks))) {
+        return Math.max(1, Math.min(4, Math.round(Number(effect.delayBlocks))));
+    }
+    if (source === 'Match') return 1;
+    return 1 + Math.floor(Math.random() * 3);
+}
+
+function createId(prefix = 'consequence') {
+    return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function queueEffect(state, choiceId, effect, options = {}) {
+    state.consequences ||= [];
+    const source = options.source || 'Choix';
+    const magnitude = num(effect.value ?? effect.magnitude);
+    const delayBlocks = randomDelay(effect, source);
+
+    return {
+        id: createId(),
+        choiceId,
+        source,
+        target: effect.stat || effect.target,
+        type: effect.type || 'modifier',
+        magnitude,
+        duration: Math.max(1, Math.min(6, Math.round(num(effect.duration, 1)))),
+        delayBlocks,
+        remainingBlocks: delayBlocks,
+        visibility: 'hidden',
+        label: effect.label || effect.stat || effect.target || 'Conséquence',
+        trigger: effect.trigger || 'block_start',
+        createdAt: new Date().toISOString(),
+        resolved: false,
+        revealed: false
+    };
+}
+
+function queueChoice(state, choice, options = {}) {
+    if (!state?.player) return null;
+    ensure(state.player);
+
+    const normalized = normalize(choice);
+    const choiceId = choice.id || choice.choiceId || createId('choice');
+    const queued = [];
+
+    for (const [target, value] of Object.entries(normalized.permanent)) {
+        if (!num(value)) continue;
+        queued.push(queueEffect(state, choiceId, { target, magnitude: value }, options));
+    }
+
+    for (const effect of normalized.temporary) {
+        if (!effect?.stat || !num(effect.value)) continue;
+        queued.push(queueEffect(state, choiceId, effect, options));
+    }
+
+    state.consequences.push(...queued);
+    return {
+        choiceId,
+        source: options.source || 'Choix',
+        title: normalized.title || 'Décision prise',
+        message: normalized.message || null,
+        queued: queued.length,
+        hidden: true,
+        revealed: false
+    };
+}
+
+function applyStateTarget(state, consequence) {
+    const target = consequence.target;
+    const value = consequence.magnitude;
+    const player = state.player;
+
+    if (EMOTIONAL.has(target)) return write(player, target, value);
+
+    if (target === 'fitness') {
+        const before = num(player.fitness, 90);
+        const after = clamp(before + value, 0, 100);
+        player.fitness = after;
+        return { stat: target, before, after, delta: after - before, type: 'state' };
+    }
+
+    if (target === 'balance') {
+        state.career ||= { balance: 0, seasonHistory: [], totalCareerIncome: 0 };
+        const before = num(state.career.balance);
+        state.career.balance = before + value;
+        return { stat: target, before, after: state.career.balance, delta: value, type: 'economy' };
+    }
+
+    if (target === 'isInjured') {
+        const before = Boolean(player.isInjured);
+        player.isInjured = Boolean(value);
+        return { stat: target, before, after: player.isInjured, delta: player.isInjured === before ? 0 : 1, type: 'state' };
+    }
+
+    if (target === 'injuryDuration') {
+        const before = num(player.injuryDuration);
+        player.injuryDuration = Math.max(0, Math.round(value));
+        if (player.injuryDuration > 0) player.isInjured = true;
+        return { stat: target, before, after: player.injuryDuration, delta: player.injuryDuration - before, type: 'state' };
+    }
+
+    if (target === 'canRetire' || target === 'careerEnded') {
+        const before = Boolean(player[target]);
+        player[target] = Boolean(value);
+        return { stat: target, before, after: player[target], delta: 0, type: 'state' };
+    }
+
+    if (target?.startsWith?.('attributes.')) {
+        const key = target.slice('attributes.'.length);
+        const before = num(player.attributes?.[key], 50);
+        player.attributes ||= {};
+        player.attributes[key] = clamp(before + value, 0, 99);
+        return { stat: target, before, after: player.attributes[key], delta: value, type: 'attribute' };
+    }
+
+    if (target?.startsWith?.('matchBonus.')) {
+        const effect = {
+            id: consequence.id,
+            stat: target,
+            value,
+            duration: consequence.duration,
+            remainingMatches: consequence.duration,
+            source: consequence.source,
+            label: consequence.label
+        };
+        player.temporaryEffects.push(effect);
+        return { stat: target, before: 0, after: value, delta: value, type: 'temporary' };
+    }
+
+    return null;
+}
+
+function resolvePending(state, trigger = 'block_start') {
+    if (!state?.player) return [];
+    ensure(state.player);
+    const pending = state.consequences || [];
+    const revealed = [];
+
+    for (const consequence of pending) {
+        if (consequence.resolved || consequence.trigger !== trigger) continue;
+        consequence.remainingBlocks = num(consequence.remainingBlocks, consequence.delayBlocks) - 1;
+        if (consequence.remainingBlocks > 0) continue;
+
+        const change = applyStateTarget(state, consequence);
+        consequence.resolved = true;
+        consequence.revealed = true;
+        consequence.resolvedAt = new Date().toISOString();
+        consequence.result = change;
+        revealed.push({
+            id: consequence.id,
+            choiceId: consequence.choiceId,
+            source: consequence.source,
+            label: consequence.label,
+            result: change
+        });
+    }
+
+    // Garde une mémoire courte : les conséquences résolues restent consultables
+    // mais ne polluent pas indéfiniment la sauvegarde.
+    if (state.consequences.length > 80) {
+        state.consequences = state.consequences.slice(-80);
+    }
+
+    return revealed;
+}
+
+export const ConsequenceSystem = {
+    EMOTIONAL_LIMITS,
+    LABELS,
+
+    initialize(player) {
+        ensure(player);
+        return player;
+    },
+
+    normalizeChoice: normalize,
+
+    apply(player, choice = {}, options = {}) {
+        const state = options.state || { player };
+        return queueChoice(state, choice, options);
+    },
+
+    applyToState(state, choice = {}, options = {}) {
+        return queueChoice(state, choice, options);
+    },
+
+    applyCoachChoice(state, choice = {}) {
+        return queueChoice(state, choice, { source: 'Coach' });
+    },
+
+    applyEventChoice(state, choice = {}) {
+        return queueChoice(state, choice, { source: 'Événement' });
+    },
+
+    applyMatchChoice(player, choice = {}) {
+        return queueChoice({ player }, choice, { source: 'Match' });
+    },
+
+    resolvePending(state, trigger = 'block_start') {
+        return resolvePending(state, trigger);
+    },
+
+    getTemporaryModifier(player, stat) {
+        ensure(player);
+        return player.temporaryEffects
+            .filter(effect => effect.stat === stat)
+            .reduce((sum, effect) => sum + num(effect.value), 0);
+    },
+
+    getActiveModifiers(player) {
+        ensure(player);
+        return player.temporaryEffects.reduce((result, effect) => {
+            result[effect.stat] = (result[effect.stat] || 0) + num(effect.value);
+            return result;
+        }, {});
+    },
+
+    advanceMatch(player) {
+        ensure(player);
+        const expired = [];
+        player.temporaryEffects = player.temporaryEffects.filter(effect => {
+            effect.remainingMatches = num(effect.remainingMatches, effect.duration) - 1;
+            if (effect.remainingMatches <= 0) {
+                expired.push(effect);
+                return false;
+            }
+            return true;
+        });
+        return expired;
+    },
+
+    // Aucun chiffre n'est exposé avant la résolution réelle de la conséquence.
+    preview() {
+        return {
+            hidden: true,
+            message: 'Cette décision aura des conséquences. Certaines se révéleront plus tard.'
+        };
+    },
+
+    sanitize(choice = {}) {
+        const copy = JSON.parse(JSON.stringify(choice));
+        delete copy.xp;
+        delete copy.experience;
+        return copy;
+    }
+};
+
 export default ConsequenceSystem;
