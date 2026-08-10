@@ -1,19 +1,28 @@
-/* STREET TO PRO — LIVE DASHBOARD POLISH */
+/* STREET TO PRO — DASHBOARD UX */
 .live-player-flag{font-size:1.05rem;line-height:1;flex:none}
 .player-main-info .widget-title{display:flex!important;align-items:baseline!important;flex-wrap:wrap!important;gap:7px!important}
-.live-player-age{font-size:.76rem;font-weight:700;color:#94a3b8;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);padding:4px 8px;border-radius:999px;white-space:nowrap}
+.live-player-age{font-size:.76rem;font-weight:700;color:#94a3b8;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);padding:3px 7px;border-radius:999px;white-space:nowrap}
 .live-core-stats{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:7px!important;margin-top:12px!important}
-.live-core-stats .stat-pill{min-width:0!important;padding:9px 5px!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:3px!important;text-align:center!important}
-.live-core-stats .stat-pill span{font-size:.62rem!important;color:#94a3b8!important;font-weight:800!important;letter-spacing:.04em!important}
-.live-core-stats .stat-pill strong{font-size:1rem!important}
-.live-career-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-top:8px;padding-top:10px;border-top:1px solid rgba(255,255,255,.08)}
-.live-career-stat{min-width:0;padding:9px 4px;text-align:center;border-radius:11px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.065)}
-.live-career-stat span{display:block;color:#94a3b8;font-size:.58rem;font-weight:800;line-height:1.15;min-height:1.35em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.live-career-stat strong{display:block;margin-top:3px;font-size:.98rem;color:#fff}
-.live-section-title{display:flex;align-items:flex-end;justify-content:space-between;padding:2px 3px 0;margin-top:2px}
+.live-core-stats .stat-pill{min-width:0!important;padding:8px 4px!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:3px!important;text-align:center!important}
+.live-core-stats .stat-pill span{font-size:.60rem!important;color:#94a3b8!important;font-weight:800!important;letter-spacing:.03em!important}
+.live-core-stats .stat-pill strong{font-size:.98rem!important}
+.live-potential-stars{font-size:.72rem!important;letter-spacing:1px!important;white-space:nowrap!important;line-height:1!important}
+.live-career-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-top:8px;padding-top:9px;border-top:1px solid rgba(255,255,255,.07)}
+.live-career-stat{min-width:0;padding:8px 4px;text-align:center;border-radius:11px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.055)}
+.live-career-stat span{display:block;color:#94a3b8;font-size:.57rem;font-weight:800;line-height:1.15;min-height:1.35em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.live-career-stat strong{display:block;margin-top:3px;font-size:.95rem;color:#fff}
+.live-section-title{display:flex;align-items:center;justify-content:space-between;padding:0 3px;margin:0}
 .live-section-title span{font-size:.9rem;font-weight:850;letter-spacing:.01em}
-.live-section-title small{font-size:.67rem;color:#64748b}
-.widget-secret-tag{display:none!important}
-#settings-floating-btn{display:none!important}
-.dashboard-actions .btn-primary{width:100%!important;min-height:48px!important;border-radius:15px!important;font-size:1rem!important;background:linear-gradient(135deg,#16c784,#079669)!important;box-shadow:0 10px 24px rgba(16,185,129,.20)!important}
-@media(max-width:360px){.live-core-stats,.live-career-stats{gap:5px}.live-career-stat{padding:8px 3px}.live-career-stat span{font-size:.54rem}}
+.widget-secret-tag,.player-secret,.player-balance,.balance-widget,#settings-floating-btn{display:none!important}
+
+/* Espace réservé : la notification est volontairement séparée de la carte joueur et des applications. */
+.dashboard-notification-zone{min-height:18px;margin:12px 0 16px;display:flex;flex-direction:column;gap:8px}
+.dashboard-notification-zone:empty{display:block;min-height:18px}
+.dashboard-notification-zone .dashboard-notification-card,.dashboard-notification-zone .notification-card,.dashboard-notification-zone .notification-panel{width:100%!important;margin:0!important}
+
+/* Avancer : même empreinte qu'une application, centré dans la grille. */
+.apps-grid{position:relative}
+.apps-grid #play-block-btn,.apps-grid .app-advance-icon{position:static!important;left:auto!important;bottom:auto!important;transform:none!important;width:100%!important;height:56px!important;min-height:56px!important;margin:0!important;padding:0!important;border-radius:17px!important;display:flex!important;align-items:center!important;justify-content:center!important;background:linear-gradient(145deg,rgba(16,185,129,.22),rgba(16,185,129,.08))!important;border:1px solid rgba(52,211,153,.28)!important;box-shadow:0 7px 16px rgba(0,0,0,.25),inset 0 1px rgba(255,255,255,.10)!important;color:#eafff7!important;font-size:.68rem!important;font-weight:700!important}
+.apps-grid #play-block-btn:active,.apps-grid .app-advance-icon:active{transform:scale(.94)!important}
+
+@media(max-width:360px){.live-core-stats,.live-career-stats{gap:5px}.live-career-stat{padding:7px 3px}.live-career-stat span{font-size:.54rem}.live-potential-stars{font-size:.66rem!important;letter-spacing:.5px!important}}
