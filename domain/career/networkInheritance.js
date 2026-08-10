@@ -1,7 +1,6 @@
 // domain/career/networkInheritance.js
 // Transforme la carrière du parent en capital relationnel transmissible.
-// Le réseau ouvre des portes, il ne garantit jamais un contrat et ne transmet
-// jamais directement le niveau ou le potentiel sportif.
+// Important : le réseau ouvre des portes, il ne garantit jamais un contrat.
 
 const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, Number(value) || 0));
 
@@ -15,15 +14,13 @@ export function buildInheritedNetwork({ state, playerId, world = {} }) {
         .map(edge => ({
             personId: edge.sourceId === playerId ? edge.targetId : edge.sourceId,
             type: edge.type || 'contact',
-            relationshipType: edge.type || 'contact',
-            strength: clamp(edge.strength, 45, 100),
-            familiarity: clamp(edge.strength, 45, 100)
+            strength: clamp(edge.strength, 45, 100)
         }));
 
     const clubIds = [...new Set(
         memories
             .filter(memory => memory.clubId)
-            .slice(-30)
+            .slice(-20)
             .map(memory => memory.clubId)
     )];
 
@@ -44,9 +41,6 @@ export function buildInheritedNetwork({ state, playerId, world = {} }) {
         clubs,
         parentReputation,
         reputationBonus: Math.min(15, Math.floor(parentReputation / 10)),
-        socialCapital: clamp(people.length * 4 + clubs.length * 3),
-        sportingInheritance: 0,
-        professionalStatusInheritance: 0,
         active: people.length > 0 || clubs.length > 0,
         rules: {
             noGuaranteedContract: true,
@@ -56,10 +50,4 @@ export function buildInheritedNetwork({ state, playerId, world = {} }) {
     };
 }
 
-export class NetworkInheritance {
-    build(args = {}) {
-        return buildInheritedNetwork(args);
-    }
-}
-
-export default NetworkInheritance;
+export default buildInheritedNetwork;
