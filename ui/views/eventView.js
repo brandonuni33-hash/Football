@@ -32,7 +32,10 @@ export class EventView {
                 const index = Number(button.dataset.eventChoice);
                 const result = this.gateway.resolveEventChoice(index);
 
-                if (result && (result.changes?.length || result.temporary?.length || result.xp)) {
+                // Un choix important ne disparaît jamais silencieusement :
+                // même si ses valeurs sont cachées, le joueur reçoit une
+                // réaction narrative immédiate.
+                if (result?.responseText || result?.immediateReaction || result?.changes?.length || result?.temporary?.length || result?.xp) {
                     this.ui?.afficherModaleConsequences?.(result, () => {
                         this.ui?.renderDashboard?.();
                         this.ui?.handlePostInteraction?.();
