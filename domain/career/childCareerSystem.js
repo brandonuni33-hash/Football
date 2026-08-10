@@ -3,10 +3,16 @@
 // qu'après avoir réellement eu un enfant garçon.
 // L'ancienne origine « fils de pro » n'est volontairement pas utilisée.
 
+import PreCareerSimulationSystem from './preCareerSimulationSystem.js';
+
 const START_AGE = 14;
 const MIN_RETIREMENT_AGE = 34;
 
 export class ChildCareerSystem {
+    constructor({ preCareer = new PreCareerSimulationSystem() } = {}) {
+        this.preCareer = preCareer;
+    }
+
     getSons(state, playerId) {
         return (state?.family?.children || [])
             .filter(child => child.parentPlayerId === playerId)
@@ -17,9 +23,7 @@ export class ChildCareerSystem {
         const sons = this.getSons(state, playerId);
         const careerAge = Number(currentAge ?? 0);
 
-        if (careerAge < MIN_RETIREMENT_AGE) {
-            return [];
-        }
+        if (careerAge < MIN_RETIREMENT_AGE) return [];
 
         return sons.map(son => {
             const age = this.#ageOf(son, state);
@@ -28,11 +32,29 @@ export class ChildCareerSystem {
                 name: son.firstName || 'Votre fils',
                 age,
                 availableNow: age >= START_AGE,
+                canSimulate: age < START_AGE,
                 pendingUntil: age < START_AGE ? START_AGE - age : 0,
                 unlocked: true,
                 reason: age >= START_AGE ? 'eligible_second_generation' : 'child_too_young'
             };
         });
+    }
+
+    simulateUntilCareerAge({ state, playerId, childId, world = {} }) {
+        const option = this.getSuccessorOptions({ state, playerId, currentAge: MIN_RETIREMENT_AGE })
+            .find(item => item.childId === childId);
+        if (!option || !option.canSimulate) return this.getSuccessorOptions({ state, playerId, currentAge: MIN_RETIREMENT_AGE });
+
+        this.preCareer.simulateToStart({
+            state,
+            playerId,
+            childId,
+            currentAge: option.age,
+            targetAge: START_AGE,
+            world
+        });
+
+        return this.getSuccessorOptions({ state, playerId, currentAge: MIN_RETIREMENT_AGE });
     }
 
     canStart({ state, playerId, childId, currentAge }) {
@@ -57,6 +79,7 @@ export class ChildCareerSystem {
             originLocked: true,
             unlockedBy: 'child_birth',
             inheritedNetwork: network,
+            preCareer: child.preCareer || null,
             createdAt: new Date().toISOString()
         };
 
@@ -97,9 +120,7 @@ export class ChildCareerSystem {
         if (Number.isFinite(Number(child.age))) return Number(child.age);
         const birthSeason = Number(child.birthSeason);
         const currentSeason = Number(state?.season ?? state?.career?.season);
-        if (Number.isFinite(birthSeason) && Number.isFinite(currentSeason)) {
-            return Math.max(0, currentSeason - birthSeason);
-        }
+        if (Number.isFinite(birthSeason) && Number.isFinite(currentSeason)) return Math.max(0, currentSeason - birthSeason);
         if (child.birthDate) {
             const birth = new Date(child.birthDate);
             const now = new Date();
