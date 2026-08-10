@@ -53,7 +53,7 @@ export class GameApplication {
         return CommandBus.dispatch(commandName, payload, {
             ...context,
             engine: this.engine,
-            state: this.state,
+            state: this.engine?.state || this.state,
             registry: this.registry
         });
     }
