@@ -105,12 +105,18 @@ export class ViewCoordinator {
     }
 
     openNotification(id) {
-        const notifications = Array.isArray(this.gateway.state?.notifications) ? this.gateway.state.notifications : [];
+        const notificationState = this.gateway.state?.notifications;
+        const notifications = Array.isArray(notificationState)
+            ? notificationState
+            : (notificationState?.signals || []);
         const notification = notifications.find(item => String(item?.id) === String(id));
         if (!notification) return null;
 
         notification.read = true;
         notification.readAt = new Date().toISOString();
+        if (notificationState && !Array.isArray(notificationState)) {
+            notificationState.unreadCount = Math.max(0, Number(notificationState.unreadCount || 0) - 1);
+        }
 
         const type = String(notification.type || notification.category || '').toLowerCase();
         const app = type.includes('transfer') || type.includes('mercato') ? 'transfers'
@@ -118,14 +124,14 @@ export class ViewCoordinator {
             : type.includes('relation') || type.includes('family') ? 'messages'
             : null;
 
-        if (app) {
+        if (app && this.ui) {
             this.ui.activeApp = app;
-            this.ui.renderDashboard?.();
+            this.ui.render?.();
             return notification;
         }
 
         const title = escapeHtml(notification.title || 'Notification');
-        const message = escapeHtml(notification.message || notification.description || '');
+        const message = escapeHtml(notification.body || notification.message || notification.description || '');
         const overlay = document.createElement('div');
         overlay.className = 'event-modal-overlay';
         overlay.dataset.notificationModal = 'true';
