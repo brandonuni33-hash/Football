@@ -1,4 +1,5 @@
 // ui/views/index.js
+export { DashboardView } from './dashboardView.js';
 export { EventView } from './eventView.js';
 export { CoachView } from './coachView.js';
 export { MediaView } from './mediaView.js';
