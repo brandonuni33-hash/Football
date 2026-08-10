@@ -16,6 +16,7 @@ import { PotentialSystem } from '../potentialSystem.js';
 import { ConsequenceSystem } from '../consequenceSystem.js';
 import { CareerSystem } from '../careerSystem.js';
 import { CompetitionSystem } from '../competitionSystem.js';
+import { WorldSystem } from '../worldSystem.js';
 import { CupSystem } from '../cupSystem.js';
 import { CalendarSystem } from '../domain/calendar/calendarSystem.js';
 import { SeasonSystem } from '../domain/career/seasonSystem.js';
@@ -27,7 +28,7 @@ import { BlockSystem } from '../domain/gameplay/blockSystem.js';
 import { InteractionSystem } from '../domain/interactions/interactionSystem.js';
 import { TransferSystem } from '../domain/transfer/transferSystem.js';
 
-export function createSystemRegistry({ engine, worldSystem, competitionSystem = CompetitionSystem, cupSystem = CupSystem } = {}) {
+export function createSystemRegistry({ engine, worldSystem = WorldSystem, competitionSystem = CompetitionSystem, cupSystem = CupSystem } = {}) {
     const socialSystem = new SocialSystem(engine);
     const mediaSystem = new MediaSystem(engine);
     const trainingSystem = new TrainingSystem(TrainingManager);
