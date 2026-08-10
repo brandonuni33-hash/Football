@@ -5,7 +5,7 @@ import GameApplication from './application/gameApplication.js';
 import { UIGateway } from './application/uiGateway.js';
 import { createSystemRegistry } from './application/systemRegistry.js';
 import { bindEngineToRegistry } from './application/engineFacade.js';
-import { installUIViewBridge } from './application/uiViewBridge.js';
+import ViewCoordinator from './ui/viewCoordinator.js';
 import './ui-hotfix.js?v=5';
 import './ui-gameplay-hotfix.js?v=2';
 
@@ -67,7 +67,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (window.game.ui && typeof window.game.ui.init === 'function') {
             window.game.ui.init();
             window.game.ui.gateway = window.gameUI;
-            installUIViewBridge(window.game.ui, window.gameUI);
+            window.game.viewCoordinator = new ViewCoordinator({
+                ui: window.game.ui,
+                gateway: window.gameUI
+            }).install();
         } else {
             throw new Error("L'interface utilisateur n'a pas pu être initialisée.");
         }
