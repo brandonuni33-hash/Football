@@ -12,6 +12,8 @@ export function bindEngineToRegistry(engine, registry) {
         startCareer: engine.startCareer?.bind(engine),
         playBlock: engine.playBlock?.bind(engine),
         advanceCalendar: engine.advanceCalendar?.bind(engine),
+        getPeriodName: engine.getPeriodName?.bind(engine),
+        setTrainingFocus: engine.setTrainingFocus?.bind(engine),
         resolveEventChoice: engine.resolveEventChoice?.bind(engine),
         resolveCoachChoice: engine.resolveCoachChoice?.bind(engine),
         resolveMediaDilemma: engine.resolveMediaDilemma?.bind(engine),
@@ -40,6 +42,21 @@ export function bindEngineToRegistry(engine, registry) {
         const calendarSystem = registry.calendarSystem;
         if (!calendarSystem?.advance) return legacy.advanceCalendar?.() ?? null;
         return calendarSystem.advance(engine.state);
+    };
+
+    engine.getPeriodName = (month) => {
+        const calendarSystem = registry.calendarSystem;
+        if (!calendarSystem?.getPeriodName) return legacy.getPeriodName?.(month) ?? '';
+        return calendarSystem.getPeriodName(month);
+    };
+
+    engine.setTrainingFocus = (focusKey) => {
+        const training = registry.trainingSystem;
+        if (!training?.isValidFocus?.(focusKey)) return legacy.setTrainingFocus?.(focusKey) ?? false;
+        if (!engine.state?.player) return false;
+        engine.state.trainingFocus = focusKey;
+        registry.blockSystem?.stateManager?.save?.(engine.state);
+        return true;
     };
 
     engine.resolveEventChoice = (choiceIndex) => {
@@ -110,11 +127,13 @@ export function bindEngineToRegistry(engine, registry) {
     };
 
     engine.__architecture = Object.freeze({
-        phase: 4,
+        phase: 5,
         delegated: [
             'startCareer',
             'playBlock',
             'advanceCalendar',
+            'getPeriodName',
+            'setTrainingFocus',
             'resolveEventChoice',
             'resolveCoachChoice',
             'resolveMediaDilemma',
