@@ -1,27 +1,18 @@
 // application/engineFacade.js
 // Compatibilité de transition entre l'ancienne API GameEngine et la nouvelle
-// architecture applicative. L'UI conserve son API historique pendant que les
-// implémentations métier sont déplacées hors du moteur.
+// architecture applicative.
 
 export function bindEngineToRegistry(engine, registry) {
-    if (!engine || !registry) {
-        throw new Error('bindEngineToRegistry requires an engine and a registry.');
-    }
+    if (!engine || !registry) throw new Error('bindEngineToRegistry requires an engine and a registry.');
 
     engine.startCareer = (selectedData = {}) => {
         const state = registry.careerApplication.create(selectedData);
         engine.state = state;
         return state;
     };
-
-    engine.playBlock = (selectedChoice = null) =>
-        registry.blockSystem.execute(engine.state, selectedChoice);
-
-    engine.advanceCalendar = () =>
-        registry.calendarSystem.advance(engine.state);
-
-    engine.getPeriodName = (month) =>
-        registry.calendarSystem.getPeriodName(month);
+    engine.playBlock = (selectedChoice = null) => registry.blockSystem.execute(engine.state, selectedChoice);
+    engine.advanceCalendar = () => registry.calendarSystem.advance(engine.state);
+    engine.getPeriodName = (month) => registry.calendarSystem.getPeriodName(month);
 
     engine.setTrainingFocus = (focusKey) => {
         const training = registry.trainingSystem;
@@ -31,33 +22,17 @@ export function bindEngineToRegistry(engine, registry) {
         return true;
     };
 
-    engine.resolveEventChoice = (choiceIndex) =>
-        registry.interactionSystem.resolveEventChoice(engine.state, choiceIndex);
-
-    engine.resolveCoachChoice = (choiceIndex) =>
-        registry.interactionSystem.resolveCoachChoice(engine.state, choiceIndex);
-
-    engine.resolveMediaDilemma = (choiceIndex) =>
-        registry.interactionSystem.resolveMediaChoice(engine.state, choiceIndex);
-
-    engine.resolvePositionProposal = (accepted) =>
-        registry.interactionSystem.resolvePositionProposal(engine.state, accepted);
-
-    engine.acceptTransferOffer = () =>
-        registry.transferSystem.accept(engine.state);
-
-    engine.rejectTransferOffer = () =>
-        registry.transferSystem.reject(engine.state);
-
-    engine.retireCareer = () =>
-        registry.careerLifecycleSystem.retire(engine.state);
+    engine.resolveEventChoice = (choiceIndex) => registry.interactionSystem.resolveEventChoice(engine.state, choiceIndex);
+    engine.resolveCoachChoice = (choiceIndex) => registry.interactionSystem.resolveCoachChoice(engine.state, choiceIndex);
+    engine.resolveMediaDilemma = (choiceIndex) => registry.interactionSystem.resolveMediaChoice(engine.state, choiceIndex);
+    engine.resolvePositionProposal = (accepted) => registry.interactionSystem.resolvePositionProposal(engine.state, accepted);
+    engine.acceptTransferOffer = () => registry.transferSystem.accept(engine.state);
+    engine.rejectTransferOffer = () => registry.transferSystem.reject(engine.state);
+    engine.retireCareer = () => registry.careerLifecycleSystem.retire(engine.state);
 
     engine.resetCareer = () => {
         const result = registry.careerLifecycleSystem.reset();
         engine.state = null;
-
-        // Seule compatibilité UI restante. Elle sera supprimée lorsque l'UI
-        // passera entièrement par ses propres commandes applicatives.
         if (engine.ui) {
             engine.ui.activeApp = 'home';
             engine.ui.currentStep = 1;
@@ -76,8 +51,8 @@ export function bindEngineToRegistry(engine, registry) {
         delegated: [
             'startCareer', 'playBlock', 'advanceCalendar', 'getPeriodName',
             'setTrainingFocus', 'resolveEventChoice', 'resolveCoachChoice',
-            'resolveMediaDilemma', 'resolvePositionProposal',
-            'acceptTransferOffer', 'rejectTransferOffer', 'retireCareer', 'resetCareer'
+            'resolveMediaDilemma', 'resolvePositionProposal', 'acceptTransferOffer',
+            'rejectTransferOffer', 'retireCareer', 'resetCareer'
         ]
     });
 
