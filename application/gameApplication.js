@@ -2,7 +2,7 @@
 // Façade applicative : point d'entrée unique entre l'UI et le domaine.
 
 import { CommandBus } from '../core/commandBus.js';
-import { NotificationSystem } from './notificationSystem.js';
+import NotificationSystem from '../domain/notification/notificationSystem.js';
 import { registerCareerHandlers } from './handlers/careerHandlers.js';
 import { registerGameplayHandlers } from './handlers/gameplayHandlers.js';
 import { registerApplicationEventSubscribers } from './eventSubscribers.js';
@@ -31,15 +31,8 @@ export class GameApplication {
 
         this.startNotifications();
 
-        this.unsubscribeEvents = registerApplicationEventSubscribers({
-            registry: this.registry,
-            state: this.state
-        });
-        this.unsubscribeDomainEvents = registerDomainEventSubscribers({
-            registry: this.registry,
-            state: this.state
-        });
-
+        this.unsubscribeEvents = registerApplicationEventSubscribers({ registry: this.registry, state: this.state });
+        this.unsubscribeDomainEvents = registerDomainEventSubscribers({ registry: this.registry, state: this.state });
         this.started = true;
     }
 
@@ -67,7 +60,6 @@ export class GameApplication {
 
     dispatch(commandName, payload = undefined, context = {}) {
         if (!this.started) this.start();
-
         return CommandBus.dispatch(commandName, payload, {
             ...context,
             engine: this.engine,
