@@ -7,22 +7,14 @@ import { EVENTS } from '../../core/events.js';
 
 export class TransferSystem {
     constructor({ transferMarket, careerSystem, playerLogic, stateManager, worldSystem } = {}) {
-        Object.assign(this, {
-            transferMarket,
-            careerSystem,
-            playerLogic,
-            stateManager,
-            worldSystem
-        });
+        Object.assign(this, { transferMarket, careerSystem, playerLogic, stateManager, worldSystem });
     }
 
     generateOffer(state) {
         const player = state?.player;
         if (!player || player.isInjured) return null;
         if (player.age < 22) return this.careerSystem.recruitmentOffer(player);
-        return Math.random() < 0.08
-            ? this.transferMarket.generateTransferOffer(player)
-            : null;
+        return Math.random() < 0.08 ? this.transferMarket.generateTransferOffer(player) : null;
     }
 
     accept(state) {
@@ -48,15 +40,10 @@ export class TransferSystem {
         }
 
         state.pendingTransferOffer = null;
-        this.playerLogic.syncProgressionFromCanonical(player);
+        this.playerLogic.ensure(player);
         this.stateManager.save(state);
 
-        const result = {
-            accepted: true,
-            oldClub,
-            newClub: offer.club,
-            salary: player.salary
-        };
+        const result = { accepted: true, oldClub, newClub: offer.club, salary: player.salary };
         EventBus.emit(EVENTS.TRANSFER_OFFER_ACCEPTED, { ...result, playerId: player.id });
         EventBus.emit(EVENTS.TRANSFER_COMPLETED, { ...result, playerId: player.id });
         return result;
@@ -67,10 +54,7 @@ export class TransferSystem {
         if (!offer) return false;
         state.pendingTransferOffer = null;
         this.stateManager.save(state);
-        EventBus.emit(EVENTS.TRANSFER_OFFER_REJECTED, {
-            playerId: state.player?.id,
-            club: offer.club
-        });
+        EventBus.emit(EVENTS.TRANSFER_OFFER_REJECTED, { playerId: state.player?.id, club: offer.club });
         return true;
     }
 }
