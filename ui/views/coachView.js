@@ -32,7 +32,7 @@ export class CoachView {
                 const index = Number(button.dataset.coachChoice);
                 const result = this.gateway.resolveCoachChoice(index);
 
-                if (result && (result.changes?.length || result.temporary?.length || result.xp)) {
+                if (result?.responseText || result?.immediateReaction || result?.changes?.length || result?.temporary?.length || result?.xp) {
                     this.ui?.afficherModaleConsequences?.(result, () => {
                         this.ui?.renderDashboard?.();
                         this.ui?.handlePostInteraction?.();
