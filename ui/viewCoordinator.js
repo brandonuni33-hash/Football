@@ -112,18 +112,21 @@ export class ViewCoordinator {
         const notification = notifications.find(item => String(item?.id) === String(id));
         if (!notification) return null;
 
+        const wasUnread = !notification.read;
         notification.read = true;
         notification.readAt = new Date().toISOString();
-        if (notificationState && !Array.isArray(notificationState)) {
+        if (wasUnread && notificationState && !Array.isArray(notificationState)) {
             notificationState.unreadCount = Math.max(0, Number(notificationState.unreadCount || 0) - 1);
         }
 
         const type = String(notification.type || notification.category || '').toLowerCase();
         const app = type.includes('transfer') || type.includes('mercato') ? 'transfers'
             : type.includes('media') ? 'social'
-            : type.includes('relation') || type.includes('family') ? 'messages'
             : null;
 
+        // Relations et famille ne disposent pas encore d'une vue migrée.
+        // Ne jamais naviguer vers une application inexistante : afficher le
+        // contexte dans une modale et laisser l'utilisateur revenir au jeu.
         if (app && this.ui) {
             this.ui.activeApp = app;
             this.ui.render?.();
@@ -132,12 +135,13 @@ export class ViewCoordinator {
 
         const title = escapeHtml(notification.title || 'Notification');
         const message = escapeHtml(notification.body || notification.message || notification.description || '');
+        const category = escapeHtml(notification.category || notification.type || 'INFORMATION');
         const overlay = document.createElement('div');
         overlay.className = 'event-modal-overlay';
         overlay.dataset.notificationModal = 'true';
         overlay.innerHTML = `
             <div class="event-modal-card" role="dialog" aria-modal="true" aria-label="${title}">
-                <div class="event-modal-category">NOTIFICATION</div>
+                <div class="event-modal-category">${category}</div>
                 <h2 class="event-modal-title">${title}</h2>
                 <p class="event-modal-desc">${message}</p>
                 <button type="button" class="btn-event-choice" data-close-notification>Fermer</button>
