@@ -49,7 +49,6 @@ export function createPotentialProfile(base = null) {
         min: Math.max(POTENTIAL_RULES.ABSOLUTE_MIN, start - 15),
         max: Math.min(POTENTIAL_RULES.CAREER_MAX, start + 15),
         peakAge: peakAge(),
-        peakStrength: Number((.9 + Math.random() * .2).toFixed(2)),
         seasonPerformance: { weightedRating: 0, matches: 0 },
         history: []
     };
@@ -85,7 +84,6 @@ function ensure(player) {
         POTENTIAL_RULES.PEAK_MIN_AGE,
         POTENTIAL_RULES.PEAK_MAX_AGE
     );
-    profile.peakStrength = clamp(number(profile.peakStrength, 1), .5, 1.5);
     profile.seasonPerformance ||= { weightedRating: 0, matches: 0 };
     profile.history ||= [];
     profile.current = clamp(
@@ -121,8 +119,6 @@ function seasonChange(player, report = {}) {
 
     if (rating < threshold) return 0;
 
-    // +1 reste accessible pour créer une vraie trajectoire de progression.
-    // Plus le potentiel monte, plus la même performance rapporte peu.
     const chance = current < 85
         ? 1
         : current < 90
@@ -133,8 +129,6 @@ function seasonChange(player, report = {}) {
 
     if (Math.random() >= chance) return 0;
 
-    // Les +2 sont réservés aux saisons réellement exceptionnelles et empêchent
-    // le seuil 95+ de devenir courant.
     if (rating >= 7.85 && matches >= POTENTIAL_RULES.MIN_MATCHES_EXCEPTIONAL) {
         const exceptionalChance = current < 85
             ? .08
