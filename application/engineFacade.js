@@ -38,31 +38,17 @@ export function bindEngineToRegistry(engine, registry) {
         return true;
     };
 
-    engine.resolveEventChoice = (choiceIndex) =>
-        registry.interactionSystem.resolveEventChoice(engine.state, choiceIndex);
-
-    engine.resolveCoachChoice = (choiceIndex) =>
-        registry.interactionSystem.resolveCoachChoice(engine.state, choiceIndex);
-
-    engine.resolveMediaDilemma = (choiceIndex) =>
-        registry.interactionSystem.resolveMediaChoice(engine.state, choiceIndex);
-
-    engine.resolvePositionProposal = (accepted) =>
-        registry.interactionSystem.resolvePositionProposal(engine.state, accepted);
-
+    engine.resolveEventChoice = (choiceIndex) => registry.interactionSystem.resolveEventChoice(engine.state, choiceIndex);
+    engine.resolveCoachChoice = (choiceIndex) => registry.interactionSystem.resolveCoachChoice(engine.state, choiceIndex);
+    engine.resolveMediaDilemma = (choiceIndex) => registry.interactionSystem.resolveMediaChoice(engine.state, choiceIndex);
+    engine.resolvePositionProposal = (accepted) => registry.interactionSystem.resolvePositionProposal(engine.state, accepted);
     engine.acceptTransferOffer = () => registry.transferSystem.accept(engine.state);
-
     engine.rejectTransferOffer = () => registry.transferSystem.reject(engine.state);
-
     engine.retireCareer = () => registry.careerLifecycleSystem.retire(engine.state);
 
     engine.resetCareer = () => {
         const result = registry.careerLifecycleSystem.reset();
         engine.state = null;
-
-        // Cette remise à zéro de navigation reste la seule partie UI de la
-        // façade de compatibilité. Elle sera déplacée lorsque l'UI passera
-        // entièrement par ses propres commandes applicatives.
         if (engine.ui) {
             engine.ui.activeApp = 'home';
             engine.ui.currentStep = 1;
