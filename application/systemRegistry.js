@@ -16,9 +16,12 @@ import { CareerSystem } from '../careerSystem.js';
 import { CupSystem } from '../cupSystem.js';
 import { CalendarSystem } from '../domain/calendar/calendarSystem.js';
 import { SeasonSystem } from '../domain/career/seasonSystem.js';
+import { CareerLifecycleSystem } from '../domain/career/careerLifecycleSystem.js';
 import { MatchSystem } from '../domain/match/matchSystem.js';
 import { TrainingSystem } from '../domain/training/trainingSystem.js';
 import { BlockSystem } from '../domain/gameplay/blockSystem.js';
+import { InteractionSystem } from '../domain/interactions/interactionSystem.js';
+import { TransferSystem } from '../domain/transfer/transferSystem.js';
 
 export function createSystemRegistry({ engine, worldSystem, competitionSystem, cupSystem = CupSystem } = {}) {
     const socialSystem = new SocialSystem(engine);
@@ -55,6 +58,27 @@ export function createSystemRegistry({ engine, worldSystem, competitionSystem, c
         advanceCalendar: (state) => calendarSystem.advance(state)
     });
 
+    const interactionSystem = new InteractionSystem({
+        eventEngine: EventEngine,
+        coachSystem: CoachSystem,
+        mediaSystem,
+        playerLogic: PlayerLogic,
+        careerSystem: CareerSystem,
+        stateManager: StateManager
+    });
+
+    const transferSystem = new TransferSystem({
+        transferMarket: TransferMarket,
+        careerSystem: CareerSystem,
+        playerLogic: PlayerLogic,
+        stateManager: StateManager
+    });
+
+    const careerLifecycleSystem = new CareerLifecycleSystem({
+        stateManager: StateManager,
+        playerLogic: PlayerLogic
+    });
+
     return Object.freeze({
         socialSystem,
         mediaSystem,
@@ -62,7 +86,10 @@ export function createSystemRegistry({ engine, worldSystem, competitionSystem, c
         matchSystem,
         seasonSystem,
         calendarSystem,
-        blockSystem
+        blockSystem,
+        interactionSystem,
+        transferSystem,
+        careerLifecycleSystem
     });
 }
 
