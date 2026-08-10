@@ -33,14 +33,14 @@ jobs:
         with:
           node-version: 20
 
-      - name: Run 1000 full careers
+      - name: Run 1000 full careers to age 42
         run: |
           mkdir -p simulation-results
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
           import { simulateCareer, printSimulationReport } from './careerSimulationV4.js';
 
-          const result = simulateCareer(1000, { maxAge: 34 });
+          const result = simulateCareer(1000, { maxAge: 42 });
           printSimulationReport(result);
 
           fs.writeFileSync(
