@@ -52,7 +52,7 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
     const generationSimulationFacade = new GenerationSimulationFacade({ childCareer: childCareerSystem });
 
     const seasonSystem = new SeasonSystem({ playerLogic: PlayerLogic, potentialSystem: PotentialSystem, careerSystem: CareerSystem, cupSystem, worldSystem });
-    const calendarSystem = new CalendarSystem({ worldSystem, competitionSystem, cupSystem, seasonReset: (state) => seasonSystem.finalize(state) });
+    const calendarSystem = new CalendarSystem({ worldSystem, competitionSystem, cupSystem, familySystem, seasonReset: (state) => seasonSystem.finalize(state) });
 
     const blockSystem = new BlockSystem({
         trainingManager: TrainingManager,
