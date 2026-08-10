@@ -14,7 +14,6 @@ export class DashboardView {
         const year = calendar.currentSeasonYear || '';
         const seasonPeriod = calendar.currentPeriod || 'Pré-saison';
         const playerName = `${player.firstname || ''} ${player.lastname || ''}`.trim() || 'Joueur';
-
         const apps = [
             ['career', '⚽', 'Carrière', 'linear-gradient(135deg,#1e3a8a,#3b82f6)'],
             ['social', '📱', 'Instafoot', 'linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)'],
@@ -29,17 +28,10 @@ export class DashboardView {
 
         return `
             <div class="phone-frame">
-                <div class="phone-status-bar">
-                    <span>9:41</span>
-                    <span>⚽ Street to Pro</span>
-                    <span>🔋 100%</span>
-                </div>
+                <div class="phone-status-bar"><span>9:41</span><span>⚽ Street to Pro</span><span>🔋 100%</span></div>
                 <div class="phone-home-screen">
                     <div class="player-widget-enhanced">
-                        <div class="widget-header-line">
-                            <span>📅 Saison ${year}</span>
-                            <span>${seasonPeriod}</span>
-                        </div>
+                        <div class="widget-header-line"><span>📅 Saison ${year}</span><span>${seasonPeriod}</span></div>
                         <div class="player-card-banner">
                             <div class="player-image-badge"><span class="jersey-number">${player.number ?? '—'}</span></div>
                             <div class="player-main-info">
@@ -58,7 +50,6 @@ export class DashboardView {
                         <div class="widget-secret-tag">🔥 Hype ${media.hypeLevel || 0} · 👥 ${(media.followers || 0).toLocaleString()} abonnés</div>
                         <div class="widget-secret-tag">🚀 Développement : fenêtre d'explosion inconnue</div>
                     </div>
-
                     <div class="apps-grid">
                         ${apps.map(([id, icon, label, background]) => `
                             <button class="app-icon" data-app="${id}" type="button">
@@ -68,11 +59,8 @@ export class DashboardView {
                             </button>
                         `).join('')}
                     </div>
-
                     <button id="settings-floating-btn" class="btn-settings-floating" title="Réglages" type="button">⚙️</button>
-                    <button id="play-block-btn" class="btn-play-block" ${player.careerEnded ? 'disabled' : ''} type="button">
-                        ${player.careerEnded ? '🏁 Carrière terminée' : '▶️ Lancer le prochain bloc'}
-                    </button>
+                    <button id="play-block-btn" class="btn-play-block" ${player.careerEnded ? 'disabled' : ''} type="button">${player.careerEnded ? '🏁 Carrière terminée' : '▶️ Lancer le prochain bloc'}</button>
                 </div>
             </div>
         `;
@@ -82,18 +70,14 @@ export class DashboardView {
         root?.querySelector('#play-block-btn')?.addEventListener('click', () => {
             const state = this.gateway.state;
             if (!state) return;
-            const isInjured = Boolean(state.player?.isInjured);
-            if (isInjured) {
+            if (state.player?.isInjured) {
                 this.ui?.handleBlockResult?.(this.gateway.playNextBlock(null));
                 return;
             }
             const matchType = state.calendar?.currentMonth === 5 ? 'final' : 'standard';
-            const shouldAsk = this.gateway.engine?.matchChoices?.shouldTriggerDilemma?.(matchType) ?? false;
-            if (shouldAsk) {
-                const dilemma = this.gateway.engine?.matchChoices?.getMatchDilemma?.(matchType, "l'adversaire");
-                this.ui?.afficherModaleMatchDilemma?.(dilemma, (choice) => {
-                    this.ui?.handleBlockResult?.(this.gateway.playNextBlock(choice));
-                });
+            if (this.gateway.shouldTriggerMatchDilemma(matchType)) {
+                const dilemma = this.gateway.getMatchDilemma(matchType, "l'adversaire");
+                this.ui?.afficherModaleMatchDilemma?.(dilemma, (choice) => this.ui?.handleBlockResult?.(this.gateway.playNextBlock(choice)));
                 return;
             }
             this.ui?.handleBlockResult?.(this.gateway.playNextBlock(null));
@@ -103,13 +87,10 @@ export class DashboardView {
             this.ui.activeApp = 'settings';
             this.ui.renderDashboard();
         });
-
-        root?.querySelectorAll('[data-app]').forEach(button => {
-            button.addEventListener('click', () => {
-                this.ui.activeApp = button.dataset.app;
-                this.ui.renderDashboard();
-            });
-        });
+        root?.querySelectorAll('[data-app]')?.forEach(button => button.addEventListener('click', () => {
+            this.ui.activeApp = button.dataset.app;
+            this.ui.renderDashboard();
+        }));
     }
 }
 
