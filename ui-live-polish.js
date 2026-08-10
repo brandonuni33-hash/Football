@@ -2,7 +2,6 @@
 // Dashboard UX : une seule source visuelle pour l'identité, l'état, les notifications et les statistiques.
 
 const COUNTRY_FLAGS = { France:'🇫🇷',Espagne:'🇪🇸',Spain:'🇪🇸',Allemagne:'🇩🇪',Germany:'🇩🇪',Angleterre:'🇬🇧',England:'🇬🇧',Italie:'🇮🇹',Italy:'🇮🇹',Portugal:'🇵🇹',Brésil:'🇧🇷',Brazil:'🇧🇷',Argentine:'🇦🇷',Argentina:'🇦🇷',Belgique:'🇧🇪',PaysBas:'🇳🇱','Pays-Bas':'🇳🇱',Netherlands:'🇳🇱',Maroc:'🇲🇦',Morocco:'🇲🇦',Sénégal:'🇸🇳',Senegal:'🇸🇳','Côte d’Ivoire':'🇨🇮',Cameroun:'🇨🇲',Cameroon:'🇨🇲',Nigeria:'🇳🇬','États-Unis':'🇺🇸',USA:'🇺🇸',Canada:'🇨🇦',Japon:'🇯🇵',Japan:'🇯🇵','Corée du Sud':'🇰🇷',Korea:'🇰🇷'};
-
 const firstValue=(...v)=>v.find(x=>x!==undefined&&x!==null&&String(x).trim()!=='');
 function stat(s,keys){for(const k of keys){const n=Number(s?.[k]);if(Number.isFinite(n))return n;}return 0;}
 function flag(p){const d=p?.countryFlag||p?.nationalityFlag||p?.flag;if(d&&String(d).length<=4)return d;const c=p?.countryCode||p?.nationalityCode||p?.nationCode;if(typeof c==='string'&&/^[A-Za-z]{2}$/.test(c))return [...c.toUpperCase()].map(x=>String.fromCodePoint(127397+x.charCodeAt())).join('');const n=p?.country?.name||p?.country||p?.nationality||p?.nation;return typeof n==='string'?(COUNTRY_FLAGS[n]||''):'';}
@@ -13,18 +12,15 @@ function league(p,s){const l=p?.league;const x=firstValue(p?.championshipName,p?
 function contract(p){return `${firstValue(p?.youthLevel,p?.teamLevel,p?.academyLevel,p?.category)||'U15'} · ${firstValue(p?.contractType,p?.contractName,p?.contract?.type)||'Contrat jeune'}`;}
 function rating(s){const n=stat(s,['averageRating','average_rating','ratingAverage','avgRating','rating']);return n>0?n.toFixed(1):'—';}
 function careerStats(p){const s=p?.stats||{},pos=String(p?.position||p?.positionId||'').toUpperCase(),m=stat(s,['matches','matchesPlayed','appearances','games']),a=stat(s,['assists','passesDecisives']),g=stat(s,['goals','buts']),t=stat(s,['tackles','tacles']),cs=stat(s,['cleanSheets','clean_sheets','cleanSheet','cleanSheetsCount']);if(['GK','GB','G'].includes(pos))return [['MATCHS',m],['CLEAN SHEETS',cs],['NOTE MOY.',rating(s)]];if(['DC','CB','DD','RB','DG','LB'].includes(pos))return [['MATCHS',m],['TACLES',t],['PASSES D.',a],['NOTE MOY.',rating(s)]];return [['MATCHS',m],['BUTS',g],['PASSES D.',a],['NOTE MOY.',rating(s)]];}
-function loadStyles(){const id='street-live-polish-css',old=document.getElementById(id);if(old)old.remove();const l=document.createElement('link');l.id=id;l.rel='stylesheet';l.href='./ui-live-polish.css?v=8';document.head.appendChild(l);}
+function loadStyles(){const id='street-live-polish-css',old=document.getElementById(id);if(old)old.remove();const l=document.createElement('link');l.id=id;l.rel='stylesheet';l.href='./ui-live-polish.css?v=9';document.head.appendChild(l);}
 
 function ensureIdentity(widget,player,state){
-    const old=widget.querySelector('.player-main-info');
-    if(old)old.style.display='none';
-    const badge=widget.querySelector('.player-image-badge');
-    if(badge)badge.remove();
+    const old=widget.querySelector('.player-main-info');if(old)old.style.display='none';
+    const badge=widget.querySelector('.player-image-badge');if(badge)badge.remove();
     let info=widget.querySelector('.live-identity-block');
     if(!info){info=document.createElement('div');info.className='live-identity-block';const anchor=widget.querySelector('.player-card-banner');if(anchor)anchor.insertAdjacentElement('afterend',info);else widget.prepend(info);}
     const name=`${player.firstname||player.firstName||''} ${player.lastname||player.lastName||''}`.trim()||'Joueur';
-    const f=flag(player),pos=player.position||player.positionId||'—';
-    const shirtNumber=firstValue(player.number,player.shirtNumber,player.jerseyNumber);
+    const f=flag(player),pos=player.position||player.positionId||'—',shirtNumber=firstValue(player.number,player.shirtNumber,player.jerseyNumber);
     info.innerHTML=`<div class="live-player-name-line"><span class="live-player-flag">${f}</span><span class="live-player-name">${name}</span></div><div class="live-player-position-row"><span class="live-player-position">${pos}</span><span class="live-player-age">${player.age??'—'} ans</span></div><div class="live-club-line">${player.club||'Sans club'}</div>${league(player,state)?`<div class="live-league-line">${league(player,state)}</div>`:''}<div class="live-academy-line"><span>Centre de formation</span><span class="live-academy-stars">${academyText(academyStars(player))}</span></div><div class="live-contract-line">${contract(player)}</div><div class="live-shirt-line">Numéro maillot : ${shirtNumber??'—'}</div>`;
     widget.querySelectorAll('.widget-secret-tag,.player-secret,.player-balance,.balance-widget,.dashboard-career-stats,.career-stats,.player-career-stats,.career-stat-row').forEach(e=>e.remove());
     [...widget.children].forEach(e=>{if(e===info)return;const t=(e.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();if(t.startsWith('centre de formation'))e.remove();if(t.includes('matchs')&&t.includes('note moy.'))e.remove();});
@@ -32,17 +28,19 @@ function ensureIdentity(widget,player,state){
 
 function renderNotifications(screen,state){
     let zone=screen.querySelector('.dashboard-notification-zone');
-    if(!zone){zone=document.createElement('div');zone.className='dashboard-notification-zone';const apps=screen.querySelector('.apps-grid');if(apps)apps.parentNode.insertBefore(zone,apps);}
-    const notes=Array.isArray(state?.notifications)?state.notifications.filter(n=>n?.unread!==false).slice(-3):[];
+    if(!zone){zone=document.createElement('section');zone.className='dashboard-notification-zone';const apps=screen.querySelector('.apps-grid');if(apps)apps.parentNode.insertBefore(zone,apps);}
+    const signals=(state?.notifications?.signals||[]).filter(n=>!n.archived).slice(-3).reverse();
+    const family=(state?.family?.events||[]).filter(e=>e.type==='child_born').slice(-1)[0];
+    const key=`${signals.map(n=>n.id).join('|')}|${family?.childId||''}`;
+    if(zone.dataset.renderKey===key)return;
+    zone.dataset.renderKey=key;
+    const items=signals.length?signals:(family?[{id:`family_${family.childId}`,category:'famille',title:family.gender==='male'?'Un fils vient de naître':'Un enfant vient de naître',body:`${family.firstName||'Votre enfant'} vient agrandir votre famille.`}]:[]);
     zone.innerHTML='';
-    if(!notes.length){zone.classList.add('is-empty');return;}
+    if(!items.length){zone.classList.add('is-empty');return;}
     zone.classList.remove('is-empty');
-    notes.forEach(note=>{
-        const card=document.createElement('div');
-        card.className='dashboard-notification-card';
-        card.innerHTML=`<span class="notification-icon">${note.kind==='child_born'?'👶':'•'}</span><div><strong>${note.title||'Notification'}</strong><p>${note.message||''}</p></div>`;
-        zone.appendChild(card);
-    });
+    zone.innerHTML=`<div class="live-notification-heading">Notifications</div><div class="live-notification-list"></div>`;
+    const list=zone.querySelector('.live-notification-list');
+    items.forEach(note=>{const card=document.createElement('article');card.className='dashboard-notification-card';card.dataset.notificationId=note.id;card.innerHTML=`<span class="notification-icon">${note.category==='famille'?'👶':'•'}</span><div><strong>${note.title||'Notification'}</strong><p>${note.body||note.message||''}</p></div>`;list.appendChild(card);card.addEventListener('click',()=>{const signal=state?.notifications?.signals?.find(n=>n.id===note.id);if(signal){signal.read=true;state.notifications.unreadCount=Math.max(0,(state.notifications.unreadCount||0)-1);card.classList.add('is-read');}});});
 }
 
 function enhance(){const app=document.getElementById('app'),state=window.UI?.engine?.state,screen=app?.querySelector('.phone-home-screen'),widget=screen?.querySelector('.player-widget-enhanced');if(!screen||!widget||!state?.player)return;const p=state.player;ensureIdentity(widget,p,state);
