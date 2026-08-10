@@ -1,9 +1,12 @@
 // domain/match/interactiveMatchSystem.js
-// Façade canonique pour les matchs interactifs.
-// L'implémentation historique de matchBlock.js reste encapsulée ici pendant
-// sa future décomposition en session/decision/resultat/statistics.
+// Propriétaire canonique du cycle interactif d'un match.
 
-import { MatchBlockManager } from '../../matchBlock.js';
+import { InteractiveMatchController } from './interactiveMatchController.js';
 
-export const InteractiveMatchSystem = MatchBlockManager;
+export const InteractiveMatchSystem = Object.freeze({
+    startInteractiveMatch: InteractiveMatchController.startInteractiveMatch,
+    resolveInteractiveDecision: InteractiveMatchController.resolveInteractiveDecision,
+    commitInteractiveResult: InteractiveMatchController.commitInteractiveResult
+});
+
 export default InteractiveMatchSystem;
