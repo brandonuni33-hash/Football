@@ -1,20 +1,19 @@
 // application/legacyGameBridge.js
 // Adaptateur temporaire entre le nouveau CommandBus et le GameEngine historique.
-//
-// IMPORTANT : ce fichier permet de migrer progressivement sans réécrire le moteur
-// d'un seul coup. Tant que la migration n'est pas terminée, le GameEngine reste
-// l'implémentation réelle des règles métier.
+// Les commandes déjà migrées peuvent utiliser les systèmes extraits ; les autres
+// continuent de tomber sur le moteur historique.
 
 import { CommandBus } from '../core/commandBus.js';
 import { COMMANDS } from '../core/commands.js';
 
 export class LegacyGameBridge {
-    constructor(engine) {
+    constructor(engine, registry = null) {
         if (!engine) {
             throw new Error('LegacyGameBridge requires a GameEngine instance');
         }
 
         this.engine = engine;
+        this.registry = registry;
         this.unregister = [];
         this.started = false;
     }
@@ -26,9 +25,16 @@ export class LegacyGameBridge {
             this.engine.setTrainingFocus(payload?.focusKey ?? payload)
         );
 
-        this.register(COMMANDS.START_BLOCK, (payload) =>
-            this.engine.playBlock(payload?.selectedChoice ?? payload ?? null)
-        );
+        this.register(COMMANDS.START_BLOCK, (payload) => {
+            const selectedChoice = payload?.selectedChoice ?? payload ?? null;
+            const blockSystem = this.registry?.blockSystem;
+
+            if (blockSystem && this.engine.state) {
+                return blockSystem.execute(this.engine.state, selectedChoice);
+            }
+
+            return this.engine.playBlock(selectedChoice);
+        });
 
         this.register(COMMANDS.RESOLVE_EVENT_CHOICE, (payload) =>
             this.engine.resolveEventChoice(payload?.choiceIndex ?? payload)
