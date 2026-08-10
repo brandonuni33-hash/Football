@@ -1,6 +1,5 @@
 // application/systemRegistry.js
 // Composition root : toutes les dépendances des domaines sont assemblées ici.
-
 import { EconomyManager } from '../economy.js';
 import { SocialSystem } from '../social.js';
 import { MediaSystem } from '../media.js';
@@ -29,7 +28,6 @@ import RelationshipSystem from '../domain/relationship/relationshipSystem.js';
 import NetworkEvolutionSystem from '../domain/relationship/networkEvolutionSystem.js';
 import NotificationSystem from '../domain/notification/notificationSystem.js';
 import CareerApplication from './careerApplication.js';
-import { MatchSystem } from '../domain/match/matchSystem.js';
 import SimulatedMatchSystem from '../domain/match/simulatedMatchSystem.js';
 import { TrainingSystem } from '../domain/training/trainingSystem.js';
 import { BlockSystem } from '../domain/gameplay/blockSystem.js';
@@ -40,8 +38,7 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
     const socialSystem = new SocialSystem(engine);
     const mediaSystem = new MediaSystem(engine);
     const trainingSystem = new TrainingSystem(TrainingManager);
-    const simulatedMatchSystem = new SimulatedMatchSystem(MatchBlockManager);
-    const matchSystem = new MatchSystem(MatchBlockManager);
+    const simulatedMatchSystem = new SimulatedMatchSystem();
 
     const relationshipSystem = new RelationshipSystem();
     const networkEvolutionSystem = new NetworkEvolutionSystem();
@@ -81,12 +78,10 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
     });
 
     notificationSystem.start();
-
     return Object.freeze({
         socialSystem, mediaSystem, trainingSystem,
         matchSystem: simulatedMatchSystem,
         matchBlockManager: MatchBlockManager,
-        legacyMatchSystem: matchSystem,
         competitionSystem, cupSystem,
         relationshipSystem, networkEvolutionSystem,
         familySystem, familyLifeSystem, notificationSystem,
@@ -95,5 +90,4 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
         transferSystem, careerLifecycleSystem, careerApplication
     });
 }
-
 export default createSystemRegistry;
