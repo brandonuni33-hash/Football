@@ -22,14 +22,14 @@ export function bindEngineToRegistry(engine, registry) {
     engine.retireCareer = () => registry.careerLifecycleSystem.retire(engine.state);
 
     engine.startInteractiveMatch = (scheduledMatch, matchIndex = 0) => {
-        const manager = registry.matchBlockManager;
-        if (!manager?.startInteractiveMatch) throw new Error('Interactive MatchBlock indisponible.');
+        const manager = registry.interactiveMatchSystem;
+        if (!manager?.startInteractiveMatch) throw new Error('InteractiveMatchSystem indisponible.');
         const session = manager.startInteractiveMatch(engine.state, scheduledMatch, matchIndex);
         engine.state.activeMatchSession = session;
         return session;
     };
     engine.resolveInteractiveMatchDecision = (choiceIndex) => {
-        const manager = registry.matchBlockManager;
+        const manager = registry.interactiveMatchSystem;
         const session = engine.state?.activeMatchSession;
         if (!manager?.resolveInteractiveDecision || !session) throw new Error('Aucun match interactif actif.');
         const result = manager.resolveInteractiveDecision(engine.state, session, choiceIndex);
@@ -65,7 +65,7 @@ export function bindEngineToRegistry(engine, registry) {
     engine.startSuccessorCareer = (childId) => !engine.state?.player?.id ? null : registry.generationSimulationFacade.startIfReady({ state: engine.state, playerId: engine.state.player.id, childId, currentAge: engine.state.player.age, world: engine.state.world || {} });
     engine.resetCareer = () => { const result = registry.careerLifecycleSystem.reset(); engine.state = null; if (engine.ui) { engine.ui.activeApp = 'home'; engine.ui.currentStep = 1; engine.ui.selectedData = { firstname:'',lastname:'',position:null,continent:null,country:null,origin:null,heartClub:null,youthClub:null,coachVision:null,coachName:null }; engine.ui.render?.(); } return result; };
 
-    engine.__architecture = Object.freeze({ phase: 6, delegated: ['startCareer','playBlock','advanceCalendar','getPeriodName','setTrainingFocus','resolveEventChoice','resolveCoachChoice','resolveMediaDilemma','resolvePositionProposal','acceptTransferOffer','rejectTransferOffer','retireCareer','startInteractiveMatch','resolveInteractiveMatchDecision','completeInteractiveBlock','getScheduledMatches','resetCareer','registerChildBirth','getChildren','getSuccessorOptions','simulateSuccessorTo14','startSuccessorCareer'] });
+    engine.__architecture = Object.freeze({ phase: 7, delegated: ['startCareer','playBlock','advanceCalendar','getPeriodName','setTrainingFocus','resolveEventChoice','resolveCoachChoice','resolveMediaDilemma','resolvePositionProposal','acceptTransferOffer','rejectTransferOffer','retireCareer','startInteractiveMatch','resolveInteractiveMatchDecision','completeInteractiveBlock','getScheduledMatches','resetCareer','registerChildBirth','getChildren','getSuccessorOptions','simulateSuccessorTo14','startSuccessorCareer'] });
     return engine;
 }
 
