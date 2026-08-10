@@ -6,3 +6,4 @@ export { MediaView } from './mediaView.js';
 export { TransferView } from './transferView.js';
 export { TrainingView } from './trainingView.js';
 export { CareerView } from './careerView.js';
+export { FamilyView } from './familyView.js';
