@@ -5,27 +5,39 @@
 import { SocialSystem } from '../social.js';
 import { MediaSystem } from '../media.js';
 import { TrainingManager } from '../entrainement.js';
+import { PlayerLogic } from '../player.js';
+import { PotentialSystem } from '../potentialSystem.js';
+import { CareerSystem } from '../careerSystem.js';
+import { CupSystem } from '../cupSystem.js';
 import { CalendarSystem } from '../domain/calendar/calendarSystem.js';
+import { SeasonSystem } from '../domain/career/seasonSystem.js';
 import { TrainingSystem } from '../domain/training/trainingSystem.js';
 
-export function createSystemRegistry({ engine, worldSystem, competitionSystem, cupSystem } = {}) {
+export function createSystemRegistry({ engine, worldSystem, competitionSystem, cupSystem = CupSystem } = {}) {
     const socialSystem = new SocialSystem(engine);
     const mediaSystem = new MediaSystem(engine);
     const trainingSystem = new TrainingSystem(TrainingManager);
+
+    const seasonSystem = new SeasonSystem({
+        playerLogic: PlayerLogic,
+        potentialSystem: PotentialSystem,
+        careerSystem: CareerSystem,
+        cupSystem,
+        worldSystem
+    });
 
     const calendarSystem = new CalendarSystem({
         worldSystem,
         competitionSystem,
         cupSystem,
-        // Cette opération reste volontairement injectée : elle sera extraite
-        // dans SeasonSystem lors de la prochaine phase de migration.
-        seasonReset: (state) => engine?.archiveAndResetSeason?.(state)
+        seasonReset: (state) => seasonSystem.finalize(state)
     });
 
     return Object.freeze({
         socialSystem,
         mediaSystem,
         trainingSystem,
+        seasonSystem,
         calendarSystem
     });
 }
