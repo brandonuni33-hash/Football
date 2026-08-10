@@ -2,16 +2,18 @@
 // Composition root de transition. Les systèmes historiques sont construits ici
 // afin que GameEngine cesse progressivement de connaître toutes leurs implémentations.
 
+import { EconomyManager } from '../economy.js';
 import { SocialSystem } from '../social.js';
 import { MediaSystem } from '../media.js';
 import { TrainingManager } from '../entrainement.js';
 import { MatchBlockManager } from '../matchBlock.js';
 import { PlayerLogic } from '../player.js';
-import { StateManager } from '../state.js';
+import { StateManager, SCHEMA_VERSION } from '../state.js';
 import { EventEngine } from '../events.js';
 import { CoachSystem } from '../coachSystem.js';
 import { TransferMarket } from '../transferMarket.js';
 import { PotentialSystem } from '../potentialSystem.js';
+import { ConsequenceSystem } from '../consequenceSystem.js';
 import { CareerSystem } from '../careerSystem.js';
 import { CompetitionSystem } from '../competitionSystem.js';
 import { CupSystem } from '../cupSystem.js';
@@ -84,16 +86,16 @@ export function createSystemRegistry({ engine, worldSystem, competitionSystem = 
     const careerApplication = new CareerApplication({
         stateManager: StateManager,
         playerLogic: PlayerLogic,
-        economyManager: engine?.economyManager,
+        economyManager: EconomyManager,
         socialSystem,
         mediaSystem,
-        consequenceSystem: engine?.consequenceSystem,
+        consequenceSystem: ConsequenceSystem,
         potentialSystem: PotentialSystem,
         careerSystem: CareerSystem,
         competitionSystem,
         worldSystem,
         cupSystem,
-        schemaVersion: engine?.schemaVersion
+        schemaVersion: SCHEMA_VERSION
     });
 
     return Object.freeze({
