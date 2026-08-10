@@ -1,8 +1,10 @@
 // main.js
 import { GameEngine } from './gameEngine.js';
+// Branche les compétitions internationales avant la création du moteur.
+import './internationalIntegration.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("⚡ Démarrage de Street to Pro (v106)...");
+    console.log("⚡ Démarrage de Street to Pro (v107)...");
 
     try {
         // Initialisation globale du moteur de jeu
