@@ -12,7 +12,11 @@ export class DashboardView {
         const stats = player.stats || {};
         const calendar = state?.calendar || {};
         const media = state?.media || {};
-        const notifications = Array.isArray(state?.notifications) ? state.notifications.filter(n => !n?.read) : [];
+        const notificationState = state?.notifications;
+        const notificationList = Array.isArray(notificationState)
+            ? notificationState
+            : (notificationState?.signals || []);
+        const notifications = notificationList.filter(n => !n?.read && !n?.archived);
         const next = notifications[0];
 
         return `
@@ -42,7 +46,7 @@ export class DashboardView {
                         <span class="dashboard-notification-icon">🔔</span>
                         <span class="dashboard-notification-copy">
                             <strong>${next.title || next.type || 'Nouvelle notification'}</strong>
-                            <small>${next.message || next.description || 'Une nouvelle information nécessite votre attention.'}</small>
+                            <small>${next.body || next.message || next.description || 'Une nouvelle information nécessite votre attention.'}</small>
                         </span>
                         <span>›</span>
                     </button>
