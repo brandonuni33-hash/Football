@@ -26,6 +26,11 @@ export class GameApplication {
     start() {
         if (this.started) return;
 
+        // Le state peut avoir été remplacé pendant la migration/restauration
+        // entre le constructeur et start(). Toutes les dépendances applicatives
+        // doivent donc pointer vers la version canonique actuelle.
+        this.state = this.engine?.state || this.state || null;
+
         this.bridge?.start();
         this.unregisterHandlers.push(
             ...registerCareerHandlers({ application: this, registry: this.registry })
