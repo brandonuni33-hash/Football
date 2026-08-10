@@ -1,12 +1,11 @@
 // domain/match/matchPerformanceEngine.js
-// Moteur commun de performance individuelle. Les attributs lus ici passent
-// désormais par V2 : 12 attributs football + mental caché.
-import { get as getAttribute, ensure as ensureAttributesV2 } from '../../attributeSystemV2.js';
+// Moteur commun de performance individuelle. Lit directement le modèle joueur canonique.
+import { get as getAttribute, ensure } from '../player/playerSystem.js';
 const clamp=(v,min,max)=>Math.min(max,Math.max(min,Number(v)||0));const n=v=>Number.isFinite(Number(v))?Number(v):0;const rand=(min,max)=>min+Math.random()*(max-min);
 const ROLE_WEIGHTS={attacker:{finish:.23,speed:.12,dribble:.14,pass:.10,defense:.04,physical:.09,mental:.12,positioning:.16},midfielder:{finish:.06,speed:.09,dribble:.12,pass:.24,defense:.12,physical:.09,mental:.14,positioning:.14},defender:{finish:.02,speed:.09,dribble:.06,pass:.13,defense:.29,physical:.16,mental:.15,positioning:.10},goalkeeper:{finish:.01,speed:.05,dribble:.03,pass:.13,defense:.28,physical:.13,mental:.24,positioning:.13}};
 function roleOf(position){const p=String(position||'').toUpperCase();if(['GK','GB','G'].includes(p))return'goalkeeper';if(['DC','CB','DD','RB','DG','LB','D','LAT'].includes(p))return'defender';if(['MC','CM','MOC','CAM','MD','MG','M','MDEF','MOFF'].includes(p))return'midfielder';return'attacker';}
-function attribute(player,key,fallback=50){ensureAttributesV2(player);const map={finish:'finition',speed:'vitesse',dribble:'dribble',pass:'passe',defense:'defense',physical:'puissance',mental:'concentration',positioning:'placement'};return getAttribute(player,map[key]||key,fallback);}
-function mental(player,key,fallback=50){ensureAttributesV2(player);return getAttribute(player,key,fallback);}
+function attribute(player,key,fallback=50){ensure(player);const map={finish:'finition',speed:'vitesse',dribble:'dribble',pass:'passe',defense:'defense',physical:'puissance',mental:'concentration',positioning:'placement'};return getAttribute(player,map[key]||key,fallback);}
+function mental(player,key,fallback=50){ensure(player);return getAttribute(player,key,fallback);}
 function expressionFactor(player){const fitness=clamp(player?.fitness??80,0,100),morale=clamp(player?.morale??70,0,100),concentration=mental(player,'concentration',50),confidence=clamp(morale*.55+concentration*.45,0,100),fatiguePenalty=Math.pow((100-fitness)/100,1.35)*.22,mentalPenalty=Math.pow((100-confidence)/100,1.15)*.14;return clamp(1-fatiguePenalty-mentalPenalty,.58,1.04);}
 function consistency(player){return clamp(.78+mental(player,'regularite',60)/450,.80,.999);}
 function relativeLevel(player,opponentStrength=50){const w=ROLE_WEIGHTS[roleOf(player?.position)],raw=attribute(player,'finish')*w.finish+attribute(player,'speed')*w.speed+attribute(player,'dribble')*w.dribble+attribute(player,'pass')*w.pass+attribute(player,'defense')*w.defense+attribute(player,'physical')*w.physical+attribute(player,'mental')*w.mental+attribute(player,'positioning')*w.positioning;return clamp((raw-clamp(opponentStrength,25,95))/45,-.55,.55);}
