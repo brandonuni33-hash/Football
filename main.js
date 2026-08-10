@@ -1,28 +1,51 @@
 // main.js
 import { GameEngine } from './gameEngine.js';
-// Branche les compétitions internationales avant la création du moteur.
-import './internationalIntegration.js';
-// Branche les récompenses de carrière : Joueur de l'année, Équipe de l'année,
-// Meilleur jeune et classement du Ballon d'Or.
-import { AwardsSystem } from './awardsIntegration.js';
+import { AwardsSystem } from './awardsSystem.js';
 
-document.addEventListener('DOMContentLoaded', () => {
-    console.log("⚡ Démarrage de Street to Pro (v107)...");
+// L'intégration des récompenses monkey-patche GameEngine et importe lui-même
+// GameEngine. Elle doit donc être chargée APRÈS l'initialisation du module
+// GameEngine pour éviter une dépendance circulaire au démarrage.
+
+function showFatalError(error) {
+    console.error("Erreur critique lors du chargement du jeu :", error);
+    const app = document.getElementById('app');
+    if (app) {
+        app.innerHTML = `
+            <div style="min-height:100vh;padding:40px 24px;background:#070b14;color:#fff;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;text-align:center;">
+                <div>
+                    <h1 style="font-size:28px;margin-bottom:12px;">Street to Pro</h1>
+                    <p style="color:#94a3b8;">Le jeu rencontre un problème au démarrage.</p>
+                    <p style="color:#64748b;font-size:13px;margin-top:16px;">Recharge la page. Si le problème persiste, la console contient le détail technique.</p>
+                </div>
+            </div>
+        `;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log("⚡ Démarrage de Street to Pro...");
 
     try {
-        // Initialisation globale du moteur de jeu
+        // 1. Le moteur est chargé et initialisé sans aucune intégration cyclique.
         window.game = new GameEngine();
 
-        // Initialise/migre le palmarès même pour une ancienne sauvegarde.
+        // 2. Initialise/migre le palmarès même pour une ancienne sauvegarde.
         AwardsSystem.ensure(window.game.state);
 
-        // Lancement de l'interface utilisateur via le moteur
+        // 3. L'interface est disponible immédiatement.
         if (window.game.ui && typeof window.game.ui.init === 'function') {
             window.game.ui.init();
         } else {
-            console.error("Erreur : L'interface utilisateur n'a pas pu être initialisée.");
+            throw new Error("L'interface utilisateur n'a pas pu être initialisée.");
         }
+
+        // 4. Après l'initialisation complète, on applique le patch des récompenses.
+        // Le module importe GameEngine : le chargement différé évite la boucle
+        // GameEngine -> awardsIntegration -> GameEngine au démarrage.
+        await import('./awardsIntegration.js?v=2');
+
+        console.log("✅ Street to Pro prêt.");
     } catch (error) {
-        console.error("Erreur critique lors du chargement du jeu :", error);
+        showFatalError(error);
     }
 });
