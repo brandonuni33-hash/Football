@@ -3,6 +3,8 @@ import { GameEngine } from './gameEngine.js';
 import { AwardsSystem } from './awardsSystem.js';
 import GameApplication from './application/gameApplication.js';
 import { createSystemRegistry } from './application/systemRegistry.js';
+import './ui-hotfix.js?v=5';
+import './ui-gameplay-hotfix.js?v=2';
 
 function showFatalError(error) {
     console.error("Erreur critique lors du chargement du jeu :", error);
@@ -47,7 +49,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             throw new Error("L'interface utilisateur n'a pas pu être initialisée.");
         }
 
-        await import('./awardsIntegration.js?v=5');
+        await import('./awardsIntegration.js?v=4');
         console.log("✅ Street to Pro prêt.");
     } catch (error) {
         showFatalError(error);
