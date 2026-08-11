@@ -2,7 +2,7 @@
 // Contrat documentaire du State applicatif.
 // Ce fichier ne remplace pas encore state.js : il définit la cible de migration.
 
-export const STATE_SCHEMA_VERSION = 9;
+export const STATE_SCHEMA_VERSION = 10;
 
 export const STATE_KEYS = Object.freeze([
     'schemaVersion',
@@ -16,6 +16,7 @@ export const STATE_KEYS = Object.freeze([
     'family',
     'relationships',
     'relationshipNetwork',
+    'relationshipMemory',
     'careerMemory',
     'generationHistory',
     'secondGeneration',
@@ -27,6 +28,10 @@ export const STATE_KEYS = Object.freeze([
     'pendingMediaDilemma',
     'pendingTransferOffer',
     'pendingPositionProposal',
+    'scouting',
+    'transferInterests',
+    'clubTransferNeeds',
+    'transferMarket',
     'world',
     'cups',
     'cupHistory',
