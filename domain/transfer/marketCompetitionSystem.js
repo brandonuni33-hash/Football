@@ -3,7 +3,12 @@
 
 import ClubNeedSystem from './clubNeedSystem.js';
 
-const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, value));
+const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, Number(value) || 0));
+const scaleFive = value => {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return 50;
+    return numeric <= 5 ? numeric * 20 : numeric;
+};
 
 export class MarketCompetitionSystem {
     constructor({ clubNeeds = new ClubNeedSystem() } = {}) {
@@ -16,8 +21,8 @@ export class MarketCompetitionSystem {
                 const need = this.clubNeeds.get(state, club?.id);
                 if (!need) return null;
                 const fit = this.clubNeeds.scorePlayer(need, player);
-                const budgetPower = clamp(Number(club?.budgetPower ?? club?.budget ?? 50));
-                const sportingPull = clamp(Number(club?.reputation ?? club?.prestige ?? 50));
+                const budgetPower = clamp(club?.budgetPower ?? club?.budget ?? scaleFive(club?.finances));
+                const sportingPull = clamp(scaleFive(club?.reputation ?? club?.prestige));
                 const urgency = need.urgency;
                 const marketHeat = clamp(urgency * 0.45 + fit * 0.30 + budgetPower * 0.15 + sportingPull * 0.10);
                 return {
