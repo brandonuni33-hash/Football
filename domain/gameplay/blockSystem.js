@@ -74,15 +74,31 @@ export class BlockSystem {
             const positionProposal = this.careerSystem.evaluatePositionChange(player);
             state.pendingPositionProposal = positionProposal || null;
 
-            // Une offre en attente appartient au TransferSystem et doit survivre
-            // aux blocs suivants jusqu'à acceptation ou refus explicite.
-            if (!player.isInjured) this.transferSystem?.generateOffer?.(state);
+            // Le mercato lit la performance déjà résolue du bloc. Une offre existante
+            // reste prioritaire et aucun autre système ne réinitialise pendingTransferOffer.
+            const transferCycle = !player.isInjured
+                ? this.transferSystem?.progressMarket?.(state, report.summary || {}) || null
+                : null;
 
             const season = Number(state.calendar?.currentSeasonYear ?? state.season ?? state.career?.season ?? 1);
             const familyBirths = this.familyLifeSystem?.evaluateBirths?.({ state, player, season }) || [];
             const calendar = this.advanceCalendar(state);
             this.stateManager.save(state);
-            const result = { report: { ...report, training: trainingReport }, narrativeScene, revealedConsequences, calendar, event: state.pendingEvent, coachEvent: state.pendingCoachEvent, transferOffer: state.pendingTransferOffer, mediaDilemma: state.media?.recentDilemma || null, positionProposal: state.pendingPositionProposal, discoveredRole, familyBirths };
+            const result = {
+                report: { ...report, training: trainingReport },
+                narrativeScene,
+                revealedConsequences,
+                calendar,
+                event: state.pendingEvent,
+                coachEvent: state.pendingCoachEvent,
+                transferOffer: state.pendingTransferOffer,
+                transferActivity: transferCycle?.activity || [],
+                transferInterests: transferCycle?.activeInterests || [],
+                mediaDilemma: state.media?.recentDilemma || null,
+                positionProposal: state.pendingPositionProposal,
+                discoveredRole,
+                familyBirths
+            };
             EventBus.emit(EVENTS.GAME_BLOCK_COMPLETED, { state, playerId: player.id, result });
             return result;
         } catch (error) {
