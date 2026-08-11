@@ -22,7 +22,7 @@ Point d'entrée web uniquement. Il ne contient pas de logique métier et ne cons
 Orchestration, commandes, façades et composition du domaine. Aucun calcul métier détaillé ne doit y vivre.
 
 ### `domain/`
-Propriétaire canonique des règles métier. Les systèmes sont regroupés par domaine : carrière, match, joueur, famille, relations, notifications, interactions, etc.
+Propriétaire canonique des règles métier. Les systèmes sont regroupés par domaine : carrière, match, joueur, famille, relations, notifications, interactions, narration, etc.
 
 ### `state/`
 Contrat, création et lecture du state. Une nouvelle fonctionnalité ne doit pas créer un second gestionnaire d'état parallèle.
@@ -32,6 +32,27 @@ Infrastructure générique : événements, commandes, bus et contrats transverse
 
 ### `ui/`
 Vues et coordination d'interface. La logique métier reste dans `application/` ou `domain/`.
+
+## Narrative Engine
+
+`domain/narrative/narrativeEngine.js` est la couche canonique d'interprétation narrative.
+
+Il peut :
+- lire les faits déjà résolus par les systèmes métier ;
+- lire `careerMemory` et les mémoires spécialisées existantes ;
+- hiérarchiser les moments ;
+- construire des scènes et des beats narratifs ;
+- proposer un ton et une importance de présentation.
+
+Il ne peut pas :
+- modifier les statistiques du joueur ;
+- décider d'un résultat de match ;
+- créer ou accepter un transfert ;
+- modifier une relation ;
+- créer une blessure ou une conséquence métier ;
+- remplacer `ConsequenceSystem`, `NotificationSystem` ou les systèmes de domaine.
+
+Les systèmes métier produisent les faits. Les mémoires conservent ce qui compte. Le Narrative Engine interprète. L'UI présente.
 
 ## Compatibilité racine
 Quelques modules historiques à la racine peuvent rester temporairement comme façades publiques (ex. `player.js`) lorsqu'un grand nombre d'importations historiques les utilise encore. Une façade doit être petite et ne contenir aucune nouvelle règle métier.
