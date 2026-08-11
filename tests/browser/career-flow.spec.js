@@ -7,8 +7,8 @@ async function boot(page) {
   await page.waitForFunction(() => Boolean(window.game?.gameUI));
 }
 
-async function createDeterministicCareer(page) {
-  return page.evaluate(({ year }) => {
+async function createDeterministicCareer(page, { fixtures = null, age = 18 } = {}) {
+  return page.evaluate(({ year, requestedFixtures, playerAge }) => {
     const gateway = window.game.gameUI;
     const state = gateway.startCareer({
       firstname: 'CI',
@@ -21,7 +21,7 @@ async function createDeterministicCareer(page) {
 
     if (!state?.player) throw new Error('La création de carrière n’a pas produit de joueur.');
 
-    state.player.age = 18;
+    state.player.age = playerAge;
     state.player.club = 'Test FC';
     state.player.clubCountry = 'France';
     state.player.clubLevel = 1;
@@ -29,7 +29,7 @@ async function createDeterministicCareer(page) {
     state.calendar.currentSeasonYear = year;
     state.calendar.seasonMatchCursor = 0;
 
-    const fixture = {
+    const defaultFixture = {
       id: 'ci-final-001',
       month: 8,
       type: 'league',
@@ -43,6 +43,9 @@ async function createDeterministicCareer(page) {
       home: true,
       isDerby: true
     };
+    const matchFixtures = Array.isArray(requestedFixtures) && requestedFixtures.length
+      ? requestedFixtures
+      : [defaultFixture];
 
     const emptyMonth = month => ({
       month,
@@ -53,18 +56,18 @@ async function createDeterministicCareer(page) {
     });
     const byMonth = {};
     for (let month = 1; month <= 12; month += 1) byMonth[month] = emptyMonth(month);
-    byMonth[8].matches = [fixture];
+    byMonth[8].matches = matchFixtures;
 
     state.calendar.seasonSchedule = {
       version: 4,
       seasonYear: year,
       seasonLabel: `${year}-${year + 1}`,
-      generatedForAge: 18,
-      category: 'Senior',
+      generatedForAge: playerAge,
+      category: playerAge < 18 ? 'U17/U19' : 'Senior',
       seed: 1,
-      matches: [fixture],
+      matches: matchFixtures,
       byMonth,
-      totals: { allMatches: 1, leagueMatches: 1, cupMatches: 0, europeanMatches: 0 }
+      totals: { allMatches: matchFixtures.length, leagueMatches: matchFixtures.length, cupMatches: 0, europeanMatches: 0 }
     };
     state.cups = {};
     state.europeanTournament = null;
@@ -73,8 +76,50 @@ async function createDeterministicCareer(page) {
     delete state.interactiveBlockResults;
 
     window.game.gameSystems.blockSystem.stateManager.save(state);
-    return { playerId: state.player.id, month: state.calendar.currentMonth };
-  }, { year: CURRENT_YEAR });
+    return {
+      playerId: state.player.id,
+      month: state.calendar.currentMonth,
+      matchesPlayed: Number(state.player.stats?.matchesPlayed || 0)
+    };
+  }, { year: CURRENT_YEAR, requestedFixtures: fixtures, playerAge: age });
+}
+
+async function forceInteractionPlan(page, playableIndexes) {
+  return page.evaluate(({ year, indexes }) => {
+    const gateway = window.game.gameUI;
+    const state = gateway.state;
+    const matches = gateway.getScheduledMatches();
+    const selected = new Set(indexes);
+    state.matchInteractionPlan = {
+      key: `${year}:8:${matches.length}`,
+      budget: selected.size,
+      playableCount: selected.size,
+      entries: matches.map((match, matchIndex) => ({
+        matchIndex,
+        playable: selected.has(matchIndex),
+        importance: {
+          score: Number(match.importanceScore || (selected.has(matchIndex) ? 80 : 10)),
+          level: selected.has(matchIndex) ? 'exceptional' : 'low',
+          reasons: selected.has(matchIndex) ? ['ci_force'] : []
+        }
+      }))
+    };
+    return gateway.getMatchInteractionPlan();
+  }, { year: CURRENT_YEAR, indexes: playableIndexes });
+}
+
+async function finishInteractiveFlow(page) {
+  return page.evaluate(() => {
+    const gateway = window.game.gameUI;
+    let result = gateway.playNextBlock();
+    let decisions = 0;
+    while (result?.interactive) {
+      decisions += 1;
+      if (decisions > 10) throw new Error('Boucle de match interactif anormalement longue.');
+      result = gateway.playNextBlock(0);
+    }
+    return { decisions, result };
+  });
 }
 
 test('parcours carrière complet : création → match → narration → conséquence → sauvegarde/rechargement', async ({ page }) => {
@@ -154,4 +199,138 @@ test('parcours carrière complet : création → match → narration → conséq
   expect(restored.memoryCount).toBeGreaterThan(0);
   expect(restored.hasConsequenceMemory).toBe(true);
   expect(pageErrors).toEqual([]);
+});
+
+test('bloc 100 % simulé : tous les matchs sont joués sans session interactive et finalisés une seule fois', async ({ page }) => {
+  await boot(page);
+  const fixtures = [
+    { id: 'ci-sim-1', month: 8, type: 'league', competitionId: 'CI_LEAGUE', competitionType: 'league', competitionName: 'Championnat CI', opponent: 'Club A', opponentStrength: 52, home: true },
+    { id: 'ci-sim-2', month: 8, type: 'league', competitionId: 'CI_LEAGUE', competitionType: 'league', competitionName: 'Championnat CI', opponent: 'Club B', opponentStrength: 55, home: false }
+  ];
+  const created = await createDeterministicCareer(page, { fixtures });
+  const plan = await forceInteractionPlan(page, []);
+  expect(plan.playableCount).toBe(0);
+
+  const result = await page.evaluate(() => {
+    const gateway = window.game.gameUI;
+    const before = Number(gateway.state.player.stats?.matchesPlayed || 0);
+    const block = gateway.playNextBlock();
+    const rows = block?.report?.summary?.matchResults || [];
+    return {
+      before,
+      after: Number(gateway.state.player.stats?.matchesPlayed || 0),
+      interactiveSession: Boolean(gateway.state.activeMatchSession),
+      interactiveRows: rows.filter(row => row.interactive).length,
+      simulatedRows: rows.filter(row => row.interactive === false).length,
+      matchCount: rows.length,
+      narrativeType: block?.narrativeScene?.type || null,
+      monthAfter: gateway.state.calendar?.currentMonth
+    };
+  });
+
+  expect(result.interactiveSession).toBe(false);
+  expect(result.interactiveRows).toBe(0);
+  expect(result.simulatedRows).toBe(2);
+  expect(result.matchCount).toBe(2);
+  expect(result.after - result.before).toBe(2);
+  expect(result.narrativeType).toBe('match.end');
+  expect(result.monthAfter).not.toBe(8);
+  expect(result.before).toBe(created.matchesPlayed);
+});
+
+test('bloc mixte : un match interactif et un match simulé sont fusionnés dans le même rapport', async ({ page }) => {
+  await boot(page);
+  const fixtures = [
+    { id: 'ci-mixed-1', month: 8, type: 'league', competitionId: 'CI_LEAGUE', competitionType: 'league', competitionName: 'Championnat CI', phase: 'final', round: 'Finale', opponent: 'Rival CI', opponentStrength: 60, home: true, isDerby: true },
+    { id: 'ci-mixed-2', month: 8, type: 'league', competitionId: 'CI_LEAGUE', competitionType: 'league', competitionName: 'Championnat CI', opponent: 'Club Simulation', opponentStrength: 54, home: false }
+  ];
+  const created = await createDeterministicCareer(page, { fixtures });
+  const plan = await forceInteractionPlan(page, [0]);
+  expect(plan.entries.filter(entry => entry.playable)).toHaveLength(1);
+
+  const flow = await finishInteractiveFlow(page);
+  expect(flow.decisions).toBeGreaterThan(0);
+
+  const rows = flow.result?.report?.summary?.matchResults || [];
+  expect(rows).toHaveLength(2);
+  expect(rows.filter(row => row.interactive)).toHaveLength(1);
+  expect(rows.filter(row => row.interactive === false)).toHaveLength(1);
+  expect(rows.map(row => row.matchIndex)).toEqual([0, 1]);
+  expect(flow.result?.narrativeScene?.type).toBe('match.end');
+
+  const stateAfter = await page.evaluate(() => ({
+    matchesPlayed: Number(window.game.gameUI.state.player.stats?.matchesPlayed || 0),
+    month: window.game.gameUI.state.calendar?.currentMonth,
+    hasInteractiveBuffer: Array.isArray(window.game.gameUI.state.interactiveBlockResults),
+    hasActiveSession: Boolean(window.game.gameUI.state.activeMatchSession)
+  }));
+  expect(stateAfter.matchesPlayed - created.matchesPlayed).toBe(2);
+  expect(stateAfter.month).not.toBe(8);
+  expect(stateAfter.hasInteractiveBuffer).toBe(false);
+  expect(stateAfter.hasActiveSession).toBe(false);
+});
+
+test('ancienne sauvegarde : StateManager migre les attributs, notifications et mémoires vers le schéma actuel', async ({ page }) => {
+  await boot(page);
+
+  const migrated = await page.evaluate(async () => {
+    const { StateManager, SCHEMA_VERSION } = await import('/state/stateManager.js');
+    const legacy = {
+      schemaVersion: 3,
+      player: {
+        id: 'legacy-ci-player',
+        firstname: 'Legacy',
+        lastname: 'Tester',
+        age: 17,
+        position: 'BU',
+        attributes: { vitesse: 61, tir: 64, passe: 58, dribble: 63, defense: 31, physique: 56, mental: 59 },
+        stats: {},
+        progression: { obsolete: true },
+        attributesV2: { obsolete: true }
+      },
+      notifications: [
+        { id: 'legacy-signal-1', title: 'Ancien signal', read: false },
+        { id: 'legacy-signal-2', title: 'Signal lu', read: true }
+      ],
+      careerMemory: [{ id: 'legacy-memory-1', title: 'Premier souvenir' }],
+      calendar: { currentMonth: 8, currentSeasonYear: 2025 }
+    };
+
+    localStorage.setItem(StateManager.STORAGE_KEY, JSON.stringify(legacy));
+    const state = StateManager.load();
+    return {
+      schemaVersion: state?.schemaVersion,
+      expectedVersion: SCHEMA_VERSION,
+      playerId: state?.player?.id,
+      age: state?.player?.age,
+      acceleration: state?.player?.attributes?.acceleration,
+      endurance: state?.player?.attributes?.endurance,
+      puissance: state?.player?.attributes?.puissance,
+      mentalIsObject: Boolean(state?.player?.mental && typeof state.player.mental === 'object'),
+      hasProgression: Object.prototype.hasOwnProperty.call(state?.player || {}, 'progression'),
+      hasAttributesV2: Object.prototype.hasOwnProperty.call(state?.player || {}, 'attributesV2'),
+      temporaryEffectsIsArray: Array.isArray(state?.player?.temporaryEffects),
+      notificationsIsObject: Boolean(state?.notifications && !Array.isArray(state.notifications)),
+      signalCount: state?.notifications?.signals?.length || 0,
+      unreadCount: state?.notifications?.unreadCount,
+      memoryCount: state?.careerMemory?.length || 0,
+      relationshipMemoryIsArray: Array.isArray(state?.relationshipMemory)
+    };
+  });
+
+  expect(migrated.schemaVersion).toBe(migrated.expectedVersion);
+  expect(migrated.playerId).toBe('legacy-ci-player');
+  expect(migrated.age).toBe(17);
+  expect(migrated.acceleration).toBeGreaterThan(0);
+  expect(migrated.endurance).toBeGreaterThan(0);
+  expect(migrated.puissance).toBe(56);
+  expect(migrated.mentalIsObject).toBe(true);
+  expect(migrated.hasProgression).toBe(false);
+  expect(migrated.hasAttributesV2).toBe(false);
+  expect(migrated.temporaryEffectsIsArray).toBe(true);
+  expect(migrated.notificationsIsObject).toBe(true);
+  expect(migrated.signalCount).toBe(2);
+  expect(migrated.unreadCount).toBe(1);
+  expect(migrated.memoryCount).toBe(1);
+  expect(migrated.relationshipMemoryIsArray).toBe(true);
 });
