@@ -1,5 +1,5 @@
 // ui/views/dashboardView.js
-// Vue canonique du dashboard. Aucun accès direct au domaine.
+// Vue canonique du dashboard. Présentation uniquement : aucun effet métier ici.
 
 const COUNTRY_FLAGS = {
     France: '🇫🇷', Espagne: '🇪🇸', Spain: '🇪🇸', Allemagne: '🇩🇪', Germany: '🇩🇪',
@@ -44,51 +44,6 @@ function potentialStars(value) {
     return '★'.repeat(count) + '☆'.repeat(5 - count);
 }
 
-function academyStars(player) {
-    return firstValue(
-        player?.academyStars,
-        player?.trainingCenterStars,
-        player?.trainingCentreStars,
-        player?.formationCenterStars,
-        player?.academyRating,
-        player?.trainingCenterRating,
-        player?.trainingCentreRating
-    ) ?? 3;
-}
-
-function academyText(value) {
-    const number = Number(value);
-    const count = Number.isFinite(number) ? Math.max(0, Math.min(5, Math.round(number))) : 3;
-    return '★'.repeat(count) + '☆'.repeat(5 - count);
-}
-
-function league(player, state) {
-    const leagueObject = player?.league;
-    const value = firstValue(
-        player?.championshipName,
-        player?.championship,
-        player?.leagueName,
-        typeof leagueObject === 'object' ? leagueObject?.name : leagueObject,
-        player?.competitionName,
-        state?.club?.league?.name,
-        state?.club?.championship?.name,
-        state?.team?.league?.name,
-        state?.team?.championship?.name,
-        state?.currentLeague?.name,
-        state?.competition?.name
-    );
-    if (value) return value;
-
-    const club = String(player?.club || '').toLowerCase();
-    if (club.includes('bordeaux')) return 'Ligue 2 BKT';
-    if (club.includes('nuremberg') || club.includes('nürnberg')) return '2. Bundesliga';
-    return '';
-}
-
-function contract(player) {
-    return `${firstValue(player?.youthLevel, player?.teamLevel, player?.academyLevel, player?.category) || 'U15'} · ${firstValue(player?.contractType, player?.contractName, player?.contract?.type) || 'Contrat jeune'}`;
-}
-
 function rating(stats) {
     const number = stat(stats, ['averageRating', 'average_rating', 'ratingAverage', 'avgRating', 'rating']);
     return number > 0 ? number.toFixed(1) : '—';
@@ -103,18 +58,18 @@ function careerStats(player) {
     const tackles = stat(stats, ['tackles', 'tacles']);
     const cleanSheets = stat(stats, ['cleanSheets', 'clean_sheets', 'cleanSheet', 'cleanSheetsCount']);
 
-    if (GOALKEEPER_POSITIONS.has(position)) return [['MATCHS', matches], ['CLEAN SHEETS', cleanSheets], ['NOTE MOY.', rating(stats)]];
-    if (DEFENSIVE_POSITIONS.has(position)) return [['MATCHS', matches], ['TACLES', tackles], ['PASSES D.', assists], ['NOTE MOY.', rating(stats)]];
-    return [['MATCHS', matches], ['BUTS', goals], ['PASSES D.', assists], ['NOTE MOY.', rating(stats)]];
+    if (GOALKEEPER_POSITIONS.has(position)) return [['MATCHS', matches], ['CLEAN SHEETS', cleanSheets], ['NOTE', rating(stats)]];
+    if (DEFENSIVE_POSITIONS.has(position)) return [['MATCHS', matches], ['TACLES', tackles], ['PASSES D.', assists], ['NOTE', rating(stats)]];
+    return [['MATCHS', matches], ['BUTS', goals], ['PASSES D.', assists], ['NOTE', rating(stats)]];
 }
 
 function notificationIcon(note) {
     const category = String(note?.category || '').toLowerCase();
-    if (category.includes('famille') || category.includes('family')) return '👨‍👩‍👦';
-    if (category.includes('mercato') || category.includes('transfer')) return '⚽';
-    if (category.includes('media') || category.includes('média')) return '📰';
-    if (category.includes('match')) return '🏟️';
-    if (category.includes('coach')) return '🧠';
+    if (category.includes('famille') || category.includes('family')) return '⌂';
+    if (category.includes('mercato') || category.includes('transfer') || category.includes('scout')) return '⇄';
+    if (category.includes('media') || category.includes('média')) return '◫';
+    if (category.includes('match')) return '⚽';
+    if (category.includes('coach')) return '◉';
     return '•';
 }
 
@@ -122,6 +77,23 @@ function notificationPriority(note) {
     const category = String(note?.category || '').toLowerCase();
     return ['famille', 'family', 'mercato', 'transfer', 'coach', 'match', 'medical', 'event']
         .some(value => category.includes(value)) ? 'important' : 'info';
+}
+
+function moraleLabel(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return 'STABLE';
+    if (number >= 75) return 'ÉLEVÉ';
+    if (number >= 55) return 'BON';
+    if (number >= 35) return 'FRAGILE';
+    return 'BAS';
+}
+
+function formatMoney(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return '—';
+    if (Math.abs(number) >= 1_000_000) return `${(number / 1_000_000).toFixed(number >= 10_000_000 ? 0 : 1)} M€`;
+    if (Math.abs(number) >= 1_000) return `${Math.round(number / 1_000)} k€`;
+    return `${Math.round(number)} €`;
 }
 
 const escapeHtml = value => String(value ?? '')
@@ -141,47 +113,80 @@ export class DashboardView {
         const player = state?.player || {};
         const calendar = state?.calendar || {};
         const media = state?.media || {};
-        const notifications = (state?.notifications?.signals || [])
-            .filter(note => !note?.archived && !note?.read)
-            .slice(-8)
-            .reverse();
+        const allSignals = (state?.notifications?.signals || []).filter(note => !note?.archived);
+        const notifications = allSignals.filter(note => !note?.read).slice(-8).reverse();
+        const latestSignal = notifications[0] || allSignals.at(-1) || null;
+        const coachSignal = [...allSignals].reverse().find(note => String(note?.category || '').toLowerCase().includes('coach')) || null;
         const playerName = `${player.firstname || player.firstName || ''} ${player.lastname || player.lastName || ''}`.trim() || 'Joueur';
         const playerFlag = flag(player);
-        const playerLeague = league(player, state);
-        const shirtNumber = firstValue(player.number, player.shirtNumber, player.jerseyNumber);
         const stats = careerStats(player);
+        const rawStats = player?.stats || {};
+        const goals = stat(rawStats, ['goals', 'buts']);
+        const assists = stat(rawStats, ['assists', 'passesDecisives']);
+        const overall = firstValue(player.overall, player.general, player.rating, '—');
+        const fitness = firstValue(player.fitness, player.form, player.condition, '—');
+        const morale = firstValue(player.morale, player.moral, '—');
+        const balance = firstValue(state?.economy?.balance, state?.finances?.balance, player?.money, state?.money);
+        const currentPeriod = firstValue(calendar.currentPeriod, calendar.periodLabel, calendar.currentMonth ? `Mois ${calendar.currentMonth}` : null, 'Pré-saison');
+        const avatarInitials = playerName.split(/\s+/).slice(0, 2).map(part => part[0] || '').join('').toUpperCase();
 
         return `
-            <div class="phone-frame">
-                <div class="phone-status-bar"><span>9:41</span><span>⚽ Street to Pro</span><span>🔋 100%</span></div>
-                <div class="phone-home-screen">
-                    <section class="player-widget-enhanced">
-                        <div class="widget-header-line"><span>📅 Saison ${calendar.currentSeasonYear || ''}</span><span>${calendar.currentPeriod || 'Pré-saison'}</span></div>
-                        <div class="live-identity-block">
-                            <div class="live-player-name-line"><span class="live-player-flag">${playerFlag}</span><span class="live-player-name">${escapeHtml(playerName)}</span></div>
-                            <div class="live-player-position-row"><span class="live-player-position">${escapeHtml(player.position || player.positionId || '—')}</span><span class="live-player-age">${player.age ?? '—'} ans</span></div>
-                            <div class="live-club-line">${escapeHtml(player.club || 'Sans club')}</div>
-                            ${playerLeague ? `<div class="live-league-line">${escapeHtml(playerLeague)}</div>` : ''}
-                            <div class="live-academy-line"><span>Centre de formation</span><span class="live-academy-stars">${academyText(academyStars(player))}</span></div>
-                            <div class="live-contract-line">${escapeHtml(contract(player))}</div>
-                            <div class="live-shirt-line">Numéro maillot : ${escapeHtml(shirtNumber ?? '—')}</div>
+            <div class="phone-frame immersive-dashboard">
+                <div class="phone-status-bar immersive-status-bar">
+                    <span>${escapeHtml(currentPeriod)}</span>
+                    <span class="immersive-brand">STREET <b>TO PRO</b></span>
+                    <span>● ${escapeHtml(formatMoney(balance))}</span>
+                </div>
+
+                <main class="phone-home-screen immersive-home">
+                    <section class="immersive-player-card" aria-label="Profil joueur">
+                        <div class="immersive-player-glow"></div>
+                        <div class="immersive-overall-ring">
+                            <strong>${escapeHtml(overall)}</strong>
+                            <span>GÉN</span>
                         </div>
-                        <div class="widget-stats-grid live-core-stats">
-                            <div class="stat-pill"><span>GEN</span><strong>${player.overall ?? '—'}</strong></div>
-                            <div class="stat-pill"><span>POTENTIEL</span><strong class="live-potential-stars">${potentialStars(player.potential)}</strong></div>
-                            <div class="stat-pill"><span>FORME</span><strong>${player.fitness ?? '—'}</strong></div>
-                            <div class="stat-pill"><span>MORAL</span><strong>${player.morale ?? '—'}</strong></div>
+                        <div class="immersive-player-avatar" aria-hidden="true">${escapeHtml(avatarInitials || 'ST')}</div>
+                        <div class="immersive-player-copy">
+                            <div class="immersive-player-name">${escapeHtml(playerName)}</div>
+                            <div class="immersive-player-role">${escapeHtml(player.position || player.positionId || 'JOUEUR')}</div>
+                            <div class="immersive-club-row"><span>◈</span><strong>${escapeHtml(player.club || 'Sans club')}</strong></div>
+                            <div class="immersive-season-row">SAISON ${escapeHtml(calendar.currentSeasonYear || '—')} · <b>${player.careerEnded ? 'CARRIÈRE TERMINÉE' : 'EN ACTIVITÉ'}</b></div>
                         </div>
-                        <div class="live-career-stats" aria-label="Statistiques de carrière">
-                            ${stats.map(([label, value]) => `<div class="live-career-stat"><span>${label}</span><strong>${value}</strong></div>`).join('')}
+                        <div class="immersive-energy"><span>⚡</span><strong>${escapeHtml(fitness)}</strong></div>
+                        <div class="immersive-player-meta">${playerFlag ? `<span>${playerFlag}</span>` : ''}<span>${player.age ?? '—'} ans</span></div>
+
+                        <div class="immersive-stat-strip">
+                            <div><strong>${goals}</strong><span>BUTS</span></div>
+                            <div><strong>${assists}</strong><span>PASSES D.</span></div>
+                            <div><strong>${escapeHtml(rating(rawStats))}</strong><span>NOTE MOY.</span></div>
+                            <div class="immersive-morale"><strong>●</strong><span>MORAL ${escapeHtml(moraleLabel(morale))}</span></div>
                         </div>
                     </section>
 
-                    <section class="dashboard-notification-zone ${notifications.length ? 'has-notifications' : 'is-empty'}">
+                    <section class="immersive-alert-card ${latestSignal ? '' : 'is-quiet'}">
+                        <div class="immersive-alert-icon">${latestSignal ? notificationIcon(latestSignal) : '◌'}</div>
+                        <div class="immersive-alert-copy">
+                            <strong>${escapeHtml(latestSignal?.title || 'La carrière suit son cours')}</strong>
+                            <span>${escapeHtml(latestSignal?.body || latestSignal?.message || 'Aucune alerte prioritaire pour le moment.')}</span>
+                        </div>
+                        ${notifications.length ? `<span class="immersive-unread-dot">${notifications.length}</span>` : '<span class="immersive-status-dot"></span>'}
+                    </section>
+
+                    <button class="immersive-message-card" type="button" data-app="messages">
+                        <span class="immersive-message-avatar">CM</span>
+                        <span class="immersive-message-copy">
+                            <span class="immersive-message-head"><strong>Coach</strong><small>${coachSignal ? 'Nouveau' : 'Staff'}</small></span>
+                            <span>${escapeHtml(coachSignal?.body || coachSignal?.message || coachSignal?.title || 'Reste concentré. La prochaine échéance approche.')}</span>
+                        </span>
+                        <span class="immersive-message-chevron">›</span>
+                    </button>
+
+                    <section class="dashboard-notification-zone immersive-journal ${notifications.length ? 'has-notifications' : 'is-empty'}">
                         <button class="career-journal-bar" type="button" aria-expanded="false" data-journal-toggle>
-                            <span class="journal-icon">🔔</span><span class="journal-title">Journal de carrière</span>
+                            <span class="journal-icon">◫</span>
+                            <span class="journal-title">Journal de carrière</span>
                             <span class="journal-count">${notifications.length}</span>
-                            ${notifications.length ? `<span class="journal-preview">${escapeHtml(notifications[0]?.title || 'Nouvelle actualité')}</span>` : ''}
+                            <span class="journal-preview">${escapeHtml(notifications[0]?.title || 'Voir les dernières nouvelles')}</span>
                             <span class="journal-chevron">›</span>
                         </button>
                         <div class="career-journal-drawer" hidden>
@@ -197,31 +202,47 @@ export class DashboardView {
                         </div>
                     </section>
 
-                    <div class="live-section-title"><span>Applications</span></div>
-                    <div class="apps-grid">${this.renderApps(state)}</div>
-                    <button id="settings-floating-btn" class="btn-settings-floating" title="Réglages" type="button">⚙️</button>
-                    <button id="play-block-btn" class="btn-play-block app-advance-icon" ${player.careerEnded ? 'disabled' : ''} type="button">${player.careerEnded ? 'Carrière terminée' : 'Avancer'}</button>
-                </div>
+                    <div class="immersive-apps-heading"><span>TA VIE</span><small>${potentialStars(player.potential)} potentiel</small></div>
+                    <div class="apps-grid immersive-app-grid">${this.renderApps(state)}</div>
+
+                    <button id="play-block-btn" class="btn-play-block immersive-advance" ${player.careerEnded ? 'disabled' : ''} type="button">
+                        <span class="advance-symbol">»</span>
+                        <span><strong>${player.careerEnded ? 'CARRIÈRE TERMINÉE' : 'AVANCER'}</strong><small>${escapeHtml(currentPeriod)}</small></span>
+                    </button>
+
+                    <section class="immersive-pulse" aria-label="Tendances de carrière">
+                        <div><span>FORME</span><strong>${escapeHtml(fitness)}</strong></div>
+                        <div><span>MORAL</span><strong>${escapeHtml(moraleLabel(morale))}</strong></div>
+                        <div><span>PRESSE</span><strong>${media?.reputation > 60 ? 'POSITIVE' : media?.reputation < 35 ? 'SOUS PRESSION' : 'NEUTRE'}</strong></div>
+                    </section>
+                </main>
             </div>
         `;
     }
 
     renderApps(state) {
         const media = state?.media || {};
+        const unread = state?.notifications?.unreadCount || (state?.notifications?.signals || []).filter(note => !note?.read && !note?.archived).length;
         const apps = [
-            ['career', '⚽', 'Carrière', 'linear-gradient(135deg,#1e3a8a,#3b82f6)'],
-            ['social', '📱', 'Instafoot', 'linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)'],
-            ['messages', '💬', 'Messages', 'linear-gradient(135deg,#059669,#10b981)'],
-            ['bank', '🏦', 'Banque', 'linear-gradient(135deg,#d97706,#f59e0b)'],
-            ['stats', '📊', 'Stats', 'linear-gradient(135deg,#4f46e5,#6366f1)'],
-            ['training', '🏋️‍♂️', 'Entraînement', 'linear-gradient(135deg,#dc2626,#ef4444)'],
-            ['transfers', '🔄', 'Mercato', 'linear-gradient(135deg,#0891b2,#06b6d4)'],
-            ['settings', '⚙️', 'Réglages', 'linear-gradient(135deg,#475569,#64748b)'],
-            ['family', '👨‍👩‍👦', 'Famille', 'linear-gradient(135deg,#be185d,#ec4899)']
+            ['career', '⚽', 'Match', 'cyan'],
+            ['transfers', '⇄', 'Mercato', 'cyan'],
+            ['social', '♡', 'Réseaux', 'pink'],
+            ['family', '⌂', 'Famille', 'violet'],
+            ['stats', '▥', 'Stats', 'blue'],
+            ['training', '▲', 'Entraînement', 'orange'],
+            ['bank', '€', 'Banque', 'gold'],
+            ['settings', '⚙', 'Réglages', 'slate']
         ];
-        return apps.map(([id, icon, label, background]) => `
-            <button class="app-icon" data-app="${id}" type="button"><div class="app-logo" style="background:${background};">${icon}</div><span class="app-label">${label}</span>${id === 'social' && media.recentDilemma ? '<span class="notification-badge">1</span>' : ''}</button>
-        `).join('');
+        return apps.map(([id, icon, label, tone]) => {
+            const badge = id === 'social' && media.recentDilemma ? 1 : id === 'transfers' && state?.pendingTransferOffer ? 1 : id === 'career' && unread ? Math.min(9, unread) : 0;
+            return `
+                <button class="app-icon immersive-app" data-app="${id}" type="button">
+                    <div class="app-logo immersive-app-logo tone-${tone}"><span>${icon}</span></div>
+                    <span class="app-label">${label}</span>
+                    ${badge ? `<span class="notification-badge">${badge}</span>` : ''}
+                </button>
+            `;
+        }).join('');
     }
 
     bind(root) {
@@ -241,10 +262,6 @@ export class DashboardView {
             this.ui?.handleBlockResult?.(this.gateway.playNextBlock(null));
         });
 
-        root?.querySelector('#settings-floating-btn')?.addEventListener('click', () => {
-            this.ui.activeApp = 'settings';
-            this.ui.renderActiveApp?.();
-        });
         root?.querySelectorAll('[data-app]')?.forEach(button => button.addEventListener('click', () => {
             this.ui.activeApp = button.dataset.app;
             this.ui.renderActiveApp?.();
