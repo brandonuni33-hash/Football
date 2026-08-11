@@ -2,7 +2,7 @@
 // Gestion complète d'une session de match interactif.
 
 import { PlayerLogic } from '../../player.js';
-import { PotentialSystem } from '../../potentialSystem.js';
+import { PotentialSystem } from '../player/potentialSystem.js';
 import { MatchChoiceManager } from '../../matchChoices.js';
 import {
     clamp,
