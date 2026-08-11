@@ -7,56 +7,25 @@ import { ConsequenceSystem } from '../decision/consequenceSystem.js';
 import { MatchChoiceManager } from './matchChoiceManager.js';
 import { clamp, number, positionGroup, opponentName, isHomeMatch, competitionLabel, matchType, importanceFor, decisionMoments, buildScore } from './matchHelpers.js';
 
-const MATCH_STAT_CONSEQUENCE_MAP = Object.freeze({
-    technique: 'attributes.controle',
-    physique: 'attributes.puissance',
-    vitesse: 'attributes.vitesse',
-    defense: 'attributes.defense',
-    mental: 'mental',
-    charisme: 'reputation',
-    discipline: 'discipline',
-    relationCoach: 'relationCoach',
-    vestiaire: 'vestiaire'
-});
+const MATCH_STAT_CONSEQUENCE_MAP = Object.freeze({ technique: 'attributes.controle', physique: 'attributes.puissance', vitesse: 'attributes.vitesse', defense: 'attributes.defense', mental: 'mental', charisme: 'reputation', discipline: 'discipline', relationCoach: 'relationCoach', vestiaire: 'vestiaire' });
 
 function buildChoiceConsequence(choice = {}) {
-    const source = choice?.consequences || {};
-    const explicitPermanent = {
-        ...(source.permanent || {}),
-        ...(source.emotional || {})
-    };
-    const legacyStats = choice?.impacts?.stats || {};
-    const derived = {};
-    for (const [key, value] of Object.entries(legacyStats)) {
-        const target = MATCH_STAT_CONSEQUENCE_MAP[key];
-        if (target && Number.isFinite(Number(value)) && explicitPermanent[target] === undefined) {
-            derived[target] = Number(value);
-        }
-    }
+    const source = choice?.consequences || {}, explicitPermanent = { ...(source.permanent || {}), ...(source.emotional || {}) }, legacyStats = choice?.impacts?.stats || {}, derived = {};
+    for (const [key, value] of Object.entries(legacyStats)) { const target = MATCH_STAT_CONSEQUENCE_MAP[key]; if (target && Number.isFinite(Number(value)) && explicitPermanent[target] === undefined) derived[target] = Number(value); }
     const permanent = { ...derived, ...explicitPermanent };
-    const hasExplicit = Object.keys(source).length > 0;
-    if (!Object.keys(permanent).length && !hasExplicit) return null;
-    return {
-        ...(source || {}),
-        permanent,
-        temporary: Array.isArray(source.temporary) ? source.temporary : [],
-        effects: Array.isArray(source.effects) ? source.effects : []
-    };
+    if (!Object.keys(permanent).length && !Object.keys(source).length) return null;
+    return { ...source, permanent, temporary: Array.isArray(source.temporary) ? source.temporary : [], effects: Array.isArray(source.effects) ? source.effects : [] };
 }
 
 function interactiveChoice(match, player, moment, index, previous = []) {
-    const type = matchType(match);
-    const dilemma = MatchChoiceManager.getMatchDilemma(type, opponentName(match));
-    const templates = dilemma?.choices || [];
+    const type = matchType(match), dilemma = MatchChoiceManager.getMatchDilemma(type, opponentName(match)), templates = dilemma?.choices || [];
     const fallback = [
         { text: 'Prendre l’initiative', impacts: { ratingBonus: .16, goalChance: .035, fatigueRisk: 3 } },
         { text: 'Jouer simple et sécuriser', impacts: { ratingBonus: .08, passAccuracy: .08, fatigueRisk: -1 } },
         { text: 'Chercher le duel', impacts: { ratingBonus: .04, duelBonus: .10, cardRisk: .06, fatigueRisk: 2 } },
         { text: 'Rester patient', impacts: { ratingBonus: .03, assistChance: .04, fatigueRisk: -2 } }
     ];
-    const choices = templates.length >= 2
-        ? templates.slice(0, 4).map(c => ({ text: c.text || c.texte || c.label, impacts: c.impacts || {}, consequences: c.consequences || null }))
-        : fallback;
+    const choices = templates.length >= 2 ? templates.slice(0, 4).map(c => ({ text: c.text || c.texte || c.label, impacts: c.impacts || {}, consequences: c.consequences || null })) : fallback;
     const phase = moment <= 30 ? 'Début de match' : moment <= 60 ? 'Seconde période' : 'Fin de match';
     const context = previous.length ? 'Le match a évolué. Ta dernière décision a changé la dynamique.' : 'Le match commence et le contexte est encore ouvert.';
     return { id: `match-${Date.now()}-${index}`, minute: moment, phase, type, title: dilemma?.title || `Moment clé · ${moment}'`, description: `${context} ${dilemma?.description || `Face à ${opponentName(match)}, comment abordes-tu cette situation ?`}`, choices };
@@ -76,9 +45,7 @@ function resolveInteractiveDecision(state, session, choiceIndex) {
     if (!choice) throw new Error('Choix de match invalide.');
     const impacts = choice.impacts || {}, bonuses = impacts.matchBonuses || impacts;
     const derivedConsequences = buildChoiceConsequence(choice);
-    const consequenceChoice = derivedConsequences
-        ? { ...choice, impacts: {}, consequences: derivedConsequences }
-        : { ...choice, impacts: {}, consequences: null };
+    const consequenceChoice = derivedConsequences ? { ...choice, impacts: {}, consequences: derivedConsequences } : { ...choice, impacts: {}, consequences: null };
     const consequence = ConsequenceSystem.applyToState(state, consequenceChoice, { source: 'Match' });
     session.decisions.push({ minute: decision.minute, phase: decision.phase, choice: choice.text, impacts: bonuses, consequence: { queued: consequence?.queued || 0, reaction: consequence?.responseText || null } });
     session.modifiers.rating += number(bonuses.ratingBonus ?? bonuses.ratingBoost) + number(bonuses.passAccuracy) * .20 + number(bonuses.teamBoost) * .35;
@@ -99,32 +66,7 @@ function resolveInteractiveDecision(state, session, choiceIndex) {
     const opponentGoals = Math.min(5, Math.max(0, Math.floor(Math.random() * Math.max(1, 1.0 + opponentStrength / 60))));
     let teamGoals = session.score[session.home ? 'home' : 'away'];
     if (teamGoals === 0) teamGoals = buildScore({ player: state.player, rating, group, goalChance, opponentStrength });
-    const result = {
-        matchIndex: session.matchIndex,
-        competitionId: session.match?.competitionId || null,
-        competitionType: session.match?.competitionType || session.match?.type || null,
-        competitionName: session.competition,
-        phase: session.match?.phase || null,
-        round: session.match?.round || null,
-        type: session.type,
-        importance: session.importance,
-        opponent: session.opponent,
-        opponentStrength,
-        home: session.home,
-        venue: session.match?.venue || null,
-        score: { home: session.home ? teamGoals : opponentGoals, away: session.home ? opponentGoals : teamGoals },
-        teamGoals,
-        opponentGoals,
-        result: teamGoals > opponentGoals ? 'win' : teamGoals < opponentGoals ? 'loss' : 'draw',
-        rating,
-        goals: Math.random() < goalChance ? 1 : 0,
-        assists: Math.random() < assistChance && teamGoals > 0 ? 1 : 0,
-        tackles: group === 'goalkeeper' ? 0 : Math.max(1, Math.floor(2 + Math.random() * 6 + session.modifiers.duel * 8)),
-        cleanSheet: group === 'goalkeeper' && opponentGoals === 0,
-        played: true,
-        decisions: session.decisions,
-        events: session.events
-    };
+    const result = { matchIndex: session.matchIndex, fixture: session.match, competitionId: session.match?.competitionId || null, competitionType: session.match?.competitionType || session.match?.type || null, competitionName: session.competition, phase: session.match?.phase || null, round: session.match?.round || null, type: session.type, importance: session.importance, opponent: session.opponent, opponentClubId: session.match?.opponentClubId || null, opponentStrength, home: session.home, venue: session.match?.venue || null, score: { home: session.home ? teamGoals : opponentGoals, away: session.home ? opponentGoals : teamGoals }, teamGoals, opponentGoals, result: teamGoals > opponentGoals ? 'win' : teamGoals < opponentGoals ? 'loss' : 'draw', rating, goals: Math.random() < goalChance ? 1 : 0, assists: Math.random() < assistChance && teamGoals > 0 ? 1 : 0, tackles: group === 'goalkeeper' ? 0 : Math.max(1, Math.floor(2 + Math.random() * 6 + session.modifiers.duel * 8)), cleanSheet: group === 'goalkeeper' && opponentGoals === 0, played: true, decisions: session.decisions, events: session.events };
     session.result = result; session.score = result.score; session.finished = true; session.decision = null;
     return { finished: true, session, result, events: session.events };
 }
