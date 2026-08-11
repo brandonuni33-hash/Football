@@ -93,6 +93,11 @@ function outcomeText(result) {
     return `Au terme d’une rencontre indécise, les deux équipes se quittent sur un ${scoreText(result)} face à ${opponent}.`;
 }
 
+function goalHaulText(goals) {
+    const labels = { 2: 'un doublé', 3: 'un triplé', 4: 'un quadruplé', 5: 'un quintuplé', 6: 'un sextuplé' };
+    return labels[goals] ? `${labels[goals]} qui a pesé` : `${goals} buts qui ont pesé`;
+}
+
 function performanceText(player, result) {
     const name = player?.firstname || player?.firstName || 'Tu';
     if (!result) return `Le staff ne t’a pas utilisé sur cette période. Ta place dans la rotation reste à gagner.`;
@@ -103,7 +108,7 @@ function performanceText(player, result) {
     const goals = n(result?.goals);
     const assists = n(result?.assists);
     if (result.started === false && rating >= 7) return `Entré en cours de match, tu as profité de tes minutes pour marquer des points auprès du staff.`;
-    if (goals >= 2) return `${name} quitte la pelouse après un doublé qui a pesé lourd dans cette rencontre.`;
+    if (goals >= 2) return `${name} quitte la pelouse après ${goalHaulText(goals)} lourd dans cette rencontre.`;
     if (goals === 1 && assists >= 1) return `Un but et une passe décisive : tu as directement pesé sur deux actions décisives.`;
     if (goals === 1) return `Ton but donne une dimension personnelle à ce match et restera associé à cette soirée.`;
     if (assists >= 2) return `Tes ${assists} passes décisives ont placé ton influence au cœur du résultat.`;
