@@ -1,32 +1,21 @@
-name: Career Simulation
+name: Architecture Checks
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'careerSimulationV4.js'
-      - 'player.js'
-      - 'potentialSystem.js'
-      - 'consequenceSystem.js'
-      - 'events.js'
-      - 'media.js'
-      - 'matchBlock.js'
-      - 'competitionSystem.js'
-      - 'worldSystem.js'
-      - 'entrainement.js'
-      - 'careerSystem.js'
-      - 'cupSystemV2.js'
-      - 'application/**/*.js'
-      - 'domain/**/*.js'
+      - '**/*.js'
+      - '**/*.mjs'
+      - 'package.json'
       - '.github/workflows/career-simulation.yml'
 
 permissions:
   contents: read
 
 jobs:
-  simulate:
+  architecture:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
 
     steps:
       - name: Checkout
@@ -37,66 +26,13 @@ jobs:
         with:
           node-version: 20
 
-      - name: Run 1000 full careers to age 42
+      - name: Check JavaScript syntax
+        shell: bash
         run: |
-          mkdir -p simulation-results
-          node --input-type=module <<'NODE'
-          import fs from 'node:fs';
-          import { simulateCareer, printSimulationReport } from './careerSimulationV4.js';
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            node --check "$file"
+          done < <(find . -type f \( -name '*.js' -o -name '*.mjs' \) -not -path './.git/*' -not -path './node_modules/*' -print0)
 
-          const result = simulateCareer(1000, { maxAge: 42 });
-          printSimulationReport(result);
-
-          fs.writeFileSync(
-            'simulation-results/career-simulation-1000.json',
-            JSON.stringify(result, null, 2)
-          );
-
-          const rows = result.careers.map(c => ({
-            id: c.id,
-            position: c.position,
-            initialOverall: c.initialOverall,
-            initialPotential: c.initialPotential,
-            peakOverall: c.peakOverall,
-            peakAge: c.peakAge,
-            finalOverall: c.finalOverall,
-            finalPotential: c.finalPotential,
-            totalMatches: c.totalMatches,
-            seasons: c.seasons.length,
-            finalAge: c.finalAge
-          }));
-
-          const columns = Object.keys(rows[0] || {});
-          const csv = [
-            columns.join(','),
-            ...rows.map(row => columns.map(key => JSON.stringify(row[key] ?? '')).join(','))
-          ].join('\n');
-          fs.writeFileSync('simulation-results/career-simulation-1000.csv', csv);
-
-          fs.writeFileSync(
-            'simulation-results/career-simulation-summary.json',
-            JSON.stringify({
-              generatedAt: result.generatedAt,
-              simulatorType: result.simulatorType,
-              engine: result.engine,
-              countRequested: result.countRequested,
-              countCompleted: result.countCompleted,
-              countErrors: result.countErrors,
-              maxAge: result.maxAge,
-              finalOverall: result.finalOverall,
-              finalPotential: result.finalPotential,
-              peakOverall: result.peakOverall,
-              thresholds: result.thresholds,
-              rates: result.rates,
-              checkpoints: result.checkpoints,
-              errors: result.errors
-            }, null, 2)
-          );
-          NODE
-
-      - name: Upload simulation report
-        uses: actions/upload-artifact@v4
-        with:
-          name: career-simulation-1000-report
-          path: simulation-results/
-          retention-days: 30
+      - name: Run architecture audit
+        run: node scripts/checkArchitecture.mjs
