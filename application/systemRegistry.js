@@ -6,7 +6,7 @@ import { MediaSystem } from '../domain/media/mediaSystem.js';
 import { TrainingManager } from '../entrainement.js';
 import { PlayerLogic } from '../player.js';
 import { StateManager, SCHEMA_VERSION } from '../state/stateManager.js';
-import { EventEngine } from '../events.js';
+import { EventEngine } from '../domain/events/eventSystem.js';
 import { CoachSystem } from '../domain/coach/coachSystem.js';
 import { TransferMarket } from '../transferMarket.js';
 import { PotentialSystem } from '../domain/player/potentialSystem.js';
