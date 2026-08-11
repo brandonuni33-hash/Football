@@ -14,7 +14,7 @@ import { ConsequenceSystem } from '../consequenceSystem.js';
 import { CareerSystem } from '../domain/career/careerSystem.js';
 import { CompetitionSystem } from '../domain/competition/competitionSystem.js';
 import { WorldSystem } from '../worldSystem.js';
-import { CupSystem } from '../cupSystem.js';
+import CupSystem from '../domain/competition/cupSystem.js';
 import { MatchChoiceManager } from '../matchChoices.js';
 import { CalendarSystem } from '../domain/calendar/calendarSystem.js';
 import { SeasonSystem } from '../domain/career/seasonSystem.js';
