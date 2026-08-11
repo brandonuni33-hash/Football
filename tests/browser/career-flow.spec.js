@@ -131,6 +131,9 @@ test('parcours carrière complet : création → match → narration → conséq
   expect(created.playerId).toBeTruthy();
   expect(created.month).toBe(8);
 
+  const forcedPlan = await forceInteractionPlan(page, [0]);
+  expect(forcedPlan.entries.filter(entry => entry.playable)).toHaveLength(1);
+
   const flow = await page.evaluate(() => {
     const gateway = window.game.gameUI;
     const registry = window.game.gameSystems;
