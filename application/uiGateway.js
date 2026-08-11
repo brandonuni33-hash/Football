@@ -28,7 +28,7 @@ export class UIGateway {
 
         const next = this.getNextPlayableMatch();
         if (next) {
-            const session = this.startInteractiveMatch(next.fixture, next.matchIndex);
+            const session = this.startInteractiveMatch(this.withComputedImportance(next), next.matchIndex);
             return {
                 interactive: true,
                 interactiveDecision: session?.decision || null,
@@ -58,7 +58,7 @@ export class UIGateway {
         const state = this.state;
         if (!state?.activeMatchSession) {
             const next = this.getNextPlayableMatch();
-            if (next) this.startInteractiveMatch(next.fixture, next.matchIndex);
+            if (next) this.startInteractiveMatch(this.withComputedImportance(next), next.matchIndex);
         }
         return state?.activeMatchSession?.decision || this.application.registry?.matchChoiceManager?.getMatchDilemma?.(type, opponent) || null;
     }
@@ -114,6 +114,16 @@ export class UIGateway {
             .map(result => Number(result?.matchIndex))
             .filter(Number.isFinite));
         return plan.entries.find(entry => entry.playable && entry.fixture && !completed.has(Number(entry.matchIndex))) || null;
+    }
+
+    withComputedImportance(entry) {
+        if (!entry?.fixture) return entry?.fixture || null;
+        return {
+            ...entry.fixture,
+            importance: entry.importance?.level || entry.fixture.importance,
+            importanceScore: entry.importance?.score ?? entry.fixture.importanceScore,
+            importanceReasons: entry.importance?.reasons || entry.fixture.importanceReasons || []
+        };
     }
 
     startInteractiveMatch(match, index = 0) {
