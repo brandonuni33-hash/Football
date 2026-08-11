@@ -5,6 +5,17 @@
 const POSITIONS = Object.freeze(['GK', 'CB', 'FB', 'DM', 'CM', 'AM', 'W', 'ST']);
 const NEED_TYPES = Object.freeze(['young', 'prime', 'experienced', 'versatile', 'opportunistic']);
 
+const POSITION_ALIASES = Object.freeze({
+    G: 'GK', GK: 'GK',
+    DC: 'CB', CB: 'CB',
+    DD: 'FB', DG: 'FB', FB: 'FB',
+    MDEF: 'DM', MDC: 'DM', DM: 'DM',
+    MC: 'CM', CM: 'CM',
+    MOC: 'AM', AM: 'AM',
+    AD: 'W', AG: 'W', MD: 'W', MG: 'W', W: 'W',
+    BU: 'ST', AT: 'ST', ST: 'ST'
+});
+
 function hash(input) {
     let h = 2166136261;
     for (let i = 0; i < String(input).length; i += 1) {
@@ -14,11 +25,13 @@ function hash(input) {
     return h >>> 0;
 }
 
-const rand = (seed) => (hash(seed) % 10000) / 10000;
+const rand = seed => (hash(seed) % 10000) / 10000;
+const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, Number(value) || 0));
+const normalizedPosition = position => POSITION_ALIASES[String(position || '').toUpperCase()] || String(position || '').toUpperCase();
 
 export class ClubNeedSystem {
     ensureSeason(state, clubs = []) {
-        const season = state?.season ?? state?.career?.season ?? 1;
+        const season = Number(state?.calendar?.currentSeasonYear ?? state?.season ?? state?.career?.season ?? 1);
         state.clubTransferNeeds ||= {};
 
         for (const club of clubs) {
@@ -60,12 +73,13 @@ export class ClubNeedSystem {
 
     scorePlayer(need, player = {}) {
         if (!need) return 0;
-        const positionScore = player.position === need.position ? 100 : need.flexibility;
+        const playerPosition = normalizedPosition(player.position);
+        const positionScore = playerPosition === need.position ? 100 : need.flexibility;
         const age = Number(player.age ?? 20);
         const ageDistance = Math.abs(age - need.preferredAge);
         const ageScore = Math.max(0, 100 - ageDistance * 8);
-        const form = Number(player.form ?? 50);
-        const reputation = Number(player.reputation ?? 50);
+        const form = clamp(player.form ?? player.stats?.averageRating * 12 ?? 50);
+        const reputation = clamp(player.reputation ?? player.fame ?? 50);
         return Math.round(positionScore * 0.4 + ageScore * 0.2 + form * 0.2 + reputation * 0.2);
     }
 }
