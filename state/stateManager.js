@@ -12,6 +12,9 @@ const DEFAULT_STATE = {
     social: null,
     media: null,
     career: { balance: 0, seasonHistory: [], totalCareerIncome: 0 },
+    careerMemory: [],
+    relationshipMemory: [],
+    notifications: { signals: [], threads: [], unreadCount: 0 },
     calendar: { currentMonth: 8, currentSeasonYear: 2026, currentPeriod: 'Pré-saison & reprise', seasonSchedule: null, seasonMatchCursor: 0 },
     seasonPhase: 'pre_season',
     pendingEvent: null,
@@ -68,6 +71,27 @@ function migrateLegacyAttributes(player) {
     };
 }
 
+function normalizeNotifications(state) {
+    const current = state.notifications;
+    if (Array.isArray(current)) {
+        state.notifications = {
+            signals: current.filter(Boolean),
+            threads: [],
+            unreadCount: current.filter(item => item && !item.read && !item.archived).length
+        };
+        return;
+    }
+    if (!current || typeof current !== 'object') {
+        state.notifications = cloneDefault().notifications;
+        return;
+    }
+    current.signals = Array.isArray(current.signals) ? current.signals : [];
+    current.threads = Array.isArray(current.threads) ? current.threads : [];
+    current.unreadCount = Number.isFinite(Number(current.unreadCount))
+        ? Math.max(0, Number(current.unreadCount))
+        : current.signals.filter(item => item && !item.read && !item.archived).length;
+}
+
 function migrate(raw) {
     const state = mergeDeep(cloneDefault(), raw || {});
     state.schemaVersion = SCHEMA_VERSION;
@@ -75,6 +99,9 @@ function migrate(raw) {
     state.media ??= null;
     state.career ??= cloneDefault().career;
     if (!Array.isArray(state.career.seasonHistory)) state.career.seasonHistory = [];
+    state.careerMemory = Array.isArray(state.careerMemory) ? state.careerMemory : [];
+    state.relationshipMemory = Array.isArray(state.relationshipMemory) ? state.relationshipMemory : [];
+    normalizeNotifications(state);
     state.calendar ??= cloneDefault().calendar;
     state.calendar.seasonSchedule ??= null;
     state.calendar.seasonMatchCursor = Number.isFinite(Number(state.calendar.seasonMatchCursor)) ? Number(state.calendar.seasonMatchCursor) : 0;
