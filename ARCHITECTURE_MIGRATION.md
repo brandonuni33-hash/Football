@@ -42,6 +42,8 @@ state/ + core/
 - `domain/training/trainingManager.js` + `trainingSystem.js` : entraînement.
 - `domain/transfer/transferMarket.js` + `transferSystem.js` : marché des transferts.
 - `domain/notification/notificationSystem.js` : notifications.
+- `domain/world/worldCatalog.js` : données statiques des clubs et ligues.
+- `domain/world/worldSystem.js` : logique du monde, classements et mouvements de divisions.
 - `ui/creationController.js` et `ui/creationEnhancements.js` : création.
 - `ui/viewCoordinator.js` : orchestration du rendu.
 - `ui/modalController.js` : modales.
@@ -67,21 +69,21 @@ Les anciens propriétaires racine suivants ont été supprimés après migration
 - `transferMarket.js`
 - `consequenceSystem.js`
 - `matchChoices.js`
+- `worldSystem.js`
 
 Les imports applicatifs et domaine concernés utilisent maintenant leurs propriétaires canoniques dans `domain/`.
 
-### Dernier module historique restant
+### Monde
 
-`worldSystem.js` reste le dernier gros propriétaire racine à migrer. Il contient à la fois le catalogue de clubs et la logique du monde : sa migration doit donc être faite en séparant au minimum :
+Le monde est désormais séparé proprement :
 
 ```text
 domain/world/
 ├── worldCatalog.js
-├── worldSystem.js
-└── leagueSimulation.js
+└── worldSystem.js
 ```
 
-Le catalogue peut rester volumineux car il s'agit de données ; la logique du monde doit rester sous 350 lignes par fichier.
+Le catalogue contient les données statiques. Le système contient uniquement le comportement : normalisation des clubs, classements, simulation mensuelle, résultats du joueur et montées/relégations.
 
 ### Compatibilité volontaire
 
@@ -89,9 +91,15 @@ Le catalogue peut rester volumineux car il s'agit de données ; la logique du mo
 
 `matchBlock.js` reste également une façade historique tant que tous les consommateurs externes ne sont pas migrés.
 
-### UI historique
+### CI
 
-`style.css` reste la feuille globale historique. Son nettoyage doit être effectué par cartographie des sélecteurs avant suppression ou découpage afin de ne pas casser les écrans existants.
+L'ancien workflow de simulation référençait plusieurs modules supprimés et `careerSimulationV4.js`. Il a été remplacé par `Architecture Checks`.
+
+À chaque modification JavaScript, GitHub Actions effectue :
+
+1. une vérification syntaxique de tous les `.js` / `.mjs` ;
+2. l'audit `scripts/checkArchitecture.mjs` ;
+3. l'échec automatique si une nouvelle duplication de propriétaire ou un fichier logique dépasse la limite dure est détecté.
 
 ## Règles permanentes
 
@@ -105,3 +113,4 @@ Le catalogue peut rester volumineux car il s'agit de données ; la logique du mo
 8. Les systèmes historiques racine ne sont acceptables que pendant une migration contrôlée.
 9. Les nouveaux fichiers portent un nom de responsabilité, jamais une version (`V2`, `V4`) ou un état temporaire (`hotfix`, `patch`, `polish`).
 10. Toute nouvelle mécanique est branchée depuis `application/systemRegistry.js`.
+11. Toute dépendance entre domaines doit pointer vers le propriétaire canonique, jamais vers un ancien module racine.
