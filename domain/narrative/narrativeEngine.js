@@ -24,16 +24,51 @@ function storyScore(result = {}) {
     return importance * 10 + decisive + Math.max(0, rating - 6) + resultWeight + interactive;
 }
 
+function impactScore(result = {}) {
+    const rating = n(result.rating);
+    return n(result.goals) * 4 + n(result.assists) * 3 + Math.max(-2, rating - 6) * 1.5;
+}
+
+function impactLevel(result = {}) {
+    const goals = n(result.goals);
+    const assists = n(result.assists);
+    const rating = n(result.rating);
+    if (goals >= 2 || goals + assists >= 2 || rating >= 8.2) return 'decisive';
+    if (goals + assists >= 1 || rating >= 7.5) return 'strong';
+    if (rating >= 6) return 'present';
+    return 'difficult';
+}
+
+function impactLabel(level) {
+    return {
+        decisive: 'Impact décisif',
+        strong: 'Impact fort',
+        present: 'Présent',
+        difficult: 'En difficulté'
+    }[level] || 'Présent';
+}
+
+function impactDetail(result = {}) {
+    const goals = n(result.goals);
+    const assists = n(result.assists);
+    const rating = n(result.rating);
+    const parts = [];
+    if (goals) parts.push(`${goals} but${goals > 1 ? 's' : ''}`);
+    if (assists) parts.push(`${assists} passe${assists > 1 ? 's' : ''} décisive${assists > 1 ? 's' : ''}`);
+    parts.push(`note ${rating.toFixed(1)}`);
+    return parts.join(' · ');
+}
+
 function featuredResult(results = []) {
-    return [...results]
-        .filter(Boolean)
-        .sort((a, b) => storyScore(b) - storyScore(a))[0] || null;
+    return [...results].filter(Boolean).sort((a, b) => storyScore(b) - storyScore(a))[0] || null;
+}
+
+function strongestImpactResult(results = []) {
+    return [...results].filter(Boolean).sort((a, b) => impactScore(b) - impactScore(a))[0] || null;
 }
 
 function scoreText(result) {
-    const team = n(result?.teamGoals);
-    const opponent = n(result?.opponentGoals);
-    return `${team}-${opponent}`;
+    return `${n(result?.teamGoals)}-${n(result?.opponentGoals)}`;
 }
 
 function outcomeText(result) {
@@ -58,6 +93,18 @@ function performanceText(player, result) {
     return `Ta prestation s’inscrit dans le mouvement collectif, sans geste décisif mais avec son poids dans le match.`;
 }
 
+function blockOverviewText(results = [], impactMatch = null) {
+    if (results.length <= 1) return null;
+    const wins = results.filter(result => result?.result === 'win').length;
+    const draws = results.filter(result => result?.result === 'draw').length;
+    const losses = results.filter(result => result?.result === 'loss').length;
+    const record = [`${wins} victoire${wins > 1 ? 's' : ''}`];
+    if (draws) record.push(`${draws} nul${draws > 1 ? 's' : ''}`);
+    if (losses) record.push(`${losses} défaite${losses > 1 ? 's' : ''}`);
+    const opponent = impactMatch?.opponent || 'un adversaire';
+    return `Cette période comptait ${results.length} matchs : ${record.join(', ')}. Ton empreinte la plus nette est venue face à ${opponent}.`;
+}
+
 function atmosphereText(result, importance) {
     const fixture = result?.fixture || {};
     if (importance === 'exceptional') return `Pendant quelques secondes, tout semble ralentir. Ce genre de match ne ressemble pas aux autres.`;
@@ -74,16 +121,11 @@ function memoryCallback(state, result) {
     if (!memories.length) return null;
     const opponent = String(result?.opponent || '').trim().toLowerCase();
     const opponentClubId = result?.fixture?.opponentClubId || result?.fixture?.clubId || null;
-    const candidates = memories
-        .slice(-80)
-        .reverse()
-        .filter(memory => {
-            if (opponentClubId && memory?.clubId === opponentClubId) return true;
-            if (!opponent || opponent.length < 3) return false;
-            const text = `${memory?.title || ''} ${memory?.text || ''} ${memory?.source || ''}`.toLowerCase();
-            return text.includes(opponent);
-        });
-    const memory = candidates[0];
+    const memory = memories.slice(-80).reverse().find(item => {
+        if (opponentClubId && item?.clubId === opponentClubId) return true;
+        if (!opponent || opponent.length < 3) return false;
+        return `${item?.title || ''} ${item?.text || ''} ${item?.source || ''}`.toLowerCase().includes(opponent);
+    });
     if (!memory) return null;
     const age = memory.age ? ` à ${memory.age} ans` : '';
     return `Ce rendez-vous réveille aussi une trace plus ancienne de ta carrière${age}. Le contexte a changé, mais le passé n’a pas complètement disparu.`;
@@ -92,14 +134,12 @@ function memoryCallback(state, result) {
 function recentFormContext(state, result) {
     const history = Array.isArray(state?.career?.seasonHistory) ? state.career.seasonHistory : [];
     const last = history.at(-1);
-    if (!last) return null;
-    const label = last.summary || last.label || last.title;
-    if (!label) return null;
-    if (result?.result === 'win') return `Cette victoire arrive dans une carrière qui s’est déjà construite par étapes : ${label}.`;
-    return null;
+    const label = last?.summary || last?.label || last?.title;
+    return label && result?.result === 'win' ? `Cette victoire arrive dans une carrière qui s’est déjà construite par étapes : ${label}.` : null;
 }
 
-function titleFor(result, importance) {
+function titleFor(result, importance, matchCount) {
+    if (matchCount > 1) return 'Une période, plusieurs histoires';
     const opponent = result?.opponent || 'Adversaire';
     if (importance === 'exceptional') return `Une soirée qui peut compter longtemps`;
     if (importance === 'major') return `Plus qu’un simple match contre ${opponent}`;
@@ -114,20 +154,47 @@ function toneFor(result) {
     return 'reflection';
 }
 
+function buildMatchRecap(results, narrativeMatch, impactMatch) {
+    return results.map((result, index) => {
+        const level = impactLevel(result);
+        return {
+            matchIndex: Number.isFinite(Number(result?.matchIndex)) ? Number(result.matchIndex) : index,
+            opponent: result?.opponent || 'Adversaire',
+            competition: result?.competitionName || result?.fixture?.competitionName || 'Match',
+            score: scoreText(result),
+            result: result?.result || null,
+            rating: n(result?.rating),
+            goals: n(result?.goals),
+            assists: n(result?.assists),
+            interactive: Boolean(result?.interactive),
+            impactLevel: level,
+            impactLabel: impactLabel(level),
+            impactDetail: impactDetail(result),
+            isNarrativeFocus: result === narrativeMatch,
+            isImpactMatch: result === impactMatch
+        };
+    });
+}
+
 export class NarrativeEngine {
     composeMatchEnd({ state, report } = {}) {
-        const results = report?.summary?.matchResults || report?.results || [];
-        const featured = featuredResult(Array.isArray(results) ? results : []);
+        const rawResults = report?.summary?.matchResults || report?.results || [];
+        const results = Array.isArray(rawResults) ? rawResults.filter(Boolean) : [];
+        const featured = featuredResult(results);
+        const impactMatch = strongestImpactResult(results);
         if (!state?.player || !featured) return null;
 
         const importance = importanceOf(featured);
         const callback = memoryCallback(state, featured);
         const continuity = recentFormContext(state, featured);
-        const beats = [
+        const overview = blockOverviewText(results, impactMatch);
+        const beats = [];
+        if (overview) beats.push({ kind: 'block-overview', text: overview, delay: 800, emphasis: true });
+        beats.push(
             { kind: 'atmosphere', text: atmosphereText(featured, importance), delay: 700 },
             { kind: 'result', text: outcomeText(featured), delay: 950, emphasis: true },
-            { kind: 'player', text: performanceText(state.player, featured), delay: 1050 }
-        ];
+            { kind: 'player', text: performanceText(state.player, impactMatch || featured), delay: 1050 }
+        );
         if (callback) beats.push({ kind: 'memory', text: callback, delay: 1200, callback: true });
         else if (continuity) beats.push({ kind: 'continuity', text: continuity, delay: 1100 });
 
@@ -136,17 +203,22 @@ export class NarrativeEngine {
             type: 'match.end',
             importance,
             tone: toneFor(featured),
-            title: titleFor(featured, importance),
-            subtitle: `${featured.competitionName || featured.fixture?.competitionName || 'Match'} · ${featured.opponent || 'Adversaire'}`,
+            title: titleFor(featured, importance, results.length),
+            subtitle: results.length > 1
+                ? `${results.length} matchs disputés · bilan de la période`
+                : `${featured.competitionName || featured.fixture?.competitionName || 'Match'} · ${featured.opponent || 'Adversaire'}`,
             matchIndex: featured.matchIndex ?? null,
+            impactMatchIndex: impactMatch?.matchIndex ?? null,
             interactive: Boolean(featured.interactive),
+            matches: buildMatchRecap(results, featured, impactMatch),
             beats,
             facts: {
+                matchCount: results.length,
                 result: featured.result || null,
                 score: scoreText(featured),
                 rating: n(featured.rating),
-                goals: n(featured.goals),
-                assists: n(featured.assists)
+                goals: results.reduce((sum, result) => sum + n(result.goals), 0),
+                assists: results.reduce((sum, result) => sum + n(result.assists), 0)
             }
         };
     }
