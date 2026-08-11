@@ -43,7 +43,7 @@ export class UIGateway {
         this.application.registry.blockSystem.stateManager.save(this.state);
         return true;
     }
-    shouldTriggerMatchDilemma(type = 'standard') {
+    shouldTriggerMatchDilemma() {
         const state = this.state;
         if (state?.activeMatchSession) return true;
         const matches = this.getScheduledMatches();
@@ -91,7 +91,7 @@ export class UIGateway {
         if (result.finished) {
             manager.commitInteractiveResult(this.state, result.result);
             this.state.interactiveBlockResults ||= [];
-            this.state.interactiveBlockResults.push(result.result);
+            this.state.interactiveBlockResults.push({ ...result.result, fixture: session.match });
             this.state.activeMatchSession = null;
         } else {
             this.state.activeMatchSession = result.session;
