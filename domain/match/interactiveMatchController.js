@@ -8,6 +8,7 @@ import { MatchChoiceManager } from './matchChoiceManager.js';
 import { clamp, number, positionGroup, opponentName, isHomeMatch, competitionLabel, matchType, importanceFor, decisionMoments, buildScore } from './matchHelpers.js';
 
 const MATCH_STAT_CONSEQUENCE_MAP = Object.freeze({ technique: 'attributes.controle', physique: 'attributes.puissance', vitesse: 'attributes.vitesse', defense: 'attributes.defense', mental: 'mental', charisme: 'reputation', discipline: 'discipline', relationCoach: 'relationCoach', vestiaire: 'vestiaire' });
+const temporary = (player, stat) => number(ConsequenceSystem.getTemporaryModifier?.(player, stat));
 
 function buildChoiceConsequence(choice = {}) {
     const source = choice?.consequences || {}, explicitPermanent = { ...(source.permanent || {}), ...(source.emotional || {}) }, legacyStats = choice?.impacts?.stats || {}, derived = {};
@@ -34,7 +35,7 @@ function interactiveChoice(match, player, moment, index, previous = []) {
 function startInteractiveMatch(state, scheduledMatch, matchIndex = 0) {
     if (!state?.player) throw new Error('Impossible de démarrer un match sans joueur.');
     const player = state.player, moments = decisionMoments(scheduledMatch);
-    const session = { id: `match-session-${Date.now()}-${matchIndex}`, matchIndex, match: scheduledMatch, type: matchType(scheduledMatch), importance: importanceFor(scheduledMatch), opponent: opponentName(scheduledMatch), home: isHomeMatch(scheduledMatch), competition: competitionLabel(scheduledMatch), moments, currentMoment: 0, decisions: [], events: [], score: { home: 0, away: 0 }, playerRatingBase: 6.2 + (number(player.overall) - 50) * .035, modifiers: { rating: 0, goal: 0, assist: 0, duel: 0, fatigue: 0, cards: 0 }, startedAt: Date.now(), finished: false };
+    const session = { id: `match-session-${Date.now()}-${matchIndex}`, matchIndex, match: scheduledMatch, type: matchType(scheduledMatch), importance: importanceFor(scheduledMatch), opponent: opponentName(scheduledMatch), home: isHomeMatch(scheduledMatch), competition: competitionLabel(scheduledMatch), moments, currentMoment: 0, decisions: [], events: [], score: { home: 0, away: 0 }, playerRatingBase: 6.2 + (number(player.overall) - 50) * .035, modifiers: { rating: temporary(player, 'matchPerformance'), goal: temporary(player, 'goalChance'), assist: temporary(player, 'assistChance'), duel: temporary(player, 'duelBonus'), fatigue: temporary(player, 'fatigueRisk'), cards: temporary(player, 'cardRisk') }, startedAt: Date.now(), finished: false };
     session.decision = interactiveChoice(scheduledMatch, player, moments[0], 0);
     return session;
 }
@@ -74,7 +75,7 @@ function resolveInteractiveDecision(state, session, choiceIndex) {
 function commitInteractiveResult(state, result) {
     const player = state?.player; if (!player || !result) return null;
     const s = player.stats || (player.stats = {}), previousMatches = number(s.matchesPlayed), totalMatches = previousMatches + 1;
-    s.matchesPlayed = totalMatches; s.goals = number(s.goals) + number(result.goals); s.assists = number(s.assists) + number(result.assists); s.tackles = number(s.tackles) + number(result.tackles); s.yellowCards = number(s.yellowCards); if (result.cleanSheet) s.cleanSheets = number(s.cleanSheets) + 1;
+    s.matchesPlayed = totalMatches; s.goals = number(s.goals) + number(result.goals); s.assists = number(s.assists) + number(result.assists); s.tackles = number(s.tackles) + number(result.tackles); s.yellowCards = number(s.yellowCards) + number(result.yellowCards); if (result.cleanSheet) s.cleanSheets = number(s.cleanSheets) + 1;
     s.averageRating = Number((((number(s.averageRating) * previousMatches) + number(result.rating)) / totalMatches).toFixed(1));
     player.morale = clamp(number(player.morale ?? 50) + (result.rating >= 7 ? 2 : result.rating < 5.5 ? -2 : 0), 0, 100); player.fitness = clamp(number(player.fitness ?? 80) - 3, 0, 100);
     PotentialSystem.recordMatch(player, { rating: result.rating, goals: result.goals, assists: result.assists, tackles: result.tackles, matchesPlayed: 1 }, 1);
