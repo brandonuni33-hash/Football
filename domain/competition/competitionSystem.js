@@ -5,6 +5,7 @@ import CupSystem from './cupSystem.js';
 import { COMPETITIONS, ALL_MONTHS, MONTH_INFO, seasonLabel } from './competitionCatalog.js';
 import { createSeasonSchedule as buildSeasonSchedule, sortMatches } from './seasonScheduleBuilder.js';
 import { getEuropeanQualification, buildEuropeanLeague, createEuropeanTournament, prepareKnockoutRoute, advanceEuropeanRound } from './europeanCompetitionSystem.js';
+import MatchImportanceSystem from '../match/matchImportanceSystem.js';
 
 const CompetitionSystem = {
     getSeniorCompetition(player) { const country = player?.clubCountry || player?.country || 'France', level = Number(player?.clubLevel || 1); const map = { France: level === 2 ? COMPETITIONS.FR_L2 : COMPETITIONS.FR_L1, Angleterre: level === 2 ? COMPETITIONS.EN_CH : COMPETITIONS.EN_PL, Espagne: level === 2 ? COMPETITIONS.ES_SD : COMPETITIONS.ES_LA, Italie: level === 2 ? COMPETITIONS.IT_B : COMPETITIONS.IT_A, Allemagne: level === 2 ? COMPETITIONS.DE_B2 : COMPETITIONS.DE_B1 }; return map[country] || COMPETITIONS.FR_L1; },
@@ -18,7 +19,22 @@ const CompetitionSystem = {
     ensureSeasonSchedule(state) { if (!state?.player || !state?.calendar) return null; const year = Number(state.calendar.currentSeasonYear) || new Date().getFullYear(), existing = state.calendar.seasonSchedule; if (existing && Number(existing.seasonYear) === year && Array.isArray(existing.matches) && Number(existing.version || 0) >= 4) return existing; CupSystem.ensure(state); const schedule = this.createSeasonSchedule(state.player, year); state.calendar.seasonSchedule = schedule; state.calendar.seasonMatchCursor = 0; const competition = this.getSeniorCompetition(state.player), qualification = getEuropeanQualification(state.player, competition); state.europeanTournament = Number(state.player.age) >= 18 ? createEuropeanTournament(state.player, year, qualification, schedule.seed) : null; return schedule; },
     getEuropeanStatus(state) { const tournament = state?.europeanTournament; if (!tournament) return null; return { competition: tournament.competition, slot: tournament.slot, phase: tournament.phase, rank: tournament.rank, points: tournament.leaguePoints, played: tournament.leagueMatchesPlayed, qualified: tournament.qualified, eliminated: tournament.eliminated, currentRound: tournament.currentRound, standings: tournament.standings || [], history: tournament.history || [] }; },
     getEuropeanFixture(state) { const tournament = state?.europeanTournament; if (!tournament || tournament.eliminated) return null; const month = Number(state?.calendar?.currentMonth); if (tournament.phase === 'league_phase' && Number(tournament.leagueMatchesPlayed) >= 8) return prepareKnockoutRoute(state); return tournament.fixtures?.find(fixture => Number(fixture.month) === month && !fixture.played) || null; },
-    getBlockPlan(state) { const player = state?.player || {}, calendar = state?.calendar || {}, month = Number(calendar.currentMonth) || 8, seasonYear = Number(calendar.currentSeasonYear) || new Date().getFullYear(), schedule = this.ensureSeasonSchedule(state), monthData = schedule?.byMonth?.[month]; if (this.isOffSeason(month)) return { type: 'offseason', month, monthLabel: this.getMonthLabel(month), season: seasonYear, seasonLabel: seasonLabel(seasonYear), matches: 0, scheduledMatches: [], activities: month === 7 ? ['repos', 'mercato', 'programme_individuel', 'preparation_saison'] : ['bilan', 'selection_internationale', 'repos', 'recovery'], importance: 'none', mode: 'career_activity' }; const base = [...(monthData?.matches || []), ...CupSystem.getPlayerFixtures(state)], europeanFixture = this.getEuropeanFixture(state); if (europeanFixture && !base.some(match => match.id === europeanFixture.id)) base.push(europeanFixture); const hasMajor = base.some(match => match.importance === 'major'), hasImportant = base.some(match => match.importance === 'important'); return { type: player.age < 18 ? 'youth' : 'senior', category: schedule?.category || (player.age < 18 ? this.getYouthCategory(player.age) : 'Senior'), month, monthLabel: this.getMonthLabel(month), season: seasonYear, seasonLabel: seasonLabel(seasonYear), matches: base.length, scheduledMatches: base, competition: base[0]?.competitionName || null, activities: base.length ? [player.age < 18 ? 'match_jeunes' : 'match', 'entrainement'] : ['entrainement', 'evenement'], importance: hasMajor ? 'major' : hasImportant ? 'important' : base.length >= 4 ? 'normal' : 'low', mode: hasMajor ? 'major' : hasImportant ? 'mixed' : base.length ? 'simulation' : 'career_activity' }; },
+    evaluateMatchImportance(state, match, options = {}) { return MatchImportanceSystem.evaluate(state, match, options); },
+    getBlockPlan(state) {
+        const player = state?.player || {}, calendar = state?.calendar || {}, month = Number(calendar.currentMonth) || 8, seasonYear = Number(calendar.currentSeasonYear) || new Date().getFullYear(), schedule = this.ensureSeasonSchedule(state), monthData = schedule?.byMonth?.[month];
+        if (this.isOffSeason(month)) return { type: 'offseason', month, monthLabel: this.getMonthLabel(month), season: seasonYear, seasonLabel: seasonLabel(seasonYear), matches: 0, scheduledMatches: [], activities: month === 7 ? ['repos', 'mercato', 'programme_individuel', 'preparation_saison'] : ['bilan', 'selection_internationale', 'repos', 'recovery'], importance: 'none', mode: 'career_activity' };
+        const base = [...(monthData?.matches || []), ...CupSystem.getPlayerFixtures(state)], europeanFixture = this.getEuropeanFixture(state); if (europeanFixture && !base.some(match => match.id === europeanFixture.id)) base.push(europeanFixture);
+        const evaluations = base.map(match => ({ match, importance: this.evaluateMatchImportance(state, match, { preview: true }) }));
+        evaluations.forEach(({ match, importance }) => { match.importanceScore = importance.score; match.importanceLevel = importance.level; match.importanceReasons = importance.reasons; });
+        const playableBudget = player.age < 18 ? 1 : 2;
+        const ranked = [...evaluations].sort((a, b) => b.importance.score - a.importance.score);
+        const selected = ranked.filter(item => item.importance.score >= 60).slice(0, playableBudget);
+        const selectedIds = new Set(selected.map(item => item.match.id));
+        const playableEvaluations = evaluations.map(item => ({ ...item, playable: selectedIds.has(item.match.id) || MatchImportanceSystem.evaluate(state, item.match, { playableMatchesInWindow: selected.length }).playable }));
+        const hasMajor = evaluations.some(item => item.importance.level === 'major' || item.importance.level === 'exceptional');
+        const hasImportant = evaluations.some(item => item.importance.level === 'important');
+        return { type: player.age < 18 ? 'youth' : 'senior', category: schedule?.category || (player.age < 18 ? this.getYouthCategory(player.age) : 'Senior'), month, monthLabel: this.getMonthLabel(month), season: seasonYear, seasonLabel: seasonLabel(seasonYear), matches: base.length, scheduledMatches: playableEvaluations.map(item => ({ ...item.match, playable: item.playable, importance: item.importance.level, importanceScore: item.importance.score, importanceReasons: item.importance.reasons })), competition: base[0]?.competitionName || null, activities: base.length ? [player.age < 18 ? 'match_jeunes' : 'match', 'entrainement'] : ['entrainement', 'evenement'], importance: hasMajor ? 'major' : hasImportant ? 'important' : base.length >= 4 ? 'normal' : 'low', mode: playableEvaluations.some(item => item.playable) ? 'mixed' : base.length ? 'simulation' : 'career_activity' };
+    },
 
     recordEuropeanResults(state, scheduledMatches, matchResults) {
         const tournament = state?.europeanTournament;
@@ -27,26 +43,12 @@ const CompetitionSystem = {
         if (!european.length) return tournament;
         for (const match of european) {
             if (match.played) continue;
-            const result = matchResults?.find(item => {
-                const fixture = item?.fixture;
-                if (fixture) return fixture.id && match.id ? fixture.id === match.id : fixture.homeClubId === match.homeClubId && fixture.awayClubId === match.awayClubId;
-                return Number(item?.matchIndex) === Number(scheduledMatches.indexOf(match));
-            }) || {};
+            const result = matchResults?.find(item => { const fixture = item?.fixture; if (fixture) return fixture.id && match.id ? fixture.id === match.id : fixture.homeClubId === match.homeClubId && fixture.awayClubId === match.awayClubId; return Number(item?.matchIndex) === Number(scheduledMatches.indexOf(match)); }) || {};
             const rating = Number(result.rating) || 6, goals = Number(result.goals) || 0, performancePoints = rating >= 7.5 ? 3 : rating >= 6 ? 1 : 0;
-            if (match.phase === 'league_phase') {
-                tournament.leagueMatchesPlayed += 1; tournament.leaguePoints += performancePoints; tournament.leagueGoalsFor += goals; tournament.leagueGoalsAgainst += rating < 5.5 ? 2 : 1;
-                const opponentRow = tournament.standings.find(row => row.clubId === match.opponentClubId); if (opponentRow) { opponentRow.played += 1; opponentRow.points += Math.max(0, 3 - performancePoints); opponentRow.goalsAgainst += goals; opponentRow.goalsFor += rating < 6 ? 2 : 1; }
-                const ownRow = tournament.standings.find(row => row.clubId === match.playerClubId); if (ownRow) { ownRow.played += 1; ownRow.points = tournament.leaguePoints; ownRow.goalsFor = tournament.leagueGoalsFor; ownRow.goalsAgainst = tournament.leagueGoalsAgainst; }
-                match.played = true; match.status = 'played';
-            } else if (match.phase === 'knockout') {
-                match.played = true; match.status = 'played';
-                if (rating >= 6.3 || goals > 0) advanceEuropeanRound(state, match);
-                else { tournament.eliminated = true; tournament.phase = 'eliminated'; tournament.history.push({ round: match.round, result: 'Éliminé', seasonYear: tournament.seasonYear }); }
-            }
+            if (match.phase === 'league_phase') { tournament.leagueMatchesPlayed += 1; tournament.leaguePoints += performancePoints; tournament.leagueGoalsFor += goals; tournament.leagueGoalsAgainst += rating < 5.5 ? 2 : 1; const opponentRow = tournament.standings.find(row => row.clubId === match.opponentClubId); if (opponentRow) { opponentRow.played += 1; opponentRow.points += Math.max(0, 3 - performancePoints); opponentRow.goalsAgainst += goals; opponentRow.goalsFor += rating < 6 ? 2 : 1; } const ownRow = tournament.standings.find(row => row.clubId === match.playerClubId); if (ownRow) { ownRow.played += 1; ownRow.points = tournament.leaguePoints; ownRow.goalsFor = tournament.leagueGoalsFor; ownRow.goalsAgainst = tournament.leagueGoalsAgainst; } match.played = true; match.status = 'played'; }
+            else if (match.phase === 'knockout') { match.played = true; match.status = 'played'; if (rating >= 6.3 || goals > 0) advanceEuropeanRound(state, match); else { tournament.eliminated = true; tournament.phase = 'eliminated'; tournament.history.push({ round: match.round, result: 'Éliminé', seasonYear: tournament.seasonYear }); } }
         }
-        tournament.standings.sort((a, b) => b.points - a.points || b.strength - a.strength || b.goalsFor - a.goalsFor); tournament.standings.forEach((row, index) => { row.rank = index + 1; });
-        if (tournament.leagueMatchesPlayed >= 8 && !tournament.rank) { tournament.rank = tournament.standings.find(row => row.clubId === state.player.clubId)?.rank || 18; tournament.qualified = tournament.rank <= 24; }
-        return tournament;
+        tournament.standings.sort((a, b) => b.points - a.points || b.strength - a.strength || b.goalsFor - a.goalsFor); tournament.standings.forEach((row, index) => { row.rank = index + 1; }); if (tournament.leagueMatchesPlayed >= 8 && !tournament.rank) { tournament.rank = tournament.standings.find(row => row.clubId === state.player.clubId)?.rank || 18; tournament.qualified = tournament.rank <= 24; } return tournament;
     },
     advanceEuropeanRound,
     getCurrentMatches(state) { return this.getBlockPlan(state).scheduledMatches || []; },
