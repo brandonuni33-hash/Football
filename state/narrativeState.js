@@ -1,11 +1,12 @@
 // Etat opérationnel canonique du Narrative Engine.
 // Il reste distinct de careerMemory (mémoire durable) et des notifications.
 
-export const NARRATIVE_STATE_VERSION = 1;
+export const NARRATIVE_STATE_VERSION = 2;
 export const NARRATIVE_STATE_LIMITS = Object.freeze({
     processedFacts: 500,
     callbacks: 100,
     unresolvedHooks: 100,
+    journalEntries: 150,
     recentBeats: 60,
     threadEvidence: 30
 });
@@ -52,6 +53,7 @@ export function normalizeNarrativeState(value = {}) {
         storyThreads: storyThreads(current.storyThreads),
         callbacks: records(current.callbacks, NARRATIVE_STATE_LIMITS.callbacks),
         unresolvedHooks: records(current.unresolvedHooks, NARRATIVE_STATE_LIMITS.unresolvedHooks),
+        journalEntries: records(current.journalEntries, NARRATIVE_STATE_LIMITS.journalEntries),
         cooldowns: isRecord(current.cooldowns) ? { ...current.cooldowns } : {},
         recentBeatKeys: uniqueStrings(current.recentBeatKeys, NARRATIVE_STATE_LIMITS.recentBeats),
         pacing: {

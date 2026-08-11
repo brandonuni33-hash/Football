@@ -224,6 +224,16 @@
 }
 
 .career-inbox-item.is-read { opacity: .68; }
+.career-inbox-item.is-narrative {
+    cursor: default;
+    opacity: .86;
+    background: rgba(92, 149, 198, .035);
+}
+.career-inbox-item.is-narrative .career-inbox-state {
+    font-size: .43rem;
+    font-weight: 900;
+    letter-spacing: .06em;
+}
 
 .career-inbox-empty {
     min-height: 145px;

@@ -320,6 +320,7 @@ test('ancienne sauvegarde : StateManager migre les attributs, notifications et m
       relationshipMemoryIsArray: Array.isArray(state?.relationshipMemory),
       narrativeVersion: state?.narrativeState?.version,
       narrativeProcessedFactsIsArray: Array.isArray(state?.narrativeState?.processedFactIds),
+      narrativeJournalIsArray: Array.isArray(state?.narrativeState?.journalEntries),
       notificationThreadsSeparate: state?.narrativeState?.storyThreads !== state?.notifications?.threads
     };
   });
@@ -339,7 +340,8 @@ test('ancienne sauvegarde : StateManager migre les attributs, notifications et m
   expect(migrated.unreadCount).toBe(1);
   expect(migrated.memoryCount).toBe(1);
   expect(migrated.relationshipMemoryIsArray).toBe(true);
-  expect(migrated.narrativeVersion).toBe(1);
+  expect(migrated.narrativeVersion).toBe(2);
   expect(migrated.narrativeProcessedFactsIsArray).toBe(true);
+  expect(migrated.narrativeJournalIsArray).toBe(true);
   expect(migrated.notificationThreadsSeparate).toBe(true);
 });

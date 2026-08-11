@@ -95,12 +95,14 @@ export class BlockResultController {
         document.querySelector('[data-narrative-scene]')?.remove();
 
         const overlay = document.createElement('div');
+        const isMatchScene = scene?.type === 'match.end';
+        const sceneCategory = isMatchScene ? '🏟️ APRÈS-MATCH' : '🌍 CARRIÈRE';
         overlay.className = 'event-modal-overlay';
         overlay.dataset.narrativeScene = 'true';
         overlay.innerHTML = `
-            <div class="event-modal-card" role="dialog" aria-modal="true" aria-label="${escapeHtml(scene.title || 'Fin de match')}">
-                <span class="event-modal-category">🏟️ APRÈS-MATCH · ${escapeHtml(String(scene.importance || 'normal').toUpperCase())}</span>
-                <h3 class="event-modal-title">${escapeHtml(scene.title || 'Le match vient de se terminer')}</h3>
+            <div class="event-modal-card" role="dialog" aria-modal="true" aria-label="${escapeHtml(scene.title || 'Actualité de carrière')}">
+                <span class="event-modal-category">${sceneCategory} · ${escapeHtml(String(scene.importance || 'normal').toUpperCase())}</span>
+                <h3 class="event-modal-title">${escapeHtml(scene.title || 'Le monde continue de bouger')}</h3>
                 <p class="event-modal-desc" style="opacity:.72;margin-bottom:4px;">${escapeHtml(scene.subtitle || '')}</p>
                 ${matchRecapHtml(scene.matches)}
                 <div data-narrative-beats style="display:grid;gap:12px;min-height:120px;"></div>
@@ -127,7 +129,18 @@ export class BlockResultController {
             paragraph.style.transition = 'opacity .35s ease, transform .35s ease';
             if (beat?.emphasis) paragraph.style.fontWeight = '700';
             if (beat?.callback) paragraph.style.fontStyle = 'italic';
-            paragraph.textContent = beat?.text || '';
+            if (beat?.kind === 'world-observation' && beat?.title) {
+                const label = document.createElement('span');
+                label.style.display = 'block';
+                label.style.marginBottom = '4px';
+                label.style.fontSize = '.68rem';
+                label.style.letterSpacing = '.06em';
+                label.style.opacity = '.68';
+                label.textContent = String(beat.title).toUpperCase();
+                paragraph.append(label, document.createTextNode(beat?.text || ''));
+            } else {
+                paragraph.textContent = beat?.text || '';
+            }
             container?.appendChild(paragraph);
             requestAnimationFrame(() => {
                 paragraph.style.opacity = '1';

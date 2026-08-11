@@ -27,11 +27,12 @@ export class ViewCoordinator {
         if (!ui || !gateway) throw new Error('ViewCoordinator requires ui and gateway.');
         this.ui = ui;
         this.gateway = gateway;
+        const narrativePresenter = gateway.application?.registry?.narrativePresenter || null;
         this.views = {
-            dashboard: new DashboardView({ ui, gateway }), event: new EventView({ ui, gateway }),
+            dashboard: new DashboardView({ ui, gateway, narrativePresenter }), event: new EventView({ ui, gateway }),
             coach: new CoachView({ ui, gateway }), media: new MediaView({ ui, gateway }),
             transfer: new TransferView({ ui, gateway }), training: new TrainingView({ ui, gateway }),
-            career: new CareerView({ ui, gateway }), family: new FamilyView({ ui, gateway }),
+            career: new CareerView({ ui, gateway, narrativePresenter }), family: new FamilyView({ ui, gateway }),
             messages: new MessagesView({ ui, gateway }), bank: new BankView({ ui, gateway }),
             stats: new StatsView({ ui, gateway }), settings: new SettingsView({ ui, gateway })
         };

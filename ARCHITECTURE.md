@@ -55,6 +55,7 @@ Responsabilités internes :
 - `NarrativeArcInterpreter` interprète la phase du récit ;
 - `NarrativeScenePlanner` limite un traitement à une scène principale ;
 - `NarrativeBeatComposer` compose les beats sans écrire dans le State ;
+- `NarrativeWorldBeatComposer` compose les observations passives et le journal ;
 - `NarrativeContinuity` refuse contradictions et informations cachées ;
 - `NarrativeStateReducer` est l'unique écrivain de `narrativeState`.
 
@@ -72,7 +73,7 @@ de l'heure d'exécution.
 
 - `careerMemory` conserve les souvenirs durables créés par leur système propriétaire ;
 - `narrativeState` conserve les faits traités, fils narratifs, callbacks, hooks,
-  cooldowns, clés de beats et rythme ;
+  cooldowns, clés de beats, journal et rythme ;
 - `notifications.threads` reste la structure de livraison des notifications et ne
   doit jamais servir de fil narratif.
 
@@ -86,6 +87,19 @@ de l'heure d'exécution.
 - un traitement produit au maximum une scène principale ;
 - seul `NarrativeStateReducer` modifie `narrativeState` ;
 - la composition est déterministe à faits et contexte identiques.
+
+### Fin d'un bloc
+
+Le bloc résout d'abord les matchs, le monde, les médias, les événements, le coach,
+la carrière, le mercato et la famille. Il remet ensuite ces résultats explicites à
+`NarrativeEngine.processBlock()` avant d'avancer le calendrier. Le moteur peut ainsi
+raconter la réaction du monde sans lire un état déjà passé à la période suivante.
+
+Seules les étapes de mercato visibles par le joueur (`contact`, `offer`) deviennent
+des observations. Le scouting exploratoire reste absent de la présentation. Les
+observations les plus significatives rejoignent la scène courante et toutes les
+observations visibles sont conservées dans `narrativeState.journalEntries`, que le
+Dashboard et la vue Carrière lisent via `NarrativePresenter`.
 
 Il peut :
 - lire les faits déjà résolus par les systèmes métier ;

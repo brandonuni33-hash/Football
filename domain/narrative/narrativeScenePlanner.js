@@ -4,8 +4,9 @@ export class NarrativeScenePlanner {
     plan({ facts = [], evaluations = [], arcs = [] } = {}) {
         if (!facts.length) return { primary: null, passive: [] };
         const evaluationById = new Map(evaluations.map(item => [item.factId, item]));
-        const appearances = facts.filter(fact => fact.metrics?.playerPlayed !== false);
-        const candidates = appearances.length ? appearances : facts;
+        const matchFacts = facts.filter(fact => fact.type === 'match.completed');
+        const appearances = matchFacts.filter(fact => fact.metrics?.playerPlayed !== false);
+        const candidates = appearances.length ? appearances : matchFacts;
         const featuredFact = [...candidates].sort((left, right) =>
             (evaluationById.get(right.id)?.score || 0) - (evaluationById.get(left.id)?.score || 0))[0] || null;
         const impactFact = [...appearances].sort((left, right) =>
@@ -16,11 +17,11 @@ export class NarrativeScenePlanner {
             primary: {
                 featuredFact,
                 impactFact,
-                facts: [...facts].sort((left, right) =>
+                facts: [...matchFacts].sort((left, right) =>
                     Number(left.metrics?.matchIndex ?? 0) - Number(right.metrics?.matchIndex ?? 0)),
                 evaluation: evaluationById.get(featuredFact.id) || null,
                 evaluations: evaluationById,
-                arc: arcs[0] || null
+                arc: arcs.find(item => item.factIds?.includes(featuredFact.id)) || null
             },
             passive: []
         };

@@ -128,9 +128,10 @@ const escapeHtml = value => String(value ?? '')
     .replaceAll("'", '&#039;');
 
 export class DashboardView {
-    constructor({ ui, gateway } = {}) {
+    constructor({ ui, gateway, narrativePresenter = null } = {}) {
         this.ui = ui;
         this.gateway = gateway;
+        this.narrativePresenter = narrativePresenter;
     }
 
     render(state) {
@@ -140,6 +141,8 @@ export class DashboardView {
         const allSignals = (state?.notifications?.signals || []).filter(note => !note?.archived);
         const careerSignals = allSignals.filter(note => !isSocialNotification(note));
         const notifications = careerSignals.filter(note => !note?.read).slice(-8).reverse();
+        const narrativeEntries = (this.narrativePresenter?.getJournal?.(state) || []).slice(0, 8);
+        const journalCount = Math.min(99, notifications.length + narrativeEntries.length);
         const latestSignal = notifications[0] || careerSignals.at(-1) || null;
         const coachSignal = [...allSignals].reverse().find(note => String(note?.category || '').toLowerCase().includes('coach')) || null;
         const playerName = `${player.firstname || player.firstName || ''} ${player.lastname || player.lastName || ''}`.trim() || 'Joueur';
@@ -210,23 +213,29 @@ export class DashboardView {
                         <span class="immersive-message-chevron">›</span>
                     </button>
 
-                    <section class="dashboard-notification-zone immersive-journal ${notifications.length ? 'has-notifications' : 'is-empty'}">
+                    <section class="dashboard-notification-zone immersive-journal ${journalCount ? 'has-notifications' : 'is-empty'}">
                         <button class="career-journal-bar" type="button" aria-expanded="false" data-journal-toggle>
                             <span class="journal-icon">◫</span>
                             <span class="journal-title">Journal de carrière</span>
-                            <span class="journal-count">${notifications.length}</span>
-                            <span class="journal-preview">${escapeHtml(notifications[0]?.title || 'Voir les dernières nouvelles')}</span>
+                            <span class="journal-count">${journalCount}</span>
+                            <span class="journal-preview">${escapeHtml(narrativeEntries[0]?.title || notifications[0]?.title || 'Voir les dernières nouvelles')}</span>
                             <span class="journal-chevron">›</span>
                         </button>
                         <div class="career-journal-drawer" hidden>
                             <div class="career-journal-header"><strong>Journal de carrière</strong><button class="journal-close" type="button" aria-label="Fermer">×</button></div>
                             <div class="career-journal-list">
+                                ${narrativeEntries.map(entry => `
+                                    <article class="career-journal-item priority-${['important', 'major', 'exceptional'].includes(entry.importance) ? 'important' : 'info'}" data-narrative-entry-id="${escapeHtml(entry.id)}">
+                                        <span class="journal-item-icon">${notificationIcon(entry)}</span>
+                                        <div class="journal-item-copy"><strong>${escapeHtml(entry.title)}</strong><p>${escapeHtml(entry.text)}</p></div>
+                                    </article>
+                                `).join('')}
                                 ${notifications.map(note => `
                                     <article class="career-journal-item priority-${notificationPriority(note)}" data-notification-id="${escapeHtml(note.id)}">
                                         <span class="journal-item-icon">${notificationIcon(note)}</span>
                                         <div class="journal-item-copy"><strong>${escapeHtml(note.title || 'Notification')}</strong><p>${escapeHtml(note.body || note.message || '')}</p></div>
                                     </article>
-                                `).join('') || '<p class="journal-empty">Aucune actualité récente.</p>'}
+                                `).join('') || (!narrativeEntries.length ? '<p class="journal-empty">Aucune actualité récente.</p>' : '')}
                             </div>
                         </div>
                     </section>

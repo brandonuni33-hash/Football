@@ -62,13 +62,11 @@ export class BlockSystem {
             delete state.matchInteractionPlan;
             delete state.matchSelectionPlan;
 
-            // La narration interprète uniquement des faits déjà résolus. Elle ne
-            // modifie ni le résultat du match, ni les stats, ni les conséquences.
-            const narrativeScene = this.narrativeEngine?.composeMatchEnd?.({ state, report }) || null;
-
             this.worldSystem.recordPlayerMatches(state, report.summary?.scheduledMatches || [], report.summary || {});
             this.socialSystem.updateSocialCycle(state);
-            if (typeof this.mediaSystem.generatePostAfterBlock === 'function') this.mediaSystem.generatePostAfterBlock(state, report.summary);
+            const mediaCycle = typeof this.mediaSystem.generatePostAfterBlock === 'function'
+                ? this.mediaSystem.generatePostAfterBlock(state, report.summary) || null
+                : null;
             state.pendingEvent = this.eventEngine.checkAndTriggerEvent(state);
             state.pendingCoachEvent = state.pendingEvent ? null : this.coachSystem.checkCoachInteraction(state);
             this.careerSystem.refreshStage(player);
@@ -84,11 +82,34 @@ export class BlockSystem {
 
             const season = Number(state.calendar?.currentSeasonYear ?? state.season ?? state.career?.season ?? 1);
             const familyBirths = this.familyLifeSystem?.evaluateBirths?.({ state, player, season }) || [];
+
+            // Tous les systèmes ont maintenant produit leurs faits résolus. La
+            // narration les interprète avant que le calendrier change de période.
+            const narrativePresentation = typeof this.narrativeEngine?.processBlock === 'function'
+                ? this.narrativeEngine.processBlock({
+                    state,
+                    report,
+                    resolved: {
+                        revealedConsequences,
+                        mediaCycle,
+                        event: state.pendingEvent,
+                        coachEvent: state.pendingCoachEvent,
+                        discoveredRole,
+                        positionProposal: state.pendingPositionProposal,
+                        transferCycle,
+                        transferOffer: state.pendingTransferOffer,
+                        familyBirths
+                    }
+                })
+                : { primaryScene: this.narrativeEngine?.composeMatchEnd?.({ state, report }) || null, passiveBeats: [], journalEntries: [] };
+            const narrativeScene = narrativePresentation?.primaryScene || null;
             const calendar = this.advanceCalendar(state);
             this.stateManager.save(state);
             const result = {
                 report: { ...report, training: trainingReport },
                 narrativeScene,
+                narrativeObservations: narrativePresentation?.passiveBeats || [],
+                narrativeJournalEntries: narrativePresentation?.journalEntries || [],
                 revealedConsequences,
                 calendar,
                 event: state.pendingEvent,

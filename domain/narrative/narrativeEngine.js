@@ -10,6 +10,7 @@ import NarrativeThreadTracker from './narrativeThreadTracker.js';
 import NarrativeArcInterpreter from './narrativeArcInterpreter.js';
 import NarrativeScenePlanner from './narrativeScenePlanner.js';
 import NarrativeBeatComposer from './narrativeBeatComposer.js';
+import NarrativeWorldBeatComposer from './narrativeWorldBeatComposer.js';
 import NarrativeContinuity from './narrativeContinuity.js';
 import NarrativeStateReducer from './narrativeStateReducer.js';
 
@@ -45,13 +46,18 @@ export class NarrativeEngine {
         arcInterpreter = new NarrativeArcInterpreter(),
         scenePlanner = new NarrativeScenePlanner(),
         beatComposer = new NarrativeBeatComposer(),
+        worldBeatComposer = new NarrativeWorldBeatComposer(),
         continuity = new NarrativeContinuity(),
         stateReducer = new NarrativeStateReducer()
     } = {}) {
         Object.assign(this, {
             factCollector, factNormalizer, contextBuilder, memoryReader, significance,
-            threadTracker, arcInterpreter, scenePlanner, beatComposer, continuity, stateReducer
+            threadTracker, arcInterpreter, scenePlanner, beatComposer, worldBeatComposer, continuity, stateReducer
         });
+    }
+
+    processBlock({ state, report, resolved = {} } = {}) {
+        return this.process({ state, rawFacts: this.factCollector.collectBlockFacts({ state, report, resolved }) });
     }
 
     processMatchEnd({ state, report } = {}) {
@@ -86,7 +92,14 @@ export class NarrativeEngine {
         const threadTransitions = this.threadTracker.track({ facts: freshFacts, evaluations, context });
         const arcs = this.arcInterpreter.interpret({ facts: freshFacts, evaluations, threadTransitions, context });
         const plan = this.scenePlanner.plan({ facts: freshFacts, evaluations, arcs, context });
-        const composition = this.beatComposer.compose({ plan, context, memory });
+        const matchComposition = this.beatComposer.compose({ plan, context, memory });
+        const worldComposition = this.worldBeatComposer.compose({ facts: freshFacts, evaluations, context });
+        const composition = {
+            ...matchComposition,
+            primaryScene: matchComposition.primaryScene || worldComposition.primaryScene,
+            passiveBeats: worldComposition.passiveBeats,
+            journalEntries: worldComposition.journalEntries
+        };
         const output = this.continuity.guardOutput({
             ...emptyOutput(),
             ...composition,
@@ -107,6 +120,10 @@ export class NarrativeEngine {
     // API historique conservée : les appelants existants reçoivent toujours la scène principale.
     composeMatchEnd({ state, report } = {}) {
         return this.processMatchEnd({ state, report }).primaryScene;
+    }
+
+    composeBlock({ state, report, resolved = {} } = {}) {
+        return this.processBlock({ state, report, resolved }).primaryScene;
     }
 }
 
