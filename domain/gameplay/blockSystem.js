@@ -33,6 +33,7 @@ export class BlockSystem {
                     EventBus.emit(EVENTS.PLAYER_RECOVERED, { playerId: player.id, state });
                 }
                 delete state.matchInteractionPlan;
+                delete state.matchSelectionPlan;
                 delete state.activeMatchSession;
                 delete state.interactiveBlockResults;
                 const calendar = this.advanceCalendar(state);
@@ -59,6 +60,7 @@ export class BlockSystem {
             delete state.interactiveBlockResults;
             delete state.activeMatchSession;
             delete state.matchInteractionPlan;
+            delete state.matchSelectionPlan;
 
             // La narration interprète uniquement des faits déjà résolus. Elle ne
             // modifie ni le résultat du match, ni les stats, ni les conséquences.
