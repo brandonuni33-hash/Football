@@ -1,7 +1,7 @@
 // application/systemRegistry.js
 // Composition root : toutes les dépendances des domaines sont assemblées ici.
 import { EconomyManager } from '../domain/economy/economySystem.js';
-import { SocialSystem } from '../social.js';
+import { SocialSystem } from '../domain/relationship/socialSystem.js';
 import { MediaSystem } from '../domain/media/mediaSystem.js';
 import { TrainingManager } from '../domain/training/trainingManager.js';
 import { PlayerLogic } from '../player.js';
@@ -56,7 +56,7 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
     const seasonSystem = new SeasonSystem({ playerLogic: PlayerLogic, potentialSystem: PotentialSystem, careerSystem: CareerSystem, cupSystem, worldSystem, awardsSystem });
     const calendarSystem = new CalendarSystem({ worldSystem, competitionSystem, cupSystem, familySystem, seasonReset: (state) => seasonSystem.finalize(state) });
     const transferSystem = new TransferSystem({ transferMarket: TransferMarket, careerSystem: CareerSystem, playerLogic: PlayerLogic, stateManager: StateManager, worldSystem });
-    const blockSystem = new BlockSystem({ trainingManager: TrainingManager, matchBlockManager: simulatedMatchSystem, worldSystem, socialSystem, mediaSystem, eventEngine: EventEngine, coachSystem: CoachSystem, careerSystem: CareerSystem, transferMarket: TransferMarket, transferSystem, stateManager: StateManager, familyLifeSystem, consequenceSystem: ConsequenceSystem, narrativeEngine, advanceCalendar: (state) => calendarSystem.advance(state) });
+    const blockSystem = new BlockSystem({ trainingManager: TrainingManager, matchBlockManager: simulatedMatchSystem, worldSystem, socialSystem, mediaSystem, eventEngine: EventEngine, coachSystem: CoachSystem, careerSystem: CareerSystem, transferSystem, stateManager: StateManager, familyLifeSystem, consequenceSystem: ConsequenceSystem, narrativeEngine, advanceCalendar: (state) => calendarSystem.advance(state) });
     const interactionSystem = new InteractionSystem({ eventEngine: EventEngine, coachSystem: CoachSystem, mediaSystem, playerLogic: PlayerLogic, careerSystem: CareerSystem, stateManager: StateManager });
     const careerLifecycleSystem = new CareerLifecycleSystem({ stateManager: StateManager, playerLogic: PlayerLogic });
     const careerApplication = new CareerApplication({ stateManager: StateManager, playerLogic: PlayerLogic, economyManager: EconomyManager, socialSystem, mediaSystem, consequenceSystem: ConsequenceSystem, potentialSystem: PotentialSystem, careerSystem: CareerSystem, competitionSystem, worldSystem, cupSystem, schemaVersion: SCHEMA_VERSION });
