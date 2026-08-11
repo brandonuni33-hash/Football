@@ -1,6 +1,5 @@
 // domain/transfer/transferSystem.js
 // Orchestration métier des offres de transfert du joueur.
-// La génération reste fournie par TransferMarket pendant la migration.
 
 import { EventBus } from '../../core/eventBus.js';
 import { EVENTS } from '../../core/events.js';
@@ -13,8 +12,14 @@ export class TransferSystem {
     generateOffer(state) {
         const player = state?.player;
         if (!player || player.isInjured) return null;
-        if (player.age < 22) return this.careerSystem.recruitmentOffer(player);
-        return Math.random() < 0.08 ? this.transferMarket.generateTransferOffer(player) : null;
+        if (state.pendingTransferOffer) return state.pendingTransferOffer;
+        let offer = null;
+        if (player.age < 22) offer = this.careerSystem.recruitmentOffer(player);
+        else if (Math.random() < 0.08) offer = this.transferMarket.generateTransferOffer(player);
+        if (!offer) return null;
+        state.pendingTransferOffer = offer;
+        EventBus.emit(EVENTS.TRANSFER_OFFER_CREATED, { state, playerId: player.id, club: offer.club, offer });
+        return offer;
     }
 
     accept(state) {
@@ -44,8 +49,8 @@ export class TransferSystem {
         this.stateManager.save(state);
 
         const result = { accepted: true, oldClub, newClub: offer.club, salary: player.salary };
-        EventBus.emit(EVENTS.TRANSFER_OFFER_ACCEPTED, { ...result, playerId: player.id });
-        EventBus.emit(EVENTS.TRANSFER_COMPLETED, { ...result, playerId: player.id });
+        EventBus.emit(EVENTS.TRANSFER_OFFER_ACCEPTED, { ...result, playerId: player.id, state });
+        EventBus.emit(EVENTS.TRANSFER_COMPLETED, { ...result, playerId: player.id, state });
         return result;
     }
 
@@ -54,7 +59,7 @@ export class TransferSystem {
         if (!offer) return false;
         state.pendingTransferOffer = null;
         this.stateManager.save(state);
-        EventBus.emit(EVENTS.TRANSFER_OFFER_REJECTED, { playerId: state.player?.id, club: offer.club });
+        EventBus.emit(EVENTS.TRANSFER_OFFER_REJECTED, { playerId: state.player?.id, club: offer.club, state });
         return true;
     }
 }
