@@ -48,6 +48,18 @@ export function createBaseState(overrides = {}) {
         pendingMediaDilemma: null,
         pendingTransferOffer: null,
         pendingPositionProposal: null,
+        scouting: {
+            observations: [],
+            interests: [],
+            shortlist: [],
+            clubNeeds: {}
+        },
+        transferInterests: [],
+        clubTransferNeeds: {},
+        transferMarket: {
+            activity: [],
+            lastCycle: null
+        },
         world: {
             version: 1,
             leagues: {},
