@@ -30,6 +30,7 @@ state/ + core/
 - `domain/competition/cupSystem.js` : coupes nationales.
 - `domain/competition/europeanCompetitionSystem.js` : Europe.
 - `domain/match/` : simulation et match interactif.
+- `domain/match/matchImportanceSystem.js` : importance dynamique des matchs.
 - `domain/decision/consequenceSystem.js` : conséquences différées.
 - `domain/events/eventSystem.js` : événements.
 - `domain/media/mediaSystem.js` : médias.
@@ -39,6 +40,8 @@ state/ + core/
 - `domain/transfer/` : transferts.
 - `domain/world/worldCatalog.js` : données monde.
 - `domain/world/worldSystem.js` : comportement monde.
+- `domain/awards/awardsSystem.js` : récompenses.
+- `domain/notification/` : notifications, signaux et journal de carrière.
 
 ## Nettoyage effectué
 
@@ -57,8 +60,12 @@ Les anciens propriétaires racine suivants ont été supprimés après migration
 - `consequenceSystem.js`
 - `matchChoices.js`
 - `worldSystem.js`
+- `awardsSystem.js`
+- `careerSimulationV4.js`
+- `creation-tinder.js`
+- `matchBlock.js`
 
-Le monde est maintenant séparé en données et comportement :
+Le monde est séparé en données et comportement :
 
 ```text
 domain/world/
@@ -66,13 +73,17 @@ domain/world/
 └── worldSystem.js
 ```
 
-Le catalogue peut rester volumineux car il s'agit de données. La logique doit rester découpée et lisible.
+## Façades / catalogues encore à la racine
 
-## Compatibilité volontaire
+- `player.js` : façade historique mince vers `domain/player/playerSystem.js`.
+- `state.js` : façade historique mince vers `state/stateManager.js`.
+- `constants.js` : catalogue partagé de création encore consommé par les façades/UI. Il doit être déplacé vers un catalogue de domaine dédié lors d'une prochaine passe, sans modifier les données en cours de route.
 
-`player.js` et `state.js` peuvent rester comme façades historiques. Ils ne doivent pas redevenir propriétaires métier.
+Ces fichiers ne doivent pas redevenir des propriétaires métier.
 
-`matchBlock.js` reste une façade tant que ses consommateurs externes ne sont pas tous migrés.
+## Modules racine encore actifs à migrer
+
+Quelques modules historiques à la racine sont encore importés par l'application. Ils ne doivent pas être supprimés tant que leur propriétaire canonique n'est pas créé et que tous leurs consommateurs n'ont pas été migrés. Toute migration future doit suivre : recherche des consommateurs → création du propriétaire canonique → bascule des imports → suppression du module racine.
 
 ## CI
 
