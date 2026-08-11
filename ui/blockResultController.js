@@ -15,6 +15,16 @@ function matchModeLabel(match = {}) {
     return 'simulé';
 }
 
+function contributionHtml(match = {}) {
+    if (match.playerPlayed === false) return '';
+    const goals = Math.max(0, Number(match.goals) || 0);
+    const assists = Math.max(0, Number(match.assists) || 0);
+    const items = [];
+    if (goals) items.push(`<span title="But${goals > 1 ? 's' : ''}" style="display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:999px;background:rgba(75,208,224,.11);color:#9cecf5;font-size:.68rem;font-weight:800;">⚽ ${goals}</span>`);
+    if (assists) items.push(`<span title="Passe${assists > 1 ? 's' : ''} décisive${assists > 1 ? 's' : ''}" style="display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:999px;background:rgba(183,137,255,.11);color:#d8c0ff;font-size:.68rem;font-weight:800;">A ${assists}</span>`);
+    return items.length ? `<div data-player-contributions style="display:flex;justify-content:flex-end;gap:4px;margin-top:4px;">${items.join('')}</div>` : '';
+}
+
 function matchRecapHtml(matches = []) {
     if (!Array.isArray(matches) || !matches.length) return '';
     return `
@@ -32,6 +42,7 @@ function matchRecapHtml(matches = []) {
                     <div style="text-align:right;white-space:nowrap;">
                         <div style="font-size:1.05rem;font-weight:800;">${escapeHtml(match.score || '0-0')}</div>
                         <div style="font-size:.72rem;opacity:.72;">${escapeHtml(match.impactLabel || '')}</div>
+                        ${contributionHtml(match)}
                     </div>
                 </div>`).join('')}
         </div>`;

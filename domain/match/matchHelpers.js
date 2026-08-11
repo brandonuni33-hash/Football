@@ -68,16 +68,26 @@ export function buildScore({ player, rating, group, goalChance, opponentStrength
     return Math.min(6, Math.floor(-Math.log(Math.max(0.0001, Math.random())) * lambda));
 }
 
+export function reconcilePlayerContributions(teamGoals, playerGoals, playerAssists) {
+    const goals = Math.max(0, Math.floor(number(playerGoals)));
+    const assists = Math.max(0, Math.floor(number(playerAssists)));
+    return {
+        teamGoals: Math.max(0, Math.floor(number(teamGoals)), goals + assists),
+        goals,
+        assists
+    };
+}
+
 export function buildMatchResult({ player, scheduledMatch, matchIndex, rating, group, goalChance, assistChance, duelChance }) {
     const home = isHomeMatch(scheduledMatch);
     const opponent = opponentName(scheduledMatch);
     const opponentStrength = number(scheduledMatch?.opponentStrength ?? scheduledMatch?.opponentOverall ?? 50) || 50;
-    const teamGoals = buildScore({ player, rating, group, goalChance, opponentStrength });
+    const generatedTeamGoals = buildScore({ player, rating, group, goalChance, opponentStrength });
     const opponentGoals = Math.min(6, Math.floor(Math.random() * Math.max(1, 1.1 + opponentStrength / 55)));
     const playerGoal = Math.random() < clamp(goalChance, 0.01, 0.75) ? 1 : 0;
     const playerAssist = Math.random() < clamp(assistChance, 0.01, 0.75) ? 1 : 0;
-    const actualGoals = Math.max(playerGoal, teamGoals > 0 && playerGoal ? 1 : 0);
-    const actualAssists = Math.min(playerAssist, Math.max(0, teamGoals));
+    const contributions = reconcilePlayerContributions(generatedTeamGoals, playerGoal, playerAssist);
+    const { teamGoals, goals: actualGoals, assists: actualAssists } = contributions;
     const tackles = group === 'goalkeeper'
         ? 0
         : Math.max(0, Math.floor(2 + Math.random() * 7 + duelChance * 8 + number(player.attributes?.defense) * .035));

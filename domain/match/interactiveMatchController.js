@@ -4,7 +4,7 @@ import { PlayerLogic } from '../../player.js';
 import { PotentialSystem } from '../player/potentialSystem.js';
 import { ConsequenceSystem } from '../decision/consequenceSystem.js';
 import { MatchChoiceManager } from './matchChoiceManager.js';
-import { clamp, number, positionGroup, opponentName, isHomeMatch, competitionLabel, matchType, importanceFor, decisionMoments, buildScore } from './matchHelpers.js';
+import { clamp, number, positionGroup, opponentName, isHomeMatch, competitionLabel, matchType, importanceFor, decisionMoments, buildScore, reconcilePlayerContributions } from './matchHelpers.js';
 
 const CONSEQUENCE_MAP = { technique: 'attributes.controle', physique: 'attributes.puissance', vitesse: 'attributes.vitesse', defense: 'attributes.defense', mental: 'mental', charisme: 'reputation', discipline: 'discipline', relationCoach: 'relationCoach', vestiaire: 'vestiaire' };
 
@@ -82,11 +82,17 @@ export function resolveInteractiveDecision(state, session, choiceIndex) {
     const rating = Number(clamp(session.playerRatingBase + session.modifiers.rating + (Math.random() - .5) * 1.1, 4, 10).toFixed(1));
     const goalChance = clamp(.04 + number(player.attributes?.tir ?? 40) / 99 * .16 + session.modifiers.goal, .01, .75);
     const assistChance = clamp(.06 + number(player.attributes?.passe ?? 40) / 99 * .18 + session.modifiers.assist, .01, .75);
-    let teamGoals = session.score[session.home ? 'home' : 'away'];
-    if (teamGoals === 0) teamGoals = buildScore({ player, rating, group, goalChance, opponentStrength });
+    let generatedTeamGoals = session.score[session.home ? 'home' : 'away'];
+    if (generatedTeamGoals === 0) generatedTeamGoals = buildScore({ player, rating, group, goalChance, opponentStrength });
     const opponentGoals = Math.min(6, Math.max(0, Math.floor(Math.random() * Math.max(1, 1 + opponentStrength / 60))));
     const selection = session.match?.playerSelection || { started: true, appearance: 'starter', minutes: 90 };
-    const result = { matchIndex: session.matchIndex, fixture: session.match, competitionId: session.match?.competitionId || null, competitionType: session.match?.competitionType || session.match?.type || null, competitionName: session.competition, phase: session.match?.phase || null, round: session.match?.round || session.match?.europeanRound || null, type: session.type, importance: session.importance, opponent: session.opponent, opponentStrength, home: session.home, venue: session.match?.venue || null, score: { home: session.home ? teamGoals : opponentGoals, away: session.home ? opponentGoals : teamGoals }, teamGoals, opponentGoals, result: teamGoals > opponentGoals ? 'win' : teamGoals < opponentGoals ? 'loss' : 'draw', rating, goals: Math.random() < goalChance && teamGoals > 0 ? 1 : 0, assists: Math.random() < assistChance && teamGoals > 0 ? 1 : 0, tackles: group === 'goalkeeper' ? 0 : Math.max(1, Math.floor(2 + Math.random() * 6 + session.modifiers.duel * 8)), cleanSheet: group === 'goalkeeper' && opponentGoals === 0, played: true, playerPlayed: true, appearance: selection.appearance || (selection.started === false ? 'substitute' : 'starter'), started: selection.started !== false, minutesPlayed: number(session.match?.minutes ?? selection.minutes ?? 90) || 90, decisions: session.decisions, events: session.events };
+    const contributions = reconcilePlayerContributions(
+        generatedTeamGoals,
+        Math.random() < goalChance ? 1 : 0,
+        Math.random() < assistChance ? 1 : 0
+    );
+    const teamGoals = contributions.teamGoals;
+    const result = { matchIndex: session.matchIndex, fixture: session.match, competitionId: session.match?.competitionId || null, competitionType: session.match?.competitionType || session.match?.type || null, competitionName: session.competition, phase: session.match?.phase || null, round: session.match?.round || session.match?.europeanRound || null, type: session.type, importance: session.importance, opponent: session.opponent, opponentStrength, home: session.home, venue: session.match?.venue || null, score: { home: session.home ? teamGoals : opponentGoals, away: session.home ? opponentGoals : teamGoals }, teamGoals, opponentGoals, result: teamGoals > opponentGoals ? 'win' : teamGoals < opponentGoals ? 'loss' : 'draw', rating, goals: contributions.goals, assists: contributions.assists, tackles: group === 'goalkeeper' ? 0 : Math.max(1, Math.floor(2 + Math.random() * 6 + session.modifiers.duel * 8)), cleanSheet: group === 'goalkeeper' && opponentGoals === 0, played: true, playerPlayed: true, appearance: selection.appearance || (selection.started === false ? 'substitute' : 'starter'), started: selection.started !== false, minutesPlayed: number(session.match?.minutes ?? selection.minutes ?? 90) || 90, decisions: session.decisions, events: session.events };
     session.result = result;
     session.finished = true;
     session.decision = null;

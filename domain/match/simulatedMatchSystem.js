@@ -6,6 +6,7 @@ import { applyProgression } from '../player/playerSystem.js';
 import CompetitionSystem from '../competition/competitionSystem.js';
 import EconomyManager from '../economy/economySystem.js';
 import SquadSelectionSystem from './squadSelectionSystem.js';
+import { reconcilePlayerContributions } from './matchHelpers.js';
 
 const n = value => Number.isFinite(Number(value)) ? Number(value) : 0;
 const clamp = (value, min, max) => Math.min(max, Math.max(min, Number(value) || 0));
@@ -88,7 +89,12 @@ export class SimulatedMatchSystem {
                 ? evaluateMatch(player, { opponentStrength: strength, opponentOverall: strength, important, minutes })
                 : { performanceLevel: (n(player.overall) - strength) / 100, goals: 0, assists: 0, tackles: 0, interceptions: 0, successfulPasses: 0, passes: 0, shots: 0, shotsOnTarget: 0, duels: 0, duelsWon: 0, rating: null, expression: null };
             const home = typeof match?.home === 'boolean' ? match.home : match?.venue !== 'Extérieur';
-            const goalsFor = teamGoals(performance);
+            const contributions = reconcilePlayerContributions(
+                teamGoals(performance),
+                playerPlayed ? performance.goals : 0,
+                playerPlayed ? performance.assists : 0
+            );
+            const goalsFor = contributions.teamGoals;
             const goalsAgainst = opponentGoals(strength, home);
             const row = {
                 matchIndex,
@@ -107,8 +113,8 @@ export class SimulatedMatchSystem {
                 opponentGoals: goalsAgainst,
                 result: goalsFor > goalsAgainst ? 'win' : goalsFor < goalsAgainst ? 'loss' : 'draw',
                 rating: playerPlayed ? performance.rating : null,
-                goals: playerPlayed ? performance.goals : 0,
-                assists: playerPlayed ? performance.assists : 0,
+                goals: contributions.goals,
+                assists: contributions.assists,
                 tackles: playerPlayed ? performance.tackles : 0,
                 interceptions: playerPlayed ? performance.interceptions : 0,
                 successfulPasses: playerPlayed ? performance.successfulPasses : 0,
