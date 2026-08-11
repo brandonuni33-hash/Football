@@ -96,6 +96,25 @@ function formatMoney(value) {
     return `${Math.round(number)} €`;
 }
 
+function overallValue(player) {
+    const number = Number(firstValue(player?.overall, player?.general, player?.rating));
+    return Number.isFinite(number) ? Math.max(0, Math.min(100, Math.round(number))) : 0;
+}
+
+function appIconSvg(id) {
+    const icons = {
+        career: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5 15 7l-1.2 4.1H10.2L9 7l3-3.5ZM3.8 10.2l4.1-.2 2.3 3-1.4 3.8-4 1.4M20.2 10.2l-4.1-.2-2.3 3 1.4 3.8 4 1.4M8.8 16.8 12 14.5l3.2 2.3-1.2 3.7h-4Z"/></svg>',
+        transfers: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h13"/><path d="m14 4 3 3-3 3"/><path d="M20 17H7"/><path d="m10 14-3 3 3 3"/></svg>',
+        social: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.7a5.5 5.5 0 0 0-7.8 0L12 5.8l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.5a5.5 5.5 0 0 0 0-7.8Z"/></svg>',
+        family: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M2.8 20c.5-4 2.5-6 5.2-6s4.7 2 5.2 6"/><path d="M14.2 15c.8-.8 1.7-1.2 2.8-1.2 2.3 0 3.8 1.7 4.2 5"/></svg>',
+        stats: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>',
+        training: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 4-7 16h14L12 4Z"/><path d="M8 14h8"/><path d="M10 10h4"/></svg>',
+        bank: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h16"/><path d="M5.5 9v8M9.8 9v8M14.2 9v8M18.5 9v8"/><path d="M3 19h18M12 3 3 7h18l-9-4Z"/></svg>',
+        settings: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1A8 8 0 0 0 14.8 6L14.5 3h-5l-.3 3a8 8 0 0 0-1.7 1.1l-2.4-1-2 3.4 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1A8 8 0 0 0 9.2 18l.3 3h5l.3-3a8 8 0 0 0 1.7-1.1l2.4 1 2-3.4-2-1.5c.1-.3.1-.7.1-1Z"/></svg>'
+    };
+    return icons[id] || '';
+}
+
 const escapeHtml = value => String(value ?? '')
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
@@ -119,16 +138,17 @@ export class DashboardView {
         const coachSignal = [...allSignals].reverse().find(note => String(note?.category || '').toLowerCase().includes('coach')) || null;
         const playerName = `${player.firstname || player.firstName || ''} ${player.lastname || player.lastName || ''}`.trim() || 'Joueur';
         const playerFlag = flag(player);
-        const stats = careerStats(player);
         const rawStats = player?.stats || {};
         const goals = stat(rawStats, ['goals', 'buts']);
         const assists = stat(rawStats, ['assists', 'passesDecisives']);
-        const overall = firstValue(player.overall, player.general, player.rating, '—');
+        const overall = overallValue(player);
         const fitness = firstValue(player.fitness, player.form, player.condition, '—');
         const morale = firstValue(player.morale, player.moral, '—');
         const balance = firstValue(state?.economy?.balance, state?.finances?.balance, player?.money, state?.money);
         const currentPeriod = firstValue(calendar.currentPeriod, calendar.periodLabel, calendar.currentMonth ? `Mois ${calendar.currentMonth}` : null, 'Pré-saison');
         const avatarInitials = playerName.split(/\s+/).slice(0, 2).map(part => part[0] || '').join('').toUpperCase();
+        const seasonYear = calendar.currentSeasonYear || '—';
+        const position = player.position || player.positionId || 'JOUEUR';
 
         return `
             <div class="phone-frame immersive-dashboard">
@@ -141,19 +161,22 @@ export class DashboardView {
                 <main class="phone-home-screen immersive-home">
                     <section class="immersive-player-card" aria-label="Profil joueur">
                         <div class="immersive-player-glow"></div>
-                        <div class="immersive-overall-ring">
-                            <strong>${escapeHtml(overall)}</strong>
-                            <span>GÉN</span>
+                        <div class="immersive-overall-ring" style="--overall:${overall}" aria-label="Général ${overall} sur 100">
+                            <div class="immersive-overall-core">
+                                <strong>${overall}</strong>
+                                <small>/100</small>
+                                <span>GÉN</span>
+                            </div>
                         </div>
                         <div class="immersive-player-avatar" aria-hidden="true">${escapeHtml(avatarInitials || 'ST')}</div>
                         <div class="immersive-player-copy">
-                            <div class="immersive-player-name">${escapeHtml(playerName)}</div>
-                            <div class="immersive-player-role">${escapeHtml(player.position || player.positionId || 'JOUEUR')}</div>
+                            <div class="immersive-player-name">${playerFlag ? `<span class="immersive-name-flag">${playerFlag}</span>` : ''}<span>${escapeHtml(playerName)}</span></div>
+                            <div class="immersive-player-role"><span class="immersive-age-inline">${player.age ?? '—'} ANS</span><span class="immersive-role-separator">·</span><span>${escapeHtml(position)}</span></div>
                             <div class="immersive-club-row"><span>◈</span><strong>${escapeHtml(player.club || 'Sans club')}</strong></div>
-                            <div class="immersive-season-row">SAISON ${escapeHtml(calendar.currentSeasonYear || '—')} · <b>${player.careerEnded ? 'CARRIÈRE TERMINÉE' : 'EN ACTIVITÉ'}</b></div>
+                            <div class="immersive-season-row">SAISON ${escapeHtml(seasonYear)} · <b>${player.careerEnded ? 'CARRIÈRE TERMINÉE' : 'EN ACTIVITÉ'}</b></div>
+                            <div class="immersive-potential-row"><span>POTENTIEL</span><strong>${potentialStars(player.potential)}</strong></div>
                         </div>
                         <div class="immersive-energy"><span>⚡</span><strong>${escapeHtml(fitness)}</strong></div>
-                        <div class="immersive-player-meta">${playerFlag ? `<span>${playerFlag}</span>` : ''}<span>${player.age ?? '—'} ans</span></div>
 
                         <div class="immersive-stat-strip">
                             <div><strong>${goals}</strong><span>BUTS</span></div>
@@ -202,7 +225,7 @@ export class DashboardView {
                         </div>
                     </section>
 
-                    <div class="immersive-apps-heading"><span>TA VIE</span><small>${potentialStars(player.potential)} potentiel</small></div>
+                    <div class="immersive-apps-heading"><span>TA VIE</span></div>
                     <div class="apps-grid immersive-app-grid">${this.renderApps(state)}</div>
 
                     <button id="play-block-btn" class="btn-play-block immersive-advance" ${player.careerEnded ? 'disabled' : ''} type="button">
@@ -224,20 +247,20 @@ export class DashboardView {
         const media = state?.media || {};
         const unread = state?.notifications?.unreadCount || (state?.notifications?.signals || []).filter(note => !note?.read && !note?.archived).length;
         const apps = [
-            ['career', '⚽', 'Match', 'cyan'],
-            ['transfers', '⇄', 'Mercato', 'cyan'],
-            ['social', '♡', 'Réseaux', 'pink'],
-            ['family', '⌂', 'Famille', 'violet'],
-            ['stats', '▥', 'Stats', 'blue'],
-            ['training', '▲', 'Entraînement', 'orange'],
-            ['bank', '€', 'Banque', 'gold'],
-            ['settings', '⚙', 'Réglages', 'slate']
+            ['career', 'Match', 'cyan'],
+            ['transfers', 'Mercato', 'cyan'],
+            ['social', 'Réseaux', 'pink'],
+            ['family', 'Famille', 'violet'],
+            ['stats', 'Stats', 'blue'],
+            ['training', 'Entraînement', 'orange'],
+            ['bank', 'Banque', 'gold'],
+            ['settings', 'Réglages', 'slate']
         ];
-        return apps.map(([id, icon, label, tone]) => {
+        return apps.map(([id, label, tone]) => {
             const badge = id === 'social' && media.recentDilemma ? 1 : id === 'transfers' && state?.pendingTransferOffer ? 1 : id === 'career' && unread ? Math.min(9, unread) : 0;
             return `
                 <button class="app-icon immersive-app" data-app="${id}" type="button">
-                    <div class="app-logo immersive-app-logo tone-${tone}"><span>${icon}</span></div>
+                    <div class="app-logo immersive-app-logo tone-${tone}"><span class="immersive-app-glyph">${appIconSvg(id)}</span></div>
                     <span class="app-label">${label}</span>
                     ${badge ? `<span class="notification-badge">${badge}</span>` : ''}
                 </button>
