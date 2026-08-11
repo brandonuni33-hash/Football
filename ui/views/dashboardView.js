@@ -79,6 +79,11 @@ function notificationPriority(note) {
         .some(value => category.includes(value)) ? 'important' : 'info';
 }
 
+function isSocialNotification(note) {
+    const category = String(note?.category || note?.type || '').toLowerCase();
+    return category.includes('media') || category.includes('média') || category.includes('social') || category.includes('réseau');
+}
+
 function moraleLabel(value) {
     const number = Number(value);
     if (!Number.isFinite(number)) return 'STABLE';
@@ -133,8 +138,9 @@ export class DashboardView {
         const calendar = state?.calendar || {};
         const media = state?.media || {};
         const allSignals = (state?.notifications?.signals || []).filter(note => !note?.archived);
-        const notifications = allSignals.filter(note => !note?.read).slice(-8).reverse();
-        const latestSignal = notifications[0] || allSignals.at(-1) || null;
+        const careerSignals = allSignals.filter(note => !isSocialNotification(note));
+        const notifications = careerSignals.filter(note => !note?.read).slice(-8).reverse();
+        const latestSignal = notifications[0] || careerSignals.at(-1) || null;
         const coachSignal = [...allSignals].reverse().find(note => String(note?.category || '').toLowerCase().includes('coach')) || null;
         const playerName = `${player.firstname || player.firstName || ''} ${player.lastname || player.lastName || ''}`.trim() || 'Joueur';
         const playerFlag = flag(player);
@@ -245,9 +251,11 @@ export class DashboardView {
 
     renderApps(state) {
         const media = state?.media || {};
-        const unread = state?.notifications?.unreadCount || (state?.notifications?.signals || []).filter(note => !note?.read && !note?.archived).length;
+        const allSignals = (state?.notifications?.signals || []).filter(note => !note?.archived && !note?.read);
+        const unreadCareer = allSignals.filter(note => !isSocialNotification(note)).length;
+        const unreadSocial = allSignals.filter(note => isSocialNotification(note)).length;
         const apps = [
-            ['career', 'Match', 'cyan'],
+            ['career', 'Carrière', 'cyan'],
             ['transfers', 'Mercato', 'cyan'],
             ['social', 'Réseaux', 'pink'],
             ['family', 'Famille', 'violet'],
@@ -257,7 +265,11 @@ export class DashboardView {
             ['settings', 'Réglages', 'slate']
         ];
         return apps.map(([id, label, tone]) => {
-            const badge = id === 'social' && media.recentDilemma ? 1 : id === 'transfers' && state?.pendingTransferOffer ? 1 : id === 'career' && unread ? Math.min(9, unread) : 0;
+            const socialBadge = Math.max(unreadSocial, media.recentDilemma ? 1 : 0);
+            const badge = id === 'social' ? Math.min(9, socialBadge)
+                : id === 'transfers' && state?.pendingTransferOffer ? 1
+                : id === 'career' && unreadCareer ? Math.min(9, unreadCareer)
+                : 0;
             return `
                 <button class="app-icon immersive-app" data-app="${id}" type="button">
                     <div class="app-logo immersive-app-logo tone-${tone}"><span class="immersive-app-glyph">${appIconSvg(id)}</span></div>
