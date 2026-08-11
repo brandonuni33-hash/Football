@@ -2,12 +2,9 @@ name: Architecture Check
 
 on:
   push:
-    paths:
-      - '**/*.js'
-      - '**/*.mjs'
-      - 'ARCHITECTURE.md'
-      - 'scripts/checkArchitecture.mjs'
-      - '.github/workflows/architecture-check.yml'
+    branches: [main, gh-pages]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
