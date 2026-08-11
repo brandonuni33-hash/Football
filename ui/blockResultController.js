@@ -1,10 +1,18 @@
 // ui/blockResultController.js
-// Orchestration de l'après-bloc : matchs interactifs, événements, coach, transferts et propositions.
+// Orchestration de l'après-bloc : narration, événements, coach, transferts et propositions.
+
+const escapeHtml = value => String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
 
 export class BlockResultController {
     constructor(ui, modals) {
         this.ui = ui;
         this.modals = modals;
+        this.narrativeTimers = [];
     }
 
     handleBlockResult(result) {
@@ -26,12 +34,102 @@ export class BlockResultController {
             this.handlePostInteraction();
         };
 
-        if (result.report?.summary?.choiceConsequences) {
-            this.modals.afficherModaleConsequences(result.report.summary.choiceConsequences, () => this.openPendingInteraction(result, finish));
+        const continueFlow = () => {
+            if (result.report?.summary?.choiceConsequences) {
+                this.modals.afficherModaleConsequences(result.report.summary.choiceConsequences, () => this.openPendingInteraction(result, finish));
+                return;
+            }
+            this.openPendingInteraction(result, finish);
+        };
+
+        if (result.narrativeScene?.beats?.length) {
+            this.showNarrativeScene(result.narrativeScene, continueFlow);
             return;
         }
 
-        this.openPendingInteraction(result, finish);
+        continueFlow();
+    }
+
+    showNarrativeScene(scene, onComplete) {
+        this.clearNarrativeTimers();
+        document.querySelector('[data-narrative-scene]')?.remove();
+
+        const overlay = document.createElement('div');
+        overlay.className = 'event-modal-overlay';
+        overlay.dataset.narrativeScene = 'true';
+        overlay.innerHTML = `
+            <div class="event-modal-card" role="dialog" aria-modal="true" aria-label="${escapeHtml(scene.title || 'Fin de match')}">
+                <span class="event-modal-category">🏟️ APRÈS-MATCH · ${escapeHtml(String(scene.importance || 'normal').toUpperCase())}</span>
+                <h3 class="event-modal-title">${escapeHtml(scene.title || 'Le match vient de se terminer')}</h3>
+                <p class="event-modal-desc" style="opacity:.72;margin-bottom:18px;">${escapeHtml(scene.subtitle || '')}</p>
+                <div data-narrative-beats style="display:grid;gap:12px;min-height:150px;"></div>
+                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
+                    <button class="btn-event-choice" data-narrative-skip type="button" style="width:auto;padding-inline:14px;">Passer</button>
+                    <button class="btn-event-choice" data-narrative-continue type="button" style="width:auto;padding-inline:18px;display:none;">Continuer</button>
+                </div>
+            </div>`;
+
+        (document.getElementById('app') || document.body).appendChild(overlay);
+        const container = overlay.querySelector('[data-narrative-beats]');
+        const skip = overlay.querySelector('[data-narrative-skip]');
+        const next = overlay.querySelector('[data-narrative-continue]');
+        const beats = Array.isArray(scene.beats) ? scene.beats : [];
+        let index = 0;
+        let completed = false;
+
+        const reveal = beat => {
+            const paragraph = document.createElement('p');
+            paragraph.className = 'event-modal-desc';
+            paragraph.style.margin = '0';
+            paragraph.style.opacity = '0';
+            paragraph.style.transform = 'translateY(7px)';
+            paragraph.style.transition = 'opacity .35s ease, transform .35s ease';
+            if (beat?.emphasis) paragraph.style.fontWeight = '700';
+            if (beat?.callback) paragraph.style.fontStyle = 'italic';
+            paragraph.textContent = beat?.text || '';
+            container?.appendChild(paragraph);
+            requestAnimationFrame(() => {
+                paragraph.style.opacity = '1';
+                paragraph.style.transform = 'translateY(0)';
+            });
+        };
+
+        const finishReveal = () => {
+            completed = true;
+            if (skip) skip.style.display = 'none';
+            if (next) next.style.display = '';
+        };
+
+        const revealRemaining = () => {
+            this.clearNarrativeTimers();
+            while (index < beats.length) reveal(beats[index++]);
+            finishReveal();
+        };
+
+        const scheduleNext = () => {
+            if (index >= beats.length) {
+                finishReveal();
+                return;
+            }
+            const beat = beats[index++];
+            reveal(beat);
+            const timer = window.setTimeout(scheduleNext, Math.max(450, Number(beat?.delay) || 850));
+            this.narrativeTimers.push(timer);
+        };
+
+        skip?.addEventListener('click', revealRemaining);
+        next?.addEventListener('click', () => {
+            if (!completed) return;
+            this.clearNarrativeTimers();
+            overlay.remove();
+            onComplete?.();
+        });
+
+        scheduleNext();
+    }
+
+    clearNarrativeTimers() {
+        this.narrativeTimers.splice(0).forEach(timer => window.clearTimeout(timer));
     }
 
     showInteractiveDecision(result) {
