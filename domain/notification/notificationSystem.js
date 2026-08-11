@@ -36,7 +36,8 @@ export class NotificationSystem {
         this.#on(EVENTS.SCOUTING_OBSERVATION_STARTED, payload => this.#scoutingObservation(payload));
         this.#on(EVENTS.SCOUTING_OBSERVATION_COMPLETED, payload => this.#scoutingCompleted(payload));
         this.#on(EVENTS.SCOUTING_INTEREST_CREATED, payload => this.#signal(payload, { category: 'scouting', priority: 'important', title: 'Un club suit votre progression', body: 'Un intérêt vient d’être enregistré autour de votre profil.', intent: 'evaluate' }));
-        this.#on(EVENTS.TRANSFER_OFFER_CREATED, payload => this.#signal(payload, { category: 'mercato', priority: 'decision', title: 'Une proposition vous attend', body: `Une nouvelle proposition officielle de ${payload?.club || 'club'} est disponible.`, intent: 'offer' }));
+        this.#on(EVENTS.TRANSFER_INTEREST_CREATED, payload => this.#transferInterest(payload));
+        this.#on(EVENTS.TRANSFER_OFFER_CREATED, payload => this.#signal(payload, { category: 'mercato', priority: 'decision', title: 'Une proposition vous attend', body: `Une nouvelle proposition officielle de ${payload?.club || 'club'} est disponible.`, intent: 'offer', visibility: VISIBILITY.confirmed }));
         this.#on(EVENTS.LOAN_PROPOSAL_CREATED, payload => this.#signal(payload, { category: 'mercato', priority: 'decision', title: 'Une proposition de prêt est arrivée', body: 'Une solution de prêt est désormais disponible.', intent: 'loan' }));
         this.#on(EVENTS.CONTRACT_EXPIRING, payload => this.#signal(payload, { category: 'contract', priority: 'important', title: 'Votre contrat arrive à échéance', body: 'Votre avenir contractuel mérite désormais votre attention.', intent: 'contract' }));
         this.#on(EVENTS.AGENT_INTEREST_CREATED, payload => this.#signal(payload, { category: 'agent', priority: 'important', title: 'Un agent s’intéresse à vous', body: 'Un représentant souhaite entrer en contact avec votre entourage.', intent: 'agent' }));
@@ -56,7 +57,22 @@ export class NotificationSystem {
         this.#signal(payload, { category: 'scouting', priority: young ? 'toast' : 'important', title: young ? 'Un observateur est présent' : 'Un recruteur vous observe', body: young ? 'Un observateur prend des notes depuis les tribunes. Votre entourage pense qu’il s’agit d’un recruteur.' : 'Un recruteur professionnel suit attentivement votre prestation.', intent: 'observe', visibility: payload.visibility || (young ? VISIBILITY.indirect : VISIBILITY.visible) });
     }
 
-    #scoutingCompleted(payload = {}) { this.#signal(payload, { category: 'scouting', priority: 'important', title: 'Rapport de scouting terminé', body: 'Un rapport sur votre profil vient d’être finalisé.', intent: 'report' }); }
+    #scoutingCompleted(payload = {}) {
+        this.#signal(payload, { category: 'scouting', priority: 'important', title: 'Le suivi continue', body: 'Un rapport sur votre profil vient d’être finalisé. Cela ne signifie pas encore qu’une offre arrivera.', intent: 'report', visibility: VISIBILITY.indirect });
+    }
+
+    #transferInterest(payload = {}) {
+        const interest = payload.interest || {};
+        const serious = interest.stage === 'serious' || Number(interest.seriousness) >= 72;
+        this.#signal(payload, {
+            category: 'mercato',
+            priority: serious ? 'important' : 'toast',
+            title: serious ? 'Un intérêt devient concret' : 'Des renseignements sont pris sur vous',
+            body: serious ? 'Un club semble désormais suivre votre situation avec davantage d’attention.' : 'Des bruits circulent autour de votre profil, sans proposition officielle à ce stade.',
+            intent: 'interest',
+            visibility: VISIBILITY.indirect
+        });
+    }
 
     #signal(payload = {}, descriptor = {}) {
         const priority = descriptor.priority || 'feed';
