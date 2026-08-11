@@ -1,9 +1,5 @@
 # Nettoyage architectural — Street to Pro
 
-## Objectif
-
-Conserver une base `main` sur laquelle une nouvelle fonctionnalité peut être ajoutée dans un domaine précis, sans multiplier les fichiers `V2`, `V4`, `hotfix`, les doublons de systèmes ou les gros fichiers fourre-tout.
-
 ## Architecture cible
 
 ```text
@@ -16,46 +12,37 @@ domain/
 state/ + core/
 ```
 
-`ui/` reste la couche de présentation. `application/` orchestre. `domain/` porte les règles métier. `state/` porte la persistance et les migrations. `core/` porte les mécanismes génériques.
+- `main.js` : point d'entrée web.
+- `application/` : orchestration et composition root.
+- `domain/` : règles métier.
+- `state/` : persistance et migrations.
+- `ui/` : présentation.
 
 ## Propriétaires canoniques
 
-- `main.js` : point d'entrée web uniquement.
-- `application/gameEngine.js` : bootstrap applicatif.
-- `application/gameApplication.js` : commandes applicatives et abonnements.
 - `application/systemRegistry.js` : composition root unique.
-- `application/uiGateway.js` : contrat entre UI et application.
-- `state/stateManager.js` : propriétaire de la persistance/migration.
-- `domain/player/playerSystem.js` : modèle joueur canonique.
+- `state/stateManager.js` : état persistant.
+- `domain/player/playerSystem.js` : joueur.
 - `domain/player/potentialSystem.js` : potentiel vivant.
-- `domain/career/careerSystem.js` : trajectoire de carrière.
+- `domain/career/careerSystem.js` : carrière.
 - `domain/calendar/calendarSystem.js` : calendrier.
-- `domain/competition/competitionSystem.js` : orchestration des compétitions.
+- `domain/competition/competitionSystem.js` : compétitions.
 - `domain/competition/cupSystem.js` : coupes nationales.
-- `domain/competition/internationalSystem.js` : compétitions internationales.
-- `domain/match/` : simulation, match interactif, choix et helpers.
-- `domain/decision/consequenceSystem.js` : conséquences différées des choix.
-- `domain/events/eventSystem.js` : événements carrière.
-- `domain/media/mediaSystem.js` : média et dilemmes médiatiques.
-- `domain/coach/coachSystem.js` : relation et interactions coach.
-- `domain/economy/economySystem.js` : économie et finances.
-- `domain/training/trainingManager.js` + `trainingSystem.js` : entraînement.
-- `domain/transfer/transferMarket.js` + `transferSystem.js` : marché des transferts.
-- `domain/notification/notificationSystem.js` : notifications.
-- `domain/world/worldCatalog.js` : données statiques des clubs et ligues.
-- `domain/world/worldSystem.js` : logique du monde, classements et mouvements de divisions.
-- `ui/creationController.js` et `ui/creationEnhancements.js` : création.
-- `ui/viewCoordinator.js` : orchestration du rendu.
-- `ui/modalController.js` : modales.
-- `ui/blockResultController.js` : après-bloc.
-- `ui/views/` : écrans spécialisés.
-- `ui.js` : façade de compatibilité mince.
+- `domain/competition/europeanCompetitionSystem.js` : Europe.
+- `domain/match/` : simulation et match interactif.
+- `domain/decision/consequenceSystem.js` : conséquences différées.
+- `domain/events/eventSystem.js` : événements.
+- `domain/media/mediaSystem.js` : médias.
+- `domain/coach/coachSystem.js` : coach.
+- `domain/economy/economySystem.js` : économie.
+- `domain/training/` : entraînement.
+- `domain/transfer/` : transferts.
+- `domain/world/worldCatalog.js` : données monde.
+- `domain/world/worldSystem.js` : comportement monde.
 
-## État du nettoyage
+## Nettoyage effectué
 
-### Modules racine migrés
-
-Les anciens propriétaires racine suivants ont été supprimés après migration des consommateurs :
+Les anciens propriétaires racine suivants ont été supprimés après migration de leurs consommateurs :
 
 - `careerSystem.js`
 - `potentialSystem.js`
@@ -71,11 +58,7 @@ Les anciens propriétaires racine suivants ont été supprimés après migration
 - `matchChoices.js`
 - `worldSystem.js`
 
-Les imports applicatifs et domaine concernés utilisent maintenant leurs propriétaires canoniques dans `domain/`.
-
-### Monde
-
-Le monde est désormais séparé proprement :
+Le monde est maintenant séparé en données et comportement :
 
 ```text
 domain/world/
@@ -83,23 +66,19 @@ domain/world/
 └── worldSystem.js
 ```
 
-Le catalogue contient les données statiques. Le système contient uniquement le comportement : normalisation des clubs, classements, simulation mensuelle, résultats du joueur et montées/relégations.
+Le catalogue peut rester volumineux car il s'agit de données. La logique doit rester découpée et lisible.
 
-### Compatibilité volontaire
+## Compatibilité volontaire
 
-`player.js` et `state.js` restent autorisés comme façades de compatibilité. Ils ne doivent pas redevenir des propriétaires métier.
+`player.js` et `state.js` peuvent rester comme façades historiques. Ils ne doivent pas redevenir propriétaires métier.
 
-`matchBlock.js` reste également une façade historique tant que tous les consommateurs externes ne sont pas migrés.
+`matchBlock.js` reste une façade tant que ses consommateurs externes ne sont pas tous migrés.
 
-### CI
+## CI
 
-L'ancien workflow de simulation référençait plusieurs modules supprimés et `careerSimulationV4.js`. Il a été remplacé par `Architecture Checks`.
+Le workflow historique `career-simulation.yml` référençait des modules supprimés et un simulateur qui n'existe plus. Il a été supprimé.
 
-À chaque modification JavaScript, GitHub Actions effectue :
-
-1. une vérification syntaxique de tous les `.js` / `.mjs` ;
-2. l'audit `scripts/checkArchitecture.mjs` ;
-3. l'échec automatique si une nouvelle duplication de propriétaire ou un fichier logique dépasse la limite dure est détecté.
+Le contrôle actif est `.github/workflows/architecture-check.yml`. Il exécute `scripts/checkArchitecture.mjs` sur les modifications JavaScript et peut être lancé manuellement.
 
 ## Règles permanentes
 
@@ -109,8 +88,7 @@ L'ancien workflow de simulation référençait plusieurs modules supprimés et `
 4. Au-dessus de 600 lignes, le fichier doit être découpé avant toute nouvelle fonctionnalité.
 5. Les catalogues de données peuvent être longs s'ils ne contiennent pas de logique.
 6. `main.js` ne connaît jamais les systèmes métier.
-7. Un domaine ne doit pas créer de dépendance vers l'UI.
-8. Les systèmes historiques racine ne sont acceptables que pendant une migration contrôlée.
-9. Les nouveaux fichiers portent un nom de responsabilité, jamais une version (`V2`, `V4`) ou un état temporaire (`hotfix`, `patch`, `polish`).
+7. Un domaine ne dépend jamais de l'UI.
+8. Aucun nouveau propriétaire métier ne doit être créé à la racine.
+9. Aucun nouveau nom `V2`, `V4`, `hotfix`, `patch` ou `polish` pour une mécanique canonique.
 10. Toute nouvelle mécanique est branchée depuis `application/systemRegistry.js`.
-11. Toute dépendance entre domaines doit pointer vers le propriétaire canonique, jamais vers un ancien module racine.
