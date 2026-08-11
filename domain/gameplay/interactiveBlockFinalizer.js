@@ -37,7 +37,8 @@ export function finalizeInteractiveBlock(state, results = [], trainingFocus = 'T
         scheduledMatches
     };
 
-    // Same post-match hooks as the simulated path, without regenerating a performance.
+    // Same block-level hooks as the simulated path, without regenerating a performance.
+    // Morale and fitness are already committed per match by commitInteractiveResult().
     updateHiddenAttributes(player, summary);
     const expiredEffects = ConsequenceSystem.advanceMatch(player);
     let cupResult = null;
@@ -55,8 +56,6 @@ export function finalizeInteractiveBlock(state, results = [], trainingFocus = 'T
 
     const training = TrainingManager.applyTraining ? TrainingManager.applyTraining(player, trainingFocus) : null;
     const finance = EconomyManager.processBlockFinances(state, summary);
-    player.morale = Math.max(0, Math.min(100, n(player.morale ?? 50) + (avgRating >= 7 ? 5 : avgRating < 5.5 && count ? -3 : 0)));
-    player.fitness = Math.max(0, Math.min(100, n(player.fitness ?? 80) - count * 2));
 
     return {
         results: matches,
