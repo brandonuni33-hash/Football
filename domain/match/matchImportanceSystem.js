@@ -1,6 +1,6 @@
 // domain/match/matchImportanceSystem.js
-// Détermine l'enjeu réel d'une rencontre à partir du contexte de carrière.
-// Ce système ne décide pas du résultat : il décide seulement de l'importance et du mode jouable.
+// Détermine l'enjeu réel d'une rencontre et sélectionne les rares matchs jouables.
+// Le système ne décide jamais du résultat du match.
 
 const clamp = (value, min = 0, max = 100) => Math.min(max, Math.max(min, Number(value) || 0));
 const num = value => Number.isFinite(Number(value)) ? Number(value) : 0;
@@ -21,7 +21,7 @@ function competitionWeight(match) {
     if (id.includes('WORLD_CUP') || id.includes('EURO')) return 32;
     if (id.includes('CHAMPIONS_LEAGUE')) return 28;
     if (id.includes('EUROPA_LEAGUE')) return 22;
-    if (id.includes('CUP') || type === 'cup') return 16;
+    if (id.includes('CUP') || type === 'cup' || type === 'national_cup') return 16;
     if (type === 'continental') return 20;
     return 5;
 }
@@ -72,15 +72,26 @@ function playerContext(state, match) {
 export function evaluateMatchImportance(state, match, options = {}) {
     const reasons = [];
     const components = {};
-    const add = (name, value, reason = null) => { const amount = Math.max(0, num(value)); components[name] = amount; if (reason && amount > 0) reasons.push(reason); return amount; };
+    const add = (name, value, reason = null) => {
+        const amount = Math.max(0, num(value));
+        components[name] = amount;
+        if (reason && amount > 0) reasons.push(reason);
+        return amount;
+    };
     let score = 0;
     score += add('competition', competitionWeight(match), String(match?.competitionId || '').toUpperCase().includes('CHAMPIONS_LEAGUE') ? 'ligue_des_champions' : null);
-    score += add('round', roundWeight(match), roundWeight(match) >= 27 ? 'phase_decisive' : null);
+    const round = roundWeight(match);
+    score += add('round', round, round >= 27 ? 'phase_decisive' : null);
     score += add('rivalry', rivalWeight(match), isDerby(match) ? 'rivalite' : null);
-    score += add('opponent', opponentWeight(match), opponentWeight(match) >= 10 ? 'adversaire_repute' : null);
-    score += add('season', seasonWeight(match?.month), seasonWeight(match?.month) >= 6 ? 'fin_de_saison' : null);
-    const table = tableContext(state, match); score += add('table', table.score, table.reason); if (table.reason) reasons.push(table.reason);
-    const personal = playerContext(state, match); score += add('career', personal.score); reasons.push(...personal.reasons);
+    const opponent = opponentWeight(match);
+    score += add('opponent', opponent, opponent >= 10 ? 'adversaire_repute' : null);
+    const season = seasonWeight(match?.month ?? state?.calendar?.currentMonth);
+    score += add('season', season, season >= 6 ? 'fin_de_saison' : null);
+    const table = tableContext(state, match);
+    score += add('table', table.score, table.reason);
+    const personal = playerContext(state, match);
+    score += add('career', personal.score);
+    reasons.push(...personal.reasons);
     if (options.forceLevel) score = Math.max(score, LEVELS.find(item => item.level === options.forceLevel)?.min || 0);
     const result = levelFor(clamp(score));
     const playableChance = options.playableChance !== undefined ? clamp(options.playableChance, 0, 1) : result.playableChance;
@@ -93,9 +104,54 @@ export function evaluateMatchImportance(state, match, options = {}) {
         playable: options.preview === true ? null : Math.random() < adjustedChance,
         reasons: [...new Set(reasons)],
         components,
-        context: { opponent: match?.opponent || null, competition: match?.competitionName || match?.competitionId || null, month: match?.month || null }
+        context: {
+            opponent: match?.opponent || null,
+            competition: match?.competitionName || match?.competitionId || null,
+            month: match?.month ?? state?.calendar?.currentMonth ?? null
+        }
     };
 }
 
-export const MatchImportanceSystem = Object.freeze({ evaluate: evaluateMatchImportance, levels: LEVELS });
+function defaultBudget(state) {
+    return Number(state?.player?.age) < 18 ? 1 : 2;
+}
+
+export function planBlockMatches(state, matches = [], options = {}) {
+    const fixtures = Array.isArray(matches) ? matches : [];
+    const budget = Math.max(0, Math.floor(num(options.budget ?? defaultBudget(state))));
+    const evaluated = fixtures.map((match, matchIndex) => ({
+        matchIndex,
+        match,
+        importance: evaluateMatchImportance(state, match, { preview: true })
+    }));
+
+    // Les matchs les plus importants ont la priorité sur le budget du bloc.
+    const ranked = [...evaluated].sort((a, b) => b.importance.score - a.importance.score || a.matchIndex - b.matchIndex);
+    const selected = new Set();
+    for (const item of ranked) {
+        if (selected.size >= budget) break;
+        const chance = item.importance.playableChance;
+        if (chance >= 1 || Math.random() < chance) selected.add(item.matchIndex);
+    }
+
+    const entries = evaluated.map(item => ({
+        matchIndex: item.matchIndex,
+        playable: selected.has(item.matchIndex),
+        importance: item.importance,
+        fixture: item.match
+    }));
+
+    return {
+        key: `${state?.calendar?.currentSeasonYear ?? state?.season ?? 'season'}:${state?.calendar?.currentMonth ?? 'month'}`,
+        budget,
+        playableCount: entries.filter(item => item.playable).length,
+        entries
+    };
+}
+
+export const MatchImportanceSystem = Object.freeze({
+    evaluate: evaluateMatchImportance,
+    planBlock: planBlockMatches,
+    levels: LEVELS
+});
 export default MatchImportanceSystem;
