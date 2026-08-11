@@ -8,6 +8,13 @@ const escapeHtml = value => String(value ?? '')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;');
 
+function matchModeLabel(match = {}) {
+    if (match.playerPlayed === false) return match.appearance === 'bench' ? 'banc' : 'hors groupe';
+    if (match.interactive) return 'décisions';
+    if (match.started === false) return 'entré en jeu';
+    return 'simulé';
+}
+
 function matchRecapHtml(matches = []) {
     if (!Array.isArray(matches) || !matches.length) return '';
     return `
@@ -18,9 +25,9 @@ function matchRecapHtml(matches = []) {
                         <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;">
                             <strong>${escapeHtml(match.opponent || 'Adversaire')}</strong>
                             ${match.isImpactMatch ? '<span style="font-size:.72rem;font-weight:800;letter-spacing:.04em;">⭐ TON MATCH</span>' : ''}
-                            ${match.interactive ? '<span style="font-size:.7rem;opacity:.65;">joué</span>' : '<span style="font-size:.7rem;opacity:.65;">simulé</span>'}
+                            <span style="font-size:.7rem;opacity:.65;">${escapeHtml(matchModeLabel(match))}</span>
                         </div>
-                        <div style="font-size:.8rem;opacity:.65;margin-top:2px;">${escapeHtml(match.competition || 'Match')} · ${escapeHtml(match.impactDetail || '')}</div>
+                        <div style="font-size:.8rem;opacity:.65;margin-top:2px;">${escapeHtml(match.competition || 'Match')} · ${escapeHtml(match.appearanceLabel || match.impactDetail || '')}</div>
                     </div>
                     <div style="text-align:right;white-space:nowrap;">
                         <div style="font-size:1.05rem;font-weight:800;">${escapeHtml(match.score || '0-0')}</div>
