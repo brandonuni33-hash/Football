@@ -31,6 +31,7 @@ import GenerationSimulationFacade from '../domain/career/generationSimulationFac
 import { FamilyLifeSystem } from '../domain/family/familyLifeSystem.js';
 import FamilySystem from '../domain/family/familySystem.js';
 import RelationshipSystem from '../domain/relationship/relationshipSystem.js';
+import RelationshipMemory from '../domain/relationship/relationshipMemory.js';
 import NetworkEvolutionSystem from '../domain/relationship/networkEvolutionSystem.js';
 import NotificationSystem from '../domain/notification/notificationSystem.js';
 import AwardsSystem from '../domain/awards/awardsSystem.js';
@@ -44,12 +45,13 @@ import { InteractionSystem } from '../domain/interactions/interactionSystem.js';
 import { TransferSystem } from '../domain/transfer/transferSystem.js';
 
 export function createSystemRegistry({ engine, worldSystem = WorldSystem, competitionSystem = CompetitionSystem, cupSystem = CupSystem } = {}) {
-    const socialSystem = new SocialSystem(engine);
+    const relationshipMemory = new RelationshipMemory();
+    const relationshipSystem = new RelationshipSystem({ memory: relationshipMemory });
+    const socialSystem = new SocialSystem({ engine, relationshipSystem });
     const mediaSystem = new MediaSystem(engine);
     const trainingSystem = new TrainingSystem(TrainingManager);
     const simulatedMatchSystem = new SimulatedMatchSystem();
     const narrativeEngine = new NarrativeEngine();
-    const relationshipSystem = new RelationshipSystem();
     const networkEvolutionSystem = new NetworkEvolutionSystem();
     const familySystem = new FamilySystem();
     const familyLifeSystem = new FamilyLifeSystem({ familySystem });
@@ -95,6 +97,7 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
         competitionSystem,
         cupSystem,
         relationshipSystem,
+        relationshipMemory,
         networkEvolutionSystem,
         familySystem,
         familyLifeSystem,
