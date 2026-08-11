@@ -14,8 +14,8 @@ export class UIGateway {
 
     playNextBlock(choice = null) {
         const state = this.state;
-        const matches = this.getScheduledMatches();
-        const active = state?.activeMatchSession;
+        if (!state?.player) return null;
+        const active = state.activeMatchSession;
 
         if (active) {
             const choices = active.decision?.choices || [];
@@ -26,10 +26,15 @@ export class UIGateway {
             if (!result.finished) return { interactive: true, interactiveDecision: result.decision, interactiveEvent: result.event || null };
         }
 
-        const completed = Array.isArray(state?.interactiveBlockResults) ? state.interactiveBlockResults.length : 0;
-        if (matches.length > completed) {
-            const session = this.startInteractiveMatch(matches[completed], completed);
-            return { interactive: true, interactiveDecision: session?.decision || null, interactiveEvent: null };
+        const next = this.getNextPlayableMatch();
+        if (next) {
+            const session = this.startInteractiveMatch(next.fixture, next.matchIndex);
+            return {
+                interactive: true,
+                interactiveDecision: session?.decision || null,
+                interactiveEvent: null,
+                matchImportance: next.importance || null
+            };
         }
 
         return this.completeInteractiveBlock();
@@ -43,22 +48,21 @@ export class UIGateway {
         this.application.registry.blockSystem.stateManager.save(this.state);
         return true;
     }
+
     shouldTriggerMatchDilemma() {
-        const state = this.state;
-        if (state?.activeMatchSession) return true;
-        const matches = this.getScheduledMatches();
-        const completed = Array.isArray(state?.interactiveBlockResults) ? state.interactiveBlockResults.length : 0;
-        return Boolean(matches.length > completed && !state?.player?.isInjured);
+        if (this.state?.activeMatchSession) return true;
+        return Boolean(!this.state?.player?.isInjured && this.getNextPlayableMatch());
     }
+
     getMatchDilemma(type = 'standard', opponent = "l'adversaire") {
         const state = this.state;
         if (!state?.activeMatchSession) {
-            const matches = this.getScheduledMatches();
-            const completed = Array.isArray(state?.interactiveBlockResults) ? state.interactiveBlockResults.length : 0;
-            if (matches.length > completed) this.startInteractiveMatch(matches[completed], completed);
+            const next = this.getNextPlayableMatch();
+            if (next) this.startInteractiveMatch(next.fixture, next.matchIndex);
         }
         return state?.activeMatchSession?.decision || this.application.registry?.matchChoiceManager?.getMatchDilemma?.(type, opponent) || null;
     }
+
     resolveEventChoice(i) { return this.application.registry?.interactionSystem?.resolveEventChoice?.(this.state, i) ?? null; }
     resolveCoachChoice(i) { return this.application.registry?.interactionSystem?.resolveCoachChoice?.(this.state, i) ?? null; }
     resolveMediaDilemma(i) { return this.application.registry?.interactionSystem?.resolveMediaChoice?.(this.state, i) ?? null; }
@@ -76,6 +80,42 @@ export class UIGateway {
         } catch { return []; }
     }
 
+    getMatchInteractionPlan() {
+        const state = this.state;
+        if (!state?.player) return { key: null, budget: 0, playableCount: 0, entries: [] };
+        const matches = this.getScheduledMatches();
+        const key = `${state.calendar?.currentSeasonYear ?? state.season ?? 'season'}:${state.calendar?.currentMonth ?? 'month'}:${matches.length}`;
+        const cached = state.matchInteractionPlan;
+        if (cached?.key === key && Array.isArray(cached.entries)) {
+            return {
+                ...cached,
+                entries: cached.entries.map(entry => ({ ...entry, fixture: matches[entry.matchIndex] || null }))
+            };
+        }
+
+        const planner = this.application.registry?.matchImportanceSystem;
+        const planned = planner?.planBlock?.(state, matches) || { key, budget: 0, playableCount: 0, entries: [] };
+        const serializable = {
+            key,
+            budget: planned.budget || 0,
+            playableCount: planned.playableCount || 0,
+            entries: (planned.entries || []).map(({ fixture, ...entry }) => entry)
+        };
+        state.matchInteractionPlan = serializable;
+        return {
+            ...serializable,
+            entries: serializable.entries.map(entry => ({ ...entry, fixture: matches[entry.matchIndex] || null }))
+        };
+    }
+
+    getNextPlayableMatch() {
+        const plan = this.getMatchInteractionPlan();
+        const completed = new Set((Array.isArray(this.state?.interactiveBlockResults) ? this.state.interactiveBlockResults : [])
+            .map(result => Number(result?.matchIndex))
+            .filter(Number.isFinite));
+        return plan.entries.find(entry => entry.playable && entry.fixture && !completed.has(Number(entry.matchIndex))) || null;
+    }
+
     startInteractiveMatch(match, index = 0) {
         const manager = this.application.registry?.interactiveMatchSystem;
         const session = manager?.startInteractiveMatch?.(this.state, match, index);
@@ -91,7 +131,7 @@ export class UIGateway {
         if (result.finished) {
             manager.commitInteractiveResult(this.state, result.result);
             this.state.interactiveBlockResults ||= [];
-            this.state.interactiveBlockResults.push({ ...result.result, fixture: session.match });
+            this.state.interactiveBlockResults.push({ ...result.result, fixture: session.match, interactive: true });
             this.state.activeMatchSession = null;
         } else {
             this.state.activeMatchSession = result.session;
