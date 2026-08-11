@@ -139,17 +139,20 @@ export function planBlockMatches(state, matches = [], options = {}) {
     }));
 
     // Les matchs les plus importants ont la priorité sur le budget du bloc.
+    // On utilise un tableau borné puis un Set final afin que playableCount ne
+    // puisse jamais dépasser le budget, même si plusieurs matchs ont 100 %.
     const ranked = [...evaluated].sort((a, b) => b.importance.score - a.importance.score || a.matchIndex - b.matchIndex);
-    const selected = new Set();
+    const selectedIndexes = [];
     for (const item of ranked) {
-        if (selected.size >= budget) break;
+        if (selectedIndexes.length >= budget) break;
         const chance = item.importance.playableChance;
-        if (chance >= 1 || Math.random() < chance) selected.add(item.matchIndex);
+        if (chance >= 1 || Math.random() < chance) selectedIndexes.push(Number(item.matchIndex));
     }
+    const selected = new Set(selectedIndexes.slice(0, budget));
 
     const entries = evaluated.map(item => ({
         matchIndex: item.matchIndex,
-        playable: selected.has(item.matchIndex),
+        playable: selected.has(Number(item.matchIndex)),
         importance: item.importance,
         fixture: item.match
     }));
@@ -157,7 +160,7 @@ export function planBlockMatches(state, matches = [], options = {}) {
     return {
         key: `${state?.calendar?.currentSeasonYear ?? state?.season ?? 'season'}:${state?.calendar?.currentMonth ?? 'month'}`,
         budget,
-        playableCount: entries.filter(item => item.playable).length,
+        playableCount: Math.min(budget, entries.filter(item => item.playable).length),
         entries
     };
 }
