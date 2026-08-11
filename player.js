@@ -1,6 +1,6 @@
 // player.js — façade publique du modèle joueur canonique.
 import { ORIGINS as UI_ORIGINS } from './constants.js';
-import { CareerSystem } from './careerSystem.js';
+import { CareerSystem } from './domain/career/careerSystem.js';
 import { createPlayer, ensure, calculateOverall, applyProgression, get } from './domain/player/playerSystem.js';
 
 const ORIGIN_MAP={CENTRE_FORMATION:'CENTRE_FORMATION',CLUB_AMATEUR:'CLUB_AMATEUR',FUTSAL:'FUTSAL',STREET:'STREET',ATHLETE:'ATHLETE',DEBUTANT_TARDIF:'DEBUTANT_TARDIF',FILS_DE_PRO:'FILS_DE_PRO'};
