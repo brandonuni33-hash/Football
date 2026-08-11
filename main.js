@@ -1,7 +1,6 @@
 // main.js
 // Point d'entrée web minimal : le bootstrap applicatif vit dans application/.
 import { GameEngine } from './application/gameEngine.js';
-import { AwardsSystem } from './awardsSystem.js';
 
 function showFatalError(error) {
     console.error('Erreur critique lors du chargement du jeu :', error);
@@ -23,10 +22,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('⚡ Démarrage de Street to Pro...');
     try {
         window.game = new GameEngine();
-        AwardsSystem.ensure(window.game.state);
         if (window.game.ui && typeof window.game.ui.init === 'function') window.game.ui.init();
         else throw new Error("L'interface utilisateur n'a pas pu être initialisée.");
-        await import('./awardsIntegration.js?v=4');
         console.log('✅ Street to Pro prêt.');
     } catch (error) {
         showFatalError(error);
