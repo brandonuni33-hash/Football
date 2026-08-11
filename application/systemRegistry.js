@@ -13,7 +13,7 @@ import { PotentialSystem } from '../domain/player/potentialSystem.js';
 import { ConsequenceSystem } from '../domain/decision/consequenceSystem.js';
 import { CareerSystem } from '../domain/career/careerSystem.js';
 import { CompetitionSystem } from '../domain/competition/competitionSystem.js';
-import { WorldSystem } from '../worldSystem.js';
+import { WorldSystem } from '../domain/world/worldSystem.js';
 import CupSystem from '../domain/competition/cupSystem.js';
 import { MatchChoiceManager } from '../domain/match/matchChoiceManager.js';
 import { CalendarSystem } from '../domain/calendar/calendarSystem.js';
@@ -60,5 +60,4 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
     notificationSystem.start();
     return Object.freeze({ socialSystem, mediaSystem, trainingSystem, simulatedMatchSystem, interactiveMatchSystem: InteractiveMatchSystem, matchChoiceManager: MatchChoiceManager, competitionSystem, cupSystem, relationshipSystem, networkEvolutionSystem, familySystem, familyLifeSystem, notificationSystem, secondGenerationSystem, childCareerSystem, generationSimulationFacade, awardsSystem, seasonSystem, calendarSystem, blockSystem, interactionSystem, transferSystem, careerLifecycleSystem, careerApplication, consequenceSystem: ConsequenceSystem, potentialSystem: PotentialSystem });
 }
-
 export default createSystemRegistry;
