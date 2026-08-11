@@ -9,6 +9,11 @@ import { StateManager, SCHEMA_VERSION } from '../state/stateManager.js';
 import { EventEngine } from '../domain/events/eventSystem.js';
 import { CoachSystem } from '../domain/coach/coachSystem.js';
 import { TransferMarket } from '../domain/transfer/transferMarket.js';
+import ClubNeedSystem from '../domain/transfer/clubNeedSystem.js';
+import MarketCompetitionSystem from '../domain/transfer/marketCompetitionSystem.js';
+import TransferInterestPipeline from '../domain/transfer/interestPipeline.js';
+import ScoutingSystem from '../domain/scouting/scoutingSystem.js';
+import OpportunityEngine from '../domain/scouting/opportunityEngine.js';
 import { PotentialSystem } from '../domain/player/potentialSystem.js';
 import { ConsequenceSystem } from '../domain/decision/consequenceSystem.js';
 import { CareerSystem } from '../domain/career/careerSystem.js';
@@ -54,13 +59,64 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
     const generationSimulationFacade = new GenerationSimulationFacade({ childCareer: childCareerSystem });
     const awardsSystem = AwardsSystem;
     const seasonSystem = new SeasonSystem({ playerLogic: PlayerLogic, potentialSystem: PotentialSystem, careerSystem: CareerSystem, cupSystem, worldSystem, awardsSystem });
-    const calendarSystem = new CalendarSystem({ worldSystem, competitionSystem, cupSystem, familySystem, seasonReset: (state) => seasonSystem.finalize(state) });
-    const transferSystem = new TransferSystem({ transferMarket: TransferMarket, careerSystem: CareerSystem, playerLogic: PlayerLogic, stateManager: StateManager, worldSystem });
-    const blockSystem = new BlockSystem({ trainingManager: TrainingManager, matchBlockManager: simulatedMatchSystem, worldSystem, socialSystem, mediaSystem, eventEngine: EventEngine, coachSystem: CoachSystem, careerSystem: CareerSystem, transferSystem, stateManager: StateManager, familyLifeSystem, consequenceSystem: ConsequenceSystem, narrativeEngine, advanceCalendar: (state) => calendarSystem.advance(state) });
+    const calendarSystem = new CalendarSystem({ worldSystem, competitionSystem, cupSystem, familySystem, seasonReset: state => seasonSystem.finalize(state) });
+
+    const clubNeedSystem = new ClubNeedSystem();
+    const marketCompetitionSystem = new MarketCompetitionSystem({ clubNeeds: clubNeedSystem });
+    const interestPipeline = new TransferInterestPipeline();
+    const scoutingSystem = new ScoutingSystem({ worldSystem });
+    const opportunityEngine = new OpportunityEngine();
+    const transferSystem = new TransferSystem({
+        transferMarket: TransferMarket,
+        playerLogic: PlayerLogic,
+        stateManager: StateManager,
+        worldSystem,
+        scoutingSystem,
+        interestPipeline,
+        marketCompetitionSystem,
+        clubNeedSystem,
+        opportunityEngine
+    });
+
+    const blockSystem = new BlockSystem({ trainingManager: TrainingManager, matchBlockManager: simulatedMatchSystem, worldSystem, socialSystem, mediaSystem, eventEngine: EventEngine, coachSystem: CoachSystem, careerSystem: CareerSystem, transferSystem, stateManager: StateManager, familyLifeSystem, consequenceSystem: ConsequenceSystem, narrativeEngine, advanceCalendar: state => calendarSystem.advance(state) });
     const interactionSystem = new InteractionSystem({ eventEngine: EventEngine, coachSystem: CoachSystem, mediaSystem, playerLogic: PlayerLogic, careerSystem: CareerSystem, stateManager: StateManager });
     const careerLifecycleSystem = new CareerLifecycleSystem({ stateManager: StateManager, playerLogic: PlayerLogic });
     const careerApplication = new CareerApplication({ stateManager: StateManager, playerLogic: PlayerLogic, economyManager: EconomyManager, socialSystem, mediaSystem, consequenceSystem: ConsequenceSystem, potentialSystem: PotentialSystem, careerSystem: CareerSystem, competitionSystem, worldSystem, cupSystem, schemaVersion: SCHEMA_VERSION });
     notificationSystem.start();
-    return Object.freeze({ socialSystem, mediaSystem, trainingSystem, simulatedMatchSystem, interactiveMatchSystem: InteractiveMatchSystem, matchChoiceManager: MatchChoiceManager, matchImportanceSystem: MatchImportanceSystem, narrativeEngine, competitionSystem, cupSystem, relationshipSystem, networkEvolutionSystem, familySystem, familyLifeSystem, notificationSystem, secondGenerationSystem, childCareerSystem, generationSimulationFacade, awardsSystem, seasonSystem, calendarSystem, blockSystem, interactionSystem, transferSystem, careerLifecycleSystem, careerApplication, consequenceSystem: ConsequenceSystem, potentialSystem: PotentialSystem });
+    return Object.freeze({
+        socialSystem,
+        mediaSystem,
+        trainingSystem,
+        simulatedMatchSystem,
+        interactiveMatchSystem: InteractiveMatchSystem,
+        matchChoiceManager: MatchChoiceManager,
+        matchImportanceSystem: MatchImportanceSystem,
+        narrativeEngine,
+        competitionSystem,
+        cupSystem,
+        relationshipSystem,
+        networkEvolutionSystem,
+        familySystem,
+        familyLifeSystem,
+        notificationSystem,
+        scoutingSystem,
+        opportunityEngine,
+        clubNeedSystem,
+        marketCompetitionSystem,
+        interestPipeline,
+        secondGenerationSystem,
+        childCareerSystem,
+        generationSimulationFacade,
+        awardsSystem,
+        seasonSystem,
+        calendarSystem,
+        blockSystem,
+        interactionSystem,
+        transferSystem,
+        careerLifecycleSystem,
+        careerApplication,
+        consequenceSystem: ConsequenceSystem,
+        potentialSystem: PotentialSystem
+    });
 }
 export default createSystemRegistry;
