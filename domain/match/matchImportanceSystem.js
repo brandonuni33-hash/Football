@@ -13,6 +13,17 @@ const LEVELS = Object.freeze([
     { min: 0, level: 'low', playableChance: .02 }
 ]);
 
+// En formation, les matchs à décisions doivent revenir plus souvent pour que
+// les choix du joueur puissent réellement peser sur ses notes et sa progression.
+// Le budget reste volontairement limité à un seul match interactif par bloc.
+const YOUTH_PLAYABLE_CHANCE = Object.freeze({
+    low: .15,
+    normal: .35,
+    important: .60,
+    major: .85,
+    exceptional: 1
+});
+
 function levelFor(score) { return LEVELS.find(item => score >= item.min) || LEVELS.at(-1); }
 function isDerby(match) { return Boolean(match?.isDerby || match?.rival || match?.rivalry || Number(match?.rivalryLevel) > 0); }
 function competitionWeight(match) {
@@ -94,7 +105,9 @@ export function evaluateMatchImportance(state, match, options = {}) {
     reasons.push(...personal.reasons);
     if (options.forceLevel) score = Math.max(score, LEVELS.find(item => item.level === options.forceLevel)?.min || 0);
     const result = levelFor(clamp(score));
-    const playableChance = options.playableChance !== undefined ? clamp(options.playableChance, 0, 1) : result.playableChance;
+    const youth = Number(state?.player?.age) < 18 || state?.player?.isYouthPlayer === true;
+    const basePlayableChance = youth ? (YOUTH_PLAYABLE_CHANCE[result.level] ?? result.playableChance) : result.playableChance;
+    const playableChance = options.playableChance !== undefined ? clamp(options.playableChance, 0, 1) : basePlayableChance;
     const frequencyPenalty = clamp(num(options.playableMatchesInWindow) * .18, 0, .72);
     const adjustedChance = clamp(playableChance * (1 - frequencyPenalty), 0, 1);
     return {
@@ -152,6 +165,7 @@ export function planBlockMatches(state, matches = [], options = {}) {
 export const MatchImportanceSystem = Object.freeze({
     evaluate: evaluateMatchImportance,
     planBlock: planBlockMatches,
-    levels: LEVELS
+    levels: LEVELS,
+    youthPlayableChance: YOUTH_PLAYABLE_CHANCE
 });
 export default MatchImportanceSystem;
