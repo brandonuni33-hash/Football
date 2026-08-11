@@ -6,8 +6,8 @@ import { EVENTS } from '../../core/events.js';
 import { finalizeInteractiveBlock } from './interactiveBlockFinalizer.js';
 
 export class BlockSystem {
-    constructor({ trainingManager, matchBlockManager, worldSystem, socialSystem, mediaSystem, eventEngine, coachSystem, careerSystem, transferMarket, transferSystem = null, stateManager, familyLifeSystem = null, consequenceSystem = null, narrativeEngine = null, advanceCalendar } = {}) {
-        Object.assign(this, { trainingManager, matchBlockManager, worldSystem, socialSystem, mediaSystem, eventEngine, coachSystem, careerSystem, transferMarket, transferSystem, stateManager, familyLifeSystem, consequenceSystem, narrativeEngine, advanceCalendar });
+    constructor({ trainingManager, matchBlockManager, worldSystem, socialSystem, mediaSystem, eventEngine, coachSystem, careerSystem, transferSystem = null, stateManager, familyLifeSystem = null, consequenceSystem = null, narrativeEngine = null, advanceCalendar } = {}) {
+        Object.assign(this, { trainingManager, matchBlockManager, worldSystem, socialSystem, mediaSystem, eventEngine, coachSystem, careerSystem, transferSystem, stateManager, familyLifeSystem, consequenceSystem, narrativeEngine, advanceCalendar });
     }
 
     execute(state, selectedChoice = null) {
@@ -73,10 +73,11 @@ export class BlockSystem {
             const discoveredRole = this.careerSystem.detectRole(player);
             const positionProposal = this.careerSystem.evaluatePositionChange(player);
             state.pendingPositionProposal = positionProposal || null;
-            state.pendingTransferOffer = null;
-            if (!player.isInjured) {
-                state.pendingTransferOffer = this.transferSystem?.generateOffer?.(state) || null;
-            }
+
+            // Une offre en attente appartient au TransferSystem et doit survivre
+            // aux blocs suivants jusqu'à acceptation ou refus explicite.
+            if (!player.isInjured) this.transferSystem?.generateOffer?.(state);
+
             const season = Number(state.calendar?.currentSeasonYear ?? state.season ?? state.career?.season ?? 1);
             const familyBirths = this.familyLifeSystem?.evaluateBirths?.({ state, player, season }) || [];
             const calendar = this.advanceCalendar(state);
