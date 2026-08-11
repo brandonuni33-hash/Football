@@ -55,6 +55,14 @@ export class NarrativeStateReducer {
             callbacks.push({ ...command });
         }
 
+        const journalEntries = [...current.journalEntries];
+        const journalIds = new Set(journalEntries.map(entry => entry.id));
+        for (const entry of output.journalEntries || []) {
+            if (!entry?.id || journalIds.has(entry.id)) continue;
+            journalIds.add(entry.id);
+            journalEntries.push({ ...entry });
+        }
+
         const scene = output.primaryScene || null;
         const sceneFactId = scene?.sourceFactIds?.[0] || null;
         const importance = String(scene?.importance || 'normal');
@@ -68,6 +76,7 @@ export class NarrativeStateReducer {
             processedFactIds: [...current.processedFactIds, ...freshFacts.map(fact => fact.id)],
             storyThreads: applyThreadTransitions(current.storyThreads, output.threadTransitions),
             callbacks,
+            journalEntries,
             cooldowns,
             recentBeatKeys: [...current.recentBeatKeys, ...beatKeys],
             pacing: {

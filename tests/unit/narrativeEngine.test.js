@@ -4,6 +4,10 @@ import NarrativeEngine from '../../domain/narrative/narrativeEngine.js';
 import NarrativeFactNormalizer from '../../domain/narrative/narrativeFactNormalizer.js';
 import { SCHEMA_VERSION, StateManager } from '../../state/stateManager.js';
 import { createBaseState } from '../../state/stateFactory.js';
+import NarrativeFactCollector from '../../domain/narrative/narrativeFactCollector.js';
+import NarrativeOrchestrator from '../../application/narrativeOrchestrator.js';
+import NarrativePresenter from '../../application/narrativePresenter.js';
+import { BlockSystem } from '../../domain/gameplay/blockSystem.js';
 
 const report = (overrides = {}) => ({ summary: { matchResults: [{
     matchIndex: 0,
@@ -92,8 +96,107 @@ test('le schéma 11 crée narrativeState sans réutiliser les notifications', ()
     const empty = StateManager.createEmpty();
     const base = createBaseState();
     assert.equal(SCHEMA_VERSION, 11);
-    assert.equal(empty.narrativeState.version, 1);
+    assert.equal(empty.narrativeState.version, 2);
     assert.deepEqual(empty.narrativeState.processedFactIds, []);
-    assert.equal(base.narrativeState.version, 1);
+    assert.equal(base.narrativeState.version, 2);
+    assert.deepEqual(base.narrativeState.journalEntries, []);
     assert.notEqual(empty.narrativeState.storyThreads, empty.notifications.threads);
+});
+
+test('les faits visibles du monde alimentent fils, observations et journal sans exposer le scouting', () => {
+    const current = state();
+    const resolved = {
+        mediaCycle: { post: { id: 'post-1', source: 'Actu Foot', type: 'media', content: 'La performance fait parler.' } },
+        coachEvent: { id: 'coach-talk', title: 'Le coach veut te voir', description: 'Un échange est prévu.' },
+        transferCycle: {
+            activity: [
+                { type: 'scouting_started', clubId: 'hidden-club', observationId: 'obs-1', at: 1 },
+                { type: 'interest_stage_changed', clubId: 'club-a', interestId: 'interest-a', from: 'serious', to: 'contact', at: 2 },
+                { type: 'official_offer', clubId: 'club-a', interestId: 'interest-a', at: 3 }
+            ],
+            offer: { club: 'Club A', clubId: 'club-a', interestId: 'interest-a', message: 'Club A te veut.' }
+        },
+        transferOffer: { club: 'Club A', clubId: 'club-a', interestId: 'interest-a' },
+        familyBirths: [{ child: { id: 'child-1', firstName: 'Lina', birthDate: '2026-08-01' } }]
+    };
+    const output = new NarrativeEngine().processBlock({ state: current, report: report(), resolved });
+    assert.equal(output.primaryScene.type, 'match.end');
+    assert.equal(output.passiveBeats.length, 3);
+    assert.ok(output.journalEntries.some(entry => entry.category === 'family'));
+    assert.ok(output.journalEntries.some(entry => entry.category === 'transfer'));
+    assert.ok(!output.journalEntries.some(entry => entry.text.includes('hidden-club')));
+    assert.equal(current.narrativeState.journalEntries.length, 5);
+    assert.equal(current.narrativeState.storyThreads['transfer:interest-a'].phase, 'offer');
+    assert.equal(current.narrativeState.storyThreads['family-legacy'].phase, 'new-generation');
+});
+
+test('le presenter ajoute au plus deux réactions du monde à la scène de match', () => {
+    const current = state();
+    const engine = new NarrativeEngine();
+    const orchestrator = new NarrativeOrchestrator({ engine, presenter: new NarrativePresenter() });
+    const presented = orchestrator.processBlock({
+        state: current,
+        report: report(),
+        resolved: {
+            event: { id: 'event-1', titre: 'Une invitation', description: 'Une décision arrive.', categorie: 'carriere' },
+            coachEvent: { id: 'coach-1', title: 'Discussion', description: 'Le coach appelle.' },
+            mediaCycle: { post: { id: 'post-1', source: 'Actu Foot', type: 'media', content: 'Le public réagit.' } }
+        }
+    });
+    assert.equal(presented.primaryScene.type, 'match.end');
+    assert.equal(presented.passiveBeats.length, 3);
+    assert.equal(presented.primaryScene.beats.filter(beat => beat.kind === 'world-observation').length, 2);
+});
+
+test('un bloc sans match peut produire une scène du monde', () => {
+    const current = state();
+    const output = new NarrativeEngine().processBlock({
+        state: current,
+        report: { summary: { matchResults: [] } },
+        resolved: { event: { id: 'event-1', titre: 'Un appel inattendu', description: 'Le téléphone sonne.', categorie: 'carriere' } }
+    });
+    assert.equal(output.primaryScene.type, 'world.update');
+    assert.equal(output.primaryScene.beats.length, 1);
+    assert.equal(current.narrativeState.journalEntries.length, 1);
+});
+
+test('BlockSystem attend tous les systèmes du monde avant de lancer la narration', () => {
+    const order = [];
+    const current = { player: { id: 'p1', age: 20, stats: {}, fitness: 90 }, calendar: { currentSeasonYear: 2026 } };
+    const block = new BlockSystem({
+        trainingManager: { applyTraining: () => null },
+        matchBlockManager: { simulateBlock: () => ({ summary: { scheduledMatches: [], matchResults: [] } }) },
+        worldSystem: { recordPlayerMatches: () => order.push('world') },
+        socialSystem: { updateSocialCycle: () => order.push('social') },
+        mediaSystem: { generatePostAfterBlock: () => (order.push('media'), { post: { id: 'p' }, dilemma: null }) },
+        eventEngine: { checkAndTriggerEvent: () => (order.push('event'), null) },
+        coachSystem: { checkCoachInteraction: () => (order.push('coach'), null) },
+        careerSystem: {
+            refreshStage: () => order.push('career'),
+            detectRole: () => null,
+            evaluatePositionChange: () => null
+        },
+        transferSystem: { progressMarket: () => (order.push('transfer'), { activity: [], activeInterests: [] }) },
+        familyLifeSystem: { evaluateBirths: () => (order.push('family'), []) },
+        consequenceSystem: { resolvePending: () => [] },
+        narrativeEngine: {
+            processBlock: () => {
+                order.push('narrative');
+                return { primaryScene: { type: 'world.update', beats: [{ text: 'fait' }] }, passiveBeats: [], journalEntries: [] };
+            }
+        },
+        advanceCalendar: () => (order.push('calendar'), { advanced: true }),
+        stateManager: { save: () => order.push('save') }
+    });
+    const result = block.execute(current);
+    assert.deepEqual(order, ['world', 'social', 'media', 'event', 'coach', 'career', 'transfer', 'family', 'narrative', 'calendar', 'save']);
+    assert.equal(result.narrativeScene.type, 'world.update');
+});
+
+test('le collecteur ne publie jamais les étapes de scouting cachées', () => {
+    const facts = new NarrativeFactCollector().collectWorldFacts({
+        state: state(),
+        resolved: { transferCycle: { activity: [{ type: 'scouting_started', clubId: 'secret-club', observationId: 'obs' }] } }
+    });
+    assert.deepEqual(facts, []);
 });

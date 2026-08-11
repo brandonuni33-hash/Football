@@ -38,6 +38,7 @@ import NotificationSystem from '../domain/notification/notificationSystem.js';
 import AwardsSystem from '../domain/awards/awardsSystem.js';
 import NarrativeEngine from '../domain/narrative/narrativeEngine.js';
 import NarrativeOrchestrator from './narrativeOrchestrator.js';
+import NarrativePresenter from './narrativePresenter.js';
 import CareerApplication from './careerApplication.js';
 import SimulatedMatchSystem from '../domain/match/simulatedMatchSystem.js';
 import InteractiveMatchSystem from '../domain/match/interactiveMatchSystem.js';
@@ -54,7 +55,8 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
     const trainingSystem = new TrainingSystem(TrainingManager);
     const simulatedMatchSystem = new SimulatedMatchSystem();
     const narrativeEngine = new NarrativeEngine();
-    const narrativeOrchestrator = new NarrativeOrchestrator({ engine: narrativeEngine });
+    const narrativePresenter = new NarrativePresenter();
+    const narrativeOrchestrator = new NarrativeOrchestrator({ engine: narrativeEngine, presenter: narrativePresenter });
     const networkEvolutionSystem = new NetworkEvolutionSystem();
     const familySystem = new FamilySystem();
     const familyLifeSystem = new FamilyLifeSystem({ familySystem });
@@ -99,6 +101,7 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
         squadSelectionSystem: SquadSelectionSystem,
         narrativeEngine,
         narrativeOrchestrator,
+        narrativePresenter,
         competitionSystem,
         cupSystem,
         relationshipSystem,

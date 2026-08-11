@@ -24,9 +24,10 @@ function notificationIcon(note) {
 }
 
 export class CareerView {
-    constructor({ ui, gateway } = {}) {
+    constructor({ ui, gateway, narrativePresenter = null } = {}) {
         this.ui = ui;
         this.gateway = gateway;
+        this.narrativePresenter = narrativePresenter;
     }
 
     render(state) {
@@ -42,6 +43,7 @@ export class CareerView {
             .slice(-30)
             .reverse();
         const unreadCount = signals.filter(note => !note?.read).length;
+        const narrativeEntries = (this.narrativePresenter?.getJournal?.(state) || []).slice(0, 20);
 
         return `
             <div class="app-pane career-app-pane" data-view="career">
@@ -73,6 +75,16 @@ export class CareerView {
                     </div>
 
                     <div class="career-inbox-list">
+                        ${narrativeEntries.map(entry => `
+                            <article class="career-inbox-item is-read is-narrative" data-narrative-journal-entry="${escapeHtml(entry.id)}">
+                                <span class="career-inbox-icon">${notificationIcon(entry)}</span>
+                                <span class="career-inbox-copy">
+                                    <strong>${escapeHtml(entry.title)}</strong>
+                                    <span>${escapeHtml(entry.text)}</span>
+                                </span>
+                                <span class="career-inbox-state">RÉCIT</span>
+                            </article>
+                        `).join('')}
                         ${signals.map(note => `
                             <button
                                 class="career-inbox-item ${note?.read ? 'is-read' : 'is-unread'}"
@@ -86,13 +98,13 @@ export class CareerView {
                                 </span>
                                 ${note?.read ? '<span class="career-inbox-state">›</span>' : '<span class="career-inbox-new">NOUVEAU</span>'}
                             </button>
-                        `).join('') || `
+                        `).join('') || (!narrativeEntries.length ? `
                             <div class="career-inbox-empty">
                                 <span>◌</span>
                                 <strong>Aucune actualité pour le moment</strong>
                                 <small>Les événements importants de ta carrière apparaîtront ici.</small>
                             </div>
-                        `}
+                        ` : '')}
                     </div>
                 </section>
 

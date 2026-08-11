@@ -21,6 +21,7 @@ export function impactScore(fact = {}) {
 }
 
 export function impactLevel(fact = {}) {
+    if (fact.type !== 'match.completed') return 'context';
     const metrics = fact.metrics || {};
     if (metrics.playerPlayed === false) return 'unused';
     const goals = n(metrics.goals), assists = n(metrics.assists), rating = n(metrics.rating);
@@ -39,13 +40,14 @@ export class NarrativeSignificance {
         const resultWeight = fact.outcome?.result === 'win' ? 2 : fact.outcome?.result === 'loss' ? 1 : 0;
         const interactive = metrics.interactive ? 1.5 : 0;
         const appearance = metrics.playerPlayed === false ? -8 : 0;
+        const contextualBoost = n(fact.payload?.significanceBoost);
         const reasons = [importance];
         if (n(metrics.goals) + n(metrics.assists) >= 2) reasons.push('decisive-contribution');
         if (n(metrics.rating) >= 8.2) reasons.push('elite-rating');
         if (metrics.interactive) reasons.push('interactive');
         return Object.freeze({
             factId: fact.id,
-            score: importanceScore * 10 + decisive + Math.max(0, n(metrics.rating) - 6) + resultWeight + interactive + appearance,
+            score: importanceScore * 10 + decisive + Math.max(0, n(metrics.rating) - 6) + resultWeight + interactive + appearance + contextualBoost,
             impactScore: impactScore(fact),
             impactLevel: impactLevel(fact),
             importance,

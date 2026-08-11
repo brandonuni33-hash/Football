@@ -13,8 +13,16 @@ export class NarrativeOrchestrator {
         return this.presenter.present(this.engine.processMatchEnd({ state, report }));
     }
 
+    processBlock({ state, report, resolved = {} } = {}) {
+        return this.presenter.present(this.engine.processBlock({ state, report, resolved }));
+    }
+
     composeMatchEnd({ state, report } = {}) {
         return this.processMatchEnd({ state, report }).primaryScene;
+    }
+
+    composeBlock({ state, report, resolved = {} } = {}) {
+        return this.processBlock({ state, report, resolved }).primaryScene;
     }
 }
 

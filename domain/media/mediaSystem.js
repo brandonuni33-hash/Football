@@ -28,6 +28,7 @@ export class MediaSystem {
         media.recentDilemma = Math.random() < 0.4 ? this.getRandomMediaDilemma() : null;
         EventBus.emit(EVENTS.MEDIA_POST_CREATED, { state, playerId: player.id, post: media.feed[0] });
         if (media.recentDilemma) EventBus.emit(EVENTS.MEDIA_DILEMMA_CREATED, { state, playerId: player.id, dilemma: media.recentDilemma });
+        return { post: media.feed[0], dilemma: media.recentDilemma };
     }
     getRandomMediaDilemma() {
         const dilemmas = [

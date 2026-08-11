@@ -2,6 +2,38 @@
 
 const n = value => Number.isFinite(Number(value)) ? Number(value) : 0;
 
+function blockOccurrence(state) {
+    const season = state?.calendar?.currentSeasonYear ?? state?.season ?? 'unknown';
+    const month = state?.calendar?.currentMonth ?? 'unknown';
+    const playedCount = state?.player?.stats?.matchesPlayed ?? 'unknown';
+    return `season:${season}:month:${month}:played:${playedCount}`;
+}
+
+function worldFact(state, {
+    type, source, identity, occurredAt, actorIds = [], metrics = {}, outcome = {},
+    certainty = 'confirmed', visibility = 'player', tags = [], payload = {}
+}) {
+    const playerId = state?.player?.id || null;
+    return {
+        type,
+        source,
+        occurredAt: String(occurredAt || blockOccurrence(state)),
+        subjectId: playerId,
+        actorIds: [playerId, ...actorIds].filter(Boolean),
+        metrics,
+        outcome,
+        certainty,
+        visibility,
+        tags,
+        dedupeKey: `${type}|${playerId || 'active-player'}|${identity}`,
+        payload
+    };
+}
+
+function importanceForDelta(delta) {
+    return Math.abs(n(delta)) >= 8 ? 'important' : 'normal';
+}
+
 function occurrenceOf(state, result, index) {
     const fixture = result?.fixture || {};
     if (fixture.playedAt || fixture.date) return String(fixture.playedAt || fixture.date);
@@ -37,6 +69,13 @@ function fixtureSnapshot(result = {}) {
 }
 
 export class NarrativeFactCollector {
+    collectBlockFacts({ state, report, resolved = {} } = {}) {
+        return [
+            ...this.collectMatchFacts({ state, report }),
+            ...this.collectWorldFacts({ state, resolved })
+        ];
+    }
+
     collectMatchFacts({ state, report } = {}) {
         const rawResults = report?.summary?.matchResults || report?.results || [];
         const results = Array.isArray(rawResults) ? rawResults.filter(Boolean) : [];
@@ -88,6 +127,188 @@ export class NarrativeFactCollector {
                 }
             };
         });
+    }
+
+    collectWorldFacts({ state, resolved = {} } = {}) {
+        const facts = [];
+        const occurrence = blockOccurrence(state);
+
+        for (const consequence of resolved.revealedConsequences || []) {
+            facts.push(worldFact(state, {
+                type: 'decision.consequence.revealed',
+                source: 'consequence',
+                identity: consequence.id || `${consequence.choiceId}|${occurrence}`,
+                metrics: { delta: n(consequence.result?.delta) },
+                outcome: { status: 'revealed', change: consequence.result || null },
+                tags: ['decision', consequence.source, consequence.label].filter(Boolean),
+                payload: {
+                    category: 'decision',
+                    title: consequence.label || 'Une décision passée refait surface',
+                    text: consequence.narrative || 'Une décision passée commence à produire ses effets.',
+                    choiceId: consequence.choiceId || null,
+                    originalVisibility: consequence.visibility || null,
+                    importance: importanceForDelta(consequence.result?.delta)
+                }
+            }));
+        }
+
+        const mediaPost = resolved.mediaCycle?.post;
+        if (mediaPost) facts.push(worldFact(state, {
+            type: 'media.post.created',
+            source: 'media',
+            identity: mediaPost.id || `${mediaPost.source}|${occurrence}`,
+            occurredAt: mediaPost.createdAt || occurrence,
+            outcome: { postType: mediaPost.type || null },
+            visibility: 'public',
+            tags: ['media', mediaPost.type].filter(Boolean),
+            payload: {
+                category: 'media',
+                title: mediaPost.source || 'Les réactions continuent',
+                text: mediaPost.content || '',
+                importance: mediaPost.type === 'critique' ? 'important' : 'low'
+            }
+        }));
+
+        const mediaDilemma = resolved.mediaCycle?.dilemma;
+        if (mediaDilemma) facts.push(worldFact(state, {
+            type: 'media.dilemma.created',
+            source: 'media',
+            identity: `${mediaDilemma.id || mediaDilemma.title}|${occurrence}`,
+            tags: ['media', 'decision'],
+            payload: {
+                category: 'media',
+                title: mediaDilemma.title || 'Une situation médiatique demande une réponse',
+                text: mediaDilemma.description || '',
+                importance: 'important'
+            }
+        }));
+
+        if (resolved.event) facts.push(worldFact(state, {
+            type: 'career.event.created',
+            source: 'event',
+            identity: `${resolved.event.id || resolved.event.titre || resolved.event.title}|${occurrence}`,
+            tags: ['event', resolved.event.categorie].filter(Boolean),
+            payload: {
+                category: resolved.event.categorie || 'career',
+                title: resolved.event.titre || resolved.event.title || 'Une situation inattendue',
+                text: resolved.event.description || '',
+                importance: ['sante', 'carriere', 'famille'].includes(resolved.event.categorie) ? 'important' : 'normal'
+            }
+        }));
+
+        if (resolved.coachEvent) facts.push(worldFact(state, {
+            type: 'coach.interaction.created',
+            source: 'coach',
+            identity: `${resolved.coachEvent.id || resolved.coachEvent.title}|${occurrence}`,
+            actorIds: ['coach'],
+            tags: ['coach', 'decision'],
+            payload: {
+                category: 'coach',
+                title: resolved.coachEvent.title || 'Le coach veut te parler',
+                text: resolved.coachEvent.description || '',
+                importance: String(resolved.coachEvent.id || '').includes('warning') ? 'important' : 'normal'
+            }
+        }));
+
+        if (resolved.discoveredRole) facts.push(worldFact(state, {
+            type: 'career.role.discovered',
+            source: 'career',
+            identity: `${state?.player?.id}|${resolved.discoveredRole}`,
+            tags: ['career', 'identity'],
+            payload: {
+                category: 'career',
+                title: 'Ton identité de joueur se précise',
+                text: `Le staff te voit désormais dans un rôle de ${resolved.discoveredRole}.`,
+                role: resolved.discoveredRole,
+                importance: 'important'
+            }
+        }));
+
+        if (resolved.positionProposal) facts.push(worldFact(state, {
+            type: 'career.position.proposed',
+            source: 'career',
+            identity: `${resolved.positionProposal.from}|${resolved.positionProposal.to}|${occurrence}`,
+            tags: ['career', 'coach', 'decision'],
+            payload: {
+                category: 'career',
+                title: 'Le staff imagine un autre poste pour toi',
+                text: resolved.positionProposal.message || `Une évolution de ${resolved.positionProposal.from} vers ${resolved.positionProposal.to} est envisagée.`,
+                from: resolved.positionProposal.from || null,
+                to: resolved.positionProposal.to || null,
+                importance: 'important'
+            }
+        }));
+
+        const transferCycle = resolved.transferCycle || {};
+        const hasOfficialOffer = (transferCycle.activity || []).some(activity => activity.type === 'official_offer');
+        for (const activity of transferCycle.activity || []) {
+            if (activity.type !== 'interest_stage_changed' || !['contact', 'offer'].includes(activity.to)) continue;
+            if (activity.to === 'offer' && hasOfficialOffer) continue;
+            facts.push(worldFact(state, {
+                type: 'transfer.contact.created',
+                source: 'transfer',
+                identity: `${activity.interestId || activity.clubId}|${activity.to}`,
+                occurredAt: activity.at || occurrence,
+                actorIds: [activity.clubId],
+                metrics: { seriousness: n(activity.seriousness) },
+                outcome: { from: activity.from || null, to: activity.to },
+                tags: ['transfer', activity.to],
+                payload: {
+                    category: 'transfer',
+                    title: activity.to === 'offer' ? 'Un intérêt devient concret' : 'Un club passe au contact direct',
+                    text: activity.to === 'offer'
+                        ? 'Les discussions ont franchi un cap et une proposition peut désormais arriver.'
+                        : 'Le suivi ne se limite plus aux tribunes : le club cherche désormais un contact.',
+                    clubId: activity.clubId || null,
+                    interestId: activity.interestId || null,
+                    importance: activity.to === 'offer' ? 'major' : 'important'
+                }
+            }));
+        }
+
+        const createdOffer = hasOfficialOffer
+            ? (transferCycle.offer || resolved.transferOffer) : null;
+        if (createdOffer) facts.push(worldFact(state, {
+            type: 'transfer.offer.created',
+            source: 'transfer',
+            identity: createdOffer.interestId || `${createdOffer.clubId || createdOffer.club}|${occurrence}`,
+            actorIds: [createdOffer.clubId],
+            outcome: { status: 'offered' },
+            tags: ['transfer', 'offer', 'decision'],
+            payload: {
+                category: 'transfer',
+                title: `Proposition de ${createdOffer.club || 'un club'}`,
+                text: createdOffer.message || 'Une proposition officielle vient d’arriver sur la table.',
+                club: createdOffer.club || null,
+                clubId: createdOffer.clubId || null,
+                interestId: createdOffer.interestId || null,
+                importance: 'major'
+            }
+        }));
+
+        for (const birth of resolved.familyBirths || []) {
+            const child = birth?.child || birth;
+            if (!child?.id) continue;
+            facts.push(worldFact(state, {
+                type: 'family.child-born',
+                source: 'family',
+                identity: child.id,
+                occurredAt: child.birthDate || child.createdAt || occurrence,
+                actorIds: [child.id, child.partnerId],
+                outcome: { status: 'born' },
+                tags: ['family', 'legacy', 'life-event'],
+                payload: {
+                    category: 'family',
+                    title: 'La famille s’agrandit',
+                    text: `${child.firstName || 'Un enfant'} vient de naître. Une nouvelle histoire commence loin des terrains.`,
+                    childId: child.id,
+                    firstName: child.firstName || null,
+                    importance: 'exceptional'
+                }
+            }));
+        }
+
+        return facts;
     }
 }
 
