@@ -1,6 +1,6 @@
 // domain/notification/notificationSystem.js
 // Transforme les faits du monde en signaux de carrière.
-// Le domaine ne connaît jamais l'UI.
+// Le domaine ne connaît jamais l'UI ni la totalité du state.
 
 import { EventBus } from '../../core/eventBus.js';
 import EVENTS from '../../core/events.js';
@@ -9,6 +9,11 @@ const PRIORITY = Object.freeze({ feed: 20, toast: 40, important: 65, decision: 8
 const VISIBILITY = Object.freeze({ hidden: 'hidden', indirect: 'indirect', visible: 'visible', confirmed: 'confirmed' });
 function now() { return new Date().toISOString(); }
 function createId(prefix = 'signal') { return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`; }
+function serializablePayload(payload = {}) {
+    if (!payload || typeof payload !== 'object') return {};
+    const { state, ...safePayload } = payload;
+    return safePayload;
+}
 
 export class NotificationSystem {
     constructor({ state = null, eventBus = EventBus } = {}) {
@@ -70,7 +75,7 @@ export class NotificationSystem {
             visibility: descriptor.visibility || VISIBILITY.visible, confidence: Number.isFinite(payload.confidence) ? payload.confidence : 1,
             source: payload.source || payload.clubId || payload.agentId || 'world', actorId: payload.actorId || payload.scoutId || payload.agentId || null,
             playerId: payload.playerId || null, clubId: payload.clubId || null, actionable: ['decision', 'scene'].includes(priority),
-            read: false, archived: false, payload: { ...payload }
+            read: false, archived: false, payload: serializablePayload(payload)
         };
         this.#append(signal, payload);
         this.eventBus.emit('notification.created', signal);
