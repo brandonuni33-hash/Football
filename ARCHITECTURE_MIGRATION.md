@@ -27,6 +27,7 @@ state/ + core/
 - `application/uiGateway.js` : contrat entre UI et application.
 - `state/stateManager.js` : propriétaire de la persistance/migration.
 - `domain/player/playerSystem.js` : modèle joueur canonique.
+- `domain/career/careerSystem.js` : trajectoire, formation, contrats, rôles et reconversion de poste.
 - `domain/calendar/calendarSystem.js` : orchestration du calendrier.
 - `domain/match/simulatedMatchSystem.js` : simulation de matchs non interactifs.
 - `domain/match/interactiveMatchSystem.js` : propriétaire canonique du cycle interactif d'un match.
@@ -51,9 +52,11 @@ state/ + core/
 
 Les systèmes historiques suivants restent des dépendances de compatibilité :
 
-`careerSystem.js`, `competitionSystem.js`, `worldSystem.js`, `coachSystem.js`, `events.js`, `media.js`, `economy.js`, `entrainement.js`, `transferMarket.js`, `potentialSystem.js`, `consequenceSystem.js`, `matchChoices.js`.
+`competitionSystem.js`, `worldSystem.js`, `coachSystem.js`, `events.js`, `media.js`, `economy.js`, `entrainement.js`, `transferMarket.js`, `potentialSystem.js`, `consequenceSystem.js`, `matchChoices.js`.
 
-Règle : aucune nouvelle mécanique ne doit être ajoutée directement dans ces fichiers lorsqu'un propriétaire de domaine existe.
+`careerSystem.js` n'est plus une dépendance racine : son implémentation vit maintenant dans `domain/career/careerSystem.js`.
+
+Règle : aucune nouvelle mécanique ne doit être ajoutée directement dans les fichiers racine lorsqu'un propriétaire de domaine existe.
 
 ### Priorité 2 — façades restantes
 
@@ -81,7 +84,8 @@ Règle : aucune nouvelle mécanique ne doit être ajoutée directement dans ces 
 - exposition de `MatchChoiceManager` depuis le registry canonique ;
 - déplacement du système international dans `domain/competition/internationalSystem.js` ;
 - suppression de `internationalIntegration.js`, ancien monkey-patch du GameEngine ;
-- déplacement de `ui-enhancement.css` vers `ui/styles/enhancement.css`.
+- déplacement de `ui-enhancement.css` vers `ui/styles/enhancement.css` ;
+- déplacement de `careerSystem.js` vers `domain/career/careerSystem.js` et mise à jour de ses branchements.
 
 ## Règles permanentes
 
