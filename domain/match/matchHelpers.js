@@ -31,15 +31,19 @@ export function competitionLabel(match) {
 export function matchType(match) {
     const phase = String(match?.phase || '').toLowerCase();
     const round = String(match?.round || match?.europeanRound || '').toLowerCase();
-    if (phase.includes('final') || round.includes('final') || match?.importance === 'final') return 'final';
+    const importance = String(match?.importance || '').toLowerCase();
+    if (phase.includes('final') || round.includes('final') || importance === 'final' || importance === 'exceptional') return 'final';
     if (match?.rival || match?.isDerby || String(match?.type || '').toLowerCase().includes('rival')) return 'rival';
     return 'classic';
 }
 
 export function importanceFor(match) {
+    const explicit = String(match?.importance || '').toLowerCase();
+    if (explicit === 'exceptional') return 'exceptional';
+    if (explicit === 'major' || explicit === 'important' || explicit === 'high') return 'important';
     const type = matchType(match);
     if (type === 'final') return 'exceptional';
-    if (type === 'rival' || match?.importance === 'high' || match?.importance === 'important') return 'important';
+    if (type === 'rival') return 'important';
     return 'normal';
 }
 
