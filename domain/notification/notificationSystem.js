@@ -16,8 +16,9 @@ function serializablePayload(payload = {}) {
 }
 
 export class NotificationSystem {
-    constructor({ state = null, eventBus = EventBus } = {}) {
+    constructor({ state = null, engine = null, eventBus = EventBus } = {}) {
         this.state = state;
+        this.engine = engine;
         this.eventBus = eventBus;
         this.unsubscribers = [];
         this.started = false;
@@ -30,21 +31,12 @@ export class NotificationSystem {
         this.#on('family.child_born', payload => {
             const child = payload?.child || {};
             const isBoy = child.gender === 'male';
-            this.#signal(payload, {
-                category: 'famille',
-                priority: 'important',
-                title: isBoy ? 'Un fils vient de naître' : 'Un enfant vient de naître',
-                body: isBoy
-                    ? `${child.firstName || 'Votre fils'} vient agrandir votre famille. Cette naissance pourra ouvrir une nouvelle génération plus tard.`
-                    : `${child.firstName || 'Votre enfant'} vient agrandir votre famille.`,
-                intent: 'family',
-                visibility: VISIBILITY.confirmed
-            });
+            this.#signal(payload, { category: 'famille', priority: 'important', title: isBoy ? 'Un fils vient de naître' : 'Un enfant vient de naître', body: isBoy ? `${child.firstName || 'Votre fils'} vient agrandir votre famille. Cette naissance pourra ouvrir une nouvelle génération plus tard.` : `${child.firstName || 'Votre enfant'} vient agrandir votre famille.`, intent: 'family', visibility: VISIBILITY.confirmed });
         });
         this.#on(EVENTS.SCOUTING_OBSERVATION_STARTED, payload => this.#scoutingObservation(payload));
         this.#on(EVENTS.SCOUTING_OBSERVATION_COMPLETED, payload => this.#scoutingCompleted(payload));
         this.#on(EVENTS.SCOUTING_INTEREST_CREATED, payload => this.#signal(payload, { category: 'scouting', priority: 'important', title: 'Un club suit votre progression', body: 'Un intérêt vient d’être enregistré autour de votre profil.', intent: 'evaluate' }));
-        this.#on(EVENTS.TRANSFER_OFFER_CREATED, payload => this.#signal(payload, { category: 'mercato', priority: 'decision', title: 'Une proposition vous attend', body: 'Une nouvelle proposition officielle est disponible.', intent: 'offer' }));
+        this.#on(EVENTS.TRANSFER_OFFER_CREATED, payload => this.#signal(payload, { category: 'mercato', priority: 'decision', title: 'Une proposition vous attend', body: `Une nouvelle proposition officielle de ${payload?.club || 'club'} est disponible.`, intent: 'offer' }));
         this.#on(EVENTS.LOAN_PROPOSAL_CREATED, payload => this.#signal(payload, { category: 'mercato', priority: 'decision', title: 'Une proposition de prêt est arrivée', body: 'Une solution de prêt est désormais disponible.', intent: 'loan' }));
         this.#on(EVENTS.CONTRACT_EXPIRING, payload => this.#signal(payload, { category: 'contract', priority: 'important', title: 'Votre contrat arrive à échéance', body: 'Votre avenir contractuel mérite désormais votre attention.', intent: 'contract' }));
         this.#on(EVENTS.AGENT_INTEREST_CREATED, payload => this.#signal(payload, { category: 'agent', priority: 'important', title: 'Un agent s’intéresse à vous', body: 'Un représentant souhaite entrer en contact avec votre entourage.', intent: 'agent' }));
@@ -56,7 +48,7 @@ export class NotificationSystem {
     stop() { this.destroy(); }
     destroy() { this.unsubscribers.splice(0).forEach(unsubscribe => unsubscribe?.()); this.started = false; }
     #on(eventName, handler) { this.unsubscribers.push(this.eventBus.on(eventName, handler)); }
-    #state(payload) { return payload?.state || this.state; }
+    #state(payload) { return payload?.state || this.engine?.state || this.state || null; }
 
     #scoutingObservation(payload = {}) {
         const age = Number(payload.age ?? payload.playerAge ?? 18);
@@ -69,13 +61,10 @@ export class NotificationSystem {
     #signal(payload = {}, descriptor = {}) {
         const priority = descriptor.priority || 'feed';
         const signal = {
-            id: createId(), threadId: payload.threadId || createId('thread'), createdAt: now(),
-            category: descriptor.category || 'career', priority, priorityScore: PRIORITY[priority] ?? PRIORITY.feed,
-            title: descriptor.title || 'Nouvelle activité', body: descriptor.body || '', intent: descriptor.intent || 'inform',
-            visibility: descriptor.visibility || VISIBILITY.visible, confidence: Number.isFinite(payload.confidence) ? payload.confidence : 1,
-            source: payload.source || payload.clubId || payload.agentId || 'world', actorId: payload.actorId || payload.scoutId || payload.agentId || null,
-            playerId: payload.playerId || null, clubId: payload.clubId || null, actionable: ['decision', 'scene'].includes(priority),
-            read: false, archived: false, payload: serializablePayload(payload)
+            id: createId(), threadId: payload.threadId || createId('thread'), createdAt: now(), category: descriptor.category || 'career', priority, priorityScore: PRIORITY[priority] ?? PRIORITY.feed,
+            title: descriptor.title || 'Nouvelle activité', body: descriptor.body || '', intent: descriptor.intent || 'inform', visibility: descriptor.visibility || VISIBILITY.visible,
+            confidence: Number.isFinite(payload.confidence) ? payload.confidence : 1, source: payload.source || payload.clubId || payload.agentId || 'world', actorId: payload.actorId || payload.scoutId || payload.agentId || null,
+            playerId: payload.playerId || null, clubId: payload.clubId || null, actionable: ['decision', 'scene'].includes(priority), read: false, archived: false, payload: serializablePayload(payload)
         };
         this.#append(signal, payload);
         this.eventBus.emit('notification.created', signal);
