@@ -9,7 +9,7 @@ import { StateManager, SCHEMA_VERSION } from '../state/stateManager.js';
 import { EventEngine } from '../events.js';
 import { CoachSystem } from '../coachSystem.js';
 import { TransferMarket } from '../transferMarket.js';
-import { PotentialSystem } from '../potentialSystem.js';
+import { PotentialSystem } from '../domain/player/potentialSystem.js';
 import { ConsequenceSystem } from '../consequenceSystem.js';
 import { CareerSystem } from '../domain/career/careerSystem.js';
 import { CompetitionSystem } from '../competitionSystem.js';
@@ -58,7 +58,7 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
     const careerLifecycleSystem = new CareerLifecycleSystem({ stateManager: StateManager, playerLogic: PlayerLogic });
     const careerApplication = new CareerApplication({ stateManager: StateManager, playerLogic: PlayerLogic, economyManager: EconomyManager, socialSystem, mediaSystem, consequenceSystem: ConsequenceSystem, potentialSystem: PotentialSystem, careerSystem: CareerSystem, competitionSystem, worldSystem, cupSystem, schemaVersion: SCHEMA_VERSION });
     notificationSystem.start();
-    return Object.freeze({ socialSystem, mediaSystem, trainingSystem, simulatedMatchSystem, interactiveMatchSystem: InteractiveMatchSystem, matchChoiceManager: MatchChoiceManager, competitionSystem, cupSystem, relationshipSystem, networkEvolutionSystem, familySystem, familyLifeSystem, notificationSystem, secondGenerationSystem, childCareerSystem, generationSimulationFacade, awardsSystem, seasonSystem, calendarSystem, blockSystem, interactionSystem, transferSystem, careerLifecycleSystem, careerApplication, consequenceSystem: ConsequenceSystem });
+    return Object.freeze({ socialSystem, mediaSystem, trainingSystem, simulatedMatchSystem, interactiveMatchSystem: InteractiveMatchSystem, matchChoiceManager: MatchChoiceManager, competitionSystem, cupSystem, relationshipSystem, networkEvolutionSystem, familySystem, familyLifeSystem, notificationSystem, secondGenerationSystem, childCareerSystem, generationSimulationFacade, awardsSystem, seasonSystem, calendarSystem, blockSystem, interactionSystem, transferSystem, careerLifecycleSystem, careerApplication, consequenceSystem: ConsequenceSystem, potentialSystem: PotentialSystem });
 }
 
 export default createSystemRegistry;
