@@ -5,7 +5,7 @@ import { EconomyManager } from '../../economy.js';
 import { TrainingManager } from '../../entrainement.js';
 import { PlayerLogic } from '../../player.js';
 import { ConsequenceSystem } from '../../consequenceSystem.js';
-import { PotentialSystem } from '../../potentialSystem.js';
+import { PotentialSystem } from '../player/potentialSystem.js';
 import { CompetitionSystem } from '../../competitionSystem.js';
 import { CupSystem } from '../../cupSystem.js';
 import {
