@@ -1,5 +1,5 @@
 // ui/blockResultController.js
-// Orchestration de l'après-bloc : événements, coach, transferts et propositions.
+// Orchestration de l'après-bloc : matchs interactifs, événements, coach, transferts et propositions.
 
 export class BlockResultController {
     constructor(ui, modals) {
@@ -8,8 +8,13 @@ export class BlockResultController {
     }
 
     handleBlockResult(result) {
-        this.ui.renderDashboard();
         if (!result) return;
+        if (result.interactive && result.interactiveDecision) {
+            this.showInteractiveDecision(result);
+            return;
+        }
+
+        this.ui.renderDashboard();
 
         if (result.recoveryOnly) {
             this.modals.afficherMessageModal('🏥 Récupération Médicale', 'Période dédiée aux soins intensifs et à la rééducation.');
@@ -27,6 +32,15 @@ export class BlockResultController {
         }
 
         this.openPendingInteraction(result, finish);
+    }
+
+    showInteractiveDecision(result) {
+        const decision = result.interactiveDecision;
+        this.modals.afficherModaleMatchDilemma(decision, (_, index) => {
+            const next = this.ui.gateway?.playNextBlock(index);
+            if (next?.interactiveDecision) this.showInteractiveDecision(next);
+            else this.handleBlockResult(next);
+        });
     }
 
     openPendingInteraction(result, finish) {
