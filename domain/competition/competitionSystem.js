@@ -2,17 +2,8 @@
 // Point d'entrée canonique du système de compétitions.
 
 import { CupSystem } from '../../cupSystem.js';
-import {
-    COMPETITIONS,
-    SEASON_MONTHS,
-    ALL_MONTHS,
-    MONTH_INFO,
-    seasonLabel
-} from './competitionCatalog.js';
-import {
-    createSeasonSchedule as buildSeasonSchedule,
-    sortMatches
-} from './seasonScheduleBuilder.js';
+import { COMPETITIONS, ALL_MONTHS, MONTH_INFO, seasonLabel } from './competitionCatalog.js';
+import { createSeasonSchedule as buildSeasonSchedule, sortMatches } from './seasonScheduleBuilder.js';
 import {
     getEuropeanQualification,
     buildEuropeanLeague,
@@ -57,25 +48,14 @@ const CompetitionSystem = {
     },
 
     createSeasonSchedule(player, seasonYear) {
-        return this.finalizeSchedule(
+        const generated = buildSeasonSchedule(
             player,
             seasonYear,
-            buildSeasonSchedule(
-                player,
-                seasonYear,
-                this.getSeniorCompetition.bind(this),
-                buildEuropeanLeague,
-                getEuropeanQualification
-            ).matches,
-            Number(player?.age) < 18 ? this.getYouthCategory(player?.age) : 'Senior',
-            buildSeasonSchedule(
-                player,
-                seasonYear,
-                this.getSeniorCompetition.bind(this),
-                buildEuropeanLeague,
-                getEuropeanQualification
-            ).seed
+            this.getSeniorCompetition.bind(this),
+            buildEuropeanLeague,
+            getEuropeanQualification
         );
+        return this.finalizeSchedule(player, seasonYear, generated.matches, generated.category, generated.seed);
     },
 
     finalizeSchedule(player, seasonYear, matches, category, seed) {
@@ -168,9 +148,7 @@ const CompetitionSystem = {
                 seasonLabel: seasonLabel(seasonYear),
                 matches: 0,
                 scheduledMatches: [],
-                activities: month === 7
-                    ? ['repos', 'mercato', 'programme_individuel', 'preparation_saison']
-                    : ['bilan', 'selection_internationale', 'repos', 'recovery'],
+                activities: month === 7 ? ['repos', 'mercato', 'programme_individuel', 'preparation_saison'] : ['bilan', 'selection_internationale', 'repos', 'recovery'],
                 importance: 'none',
                 mode: 'career_activity'
             };
@@ -257,7 +235,7 @@ const CompetitionSystem = {
 
     getSeasonSkeleton(player, year) {
         const schedule = this.createSeasonSchedule(player, year);
-        return SEASON_MONTHS.concat([6, 7]).map(month => ({
+        return ALL_MONTHS.map(month => ({
             month,
             monthLabel: this.getMonthLabel(month),
             period: this.getPeriodName(month),
