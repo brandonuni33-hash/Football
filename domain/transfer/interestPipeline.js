@@ -13,17 +13,27 @@ const STAGES = Object.freeze({
     CLOSED: 'closed'
 });
 
-const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, value));
+const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, Number(value) || 0));
 
 export class TransferInterestPipeline {
     constructor({ eventBus = EventBus } = {}) {
         this.eventBus = eventBus;
     }
 
+    ensureState(state) {
+        state.transferInterests = Array.isArray(state.transferInterests) ? state.transferInterests : [];
+        return state.transferInterests;
+    }
+
     createInterest({ state, player, club, source = 'unknown', evidence = {}, directOffer = false }) {
+        if (!state || !player || !club?.id) return null;
+        const interests = this.ensureState(state);
+        const existing = interests.find(item => item.playerId === player.id && item.clubId === club.id && item.stage !== STAGES.CLOSED);
+        if (existing) return existing;
+
         const compatibility = clamp(Number(evidence.compatibility ?? 50));
         const clubNeed = clamp(Number(evidence.clubNeed ?? 50));
-        const reputation = clamp(Number(evidence.reputation ?? player?.reputation ?? 50));
+        const reputation = clamp(Number(evidence.reputation ?? player?.reputation ?? player?.fame ?? 50));
         const form = clamp(Number(evidence.form ?? 50));
         const network = clamp(Number(evidence.network ?? 0));
         const age = Number(player?.age ?? 18);
@@ -37,8 +47,8 @@ export class TransferInterestPipeline {
 
         const interest = {
             id: `interest_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-            playerId: player?.id || null,
-            clubId: club?.id || null,
+            playerId: player.id,
+            clubId: club.id,
             source,
             stage: directOffer ? STAGES.OFFER : seriousness >= 72 ? STAGES.SERIOUS : STAGES.EXPLORATORY,
             seriousness,
@@ -48,8 +58,7 @@ export class TransferInterestPipeline {
             history: []
         };
 
-        state.transferInterests ||= [];
-        state.transferInterests.push(interest);
+        interests.push(interest);
         this.eventBus.emit(EVENTS.TRANSFER_INTEREST_CREATED, { state, playerId: interest.playerId, clubId: interest.clubId, interest });
         return interest;
     }
@@ -57,29 +66,30 @@ export class TransferInterestPipeline {
     advance({ state, interest, context = {} }) {
         if (!interest || interest.stage === STAGES.CLOSED || interest.stage === STAGES.OFFER) return interest;
 
-        const pressure = clamp(Number(context.performance ?? 50) * 0.30 + Number(context.clubNeed ?? 50) * 0.30 + Number(context.relationship ?? 50) * 0.20 + Number(context.reputation ?? 50) * 0.20);
+        const pressure = clamp(
+            Number(context.performance ?? 50) * 0.30
+            + Number(context.clubNeed ?? 50) * 0.30
+            + Number(context.relationship ?? 50) * 0.20
+            + Number(context.reputation ?? 50) * 0.20
+        );
+        const previousStage = interest.stage;
         interest.seriousness = clamp(interest.seriousness * 0.65 + pressure * 0.35);
-        interest.history.push({ stage: interest.stage, at: new Date().toISOString(), pressure });
+        interest.history.push({ stage: previousStage, at: new Date().toISOString(), pressure, seriousness: interest.seriousness });
 
-        if (interest.stage === STAGES.EXPLORATORY && interest.seriousness >= 68) {
+        // Une seule étape par cycle : l'intérêt doit être perceptible dans le temps.
+        if (previousStage === STAGES.EXPLORATORY && interest.seriousness >= 68) {
             interest.stage = STAGES.SERIOUS;
-        } else if (interest.stage === STAGES.SERIOUS && interest.seriousness >= 78) {
+        } else if (previousStage === STAGES.SERIOUS && interest.seriousness >= 78) {
             interest.stage = STAGES.CONTACT;
-        }
-
-        if (interest.stage === STAGES.CONTACT && interest.seriousness >= 86 && context.allowOffer !== false) {
+        } else if (previousStage === STAGES.CONTACT && interest.seriousness >= 86 && context.allowOffer !== false) {
             interest.stage = STAGES.OFFER;
-            this.eventBus.emit(EVENTS.TRANSFER_OFFER_CREATED, {
-                state,
-                playerId: interest.playerId,
-                clubId: interest.clubId,
-                interestId: interest.id,
-                source: interest.source,
-                seriousness: interest.seriousness
-            });
         }
 
         return interest;
+    }
+
+    active(state, playerId = state?.player?.id) {
+        return this.ensureState(state).filter(item => item.playerId === playerId && item.stage !== STAGES.CLOSED);
     }
 
     close(interest, reason = 'abandoned') {
