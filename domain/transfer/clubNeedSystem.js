@@ -78,7 +78,8 @@ export class ClubNeedSystem {
         const age = Number(player.age ?? 20);
         const ageDistance = Math.abs(age - need.preferredAge);
         const ageScore = Math.max(0, 100 - ageDistance * 8);
-        const form = clamp(player.form ?? player.stats?.averageRating * 12 ?? 50);
+        const averageRating = Number(player.stats?.averageRating);
+        const form = clamp(player.form ?? (Number.isFinite(averageRating) && averageRating > 0 ? averageRating * 12 : 50));
         const reputation = clamp(player.reputation ?? player.fame ?? 50);
         return Math.round(positionScore * 0.4 + ageScore * 0.2 + form * 0.2 + reputation * 0.2);
     }
