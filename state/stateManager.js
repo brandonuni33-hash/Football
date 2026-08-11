@@ -13,6 +13,8 @@ const DEFAULT_STATE = {
     media: null,
     career: { balance: 0, seasonHistory: [], totalCareerIncome: 0 },
     careerMemory: [],
+    relationships: {},
+    relationshipNetwork: [],
     relationshipMemory: [],
     notifications: { signals: [], threads: [], unreadCount: 0 },
     calendar: { currentMonth: 8, currentSeasonYear: 2026, currentPeriod: 'Pré-saison & reprise', seasonSchedule: null, seasonMatchCursor: 0 },
@@ -113,6 +115,12 @@ function normalizeTransferMarket(state) {
     state.transferMarket.lastCycle ??= null;
 }
 
+function normalizeRelationships(state) {
+    state.relationships = state.relationships && typeof state.relationships === 'object' && !Array.isArray(state.relationships) ? state.relationships : {};
+    state.relationshipNetwork = Array.isArray(state.relationshipNetwork) ? state.relationshipNetwork : [];
+    state.relationshipMemory = Array.isArray(state.relationshipMemory) ? state.relationshipMemory : [];
+}
+
 function migrate(raw) {
     const state = mergeDeep(cloneDefault(), raw || {});
     state.schemaVersion = SCHEMA_VERSION;
@@ -121,7 +129,7 @@ function migrate(raw) {
     state.career ??= cloneDefault().career;
     if (!Array.isArray(state.career.seasonHistory)) state.career.seasonHistory = [];
     state.careerMemory = Array.isArray(state.careerMemory) ? state.careerMemory : [];
-    state.relationshipMemory = Array.isArray(state.relationshipMemory) ? state.relationshipMemory : [];
+    normalizeRelationships(state);
     normalizeNotifications(state);
     normalizeTransferMarket(state);
     state.calendar ??= cloneDefault().calendar;
