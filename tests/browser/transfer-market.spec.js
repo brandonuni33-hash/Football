@@ -58,6 +58,34 @@ test('le registre relie un seul pipeline mercato canonique au TransferSystem', a
   });
 });
 
+test('ouvrir Mercato sans offre ne fabrique jamais une fausse offre sans club', async ({ page }) => {
+  await boot(page);
+
+  const result = await page.evaluate(async () => {
+    const { TransferView } = await import('/ui/views/transferView.js');
+    const view = new TransferView({ ui: {}, gateway: {} });
+    const state = {
+      player: { age: 22, overall: 72, club: 'Test FC' },
+      pendingTransferOffer: null,
+      transferInterests: [],
+      transferMarket: { activity: [] }
+    };
+    const emptyHtml = view.render(state);
+    state.pendingTransferOffer = {};
+    const malformedHtml = view.render(state);
+    state.pendingTransferOffer = { club: 'FC Exemple', salaireHebdo: 2500, montant: 500000 };
+    const realHtml = view.render(state);
+    return { emptyHtml, malformedHtml, realHtml };
+  });
+
+  expect(result.emptyHtml).toContain('Aucune offre officielle');
+  expect(result.emptyHtml).not.toContain('Nouveau club');
+  expect(result.malformedHtml).toContain('Aucune offre officielle');
+  expect(result.malformedHtml).not.toContain('Nouveau club');
+  expect(result.realHtml).toContain('FC Exemple');
+  expect(result.realHtml).toContain('Accepter');
+});
+
 test('16 ans : un club observe puis crée un intérêt avant toute offre officielle', async ({ page }) => {
   await boot(page);
   await createCareer(page, 16);
