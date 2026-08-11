@@ -63,6 +63,7 @@ export class SeasonSystem {
         };
         const potentialReport = this.potentialSystem?.finalizeSeason?.(player, season);
         this.potentialSystem?.advanceAge?.(player);
+        this.careerSystem?.refreshStage?.(player);
         if (Number(player.age) >= 18 && player.isYouthPlayer) {
             player.isYouthPlayer = false;
             const destination = chooseFirstProDestination(this.worldSystem, player);
@@ -73,7 +74,6 @@ export class SeasonSystem {
             player.squadStatus = player.contract.role;
             player.firstProSeason = Number(currentYear) + 1;
         }
-        this.careerSystem?.refreshStage?.(player);
         this.playerLogic?.ensure?.(player);
         player.canRetire = player.age >= 34;
         player.careerEnded = player.age >= 42;
