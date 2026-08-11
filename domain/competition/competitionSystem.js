@@ -28,12 +28,18 @@ const CompetitionSystem = {
         evaluations.forEach(({ match, importance }) => { match.importanceScore = importance.score; match.importanceLevel = importance.level; match.importanceReasons = importance.reasons; });
         const playableBudget = player.age < 18 ? 1 : 2;
         const ranked = [...evaluations].sort((a, b) => b.importance.score - a.importance.score);
-        const selected = ranked.filter(item => item.importance.score >= 60).slice(0, playableBudget);
-        const selectedIds = new Set(selected.map(item => item.match.id));
-        const playableEvaluations = evaluations.map(item => ({ ...item, playable: selectedIds.has(item.match.id) || MatchImportanceSystem.evaluate(state, item.match, { playableMatchesInWindow: selected.length }).playable }));
+        const guaranteed = ranked.filter(item => item.importance.score >= 60).slice(0, playableBudget);
+        const selectedIds = new Set(guaranteed.map(item => item.match.id));
+        let remaining = Math.max(0, playableBudget - selectedIds.size);
+        for (const item of ranked) {
+            if (!remaining || selectedIds.has(item.match.id)) continue;
+            const chance = item.importance.level === 'important' ? .38 : item.importance.level === 'normal' ? .08 : .02;
+            if (Math.random() < chance) { selectedIds.add(item.match.id); remaining -= 1; }
+        }
+        const playableEvaluations = evaluations.map(item => ({ ...item, playable: selectedIds.has(item.match.id) }));
         const hasMajor = evaluations.some(item => item.importance.level === 'major' || item.importance.level === 'exceptional');
         const hasImportant = evaluations.some(item => item.importance.level === 'important');
-        return { type: player.age < 18 ? 'youth' : 'senior', category: schedule?.category || (player.age < 18 ? this.getYouthCategory(player.age) : 'Senior'), month, monthLabel: this.getMonthLabel(month), season: seasonYear, seasonLabel: seasonLabel(seasonYear), matches: base.length, scheduledMatches: playableEvaluations.map(item => ({ ...item.match, playable: item.playable, importance: item.importance.level, importanceScore: item.importance.score, importanceReasons: item.importance.reasons })), competition: base[0]?.competitionName || null, activities: base.length ? [player.age < 18 ? 'match_jeunes' : 'match', 'entrainement'] : ['entrainement', 'evenement'], importance: hasMajor ? 'major' : hasImportant ? 'important' : base.length >= 4 ? 'normal' : 'low', mode: playableEvaluations.some(item => item.playable) ? 'mixed' : base.length ? 'simulation' : 'career_activity' };
+        return { type: player.age < 18 ? 'youth' : 'senior', category: schedule?.category || (player.age < 18 ? this.getYouthCategory(player.age) : 'Senior'), month, monthLabel: this.getMonthLabel(month), season: seasonYear, seasonLabel: seasonLabel(seasonYear), matches: base.length, scheduledMatches: playableEvaluations.map(item => ({ ...item.match, playable: item.playable, importance: item.importance.level, importanceScore: item.importance.score, importanceReasons: item.importance.reasons })), competition: base[0]?.competitionName || null, activities: base.length ? [player.age < 18 ? 'match_jeunes' : 'match', 'entrainement'] : ['entrainement', 'evenement'], importance: hasMajor ? 'major' : hasImportant ? 'important' : base.length >= 4 ? 'normal' : 'low', mode: playableEvaluations.some(item => item.playable) ? 'mixed' : 'simulation' };
     },
 
     recordEuropeanResults(state, scheduledMatches, matchResults) {
