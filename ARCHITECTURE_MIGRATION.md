@@ -30,14 +30,15 @@ state/ + core/
 - `domain/player/potentialSystem.js` : moteur canonique du potentiel vivant.
 - `domain/career/careerSystem.js` : trajectoire, formation, contrats, rôles et reconversion de poste.
 - `domain/calendar/calendarSystem.js` : orchestration du calendrier.
+- `domain/competition/competitionSystem.js` : point d'entrée canonique du système de compétitions pendant la migration interne.
+- `domain/competition/cupSystem.js` : coupes nationales.
+- `domain/competition/internationalSystem.js` : équipes nationales, Euro et Coupe du Monde.
 - `domain/match/simulatedMatchSystem.js` : simulation de matchs non interactifs.
 - `domain/match/interactiveMatchSystem.js` : propriétaire canonique du cycle interactif d'un match.
 - `domain/match/interactiveMatchController.js` : session, décisions et résolution du résultat interactif.
 - `domain/match/blockMatchSimulator.js` : simulation des matchs d'un bloc, statistiques et progression liée au bloc.
 - `domain/match/matchHelpers.js` : fonctions pures partagées par les moteurs de match.
 - `domain/notification/notificationSystem.js` : notifications.
-- `domain/competition/cupSystem.js` : coupes nationales.
-- `domain/competition/internationalSystem.js` : équipes nationales, Euro et Coupe du Monde.
 - `ui/creationEnhancements.js` : présentation enrichie de la création.
 - `ui/creationController.js` : orchestration de la création.
 - `ui/viewCoordinator.js` : rendu canonique du dashboard et des applications UI.
@@ -51,11 +52,13 @@ state/ + core/
 
 ### Priorité 1 — modules historiques racine
 
-`competitionSystem.js`, `worldSystem.js`, `coachSystem.js`, `events.js`, `media.js`, `economy.js`, `entrainement.js`, `transferMarket.js`, `potentialSystem.js`, `consequenceSystem.js`, `matchChoices.js` restent des dépendances historiques pendant leur migration.
+`competitionSystem.js`, `worldSystem.js`, `coachSystem.js`, `events.js`, `media.js`, `economy.js`, `entrainement.js`, `transferMarket.js`, `consequenceSystem.js` et `matchChoices.js` restent des dépendances historiques pendant leur migration.
 
 `careerSystem.js` n'est plus une dépendance racine : son implémentation vit dans `domain/career/careerSystem.js`.
 
-Le moteur canonique du potentiel vit désormais dans `domain/player/potentialSystem.js`. Le fichier racine `potentialSystem.js` est conservé temporairement tant que `domain/match/blockMatchSimulator.js` et `domain/match/interactiveMatchController.js` n'ont pas encore migré leur import.
+`potentialSystem.js` racine a été supprimé : le moteur canonique vit dans `domain/player/potentialSystem.js` et ses consommateurs utilisent désormais ce propriétaire.
+
+`competitionSystem.js` racine est désormais uniquement une implémentation historique temporaire derrière `domain/competition/competitionSystem.js`. Les consommateurs applicatifs et de match utilisent le point d'entrée du domaine. La prochaine sous-étape consiste à découper son implémentation en catalogue, construction de calendrier et façade métier, puis supprimer définitivement la version racine.
 
 ### Priorité 2 — façades restantes
 
@@ -81,7 +84,9 @@ Le moteur canonique du potentiel vit désormais dans `domain/player/potentialSys
 - suppression de `internationalIntegration.js` ;
 - déplacement de `ui-enhancement.css` vers `ui/styles/enhancement.css` ;
 - déplacement de `careerSystem.js` vers `domain/career/careerSystem.js` ;
-- déplacement du moteur canonique de potentiel vers `domain/player/potentialSystem.js` et raccordement de ses premiers consommateurs.
+- déplacement du moteur canonique de potentiel vers `domain/player/potentialSystem.js` et suppression du fichier racine ;
+- création du point d'entrée canonique `domain/competition/competitionSystem.js` ;
+- migration de `application/systemRegistry.js` et `domain/match/blockMatchSimulator.js` vers ce point d'entrée.
 
 ## Règles permanentes
 
