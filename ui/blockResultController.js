@@ -8,6 +8,28 @@ const escapeHtml = value => String(value ?? '')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;');
 
+function matchRecapHtml(matches = []) {
+    if (!Array.isArray(matches) || !matches.length) return '';
+    return `
+        <div data-narrative-match-recap style="display:grid;gap:9px;margin:16px 0 18px;">
+            ${matches.map(match => `
+                <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:11px 12px;border:1px solid rgba(255,255,255,.12);border-radius:12px;${match.isImpactMatch ? 'background:rgba(255,255,255,.08);' : ''}">
+                    <div style="min-width:0;">
+                        <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;">
+                            <strong>${escapeHtml(match.opponent || 'Adversaire')}</strong>
+                            ${match.isImpactMatch ? '<span style="font-size:.72rem;font-weight:800;letter-spacing:.04em;">⭐ TON MATCH</span>' : ''}
+                            ${match.interactive ? '<span style="font-size:.7rem;opacity:.65;">joué</span>' : '<span style="font-size:.7rem;opacity:.65;">simulé</span>'}
+                        </div>
+                        <div style="font-size:.8rem;opacity:.65;margin-top:2px;">${escapeHtml(match.competition || 'Match')} · ${escapeHtml(match.impactDetail || '')}</div>
+                    </div>
+                    <div style="text-align:right;white-space:nowrap;">
+                        <div style="font-size:1.05rem;font-weight:800;">${escapeHtml(match.score || '0-0')}</div>
+                        <div style="font-size:.72rem;opacity:.72;">${escapeHtml(match.impactLabel || '')}</div>
+                    </div>
+                </div>`).join('')}
+        </div>`;
+}
+
 export class BlockResultController {
     constructor(ui, modals) {
         this.ui = ui;
@@ -61,8 +83,9 @@ export class BlockResultController {
             <div class="event-modal-card" role="dialog" aria-modal="true" aria-label="${escapeHtml(scene.title || 'Fin de match')}">
                 <span class="event-modal-category">🏟️ APRÈS-MATCH · ${escapeHtml(String(scene.importance || 'normal').toUpperCase())}</span>
                 <h3 class="event-modal-title">${escapeHtml(scene.title || 'Le match vient de se terminer')}</h3>
-                <p class="event-modal-desc" style="opacity:.72;margin-bottom:18px;">${escapeHtml(scene.subtitle || '')}</p>
-                <div data-narrative-beats style="display:grid;gap:12px;min-height:150px;"></div>
+                <p class="event-modal-desc" style="opacity:.72;margin-bottom:4px;">${escapeHtml(scene.subtitle || '')}</p>
+                ${matchRecapHtml(scene.matches)}
+                <div data-narrative-beats style="display:grid;gap:12px;min-height:120px;"></div>
                 <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
                     <button class="btn-event-choice" data-narrative-skip type="button" style="width:auto;padding-inline:14px;">Passer</button>
                     <button class="btn-event-choice" data-narrative-continue type="button" style="width:auto;padding-inline:18px;display:none;">Continuer</button>
