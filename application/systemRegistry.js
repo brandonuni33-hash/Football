@@ -2,7 +2,7 @@
 // Composition root : toutes les dépendances des domaines sont assemblées ici.
 import { EconomyManager } from '../economy.js';
 import { SocialSystem } from '../social.js';
-import { MediaSystem } from '../media.js';
+import { MediaSystem } from '../domain/media/mediaSystem.js';
 import { TrainingManager } from '../entrainement.js';
 import { PlayerLogic } from '../player.js';
 import { StateManager, SCHEMA_VERSION } from '../state/stateManager.js';
