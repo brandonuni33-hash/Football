@@ -6,8 +6,8 @@ import { EVENTS } from '../../core/events.js';
 import { finalizeInteractiveBlock } from './interactiveBlockFinalizer.js';
 
 export class BlockSystem {
-    constructor({ trainingManager, matchBlockManager, worldSystem, socialSystem, mediaSystem, eventEngine, coachSystem, careerSystem, transferMarket, transferSystem = null, stateManager, familyLifeSystem = null, consequenceSystem = null, advanceCalendar } = {}) {
-        Object.assign(this, { trainingManager, matchBlockManager, worldSystem, socialSystem, mediaSystem, eventEngine, coachSystem, careerSystem, transferMarket, transferSystem, stateManager, familyLifeSystem, consequenceSystem, advanceCalendar });
+    constructor({ trainingManager, matchBlockManager, worldSystem, socialSystem, mediaSystem, eventEngine, coachSystem, careerSystem, transferMarket, transferSystem = null, stateManager, familyLifeSystem = null, consequenceSystem = null, narrativeEngine = null, advanceCalendar } = {}) {
+        Object.assign(this, { trainingManager, matchBlockManager, worldSystem, socialSystem, mediaSystem, eventEngine, coachSystem, careerSystem, transferMarket, transferSystem, stateManager, familyLifeSystem, consequenceSystem, narrativeEngine, advanceCalendar });
     }
 
     execute(state, selectedChoice = null) {
@@ -60,6 +60,10 @@ export class BlockSystem {
             delete state.activeMatchSession;
             delete state.matchInteractionPlan;
 
+            // La narration interprète uniquement des faits déjà résolus. Elle ne
+            // modifie ni le résultat du match, ni les stats, ni les conséquences.
+            const narrativeScene = this.narrativeEngine?.composeMatchEnd?.({ state, report }) || null;
+
             this.worldSystem.recordPlayerMatches(state, report.summary?.scheduledMatches || [], report.summary || {});
             this.socialSystem.updateSocialCycle(state);
             if (typeof this.mediaSystem.generatePostAfterBlock === 'function') this.mediaSystem.generatePostAfterBlock(state, report.summary);
@@ -77,7 +81,7 @@ export class BlockSystem {
             const familyBirths = this.familyLifeSystem?.evaluateBirths?.({ state, player, season }) || [];
             const calendar = this.advanceCalendar(state);
             this.stateManager.save(state);
-            const result = { report: { ...report, training: trainingReport }, revealedConsequences, calendar, event: state.pendingEvent, coachEvent: state.pendingCoachEvent, transferOffer: state.pendingTransferOffer, mediaDilemma: state.media?.recentDilemma || null, positionProposal: state.pendingPositionProposal, discoveredRole, familyBirths };
+            const result = { report: { ...report, training: trainingReport }, narrativeScene, revealedConsequences, calendar, event: state.pendingEvent, coachEvent: state.pendingCoachEvent, transferOffer: state.pendingTransferOffer, mediaDilemma: state.media?.recentDilemma || null, positionProposal: state.pendingPositionProposal, discoveredRole, familyBirths };
             EventBus.emit(EVENTS.GAME_BLOCK_COMPLETED, { state, playerId: player.id, result });
             return result;
         } catch (error) {
