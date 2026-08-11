@@ -3,6 +3,7 @@
 // Le rendu dashboard, les applications, la création et les modales vivent désormais dans ui/.
 
 import { installCoreStyles } from './ui/coreStyles.js';
+import { installNotificationStyles } from './ui/notificationStyles.js';
 import CreationController from './ui/creationController.js';
 import ModalController from './ui/modalController.js';
 import BlockResultController from './ui/blockResultController.js';
@@ -20,6 +21,7 @@ export class UserInterface {
         };
         this.randomYouthClubs = [];
         installCoreStyles();
+        installNotificationStyles();
         this.creationController = new CreationController(this);
         this.modalController = new ModalController(this);
         this.blockResultController = new BlockResultController(this, this.modalController);
