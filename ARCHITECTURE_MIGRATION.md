@@ -27,6 +27,7 @@ state/ + core/
 - `application/uiGateway.js` : contrat entre UI et application.
 - `state/stateManager.js` : propriétaire de la persistance/migration.
 - `domain/player/playerSystem.js` : modèle joueur canonique.
+- `domain/player/potentialSystem.js` : moteur canonique du potentiel vivant.
 - `domain/career/careerSystem.js` : trajectoire, formation, contrats, rôles et reconversion de poste.
 - `domain/calendar/calendarSystem.js` : orchestration du calendrier.
 - `domain/match/simulatedMatchSystem.js` : simulation de matchs non interactifs.
@@ -50,13 +51,11 @@ state/ + core/
 
 ### Priorité 1 — modules historiques racine
 
-Les systèmes historiques suivants restent des dépendances de compatibilité :
+`competitionSystem.js`, `worldSystem.js`, `coachSystem.js`, `events.js`, `media.js`, `economy.js`, `entrainement.js`, `transferMarket.js`, `potentialSystem.js`, `consequenceSystem.js`, `matchChoices.js` restent des dépendances historiques pendant leur migration.
 
-`competitionSystem.js`, `worldSystem.js`, `coachSystem.js`, `events.js`, `media.js`, `economy.js`, `entrainement.js`, `transferMarket.js`, `potentialSystem.js`, `consequenceSystem.js`, `matchChoices.js`.
+`careerSystem.js` n'est plus une dépendance racine : son implémentation vit dans `domain/career/careerSystem.js`.
 
-`careerSystem.js` n'est plus une dépendance racine : son implémentation vit maintenant dans `domain/career/careerSystem.js`.
-
-Règle : aucune nouvelle mécanique ne doit être ajoutée directement dans les fichiers racine lorsqu'un propriétaire de domaine existe.
+Le moteur canonique du potentiel vit désormais dans `domain/player/potentialSystem.js`. Le fichier racine `potentialSystem.js` est conservé temporairement tant que `domain/match/blockMatchSimulator.js` et `domain/match/interactiveMatchController.js` n'ont pas encore migré leur import.
 
 ### Priorité 2 — façades restantes
 
@@ -73,19 +72,16 @@ Règle : aucune nouvelle mécanique ne doit être ajoutée directement dans les 
 - suppression du doublon `application/notificationSystem.js` ;
 - découpage réel de `matchBlock.js` ;
 - regroupement de la création dans `ui/creationEnhancements.js` + `ui/creationController.js` ;
-- suppression de `creation-ui-polish.js`, `ui-creation-constants-bridge.js` et `ui-creation-ux-v2.js` ;
-- suppression de `ui-gameplay-hotfix.js` ;
-- suppression de `ui-interactive-match.js` ;
-- suppression de `ui-successor-transition.js` ;
-- suppression de `ui-live-polish.js` et de son `MutationObserver` ;
+- suppression des anciennes couches `creation-ui-polish.js`, `ui-creation-constants-bridge.js`, `ui-creation-ux-v2.js`, `ui-gameplay-hotfix.js`, `ui-interactive-match.js`, `ui-successor-transition.js` et `ui-live-polish.js` ;
 - réduction de `ui.js` à une façade ;
 - extraction des vues `messages`, `bank`, `stats` et `settings` ;
-- absorption de l'ancienne implémentation `cupSystemV2.js` dans `cupSystem.js` ;
+- absorption de `cupSystemV2.js` dans `cupSystem.js` ;
 - exposition de `MatchChoiceManager` depuis le registry canonique ;
 - déplacement du système international dans `domain/competition/internationalSystem.js` ;
-- suppression de `internationalIntegration.js`, ancien monkey-patch du GameEngine ;
+- suppression de `internationalIntegration.js` ;
 - déplacement de `ui-enhancement.css` vers `ui/styles/enhancement.css` ;
-- déplacement de `careerSystem.js` vers `domain/career/careerSystem.js` et mise à jour de ses branchements.
+- déplacement de `careerSystem.js` vers `domain/career/careerSystem.js` ;
+- déplacement du moteur canonique de potentiel vers `domain/player/potentialSystem.js` et raccordement de ses premiers consommateurs.
 
 ## Règles permanentes
 
