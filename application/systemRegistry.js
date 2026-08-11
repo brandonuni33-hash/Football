@@ -1,6 +1,6 @@
 // application/systemRegistry.js
 // Composition root : toutes les dépendances des domaines sont assemblées ici.
-import { EconomyManager } from '../economy.js';
+import { EconomyManager } from '../domain/economy/economySystem.js';
 import { SocialSystem } from '../social.js';
 import { MediaSystem } from '../domain/media/mediaSystem.js';
 import { TrainingManager } from '../entrainement.js';
@@ -8,7 +8,7 @@ import { PlayerLogic } from '../player.js';
 import { StateManager, SCHEMA_VERSION } from '../state/stateManager.js';
 import { EventEngine } from '../domain/events/eventSystem.js';
 import { CoachSystem } from '../domain/coach/coachSystem.js';
-import { TransferMarket } from '../transferMarket.js';
+import { TransferMarket } from '../domain/transfer/transferMarket.js';
 import { PotentialSystem } from '../domain/player/potentialSystem.js';
 import { ConsequenceSystem } from '../domain/decision/consequenceSystem.js';
 import { CareerSystem } from '../domain/career/careerSystem.js';
