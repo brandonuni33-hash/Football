@@ -1,10 +1,10 @@
 // domain/match/simulatedMatchSystem.js
 // Simulation canonique : aucun calcul legacy de note n'est exécuté en parallèle.
 import { evaluateMatch } from './matchPerformanceEngine.js';
-import { PotentialSystem } from '../../potentialSystem.js';
-import { PlayerLogic } from '../../player.js';
-import { CompetitionSystem } from '../../competitionSystem.js';
-import { EconomyManager } from '../../economy.js';
+import { PotentialSystem } from '../player/potentialSystem.js';
+import { applyProgression } from '../player/playerSystem.js';
+import CompetitionSystem from '../competition/competitionSystem.js';
+import EconomyManager from '../economy/economySystem.js';
 
 const n=v=>Number.isFinite(Number(v))?Number(v):0;
 const clamp=(v,min,max)=>Math.min(max,Math.max(min,Number(v)||0));
@@ -25,7 +25,7 @@ export class SimulatedMatchSystem{
    results.push(row);
    const s=player.stats||(player.stats={});const previous=n(s.matchesPlayed);s.matchesPlayed=previous+1;s.goals=n(s.goals)+row.goals;s.assists=n(s.assists)+row.assists;s.tackles=n(s.tackles)+row.tackles;s.successfulPasses=n(s.successfulPasses)+row.successfulPasses;if(row.cleanSheet)s.cleanSheets=n(s.cleanSheets)+1;s.averageRating=Number((((n(s.averageRating)*previous)+row.rating)/(previous+1)).toFixed(1));
    PotentialSystem.recordMatch(player,{rating:row.rating,goals:row.goals,assists:row.assists,tackles:row.tackles},1);
-   PlayerLogic.applyProgression(player,{rating:row.rating,goals:row.goals,assists:row.assists,type:'match'});
+   applyProgression(player,{rating:row.rating,goals:row.goals,assists:row.assists,type:'match'});
   }
   const matches=results.length;const rating=matches?Number((results.reduce((s,r)=>s+r.rating,0)/matches).toFixed(1)):0;const summary={rating,goals:results.reduce((s,r)=>s+n(r.goals),0),assists:results.reduce((s,r)=>s+n(r.assists),0),passes:results.reduce((s,r)=>s+n(r.successfulPasses),0),tackles:results.reduce((s,r)=>s+n(r.tackles),0),cleanSheets:results.reduce((s,r)=>s+(r.cleanSheet?1:0),0),yellowCards:0,matchesPlayed:matches,injured:false};
   if(matches){player.morale=clamp(n(player.morale??50)+(rating>=7?3:rating<5.8?-2:0),0,100);player.fitness=clamp(n(player.fitness??80)-matches*2,0,100);}else player.fitness=clamp(n(player.fitness??80)+20,0,100);
