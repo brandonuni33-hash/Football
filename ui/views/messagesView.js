@@ -3,14 +3,11 @@
 
 export class MessagesView {
     render(state) {
-        const social = state?.social || { romance: { unlocked: false }, relationships: [] };
+        const social = state?.social || { relationships: [] };
         const relationships = Array.isArray(social.relationships) ? social.relationships : [];
-        const partner = social.romance?.unlocked ? (social.romance.partnerName || 'En couple') : 'Célibataire';
         return `
             <div class="app-pane" data-view="messages">
                 <h3 class="pane-title">💬 Messages & Vestiaire</h3>
-                <p><strong>Statut personnel :</strong> ${partner}</p>
-                <hr style="border-color:var(--border-glass);margin:12px 0;">
                 <h4 style="margin:0 0 8px;">Relations d'équipe :</h4>
                 <div style="display:flex;flex-direction:column;gap:8px;">
                     ${relationships.length
