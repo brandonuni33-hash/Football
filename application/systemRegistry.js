@@ -37,6 +37,7 @@ import NetworkEvolutionSystem from '../domain/relationship/networkEvolutionSyste
 import NotificationSystem from '../domain/notification/notificationSystem.js';
 import AwardsSystem from '../domain/awards/awardsSystem.js';
 import NarrativeEngine from '../domain/narrative/narrativeEngine.js';
+import NarrativeOrchestrator from './narrativeOrchestrator.js';
 import CareerApplication from './careerApplication.js';
 import SimulatedMatchSystem from '../domain/match/simulatedMatchSystem.js';
 import InteractiveMatchSystem from '../domain/match/interactiveMatchSystem.js';
@@ -53,6 +54,7 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
     const trainingSystem = new TrainingSystem(TrainingManager);
     const simulatedMatchSystem = new SimulatedMatchSystem();
     const narrativeEngine = new NarrativeEngine();
+    const narrativeOrchestrator = new NarrativeOrchestrator({ engine: narrativeEngine });
     const networkEvolutionSystem = new NetworkEvolutionSystem();
     const familySystem = new FamilySystem();
     const familyLifeSystem = new FamilyLifeSystem({ familySystem });
@@ -81,7 +83,7 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
         opportunityEngine
     });
 
-    const blockSystem = new BlockSystem({ trainingManager: TrainingManager, matchBlockManager: simulatedMatchSystem, worldSystem, socialSystem, mediaSystem, eventEngine: EventEngine, coachSystem: CoachSystem, careerSystem: CareerSystem, transferSystem, stateManager: StateManager, familyLifeSystem, consequenceSystem: ConsequenceSystem, narrativeEngine, advanceCalendar: state => calendarSystem.advance(state) });
+    const blockSystem = new BlockSystem({ trainingManager: TrainingManager, matchBlockManager: simulatedMatchSystem, worldSystem, socialSystem, mediaSystem, eventEngine: EventEngine, coachSystem: CoachSystem, careerSystem: CareerSystem, transferSystem, stateManager: StateManager, familyLifeSystem, consequenceSystem: ConsequenceSystem, narrativeEngine: narrativeOrchestrator, advanceCalendar: state => calendarSystem.advance(state) });
     const interactionSystem = new InteractionSystem({ eventEngine: EventEngine, coachSystem: CoachSystem, mediaSystem, playerLogic: PlayerLogic, careerSystem: CareerSystem, stateManager: StateManager });
     const careerLifecycleSystem = new CareerLifecycleSystem({ stateManager: StateManager, playerLogic: PlayerLogic });
     const careerApplication = new CareerApplication({ stateManager: StateManager, playerLogic: PlayerLogic, economyManager: EconomyManager, socialSystem, mediaSystem, consequenceSystem: ConsequenceSystem, potentialSystem: PotentialSystem, careerSystem: CareerSystem, competitionSystem, worldSystem, cupSystem, schemaVersion: SCHEMA_VERSION });
@@ -96,6 +98,7 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
         matchImportanceSystem: MatchImportanceSystem,
         squadSelectionSystem: SquadSelectionSystem,
         narrativeEngine,
+        narrativeOrchestrator,
         competitionSystem,
         cupSystem,
         relationshipSystem,

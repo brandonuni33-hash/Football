@@ -1,9 +1,11 @@
 // state/stateManager.js
 // Persistence centrale et migration vers le modèle joueur canonique.
 import { ensure as ensurePlayer } from '../domain/player/playerSystem.js';
+import { createNarrativeState, normalizeNarrativeState } from './narrativeState.js';
+import { STATE_SCHEMA_VERSION } from './stateSchema.js';
 
 const STORAGE_KEY = 'street_to_pro_save_v3';
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = STATE_SCHEMA_VERSION;
 
 const DEFAULT_STATE = {
     schemaVersion: SCHEMA_VERSION,
@@ -13,6 +15,7 @@ const DEFAULT_STATE = {
     media: null,
     career: { balance: 0, seasonHistory: [], totalCareerIncome: 0 },
     careerMemory: [],
+    narrativeState: createNarrativeState(),
     relationships: {},
     relationshipNetwork: [],
     relationshipMemory: [],
@@ -129,6 +132,7 @@ function migrate(raw) {
     state.career ??= cloneDefault().career;
     if (!Array.isArray(state.career.seasonHistory)) state.career.seasonHistory = [];
     state.careerMemory = Array.isArray(state.careerMemory) ? state.careerMemory : [];
+    state.narrativeState = normalizeNarrativeState(state.narrativeState);
     normalizeRelationships(state);
     normalizeNotifications(state);
     normalizeTransferMarket(state);

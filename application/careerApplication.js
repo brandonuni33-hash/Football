@@ -1,6 +1,8 @@
 // application/careerApplication.js
 // Orchestration applicative de création et de restauration d'une carrière.
 
+import { createNarrativeState } from '../state/narrativeState.js';
+
 const LEGACY_ATTRIBUTES = ['vitesse', 'tir', 'passe', 'dribble', 'defense', 'physique', 'mental'];
 
 function isCanonicalPlayer(player) {
@@ -101,6 +103,8 @@ export class CareerApplication {
             social,
             media: this.mediaSystem.initMediaData(),
             career: { balance: contract.signingBonus || 0, seasonHistory: [], totalCareerIncome: contract.signingBonus || 0 },
+            careerMemory: [],
+            narrativeState: createNarrativeState(),
             contract: { weeklySalary: player.salary, signingBonus: contract.signingBonus || 0, durationYears: contract.durationYears || 2 },
             calendar: {
                 currentMonth: 8,
