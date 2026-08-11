@@ -1,0 +1,234 @@
+/* Street to Pro — application Carrière */
+
+/* Le premier raccourci du Dashboard est l'application Carrière canonique. */
+.immersive-dashboard .immersive-app-grid .immersive-app:first-child .app-label {
+    font-size: 0;
+}
+
+.immersive-dashboard .immersive-app-grid .immersive-app:first-child .app-label::after {
+    content: 'Carrière';
+    font-size: .55rem;
+    font-weight: 750;
+}
+
+.career-app-pane {
+    min-height: 100%;
+    padding: 18px 14px 28px;
+    color: #dce8f4;
+    background:
+        radial-gradient(circle at 85% 0%, rgba(62, 231, 228, .07), transparent 28%),
+        linear-gradient(180deg, #080e16 0%, #05080d 100%);
+}
+
+.career-app-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.career-app-kicker {
+    display: block;
+    margin-bottom: 3px;
+    color: #6d8095;
+    font-size: .55rem;
+    font-weight: 900;
+    letter-spacing: .14em;
+}
+
+.career-app-heading .pane-title {
+    margin: 0;
+    color: #f8fbff;
+    font-size: 1.25rem;
+}
+
+.career-app-unread {
+    min-width: 28px;
+    height: 28px;
+    padding: 0 7px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: #d94e60;
+    font-size: .65rem;
+    font-weight: 900;
+}
+
+.career-app-pane .career-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.career-app-pane .career-summary > div {
+    min-width: 0;
+    padding: 11px 8px;
+    border: 1px solid rgba(112, 198, 214, .12);
+    border-radius: 14px;
+    background: linear-gradient(145deg, rgba(16, 27, 40, .92), rgba(7, 12, 19, .94));
+    text-align: center;
+}
+
+.career-app-pane .career-summary small {
+    display: block;
+    color: #74869a;
+    font-size: .52rem;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.career-app-pane .career-summary strong {
+    display: block;
+    margin-top: 5px;
+    color: #f7fbff;
+    font-size: .72rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.career-notification-inbox {
+    border: 1px solid rgba(112, 198, 214, .13);
+    border-radius: 18px;
+    overflow: hidden;
+    background: rgba(7, 12, 19, .82);
+}
+
+.career-inbox-title {
+    min-height: 54px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, .055);
+}
+
+.career-inbox-title > div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.career-inbox-title span {
+    color: #5f7288;
+    font-size: .48rem;
+    font-weight: 900;
+    letter-spacing: .13em;
+}
+
+.career-inbox-title strong {
+    color: #eff8ff;
+    font-size: .78rem;
+}
+
+.career-inbox-title small {
+    color: #73d9d5;
+    font-size: .53rem;
+    font-weight: 800;
+}
+
+.career-inbox-list {
+    display: flex;
+    flex-direction: column;
+    max-height: min(56vh, 440px);
+    overflow-y: auto;
+}
+
+.career-inbox-item {
+    width: 100%;
+    min-height: 65px;
+    padding: 10px 11px;
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    border: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, .045);
+    color: inherit;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+}
+
+.career-inbox-item:last-child { border-bottom: 0; }
+.career-inbox-item.is-unread { background: rgba(53, 154, 169, .055); }
+.career-inbox-item:active { background: rgba(255, 255, 255, .045); }
+
+.career-inbox-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #76d9d5;
+    background: rgba(77, 194, 205, .08);
+    border: 1px solid rgba(77, 194, 205, .10);
+    font-weight: 900;
+}
+
+.career-inbox-copy {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.career-inbox-copy strong {
+    color: #edf6fd;
+    font-size: .68rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.career-inbox-copy span {
+    color: #8294a8;
+    font-size: .56rem;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.career-inbox-new {
+    padding: 4px 6px;
+    border-radius: 7px;
+    color: #86e1dd;
+    background: rgba(62, 231, 228, .08);
+    font-size: .43rem;
+    font-weight: 900;
+    letter-spacing: .05em;
+}
+
+.career-inbox-state {
+    color: #64768b;
+    font-size: 1rem;
+}
+
+.career-inbox-item.is-read { opacity: .68; }
+
+.career-inbox-empty {
+    min-height: 145px;
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: #6e8094;
+    text-align: center;
+}
+
+.career-inbox-empty > span { font-size: 1.5rem; color: #5fc9c6; }
+.career-inbox-empty strong { color: #d9e5ef; font-size: .7rem; }
+.career-inbox-empty small { max-width: 240px; font-size: .55rem; line-height: 1.4; }
+
+.career-retire-action { margin-top: 18px; width: 100%; }
