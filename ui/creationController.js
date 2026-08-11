@@ -12,6 +12,18 @@ const coachVisions = COACH_VISIONS?.length ? COACH_VISIONS : [{ title: 'Équilib
 const coachNames = COACH_NAMES?.length ? COACH_NAMES : ['Thomas Tuchel', 'Pep Guardiola'];
 const escape = value => String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 
+function weightedPick(pool, weightOf) {
+    if (!pool.length) return null;
+    const weights = pool.map(item => Math.max(.01, Number(weightOf(item)) || .01));
+    const total = weights.reduce((sum, value) => sum + value, 0);
+    let roll = Math.random() * total;
+    for (let index = 0; index < pool.length; index += 1) {
+        roll -= weights[index];
+        if (roll <= 0) return pool[index];
+    }
+    return pool.at(-1) || null;
+}
+
 export class CreationController {
     constructor(ui) { this.ui = ui; }
     render() {
@@ -24,13 +36,64 @@ export class CreationController {
             case 2: { const selected = Object.values(origins).find(item => item?.id === data.origin); return `<h2>Étape 2 : Origine</h2><p class="subtitle">Comment avez-vous façonné votre jeu ?</p><div class="grid-origins-compact">${Object.values(origins).map(origin => origin ? `<div class="origin-card-compact ${data.origin === origin.id ? 'selected' : ''}" data-origin="${escape(origin.id)}"><div class="origin-icon-small">${this.originEmoji(origin.trait)}</div><div class="origin-info-small"><h3>${escape(origin.name)}</h3><span class="trait-tag">${escape(origin.trait)}</span></div></div>` : '').join('')}</div><div class="origin-description-box">${selected ? `<p>📖 ${escape(selected.desc || '')}</p>` : '<p class="placeholder-text">👉 Clique sur une origine pour découvrir son histoire.</p>'}</div>`; }
             case 3: { const countries = data.continent && continents[data.continent] ? (Array.isArray(continents[data.continent]) ? continents[data.continent] : Object.values(continents[data.continent])) : []; return `<h2>Étape 3 : Région & Pays</h2><div class="grid-continents">${Object.keys(continents).map(name => `<button type="button" class="chip-continent ${data.continent === name ? 'selected' : ''}" data-continent="${escape(name)}">${escape(name)}</button>`).join('')}</div>${countries.length ? `<h3>Pays :</h3><div class="grid-countries">${countries.map(country => `<button type="button" class="chip-country ${data.country === country?.name ? 'selected' : ''}" data-country="${escape(country?.name || '')}">${country?.flag || ''} ${escape(country?.name || '')}</button>`).join('')}</div>` : ''}`; }
             case 4: return `<h2>Étape 4 : Club de Cœur</h2><div class="form-group"><label for="heart-club-select">Club de cœur :</label><select id="heart-club-select"><option value="">-- Choisir un club --</option>${Object.entries(heartClubs).map(([league, clubs]) => `<optgroup label="${escape(league)}">${(Array.isArray(clubs) ? clubs : Object.values(clubs || {})).map(club => `<option value="${escape(club?.name || '')}" ${data.heartClub === club?.name ? 'selected' : ''}>${escape(club?.name || '')}</option>`).join('')}</optgroup>`).join('')}</select></div>`;
-            case 5: this.prepareYouthOffers(); return `<h2>Étape 5 : Offres de Contrat Jeune</h2><p class="subtitle">Analysez les propositions et choisissez votre point de chute :</p><div class="grid-youth-clubs">${this.ui.randomYouthClubs.map(club => `<div class="card-select club-card ${data.youthClub?.name === club?.name ? 'selected' : ''}" data-club-name="${escape(club?.name || '')}"><div class="club-header-info"><h3>${escape(club?.name || '')}</h3><span class="league-tag">🏆 ${escape(club?.league || '')} (${escape(club?.country || '')})</span></div><div class="contract-details"><p><strong>👨‍💼 Entraîneur :</strong> ${escape(club?.coachName || '')} <em>(${escape(club?.coachVision || '')})</em></p><p><strong>💶 Salaire :</strong> ${club?.salary || 0} € / semaine</p><p><strong>⏱️ Temps de jeu :</strong> ${escape(club?.playtime || '')}</p><p><strong>🎯 Objectif :</strong> Atteindre ${club?.targetRating || 60} Général</p></div><div class="prestige-badge">Prestige : ${club?.prestige || 0}</div></div>`).join('')}</div>`;
+            case 5: this.prepareYouthOffers(); return `<h2>Étape 5 : Clubs pour commencer</h2><p class="subtitle">À 14 ans, les grands centres sont rares : choisis l'endroit où tu vas devoir faire tes preuves.</p><div class="grid-youth-clubs">${this.ui.randomYouthClubs.map(club => `<div class="card-select club-card ${data.youthClub?.name === club?.name ? 'selected' : ''}" data-club-name="${escape(club?.name || '')}"><div class="club-header-info"><h3>${escape(club?.name || '')}</h3><span class="league-tag">🏆 ${escape(club?.league || '')} (${escape(club?.country || '')})</span></div><div class="contract-details"><p><strong>👨‍💼 Entraîneur :</strong> ${escape(club?.coachName || '')} <em>(${escape(club?.coachVision || '')})</em></p><p><strong>💶 Indemnité :</strong> ${club?.salary || 0} € / semaine</p><p><strong>⏱️ Projection :</strong> ${escape(club?.playtime || '')}</p><p><strong>🎯 Objectif :</strong> Atteindre ${club?.targetRating || 60} Général</p></div><div class="prestige-badge">Prestige : ${club?.prestige || 0}</div></div>`).join('')}</div>`;
             default: return '<p>Chargement...</p>';
         }
     }
     positionCoords(id) { if (id === 'GK') return { top: '86%', left: '50%' }; if (['DC','CB'].includes(id)) return { top: '70%', left: '50%' }; if (['DD','RB'].includes(id)) return { top: '65%', left: '85%' }; if (['DG','LB'].includes(id)) return { top: '65%', left: '15%' }; if (['MDC','CDM'].includes(id)) return { top: '50%', left: '50%' }; if (['MC','CM'].includes(id)) return { top: '40%', left: '50%' }; if (['MO','CAM','MOC'].includes(id)) return { top: '28%', left: '50%' }; if (['AD','RW'].includes(id)) return { top: '22%', left: '80%' }; if (['AG','LW'].includes(id)) return { top: '22%', left: '20%' }; if (['BU','ST'].includes(id)) return { top: '12%', left: '50%' }; return { top: '50%', left: '50%' }; }
     originEmoji(trait = '') { const value = String(trait).toLowerCase(); if (value.includes('technique') || value.includes('dribble')) return '✨'; if (value.includes('physique') || value.includes('force')) return '💪'; if (value.includes('mental') || value.includes('leader')) return '🧠'; if (value.includes('vitesse') || value.includes('rapide')) return '🏃‍♂️'; return '⚡'; }
-    prepareYouthOffers() { if (this.ui.randomYouthClubs.length || !youthPool.length) return; const shuffled = [...youthPool].sort(() => Math.random() - 0.5); const count = Math.floor(Math.random() * 3) + 4; this.ui.randomYouthClubs = shuffled.slice(0, count).map(club => { const vision = coachVisions[Math.floor(Math.random() * coachVisions.length)]; return { ...club, coachName: coachNames[Math.floor(Math.random() * coachNames.length)], coachVision: vision?.title || 'Équilibré', salary: Math.round(100 + Math.random() * 200), playtime: ['Temps de jeu limité','Joueur de rotation','Espoir / Prêt potentiel','Titulaire en jeunes'][Math.floor(Math.random() * 4)], targetRating: Math.min(75, 55 + Math.round((club?.prestige || 50) / 4)) }; }); }
+
+    prepareYouthOffers() {
+        if (this.ui.randomYouthClubs.length || !youthPool.length) return;
+        const country = this.ui.selectedData?.country;
+        const domestic = youthPool.filter(club => club?.country === country);
+        const source = domestic.length >= 4 ? domestic : youthPool;
+        const modest = source.filter(club => Number(club?.prestige || 0) <= 60);
+        const good = source.filter(club => Number(club?.prestige || 0) > 60 && Number(club?.prestige || 0) < 76);
+        const elite = source.filter(club => Number(club?.prestige || 0) >= 76);
+        const count = 4 + (Math.random() < .45 ? 1 : 0);
+        const selected = [];
+
+        const take = pool => {
+            const candidates = pool.filter(club => !selected.includes(club));
+            const club = weightedPick(candidates, item => {
+                const prestige = Number(item?.prestige || 50);
+                const domesticBoost = item?.country === country ? 5 : .35;
+                return domesticBoost * Math.max(.5, (82 - prestige) / 10);
+            });
+            if (club) selected.push(club);
+        };
+
+        // Une offre d'un centre élite à 14 ans doit rester un événement exceptionnel.
+        if (elite.length && Math.random() < .04) take(elite);
+        while (selected.length < count) {
+            const roll = Math.random();
+            if (roll < .72 && modest.length) take(modest);
+            else if (roll < .97 && good.length) take(good);
+            else if (!selected.some(club => Number(club?.prestige || 0) >= 76) && elite.length && Math.random() < .04) take(elite);
+            else take(modest.length ? modest : good.length ? good : source);
+            if (selected.length >= source.length) break;
+        }
+
+        this.ui.randomYouthClubs = selected.map(club => {
+            const vision = coachVisions[Math.floor(Math.random() * coachVisions.length)];
+            const prestige = Number(club?.prestige || 50);
+            const projectionPool = prestige >= 76
+                ? ['Temps de jeu à gagner', 'Remplaçant au départ', 'Rotation en jeunes']
+                : prestige >= 61
+                    ? ['Rotation en jeunes', 'Concurrence ouverte', 'Titulaire si performant']
+                    : ['Titulaire en jeunes', 'Temps de jeu régulier', 'Concurrence ouverte'];
+            return {
+                ...club,
+                coachName: coachNames[Math.floor(Math.random() * coachNames.length)],
+                coachVision: vision?.title || 'Équilibré',
+                salary: Math.round(80 + prestige * 1.25 + Math.random() * 70),
+                playtime: projectionPool[Math.floor(Math.random() * projectionPool.length)],
+                targetRating: Math.min(75, 52 + Math.round(prestige / 4))
+            };
+        });
+    }
+
     bind() {
         const ui = this.ui, nextBtn = document.getElementById('next-btn'), prevBtn = document.getElementById('prev-btn'), startBtn = document.getElementById('start-btn');
         const refreshButtons = () => { if (nextBtn) nextBtn.disabled = !this.isValid(); if (startBtn) startBtn.disabled = !this.isValid(); };
@@ -38,8 +101,8 @@ export class CreationController {
         document.getElementById('lastname')?.addEventListener('input', event => { ui.selectedData.lastname = event.target.value.trim(); refreshButtons(); });
         document.querySelectorAll('.proclubs-node').forEach(button => button.addEventListener('click', () => { document.querySelectorAll('.proclubs-node').forEach(item => item.classList.remove('selected')); button.classList.add('selected'); ui.selectedData.position = button.dataset.pos; refreshButtons(); }));
         document.querySelectorAll('.origin-card-compact').forEach(card => card.addEventListener('click', () => { ui.selectedData.origin = card.dataset.origin; ui.render(); }));
-        document.querySelectorAll('.chip-continent').forEach(button => button.addEventListener('click', () => { ui.selectedData.continent = button.dataset.continent; ui.selectedData.country = null; ui.render(); }));
-        document.querySelectorAll('.chip-country').forEach(button => button.addEventListener('click', () => { ui.selectedData.country = button.dataset.country; refreshButtons(); }));
+        document.querySelectorAll('.chip-continent').forEach(button => button.addEventListener('click', () => { ui.selectedData.continent = button.dataset.continent; ui.selectedData.country = null; ui.selectedData.youthClub = null; ui.randomYouthClubs = []; ui.render(); }));
+        document.querySelectorAll('.chip-country').forEach(button => button.addEventListener('click', () => { ui.selectedData.country = button.dataset.country; ui.selectedData.youthClub = null; ui.randomYouthClubs = []; refreshButtons(); }));
         document.getElementById('heart-club-select')?.addEventListener('change', event => { ui.selectedData.heartClub = event.target.value; refreshButtons(); });
         document.querySelectorAll('.club-card').forEach(card => card.addEventListener('click', () => { document.querySelectorAll('.club-card').forEach(item => item.classList.remove('selected')); card.classList.add('selected'); const offer = ui.randomYouthClubs.find(item => item?.name === card.dataset.clubName); if (offer) { ui.selectedData.youthClub = offer; ui.selectedData.coachVision = offer.coachVision; ui.selectedData.coachName = offer.coachName; } refreshButtons(); }));
         nextBtn?.addEventListener('click', () => { if (ui.currentStep < 5) { ui.currentStep += 1; ui.render(); } });
