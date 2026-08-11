@@ -1,7 +1,7 @@
+// domain/gameplay/interactiveBlockFinalizer.js
 // Finalise un bloc après une séquence de matchs joués décision par décision.
-// Les résultats passent par le même moteur de performance que les matchs simulés.
 import { TrainingManager } from '../../entrainement.js';
-import { EconomyManager } from '../../economy.js';
+import { EconomyManager } from '../economy/economySystem.js';
 import { recalibrateMatchResult } from '../match/matchPerformanceEngine.js';
 
 const n = value => Number.isFinite(Number(value)) ? Number(value) : 0;
@@ -25,26 +25,5 @@ export function finalizeInteractiveBlock(state, results = [], trainingFocus = 'T
     const finance = EconomyManager.processBlockFinances(state, summary);
     player.morale = Math.max(0, Math.min(100, n(player.morale ?? 50) + (avgRating >= 7 ? 5 : avgRating < 5.5 && count ? -3 : 0)));
     player.fitness = Math.max(0, Math.min(100, n(player.fitness ?? 80) - count * 2));
-    return {
-        results: matches,
-        summary: {
-            ...summary,
-            matchResults: matches,
-            scheduledMatches: matches.map(r => ({
-                competitionName: r.competitionName,
-                opponent: r.opponent,
-                home: r.home,
-                phase: r.phase,
-                round: r.round,
-                competitionType: r.competitionType,
-                opponentStrength: r.opponentStrength,
-                importance: r.importance,
-                type: r.type
-            })),
-            training,
-            finance
-        }
-    };
+    return { results: matches, summary: { rating: avgRating, goals, assists, passes, tackles, cleanSheets, yellowCards, matchesPlayed: count, injured: Boolean(player.isInjured), training, finance } };
 }
-
-export default finalizeInteractiveBlock;
