@@ -1,7 +1,7 @@
 // domain/competition/cupSystem.js
 // Gestion des coupes nationales : tirages, tours, résultats et historique.
 
-import { WorldSystem } from '../../worldSystem.js';
+import { WorldSystem } from '../world/worldSystem.js';
 import { COUNTRIES, ROUND_PLAN } from './cupCatalog.js';
 
 const clamp = (v, min, max) => Math.min(max, Math.max(min, Number(v) || 0));
