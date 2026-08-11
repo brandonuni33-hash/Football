@@ -35,6 +35,7 @@ export class CareerView {
 
         const age = Number(player.age || 0);
         const canRetire = Boolean(player.canRetire) || age >= 34;
+        const squadStatus = player.squadStatus || (age < 18 ? 'En formation' : 'À déterminer');
         const notificationState = state?.notifications;
         const signals = (Array.isArray(notificationState) ? notificationState : (notificationState?.signals || []))
             .filter(note => !note?.archived && !isSocialNotification(note))
@@ -56,6 +57,10 @@ export class CareerView {
                     <div><small>Âge</small><strong>${age} ans</strong></div>
                     <div><small>Club</small><strong>${escapeHtml(player.club || 'Sans club')}</strong></div>
                     <div><small>Général</small><strong>${Number(player.overall || 0).toFixed(0)}</strong></div>
+                </div>
+                <div class="career-squad-status" style="margin:-4px 0 15px;padding:10px 12px;border:1px solid rgba(112,198,214,.12);border-radius:13px;background:rgba(255,255,255,.035);display:flex;justify-content:space-between;gap:12px;align-items:center;">
+                    <span style="font-size:.56rem;color:#74869a;font-weight:850;letter-spacing:.07em;text-transform:uppercase;">Statut dans l'effectif</span>
+                    <strong style="font-size:.7rem;color:#eaf6ff;">${escapeHtml(squadStatus)}</strong>
                 </div>
 
                 <section class="career-notification-inbox" aria-label="Actualités de carrière">
