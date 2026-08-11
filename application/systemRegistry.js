@@ -3,7 +3,7 @@
 import { EconomyManager } from '../domain/economy/economySystem.js';
 import { SocialSystem } from '../social.js';
 import { MediaSystem } from '../domain/media/mediaSystem.js';
-import { TrainingManager } from '../entrainement.js';
+import { TrainingManager } from '../domain/training/trainingManager.js';
 import { PlayerLogic } from '../player.js';
 import { StateManager, SCHEMA_VERSION } from '../state/stateManager.js';
 import { EventEngine } from '../domain/events/eventSystem.js';
