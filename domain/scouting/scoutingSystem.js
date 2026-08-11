@@ -1,12 +1,12 @@
 // domain/scouting/scoutingSystem.js
-// Scouting joueur en deux phases : formation (14-18) et carrière (18+).
+// Scouting joueur en deux phases : formation (14-17) et carrière (18+).
 // Le système ne connaît ni l'UI ni le GameEngine.
 
 import { EventBus } from '../../core/eventBus.js';
 import { EVENTS } from '../../core/events.js';
 
 const YOUTH_MAX_AGE = 18;
-const TOP_CLUB_TIER = 1;
+const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, Number(value) || 0));
 
 export class ScoutingSystem {
     constructor({ worldSystem } = {}) {
@@ -28,7 +28,10 @@ export class ScoutingSystem {
     }
 
     isTopClub(club) {
-        return Number(club?.tier ?? club?.level ?? 99) <= TOP_CLUB_TIER;
+        if (!club) return false;
+        const prestige = Number(club.prestige ?? club.reputation ?? 0);
+        const strength = Number(club.strength ?? club.overall ?? 0);
+        return club.isTopClub === true || prestige >= 5 || strength >= 85;
     }
 
     generateSeasonNeeds(state, clubs = []) {
@@ -37,7 +40,7 @@ export class ScoutingSystem {
         const profiles = ['technical', 'physical', 'defensive', 'creative', 'versatile', 'finisher', 'goalkeeper'];
         scouting.clubNeeds = {};
 
-        clubs.forEach((club) => {
+        clubs.forEach(club => {
             const seed = this.hash(`${season}:${club.id || club.name}`);
             const profile = profiles[seed % profiles.length];
             const urgency = 35 + (seed % 66);
@@ -58,29 +61,39 @@ export class ScoutingSystem {
         if (!player || !club) return null;
         const scouting = this.ensureState(state);
         const phase = this.getPhase(player);
+        const clubId = club.id || club.name;
+        const existing = scouting.observations.find(item => item.clubId === clubId && item.status === 'watching');
+        if (existing) return existing;
+
         const observation = {
             id: `obs_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
             playerId: player.id,
-            clubId: club.id || club.name,
+            clubId,
             scoutId: scout.id || null,
             phase,
             context,
             startedAt: Date.now(),
-            visibility: 'player-informed',
+            visibility: phase === 'youth' ? 'indirect' : 'visible',
             confidence: this.calculateConfidence(player, scout),
             status: 'watching'
         };
         scouting.observations.push(observation);
         EventBus.emit(EVENTS.SCOUTING_OBSERVATION_STARTED, {
-            state, playerId: player.id, clubId: observation.clubId,
-            scoutId: observation.scoutId, phase, observation
+            state,
+            playerId: player.id,
+            playerAge: Number(player.age),
+            clubId: observation.clubId,
+            scoutId: observation.scoutId,
+            phase,
+            visibility: observation.visibility,
+            observation
         });
         return observation;
     }
 
     completeObservation(state, observationId, { performance = null } = {}) {
         const scouting = this.ensureState(state);
-        const observation = scouting.observations.find((item) => item.id === observationId);
+        const observation = scouting.observations.find(item => item.id === observationId);
         if (!observation) return null;
         observation.status = 'completed';
         observation.completedAt = Date.now();
@@ -88,8 +101,12 @@ export class ScoutingSystem {
         observation.confidence = Math.min(100, observation.confidence + (performance ? 8 : 0));
 
         EventBus.emit(EVENTS.SCOUTING_OBSERVATION_COMPLETED, {
-            state, playerId: observation.playerId, clubId: observation.clubId,
-            phase: observation.phase, observation
+            state,
+            playerId: observation.playerId,
+            playerAge: Number(state?.player?.age),
+            clubId: observation.clubId,
+            phase: observation.phase,
+            observation
         });
         return observation;
     }
@@ -102,13 +119,12 @@ export class ScoutingSystem {
         const fit = this.profileFit(player, need?.profile);
         const ageFit = need?.agePreference === 'young' ? Math.max(0, 100 - Number(player.age) * 4) : 70;
         const base = (fit * 0.5) + (ageFit * 0.15) + (Number(scoutQuality) * 0.2) + (Number(player.overall || 50) * 0.15);
-        const score = Math.round(Math.max(0, Math.min(100, base + (Math.random() * 16 - 8))));
+        const score = Math.round(clamp(base + (Math.random() * 16 - 8)));
         if (score < 55) return null;
 
-        // Les top clubs ne sautent presque jamais directement sur un 14-17 ans.
-        const directOfferAllowed = phase === 'senior' || Number(player.age) >= 18;
+        const directOfferAllowed = phase === 'senior';
         const interest = {
-            id: `interest_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+            id: `scouting_interest_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
             playerId: player.id,
             clubId: club.id || club.name,
             phase,
@@ -120,8 +136,6 @@ export class ScoutingSystem {
 
         this.ensureState(state).interests.push(interest);
         EventBus.emit(EVENTS.SCOUTING_INTEREST_CREATED, { state, playerId: player.id, clubId: interest.clubId, phase, interest });
-
-        if (directOfferAllowed || !this.isTopClub(club)) return interest;
         return interest;
     }
 
@@ -129,10 +143,10 @@ export class ScoutingSystem {
         if (!player || !club) return false;
         const age = Number(player.age);
         if (age >= 18) return true;
-        if (!this.isTopClub(club)) return age >= 16;
-        // 14-17 ans : même avec un gros potentiel, un top club doit d'abord
-        // accumuler des observations. Les offres directes restent exceptionnelles.
-        return age >= 16 && Math.random() < 0.025;
+        if (age < 16) return false;
+        if (!this.isTopClub(club)) return true;
+        // Pour les clubs d'élite, une approche directe avant 18 ans reste exceptionnelle.
+        return Math.random() < 0.025;
     }
 
     createTrialOrContractInterest(state, club, interest) {
@@ -169,16 +183,24 @@ export class ScoutingSystem {
 
     profileFit(player, profile) {
         if (!profile) return 60;
-        const map = {
-            technical: player.technical ?? player.technique,
-            physical: player.physical,
-            defensive: player.defense ?? player.defensive,
-            creative: player.passing ?? player.creativity,
-            versatile: player.overall,
-            finisher: player.shooting,
-            goalkeeper: player.position === 'GK' ? player.overall : 30
+        const attributes = player?.attributes || {};
+        const value = (...keys) => {
+            for (const key of keys) {
+                const candidate = player?.[key] ?? attributes?.[key];
+                if (Number.isFinite(Number(candidate))) return Number(candidate);
+            }
+            return null;
         };
-        return Number(map[profile] ?? player.overall ?? 50);
+        const map = {
+            technical: value('technical', 'technique', 'controle', 'dribble', 'passe'),
+            physical: value('physical', 'physique', 'puissance', 'endurance'),
+            defensive: value('defense', 'defensive', 'placement'),
+            creative: value('passing', 'creativity', 'passe', 'vision'),
+            versatile: value('overall'),
+            finisher: value('shooting', 'tir', 'finition'),
+            goalkeeper: player.position === 'GK' || player.position === 'G' ? value('overall', 'defense') : 30
+        };
+        return clamp(map[profile] ?? player.overall ?? 50);
     }
 
     hash(value) {
