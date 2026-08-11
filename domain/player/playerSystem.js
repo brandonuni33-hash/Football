@@ -1,6 +1,6 @@
 // domain/player/playerSystem.js
 // Modèle joueur canonique : une seule source de vérité.
-import { PotentialSystem } from '../../potentialSystem.js';
+import { PotentialSystem } from './potentialSystem.js';
 
 export const FOOTBALL_ATTRIBUTES = [
     'vitesse', 'acceleration', 'endurance', 'puissance', 'finition', 'tir',
@@ -106,10 +106,6 @@ function performanceQuality(rating, goals = 0, assists = 0) {
     return Math.min(.65, ratingQuality + goalQuality + assistQuality);
 }
 
-/**
- * Progression organique : les performances font progresser les attributs utiles,
- * avec une vraie courbe d'âge et un ralentissement naturel à l'approche du potentiel.
- */
 export function applyProgression(
     player,
     { rating = 0, xp = 0, goals = 0, assists = 0, type = 'match', ageTick = false } = {}
