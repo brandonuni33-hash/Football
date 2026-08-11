@@ -8,10 +8,14 @@ const escapeHtml = value => String(value ?? '')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;');
 
+function isSocialNotification(note) {
+    const category = String(note?.category || note?.type || '').toLowerCase();
+    return category.includes('media') || category.includes('média') || category.includes('social') || category.includes('réseau');
+}
+
 function notificationIcon(note) {
     const category = String(note?.category || note?.type || '').toLowerCase();
     if (category.includes('transfer') || category.includes('mercato') || category.includes('scout')) return '⇄';
-    if (category.includes('media') || category.includes('média')) return '◫';
     if (category.includes('family') || category.includes('famille') || category.includes('birth')) return '⌂';
     if (category.includes('coach')) return '◉';
     if (category.includes('match')) return '⚽';
@@ -33,7 +37,7 @@ export class CareerView {
         const canRetire = Boolean(player.canRetire) || age >= 34;
         const notificationState = state?.notifications;
         const signals = (Array.isArray(notificationState) ? notificationState : (notificationState?.signals || []))
-            .filter(note => !note?.archived)
+            .filter(note => !note?.archived && !isSocialNotification(note))
             .slice(-30)
             .reverse();
         const unreadCount = signals.filter(note => !note?.read).length;
