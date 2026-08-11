@@ -33,7 +33,6 @@ export class SeasonSystem {
             assists: player.stats?.assists || 0,
             averageRating: player.stats?.averageRating || 0
         };
-        state.career.seasonHistory.push(season);
         const potentialReport = this.potentialSystem?.finalizeSeason?.(player, season);
         this.potentialSystem?.advanceAge?.(player);
         if (Number(player.age) >= 18 && player.isYouthPlayer) {
@@ -61,7 +60,9 @@ export class SeasonSystem {
         player.stats.assists = 0;
         player.stats.successfulPasses = 0;
         player.stats.tackles = 0;
+        player.stats.interceptions = 0;
         player.stats.yellowCards = 0;
+        player.stats.cleanSheets = 0;
         player.stats.averageRating = 0;
         player.fitness = Math.min(100, (player.fitness || 60) + 20);
         player.isInjured = false;
