@@ -32,9 +32,20 @@ function buildDecision(match, moment, index, previous = []) {
     return { id: `decision-${Date.now()}-${index}`, minute: moment, phase: moment < 45 ? 'Première période' : 'Seconde période', title: dilemma?.title || `Moment clé · ${moment}'`, description: `${previous.length ? 'La dynamique du match a changé après ta décision précédente. ' : ''}${dilemma?.description || `Face à ${opponentName(match)}, quelle attitude adoptes-tu ?`}`, choices };
 }
 
+function playableDecisionMoments(match) {
+    const all = decisionMoments(match);
+    const selection = match?.playerSelection;
+    const minutes = Math.max(1, number(match?.minutes ?? selection?.minutes ?? 90));
+    if (selection?.started !== false || minutes >= 55) return all;
+    const entryMinute = Math.max(45, 90 - minutes);
+    const afterEntry = all.filter(moment => Number(moment) >= entryMinute);
+    if (afterEntry.length) return afterEntry.slice(-2);
+    return [Math.min(86, entryMinute + 8)];
+}
+
 export function startInteractiveMatch(state, scheduledMatch, matchIndex = 0) {
     if (!state?.player) throw new Error('Impossible de démarrer un match sans joueur.');
-    const moments = decisionMoments(scheduledMatch);
+    const moments = playableDecisionMoments(scheduledMatch);
     const session = { id: `match-session-${Date.now()}-${matchIndex}`, matchIndex, match: scheduledMatch, type: matchType(scheduledMatch), importance: importanceFor(scheduledMatch), opponent: opponentName(scheduledMatch), home: isHomeMatch(scheduledMatch), competition: competitionLabel(scheduledMatch), moments, currentMoment: 0, decisions: [], events: [], score: { home: 0, away: 0 }, modifiers: { rating: 0, goal: 0, assist: 0, duel: 0, fatigue: 0, cards: 0 }, playerRatingBase: 6.2 + (number(state.player.overall) - 50) * .035, finished: false };
     session.decision = buildDecision(scheduledMatch, moments[0], 0);
     return session;
@@ -74,7 +85,8 @@ export function resolveInteractiveDecision(state, session, choiceIndex) {
     let teamGoals = session.score[session.home ? 'home' : 'away'];
     if (teamGoals === 0) teamGoals = buildScore({ player, rating, group, goalChance, opponentStrength });
     const opponentGoals = Math.min(6, Math.max(0, Math.floor(Math.random() * Math.max(1, 1 + opponentStrength / 60))));
-    const result = { matchIndex: session.matchIndex, fixture: session.match, competitionId: session.match?.competitionId || null, competitionType: session.match?.competitionType || session.match?.type || null, competitionName: session.competition, phase: session.match?.phase || null, round: session.match?.round || session.match?.europeanRound || null, type: session.type, importance: session.importance, opponent: session.opponent, opponentStrength, home: session.home, venue: session.match?.venue || null, score: { home: session.home ? teamGoals : opponentGoals, away: session.home ? opponentGoals : teamGoals }, teamGoals, opponentGoals, result: teamGoals > opponentGoals ? 'win' : teamGoals < opponentGoals ? 'loss' : 'draw', rating, goals: Math.random() < goalChance && teamGoals > 0 ? 1 : 0, assists: Math.random() < assistChance && teamGoals > 0 ? 1 : 0, tackles: group === 'goalkeeper' ? 0 : Math.max(1, Math.floor(2 + Math.random() * 6 + session.modifiers.duel * 8)), cleanSheet: group === 'goalkeeper' && opponentGoals === 0, played: true, decisions: session.decisions, events: session.events };
+    const selection = session.match?.playerSelection || { started: true, appearance: 'starter', minutes: 90 };
+    const result = { matchIndex: session.matchIndex, fixture: session.match, competitionId: session.match?.competitionId || null, competitionType: session.match?.competitionType || session.match?.type || null, competitionName: session.competition, phase: session.match?.phase || null, round: session.match?.round || session.match?.europeanRound || null, type: session.type, importance: session.importance, opponent: session.opponent, opponentStrength, home: session.home, venue: session.match?.venue || null, score: { home: session.home ? teamGoals : opponentGoals, away: session.home ? opponentGoals : teamGoals }, teamGoals, opponentGoals, result: teamGoals > opponentGoals ? 'win' : teamGoals < opponentGoals ? 'loss' : 'draw', rating, goals: Math.random() < goalChance && teamGoals > 0 ? 1 : 0, assists: Math.random() < assistChance && teamGoals > 0 ? 1 : 0, tackles: group === 'goalkeeper' ? 0 : Math.max(1, Math.floor(2 + Math.random() * 6 + session.modifiers.duel * 8)), cleanSheet: group === 'goalkeeper' && opponentGoals === 0, played: true, playerPlayed: true, appearance: selection.appearance || (selection.started === false ? 'substitute' : 'starter'), started: selection.started !== false, minutesPlayed: number(session.match?.minutes ?? selection.minutes ?? 90) || 90, decisions: session.decisions, events: session.events };
     session.result = result;
     session.finished = true;
     session.decision = null;
@@ -88,13 +100,16 @@ export function commitInteractiveResult(state, result) {
     const previous = number(player.stats.matchesPlayed);
     const total = previous + 1;
     player.stats.matchesPlayed = total;
+    player.stats.starts = number(player.stats.starts) + (result.started === false ? 0 : 1);
+    player.stats.subAppearances = number(player.stats.subAppearances) + (result.started === false ? 1 : 0);
+    player.stats.minutesPlayed = number(player.stats.minutesPlayed) + number(result.minutesPlayed || 90);
     player.stats.goals = number(player.stats.goals) + number(result.goals);
     player.stats.assists = number(player.stats.assists) + number(result.assists);
     player.stats.tackles = number(player.stats.tackles) + number(result.tackles);
     if (result.cleanSheet) player.stats.cleanSheets = number(player.stats.cleanSheets) + 1;
     player.stats.averageRating = Number((((number(player.stats.averageRating) * previous) + number(result.rating)) / total).toFixed(1));
     player.morale = clamp(number(player.morale ?? 50) + (result.rating >= 7 ? 2 : result.rating < 5.5 ? -2 : 0), 0, 100);
-    player.fitness = clamp(number(player.fitness ?? 80) - 3, 0, 100);
+    player.fitness = clamp(number(player.fitness ?? 80) - Math.max(1, Math.round(number(result.minutesPlayed || 90) / 30)), 0, 100);
     PotentialSystem.recordMatch(player, { rating: result.rating }, 1);
     PlayerLogic.applyProgression(player, { xp: Math.round(70 + result.rating * 40 + result.goals * 90 + result.assists * 60), type: 'match' });
     return result;
