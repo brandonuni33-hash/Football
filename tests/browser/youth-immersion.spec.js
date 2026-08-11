@@ -98,3 +98,59 @@ test('les offres de départ françaises privilégient les clubs modestes et limi
   expect(result.filter(club => Number(club.prestige) >= 76).length).toBeLessThanOrEqual(1);
   expect(result.some(club => Number(club.prestige) <= 60)).toBe(true);
 });
+
+test('le premier passage professionnel attribue un vrai club et un rôle d effectif cohérent', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(() => {
+    const state = window.game.gameUI.startCareer({
+      firstname: 'Pro', lastname: 'Transition', country: 'France', position: 'BU',
+      origin: 'CENTRE_FORMATION', heartClub: 'Paris Saint-Germain',
+      youthClub: { name: 'Stade Bordelais', country: 'France', prestige: 44, tier: 3 }
+    });
+    state.player.age = 17;
+    state.player.overall = 45;
+    state.player.isYouthPlayer = true;
+    window.game.gameSystems.seasonSystem.finalize(state);
+    return {
+      age: state.player.age,
+      youth: state.player.isYouthPlayer,
+      club: state.player.club,
+      clubId: state.player.clubId,
+      role: state.player.contract?.role,
+      squadStatus: state.player.squadStatus
+    };
+  });
+
+  expect(result.age).toBe(18);
+  expect(result.youth).toBe(false);
+  expect(result.club).toBeTruthy();
+  expect(result.clubId).toBeTruthy();
+  expect(['Remplaçant', 'Rotation', 'Titulaire', 'Joueur important']).toContain(result.role);
+  expect(result.squadStatus).toBe(result.role);
+});
+
+test('la narration distingue les matchs de l équipe des apparitions du joueur', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const { default: NarrativeEngine } = await import('/domain/narrative/narrativeEngine.js');
+    const engine = new NarrativeEngine();
+    const scene = engine.composeMatchEnd({
+      state: { player: { firstName: 'Test' }, career: { seasonHistory: [] }, careerMemory: [] },
+      report: { summary: { matchResults: [
+        { opponent: 'Lyon U15', competitionName: 'Championnat National U15', teamGoals: 1, opponentGoals: 0, result: 'win', playerPlayed: false, appearance: 'bench', started: false },
+        { opponent: 'Nantes U15', competitionName: 'Championnat National U15', teamGoals: 2, opponentGoals: 1, result: 'win', playerPlayed: true, appearance: 'substitute', started: false, minutesPlayed: 28, rating: 7.2, goals: 0, assists: 1 }
+      ] } }
+    });
+    return {
+      subtitle: scene?.subtitle,
+      appearances: scene?.facts?.appearances,
+      firstLabel: scene?.matches?.[0]?.appearanceLabel,
+      secondLabel: scene?.matches?.[1]?.appearanceLabel
+    };
+  });
+
+  expect(result.subtitle).toContain("2 matchs d'équipe");
+  expect(result.appearances).toBe(1);
+  expect(result.firstLabel).toContain('banc');
+  expect(result.secondLabel).toContain('Entré en jeu');
+});
