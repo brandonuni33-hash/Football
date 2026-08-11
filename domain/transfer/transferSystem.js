@@ -110,7 +110,7 @@ export class TransferSystem {
         const offerInterest = this.interestPipeline.active(state, player.id)
             .filter(interest => interest.stage === TRANSFER_INTEREST_STAGES.OFFER)
             .sort((a, b) => Number(b.seriousness) - Number(a.seriousness))[0] || null;
-        const offer = offerInterest ? this.#createOfficialOffer(state, offerInterest) : null;
+        const offer = offerInterest ? this.#createOfficialOffer(state, offerInterest, activity) : null;
 
         state.transferMarket.lastCycle = {
             season: state.calendar?.currentSeasonYear ?? null,
@@ -313,7 +313,7 @@ export class TransferSystem {
         return (interest.history?.length || 0) >= 4 || this.scoutingSystem.canOfferYouthContract(player, club);
     }
 
-    #createOfficialOffer(state, interest) {
+    #createOfficialOffer(state, interest, activity = []) {
         if (state.pendingTransferOffer || !interest) return state.pendingTransferOffer || null;
         const player = state.player;
         const club = this.worldSystem?.getClub?.(interest.clubId);
@@ -331,7 +331,7 @@ export class TransferSystem {
         }
 
         state.pendingTransferOffer = offer;
-        this.#recordActivity(state, [], { type: 'official_offer', clubId: club.id, interestId: interest.id });
+        this.#recordActivity(state, activity, { type: 'official_offer', clubId: club.id, interestId: interest.id });
         EventBus.emit(EVENTS.TRANSFER_OFFER_CREATED, { state, playerId: player.id, club: offer.club, clubId: club.id, offer, interestId: interest.id });
         return offer;
     }
