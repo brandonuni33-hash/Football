@@ -1,6 +1,5 @@
 // application/handlers/gameplayHandlers.js
-// Tous les handlers applicatifs migrés sont regroupés ici : aucune commande ne
-// doit patcher GameEngine pour atteindre un système du domaine.
+// Handlers gameplay : chaque commande est enregistrée une seule fois.
 
 import { COMMANDS } from '../../core/commands.js';
 
@@ -12,19 +11,11 @@ export function registerGameplayHandlers({ application, registry, engine }) {
     const calendarSystem = registry?.calendarSystem;
     const transferSystem = registry?.transferSystem;
     const careerLifecycleSystem = registry?.careerLifecycleSystem;
-    const careerApplication = registry?.careerApplication;
 
     if (!registry) return unregister;
 
-    unregister.push(application.registerCommand(COMMANDS.START_GAME, (payload, context) => {
-        const state = careerApplication?.create?.(payload || {});
-        if (engine && state) engine.state = state;
-        if (context) context.state = state;
-        return state;
-    }));
-
     unregister.push(application.registerCommand(COMMANDS.CAREER_CREATE, (payload, context) => {
-        const state = careerApplication?.create?.(payload || {});
+        const state = registry.careerApplication?.create?.(payload || {});
         if (engine && state) engine.state = state;
         if (context) context.state = state;
         return state;
