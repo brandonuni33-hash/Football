@@ -3,7 +3,7 @@
 // Tous les matchs passent par le moteur de performance commun.
 
 import { recalibrateReport } from './matchPerformanceEngine.js';
-import { PotentialSystem } from '../../potentialSystem.js';
+import { PotentialSystem } from '../player/potentialSystem.js';
 
 const n = v => Number.isFinite(Number(v)) ? Number(v) : 0;
 
@@ -49,7 +49,6 @@ export class MatchSystem {
         const legacyReport = this.legacy.simulateBlock(state, trainingFocus, userMatchChoice);
         const correctedReport = recalibrateReport(player, legacyReport, { trainingFocus, interactive: Boolean(userMatchChoice) });
 
-        // Le potentiel ne mémorise que les notes issues du nouveau moteur.
         if (potential && previousPotentialPerformance) {
             const corrected = totals(correctedReport);
             potential.seasonPerformance = {
