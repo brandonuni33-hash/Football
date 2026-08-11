@@ -12,7 +12,7 @@ import { TransferMarket } from '../domain/transfer/transferMarket.js';
 import { PotentialSystem } from '../domain/player/potentialSystem.js';
 import { ConsequenceSystem } from '../domain/decision/consequenceSystem.js';
 import { CareerSystem } from '../domain/career/careerSystem.js';
-import { CompetitionSystem } from '../domain/competition/competitionSystem.js';
+import CompetitionSystem from '../domain/competition/competitionSystem.js';
 import { WorldSystem } from '../domain/world/worldSystem.js';
 import CupSystem from '../domain/competition/cupSystem.js';
 import { MatchChoiceManager } from '../domain/match/matchChoiceManager.js';
