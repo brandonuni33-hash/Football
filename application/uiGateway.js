@@ -28,12 +28,16 @@ export class UIGateway {
 
         const next = this.getNextPlayableMatch();
         if (next) {
-            const session = this.startInteractiveMatch(this.withComputedImportance(next), next.matchIndex);
+            const fixture = this.withComputedImportance(next);
+            fixture.playerSelection = next.selection || null;
+            fixture.minutes = next.selection?.minutes || 90;
+            const session = this.startInteractiveMatch(fixture, next.matchIndex);
             return {
                 interactive: true,
                 interactiveDecision: session?.decision || null,
                 interactiveEvent: null,
-                matchImportance: next.importance || null
+                matchImportance: next.importance || null,
+                playerSelection: next.selection || null
             };
         }
 
@@ -58,7 +62,12 @@ export class UIGateway {
         const state = this.state;
         if (!state?.activeMatchSession) {
             const next = this.getNextPlayableMatch();
-            if (next) this.startInteractiveMatch(this.withComputedImportance(next), next.matchIndex);
+            if (next) {
+                const fixture = this.withComputedImportance(next);
+                fixture.playerSelection = next.selection || null;
+                fixture.minutes = next.selection?.minutes || 90;
+                this.startInteractiveMatch(fixture, next.matchIndex);
+            }
         }
         return state?.activeMatchSession?.decision || this.application.registry?.matchChoiceManager?.getMatchDilemma?.(type, opponent) || null;
     }
@@ -80,31 +89,52 @@ export class UIGateway {
         } catch { return []; }
     }
 
+    getSquadSelectionPlan() {
+        const state = this.state;
+        if (!state?.player) return { key: null, status: 'Hors groupe', score: 0, entries: [] };
+        const matches = this.getScheduledMatches();
+        const system = this.application.registry?.squadSelectionSystem;
+        return system?.getPlan?.(state, matches) || { key: null, status: 'Titulaire', score: 50, entries: matches.map((fixture, matchIndex) => ({ matchIndex, fixture, appearance: 'starter', selected: true, started: true, minutes: 90 })) };
+    }
+
     getMatchInteractionPlan() {
         const state = this.state;
         if (!state?.player) return { key: null, budget: 0, playableCount: 0, entries: [] };
         const matches = this.getScheduledMatches();
         const key = `${state.calendar?.currentSeasonYear ?? state.season ?? 'season'}:${state.calendar?.currentMonth ?? 'month'}:${matches.length}`;
+        const selectionPlan = this.getSquadSelectionPlan();
         const cached = state.matchInteractionPlan;
         if (cached?.key === key && Array.isArray(cached.entries)) {
             return {
                 ...cached,
-                entries: cached.entries.map(entry => ({ ...entry, fixture: matches[entry.matchIndex] || null }))
+                entries: cached.entries.map(entry => ({
+                    ...entry,
+                    fixture: matches[entry.matchIndex] || null,
+                    selection: selectionPlan.entries.find(item => Number(item.matchIndex) === Number(entry.matchIndex)) || null
+                }))
             };
         }
 
         const planner = this.application.registry?.matchImportanceSystem;
         const planned = planner?.planBlock?.(state, matches) || { key, budget: 0, playableCount: 0, entries: [] };
+        const entries = (planned.entries || []).map(entry => {
+            const selection = selectionPlan.entries.find(item => Number(item.matchIndex) === Number(entry.matchIndex)) || null;
+            return {
+                ...entry,
+                playable: Boolean(entry.playable && selection?.selected),
+                selection
+            };
+        });
         const serializable = {
             key,
             budget: planned.budget || 0,
-            playableCount: planned.playableCount || 0,
-            entries: (planned.entries || []).map(({ fixture, ...entry }) => entry)
+            playableCount: entries.filter(entry => entry.playable).length,
+            entries: entries.map(({ fixture, selection, ...entry }) => ({ ...entry, selection: selection ? { ...selection, fixture: undefined } : null }))
         };
         state.matchInteractionPlan = serializable;
         return {
             ...serializable,
-            entries: serializable.entries.map(entry => ({ ...entry, fixture: matches[entry.matchIndex] || null }))
+            entries: entries.map(entry => ({ ...entry, fixture: matches[entry.matchIndex] || null }))
         };
     }
 
@@ -113,7 +143,7 @@ export class UIGateway {
         const completed = new Set((Array.isArray(this.state?.interactiveBlockResults) ? this.state.interactiveBlockResults : [])
             .map(result => Number(result?.matchIndex))
             .filter(Number.isFinite));
-        return plan.entries.find(entry => entry.playable && entry.fixture && !completed.has(Number(entry.matchIndex))) || null;
+        return plan.entries.find(entry => entry.playable && entry.fixture && entry.selection?.selected && !completed.has(Number(entry.matchIndex))) || null;
     }
 
     withComputedImportance(entry) {
@@ -141,7 +171,7 @@ export class UIGateway {
         if (result.finished) {
             manager.commitInteractiveResult(this.state, result.result);
             this.state.interactiveBlockResults ||= [];
-            this.state.interactiveBlockResults.push({ ...result.result, fixture: session.match, interactive: true });
+            this.state.interactiveBlockResults.push({ ...result.result, fixture: session.match, interactive: true, playerSelection: session.match?.playerSelection || null, minutesPlayed: session.match?.minutes || 90, started: session.match?.playerSelection?.started ?? true });
             this.state.activeMatchSession = null;
         } else {
             this.state.activeMatchSession = result.session;
