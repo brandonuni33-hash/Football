@@ -11,7 +11,7 @@ import { CoachSystem } from '../coachSystem.js';
 import { TransferMarket } from '../transferMarket.js';
 import { PotentialSystem } from '../potentialSystem.js';
 import { ConsequenceSystem } from '../consequenceSystem.js';
-import { CareerSystem } from '../careerSystem.js';
+import { CareerSystem } from '../domain/career/careerSystem.js';
 import { CompetitionSystem } from '../competitionSystem.js';
 import { WorldSystem } from '../worldSystem.js';
 import { CupSystem } from '../cupSystem.js';
