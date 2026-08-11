@@ -21,15 +21,18 @@ function storyScore(result = {}) {
     const decisive = n(result.goals) * 3 + n(result.assists) * 2;
     const resultWeight = result.result === 'win' ? 2 : result.result === 'loss' ? 1 : 0;
     const interactive = result.interactive ? 1.5 : 0;
-    return importance * 10 + decisive + Math.max(0, rating - 6) + resultWeight + interactive;
+    const appearance = result.playerPlayed === false ? -8 : 0;
+    return importance * 10 + decisive + Math.max(0, rating - 6) + resultWeight + interactive + appearance;
 }
 
 function impactScore(result = {}) {
+    if (result?.playerPlayed === false) return -100;
     const rating = n(result.rating);
     return n(result.goals) * 4 + n(result.assists) * 3 + Math.max(-2, rating - 6) * 1.5;
 }
 
 function impactLevel(result = {}) {
+    if (result?.playerPlayed === false) return 'unused';
     const goals = n(result.goals);
     const assists = n(result.assists);
     const rating = n(result.rating);
@@ -44,11 +47,23 @@ function impactLabel(level) {
         decisive: 'Impact décisif',
         strong: 'Impact fort',
         present: 'Présent',
-        difficult: 'En difficulté'
+        difficult: 'En difficulté',
+        unused: 'Non utilisé'
     }[level] || 'Présent';
 }
 
+function appearanceLabel(result = {}) {
+    if (result.playerPlayed === false) {
+        if (result.appearance === 'bench') return 'Resté sur le banc';
+        return 'Hors groupe';
+    }
+    if (result.started === false) return `Entré en jeu · ${n(result.minutesPlayed)} min`;
+    if (n(result.minutesPlayed)) return `Titulaire · ${n(result.minutesPlayed)} min`;
+    return 'Titulaire';
+}
+
 function impactDetail(result = {}) {
+    if (result?.playerPlayed === false) return appearanceLabel(result);
     const goals = n(result.goals);
     const assists = n(result.assists);
     const rating = n(result.rating);
@@ -64,7 +79,7 @@ function featuredResult(results = []) {
 }
 
 function strongestImpactResult(results = []) {
-    return [...results].filter(Boolean).sort((a, b) => impactScore(b) - impactScore(a))[0] || null;
+    return [...results].filter(result => result && result.playerPlayed !== false).sort((a, b) => impactScore(b) - impactScore(a))[0] || null;
 }
 
 function scoreText(result) {
@@ -80,9 +95,14 @@ function outcomeText(result) {
 
 function performanceText(player, result) {
     const name = player?.firstname || player?.firstName || 'Tu';
+    if (!result) return `Le staff ne t’a pas utilisé sur cette période. Ta place dans la rotation reste à gagner.`;
+    if (result.playerPlayed === false) return result.appearance === 'bench'
+        ? `Tu as suivi cette rencontre depuis le banc sans entrer en jeu.`
+        : `Tu n’étais pas dans le groupe pour cette rencontre.`;
     const rating = n(result?.rating);
     const goals = n(result?.goals);
     const assists = n(result?.assists);
+    if (result.started === false && rating >= 7) return `Entré en cours de match, tu as profité de tes minutes pour marquer des points auprès du staff.`;
     if (goals >= 2) return `${name} quitte la pelouse après un doublé qui a pesé lourd dans cette rencontre.`;
     if (goals === 1 && assists >= 1) return `Un but et une passe décisive : tu as directement pesé sur deux actions décisives.`;
     if (goals === 1) return `Ton but donne une dimension personnelle à ce match et restera associé à cette soirée.`;
@@ -98,11 +118,14 @@ function blockOverviewText(results = [], impactMatch = null) {
     const wins = results.filter(result => result?.result === 'win').length;
     const draws = results.filter(result => result?.result === 'draw').length;
     const losses = results.filter(result => result?.result === 'loss').length;
+    const appearances = results.filter(result => result?.playerPlayed !== false).length;
+    const starts = results.filter(result => result?.playerPlayed !== false && result?.started !== false).length;
     const record = [`${wins} victoire${wins > 1 ? 's' : ''}`];
     if (draws) record.push(`${draws} nul${draws > 1 ? 's' : ''}`);
     if (losses) record.push(`${losses} défaite${losses > 1 ? 's' : ''}`);
+    if (!appearances) return `Cette période comptait ${results.length} matchs pour ton équipe : ${record.join(', ')}. Le staff ne t’a pas utilisé.`;
     const opponent = impactMatch?.opponent || 'un adversaire';
-    return `Cette période comptait ${results.length} matchs : ${record.join(', ')}. Ton empreinte la plus nette est venue face à ${opponent}.`;
+    return `Cette période comptait ${results.length} matchs pour ton équipe : ${record.join(', ')}. Tu as disputé ${appearances} rencontre${appearances > 1 ? 's' : ''}, dont ${starts} comme titulaire. Ton empreinte la plus nette est venue face à ${opponent}.`;
 }
 
 function atmosphereText(result, importance) {
@@ -163,15 +186,20 @@ function buildMatchRecap(results, narrativeMatch, impactMatch) {
             competition: result?.competitionName || result?.fixture?.competitionName || 'Match',
             score: scoreText(result),
             result: result?.result || null,
-            rating: n(result?.rating),
+            rating: result?.playerPlayed === false ? null : n(result?.rating),
             goals: n(result?.goals),
             assists: n(result?.assists),
             interactive: Boolean(result?.interactive),
+            playerPlayed: result?.playerPlayed !== false,
+            started: result?.started !== false,
+            appearance: result?.appearance || (result?.started === false ? 'substitute' : 'starter'),
+            minutesPlayed: n(result?.minutesPlayed),
+            appearanceLabel: appearanceLabel(result),
             impactLevel: level,
             impactLabel: impactLabel(level),
             impactDetail: impactDetail(result),
             isNarrativeFocus: result === narrativeMatch,
-            isImpactMatch: result === impactMatch
+            isImpactMatch: result === impactMatch && result?.playerPlayed !== false
         };
     });
 }
@@ -180,8 +208,9 @@ export class NarrativeEngine {
     composeMatchEnd({ state, report } = {}) {
         const rawResults = report?.summary?.matchResults || report?.results || [];
         const results = Array.isArray(rawResults) ? rawResults.filter(Boolean) : [];
-        const featured = featuredResult(results);
-        const impactMatch = strongestImpactResult(results);
+        const playerResults = results.filter(result => result?.playerPlayed !== false);
+        const featured = featuredResult(playerResults.length ? playerResults : results);
+        const impactMatch = strongestImpactResult(playerResults);
         if (!state?.player || !featured) return null;
 
         const importance = importanceOf(featured);
@@ -193,7 +222,7 @@ export class NarrativeEngine {
         beats.push(
             { kind: 'atmosphere', text: atmosphereText(featured, importance), delay: 700 },
             { kind: 'result', text: outcomeText(featured), delay: 950, emphasis: true },
-            { kind: 'player', text: performanceText(state.player, impactMatch || featured), delay: 1050 }
+            { kind: 'player', text: performanceText(state.player, impactMatch || (featured.playerPlayed !== false ? featured : null)), delay: 1050 }
         );
         if (callback) beats.push({ kind: 'memory', text: callback, delay: 1200, callback: true });
         else if (continuity) beats.push({ kind: 'continuity', text: continuity, delay: 1100 });
@@ -205,7 +234,7 @@ export class NarrativeEngine {
             tone: toneFor(featured),
             title: titleFor(featured, importance, results.length),
             subtitle: results.length > 1
-                ? `${results.length} matchs disputés · bilan de la période`
+                ? `${results.length} matchs d'équipe · ${playerResults.length} apparition${playerResults.length > 1 ? 's' : ''}`
                 : `${featured.competitionName || featured.fixture?.competitionName || 'Match'} · ${featured.opponent || 'Adversaire'}`,
             matchIndex: featured.matchIndex ?? null,
             impactMatchIndex: impactMatch?.matchIndex ?? null,
@@ -214,11 +243,12 @@ export class NarrativeEngine {
             beats,
             facts: {
                 matchCount: results.length,
+                appearances: playerResults.length,
                 result: featured.result || null,
                 score: scoreText(featured),
-                rating: n(featured.rating),
-                goals: results.reduce((sum, result) => sum + n(result.goals), 0),
-                assists: results.reduce((sum, result) => sum + n(result.assists), 0)
+                rating: impactMatch ? n(impactMatch.rating) : 0,
+                goals: playerResults.reduce((sum, result) => sum + n(result.goals), 0),
+                assists: playerResults.reduce((sum, result) => sum + n(result.assists), 0)
             }
         };
     }
