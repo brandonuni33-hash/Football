@@ -3,6 +3,7 @@
 
 import { PlayerLogic } from '../../player.js';
 import { PotentialSystem } from '../player/potentialSystem.js';
+import { ConsequenceSystem } from '../decision/consequenceSystem.js';
 import { MatchChoiceManager } from './matchChoiceManager.js';
 import { clamp, number, positionGroup, opponentName, isHomeMatch, competitionLabel, matchType, importanceFor, decisionMoments, buildScore } from './matchHelpers.js';
 
@@ -17,7 +18,7 @@ function interactiveChoice(match, player, moment, index, previous = []) {
         { text: 'Rester patient', impacts: { ratingBonus: .03, assistChance: .04, fatigueRisk: -2 } }
     ];
     const choices = templates.length >= 2
-        ? templates.slice(0, 4).map(c => ({ text: c.text || c.texte || c.label, impacts: c.impacts || {} }))
+        ? templates.slice(0, 4).map(c => ({ text: c.text || c.texte || c.label, impacts: c.impacts || {}, consequences: c.consequences || null }))
         : fallback;
     const phase = moment <= 30 ? 'Début de match' : moment <= 60 ? 'Seconde période' : 'Fin de match';
     const context = previous.length ? 'Le match a évolué. Ta dernière décision a changé la dynamique.' : 'Le match commence et le contexte est encore ouvert.';
@@ -37,7 +38,8 @@ function resolveInteractiveDecision(state, session, choiceIndex) {
     const decision = session.decision, choice = decision?.choices?.[Number(choiceIndex)];
     if (!choice) throw new Error('Choix de match invalide.');
     const impacts = choice.impacts || {}, bonuses = impacts.matchBonuses || impacts;
-    session.decisions.push({ minute: decision.minute, phase: decision.phase, choice: choice.text, impacts: bonuses });
+    const consequence = ConsequenceSystem.applyToState(state, choice, { source: 'Match' });
+    session.decisions.push({ minute: decision.minute, phase: decision.phase, choice: choice.text, impacts: bonuses, consequence: { queued: consequence?.queued || 0, reaction: consequence?.responseText || null } });
     session.modifiers.rating += number(bonuses.ratingBonus ?? bonuses.ratingBoost) + number(bonuses.passAccuracy) * .20 + number(bonuses.teamBoost) * .35;
     session.modifiers.goal += number(bonuses.goalChance) + number(bonuses.counterAttack) * .20;
     session.modifiers.assist += number(bonuses.assistChance) + number(bonuses.counterAttack) * .08;
@@ -46,6 +48,7 @@ function resolveInteractiveDecision(state, session, choiceIndex) {
     if (roll < .13 + Math.max(0, session.modifiers.goal) * .20) { session.events.push({ minute: decision.minute, icon: '⚡', text: 'Ton choix crée une occasion dangereuse.' }); session.score[session.home ? 'home' : 'away'] += Math.random() < .38 ? 1 : 0; }
     else if (roll < .25) session.events.push({ minute: decision.minute, icon: '🎯', text: 'Ton équipe prend progressivement le contrôle.' });
     else if (roll < .34) session.events.push({ minute: decision.minute, icon: '🛡️', text: 'Tu fermes bien ton espace.' });
+    if (consequence?.responseText) session.events.push({ minute: decision.minute, icon: '🧠', text: consequence.responseText });
     session.currentMoment += 1;
     if (session.currentMoment < session.moments.length) { const minute = session.moments[session.currentMoment]; session.decision = interactiveChoice(session.match, state.player, minute, session.currentMoment, session.decisions); return { finished: false, session, decision: session.decision, event: session.events.at(-1) || null }; }
     const group = positionGroup(state.player.position || state.player.positionId), opponentStrength = number(session.match?.opponentStrength ?? session.match?.opponentOverall ?? 50) || 50;
