@@ -23,10 +23,18 @@ export class BlockSystem {
                 EventBus.emit(EVENTS.CAREER_ENDED, { reason: 'age_or_retirement', playerId: player.id, state });
                 return result;
             }
+
             if (player.isInjured) {
                 if (player.injuryDuration > 0) player.injuryDuration--;
                 player.fitness = Math.min(100, (player.fitness || 50) + 12);
-                if (player.injuryDuration <= 0) { player.isInjured = false; player.injuryDuration = 0; EventBus.emit(EVENTS.PLAYER_RECOVERED, { playerId: player.id, state }); }
+                if (player.injuryDuration <= 0) {
+                    player.isInjured = false;
+                    player.injuryDuration = 0;
+                    EventBus.emit(EVENTS.PLAYER_RECOVERED, { playerId: player.id, state });
+                }
+                delete state.matchInteractionPlan;
+                delete state.activeMatchSession;
+                delete state.interactiveBlockResults;
                 const calendar = this.advanceCalendar(state);
                 this.stateManager.save(state);
                 const result = { recoveryOnly: true, revealedConsequences, report: { summary: { rating: 0, goals: 0, assists: 0, passes: 0, tackles: 0, yellowCards: 0, finance: null } }, calendar, event: null, coachEvent: null, familyBirths: [] };
@@ -34,13 +42,23 @@ export class BlockSystem {
                 return result;
             }
 
-            const trainingReport = state.interactiveBlockResults
-                ? null
-                : this.trainingManager.applyTraining(player, state.trainingFocus);
-            const report = state.interactiveBlockResults
-                ? finalizeInteractiveBlock(state, state.interactiveBlockResults, state.trainingFocus)
-                : this.matchBlockManager.simulateBlock(state, state.trainingFocus, selectedChoice);
+            const interactiveResults = Array.isArray(state.interactiveBlockResults) ? state.interactiveBlockResults.filter(Boolean) : [];
+            const hasInteractiveMatches = interactiveResults.length > 0;
+            const trainingReport = hasInteractiveMatches ? null : this.trainingManager.applyTraining(player, state.trainingFocus);
+
+            let report;
+            if (hasInteractiveMatches) {
+                const remainder = this.matchBlockManager.simulateRemainingMatches?.(state, interactiveResults) || { results: [] };
+                const combinedResults = [...interactiveResults, ...(remainder.results || [])]
+                    .sort((a, b) => Number(a?.matchIndex ?? 0) - Number(b?.matchIndex ?? 0));
+                report = finalizeInteractiveBlock(state, combinedResults, state.trainingFocus);
+            } else {
+                report = this.matchBlockManager.simulateBlock(state, state.trainingFocus, selectedChoice);
+            }
+
             delete state.interactiveBlockResults;
+            delete state.activeMatchSession;
+            delete state.matchInteractionPlan;
 
             this.worldSystem.recordPlayerMatches(state, report.summary?.scheduledMatches || [], report.summary || {});
             this.socialSystem.updateSocialCycle(state);
