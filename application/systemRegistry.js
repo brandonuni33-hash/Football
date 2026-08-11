@@ -22,6 +22,7 @@ import { WorldSystem } from '../domain/world/worldSystem.js';
 import CupSystem from '../domain/competition/cupSystem.js';
 import { MatchChoiceManager } from '../domain/match/matchChoiceManager.js';
 import MatchImportanceSystem from '../domain/match/matchImportanceSystem.js';
+import SquadSelectionSystem from '../domain/match/squadSelectionSystem.js';
 import { CalendarSystem } from '../domain/calendar/calendarSystem.js';
 import { SeasonSystem } from '../domain/career/seasonSystem.js';
 import { CareerLifecycleSystem } from '../domain/career/careerLifecycleSystem.js';
@@ -93,6 +94,7 @@ export function createSystemRegistry({ engine, worldSystem = WorldSystem, compet
         interactiveMatchSystem: InteractiveMatchSystem,
         matchChoiceManager: MatchChoiceManager,
         matchImportanceSystem: MatchImportanceSystem,
+        squadSelectionSystem: SquadSelectionSystem,
         narrativeEngine,
         competitionSystem,
         cupSystem,
