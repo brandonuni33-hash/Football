@@ -26,6 +26,7 @@ export function createBaseState(overrides = {}) {
         },
         relationships: {},
         relationshipNetwork: [],
+        relationshipMemory: [],
         careerMemory: [],
         generationHistory: [],
         secondGeneration: {
@@ -55,7 +56,7 @@ export function createBaseState(overrides = {}) {
         cups: {},
         cupHistory: [],
         careerStructure: null,
-        notifications: [],
+        notifications: { signals: [], threads: [], unreadCount: 0 },
         ...overrides
     };
 }
