@@ -6,8 +6,8 @@ import { EVENTS } from '../../core/events.js';
 import { finalizeInteractiveBlock } from './interactiveBlockFinalizer.js';
 
 export class BlockSystem {
-    constructor({ trainingManager, matchBlockManager, worldSystem, socialSystem, mediaSystem, eventEngine, coachSystem, careerSystem, transferMarket, stateManager, familyLifeSystem = null, consequenceSystem = null, advanceCalendar } = {}) {
-        Object.assign(this, { trainingManager, matchBlockManager, worldSystem, socialSystem, mediaSystem, eventEngine, coachSystem, careerSystem, transferMarket, stateManager, familyLifeSystem, consequenceSystem, advanceCalendar });
+    constructor({ trainingManager, matchBlockManager, worldSystem, socialSystem, mediaSystem, eventEngine, coachSystem, careerSystem, transferMarket, transferSystem = null, stateManager, familyLifeSystem = null, consequenceSystem = null, advanceCalendar } = {}) {
+        Object.assign(this, { trainingManager, matchBlockManager, worldSystem, socialSystem, mediaSystem, eventEngine, coachSystem, careerSystem, transferMarket, transferSystem, stateManager, familyLifeSystem, consequenceSystem, advanceCalendar });
     }
 
     execute(state, selectedChoice = null) {
@@ -20,13 +20,13 @@ export class BlockSystem {
             if (player.retired || player.careerEnded || Number(player.age) >= 42) {
                 player.careerEnded = true;
                 const result = { careerEnded: true, revealedConsequences, report: { summary: { rating: 0, goals: 0, assists: 0, passes: 0, tackles: 0, yellowCards: 0, finance: null } } };
-                EventBus.emit(EVENTS.CAREER_ENDED, { reason: 'age_or_retirement', playerId: player.id });
+                EventBus.emit(EVENTS.CAREER_ENDED, { reason: 'age_or_retirement', playerId: player.id, state });
                 return result;
             }
             if (player.isInjured) {
                 if (player.injuryDuration > 0) player.injuryDuration--;
                 player.fitness = Math.min(100, (player.fitness || 50) + 12);
-                if (player.injuryDuration <= 0) { player.isInjured = false; player.injuryDuration = 0; EventBus.emit(EVENTS.PLAYER_RECOVERED, { playerId: player.id }); }
+                if (player.injuryDuration <= 0) { player.isInjured = false; player.injuryDuration = 0; EventBus.emit(EVENTS.PLAYER_RECOVERED, { playerId: player.id, state }); }
                 const calendar = this.advanceCalendar(state);
                 this.stateManager.save(state);
                 const result = { recoveryOnly: true, revealedConsequences, report: { summary: { rating: 0, goals: 0, assists: 0, passes: 0, tackles: 0, yellowCards: 0, finance: null } }, calendar, event: null, coachEvent: null, familyBirths: [] };
@@ -53,8 +53,7 @@ export class BlockSystem {
             state.pendingPositionProposal = positionProposal || null;
             state.pendingTransferOffer = null;
             if (!player.isInjured) {
-                if (player.age < 22) state.pendingTransferOffer = this.careerSystem.recruitmentOffer(player);
-                if (!state.pendingTransferOffer && player.age >= 18 && Math.random() < 0.08) state.pendingTransferOffer = this.transferMarket.generateTransferOffer(player);
+                state.pendingTransferOffer = this.transferSystem?.generateOffer?.(state) || null;
             }
             const season = Number(state.calendar?.currentSeasonYear ?? state.season ?? state.career?.season ?? 1);
             const familyBirths = this.familyLifeSystem?.evaluateBirths?.({ state, player, season }) || [];
