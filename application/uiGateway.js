@@ -11,7 +11,30 @@ export class UIGateway {
     get state() { return this.engine?.state || this.application.state || null; }
     startCareer(selectedData = {}) { const state = this.application.registry?.careerApplication?.create?.(selectedData); if (state) this.engine.state = state; return state; }
     playBlock(choice = null) { return this.application.registry?.blockSystem?.execute?.(this.state, choice) ?? null; }
-    playNextBlock(choice = null) { return this.playBlock(choice); }
+
+    playNextBlock(choice = null) {
+        const state = this.state;
+        const matches = this.getScheduledMatches();
+        const active = state?.activeMatchSession;
+
+        if (active) {
+            const choices = active.decision?.choices || [];
+            const choiceIndex = typeof choice === 'number'
+                ? choice
+                : Math.max(0, choices.findIndex(item => item === choice || item?.text === choice?.text || item?.texte === choice?.texte));
+            const result = this.resolveInteractiveMatchDecision(choiceIndex);
+            if (!result.finished) return { interactive: true, interactiveDecision: result.decision, interactiveEvent: result.event || null };
+        }
+
+        const completed = Array.isArray(state?.interactiveBlockResults) ? state.interactiveBlockResults.length : 0;
+        if (matches.length > completed) {
+            const session = this.startInteractiveMatch(matches[completed], completed);
+            return { interactive: true, interactiveDecision: session?.decision || null, interactiveEvent: null };
+        }
+
+        return this.completeInteractiveBlock();
+    }
+
     advanceCalendar() { return this.application.registry?.calendarSystem?.advance?.(this.state) ?? null; }
     setTrainingFocus(focusKey) {
         const training = this.application.registry?.trainingSystem;
@@ -20,8 +43,22 @@ export class UIGateway {
         this.application.registry.blockSystem.stateManager.save(this.state);
         return true;
     }
-    shouldTriggerMatchDilemma(type = 'standard') { return Boolean(this.application.registry?.matchChoiceManager?.shouldTriggerDilemma?.(type)); }
-    getMatchDilemma(type = 'standard', opponent = "l'adversaire") { return this.application.registry?.matchChoiceManager?.getMatchDilemma?.(type, opponent) || null; }
+    shouldTriggerMatchDilemma(type = 'standard') {
+        const state = this.state;
+        if (state?.activeMatchSession) return true;
+        const matches = this.getScheduledMatches();
+        const completed = Array.isArray(state?.interactiveBlockResults) ? state.interactiveBlockResults.length : 0;
+        return Boolean(matches.length > completed && !state?.player?.isInjured);
+    }
+    getMatchDilemma(type = 'standard', opponent = "l'adversaire") {
+        const state = this.state;
+        if (!state?.activeMatchSession) {
+            const matches = this.getScheduledMatches();
+            const completed = Array.isArray(state?.interactiveBlockResults) ? state.interactiveBlockResults.length : 0;
+            if (matches.length > completed) this.startInteractiveMatch(matches[completed], completed);
+        }
+        return state?.activeMatchSession?.decision || this.application.registry?.matchChoiceManager?.getMatchDilemma?.(type, opponent) || null;
+    }
     resolveEventChoice(i) { return this.application.registry?.interactionSystem?.resolveEventChoice?.(this.state, i) ?? null; }
     resolveCoachChoice(i) { return this.application.registry?.interactionSystem?.resolveCoachChoice?.(this.state, i) ?? null; }
     resolveMediaDilemma(i) { return this.application.registry?.interactionSystem?.resolveMediaChoice?.(this.state, i) ?? null; }
@@ -33,8 +70,10 @@ export class UIGateway {
     getPeriodName(month) { return this.application.registry?.calendarSystem?.getPeriodName?.(month) ?? ''; }
 
     getScheduledMatches() {
-        try { const plan = this.engine?.competitionSystem?.getBlockPlan?.(this.state); return Array.isArray(plan?.scheduledMatches) ? plan.scheduledMatches : []; }
-        catch { return []; }
+        try {
+            const plan = this.application.registry?.competitionSystem?.getBlockPlan?.(this.state);
+            return Array.isArray(plan?.scheduledMatches) ? plan.scheduledMatches : [];
+        } catch { return []; }
     }
 
     startInteractiveMatch(match, index = 0) {
@@ -54,7 +93,6 @@ export class UIGateway {
             this.state.interactiveBlockResults ||= [];
             this.state.interactiveBlockResults.push(result.result);
             this.state.activeMatchSession = null;
-            this.application.registry.blockSystem.stateManager.save(this.state);
         } else {
             this.state.activeMatchSession = result.session;
         }
