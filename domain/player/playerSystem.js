@@ -52,6 +52,18 @@ export function ensure(player) {
     for (const key of FOOTBALL_ATTRIBUTES) {
         player.attributes[key] = clamp(player.attributes[key] ?? 50);
     }
+
+    // The canonical model uses `player.mental` as an object containing
+    // concentration, decision, etc. Older systems sometimes used the same
+    // property as a single numeric mental score. Normalize that legacy shape
+    // before any nested mental attribute is accessed.
+    if (!player.mental || typeof player.mental !== 'object' || Array.isArray(player.mental)) {
+        const legacyMental = clamp(player.mental ?? player.stats?.mental ?? 50);
+        player.stats ||= {};
+        player.stats.mental = legacyMental;
+        player.mental = {};
+    }
+
     player.mental ||= {};
     player.hidden ||= {};
     player.hidden.consistency = clamp(player.hidden.consistency ?? 12, 1, 16);
