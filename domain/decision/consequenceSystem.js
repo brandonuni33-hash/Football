@@ -2,6 +2,8 @@
 // Moteur canonique des conséquences de choix.
 // Les valeurs chiffrées restent cachées au joueur.
 
+import { calculateOverall } from '../player/playerSystem.js';
+
 const clamp = (value, min, max) => Math.min(max, Math.max(min, Number(value) || 0));
 const num = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
 
@@ -19,6 +21,10 @@ const LABELS = {
 };
 
 const EMOTIONAL = new Set(Object.keys(EMOTIONAL_LIMITS));
+
+const ATTRIBUTE_ALIASES = Object.freeze({
+    physique: 'puissance'
+});
 
 function ensure(player) {
     if (!player) throw new Error('ConsequenceSystem : joueur manquant.');
@@ -53,7 +59,17 @@ function normalize(choice = {}) {
     const legacy = choice.impacts || {};
     const permanent = { ...(c.permanent || {}), ...(c.emotional || {}) };
     for (const [key, value] of Object.entries(legacy)) {
-        if (typeof value === 'number' && permanent[key] === undefined) permanent[key] = value;
+        if (typeof value !== 'number' || permanent[key] !== undefined) continue;
+        permanent[key] = key.startsWith('attributes.')
+            ? `__attribute__:${ATTRIBUTE_ALIASES[key.slice('attributes.'.length)] || key.slice('attributes.'.length)}`
+            : value;
+    }
+    for (const [key, value] of Object.entries(permanent)) {
+        if (typeof value === 'string' && value.startsWith('__attribute__:')) {
+            const target = `attributes.${value.slice('__attribute__:'.length)}`;
+            permanent[target] = num(legacy[key]);
+            delete permanent[key];
+        }
     }
     const temporary = [
         ...(Array.isArray(c.temporary) ? c.temporary : []),
@@ -174,7 +190,14 @@ function applyStateTarget(state, consequence) {
     if (target === 'isInjured') { const before = Boolean(player.isInjured); player.isInjured = Boolean(value); return { stat: target, before, after: player.isInjured, delta: player.isInjured === before ? 0 : 1, type: 'state' }; }
     if (target === 'injuryDuration') { const before = num(player.injuryDuration); player.injuryDuration = Math.max(0, Math.round(value)); if (player.injuryDuration > 0) player.isInjured = true; return { stat: target, before, after: player.injuryDuration, delta: player.injuryDuration - before, type: 'state' }; }
     if (target === 'canRetire' || target === 'careerEnded') { const before = Boolean(player[target]); player[target] = Boolean(value); return { stat: target, before, after: player[target], delta: 0, type: 'state' }; }
-    if (target?.startsWith?.('attributes.')) { const key = target.slice('attributes.'.length); const before = num(player.attributes?.[key], 50); player.attributes ||= {}; player.attributes[key] = clamp(before + value, 0, 99); return { stat: target, before, after: player.attributes[key], delta: value, type: 'attribute' }; }
+    if (target?.startsWith?.('attributes.')) {
+        const key = target.slice('attributes.'.length);
+        const before = num(player.attributes?.[key], 50);
+        player.attributes ||= {};
+        player.attributes[key] = clamp(before + value, 0, 99);
+        player.overall = calculateOverall(player);
+        return { stat: target, before, after: player.attributes[key], delta: value, type: 'attribute' };
+    }
     if (target?.startsWith?.('matchBonus.')) { player.temporaryEffects.push({ id: consequence.id, stat: target, value, duration: consequence.duration, remainingMatches: consequence.duration, source: consequence.source, label: consequence.label }); return { stat: target, before: 0, after: value, delta: value, type: 'temporary' }; }
     return null;
 }
