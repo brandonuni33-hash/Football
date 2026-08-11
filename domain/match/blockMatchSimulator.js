@@ -6,7 +6,7 @@ import { TrainingManager } from '../../entrainement.js';
 import { PlayerLogic } from '../../player.js';
 import { ConsequenceSystem } from '../../consequenceSystem.js';
 import { PotentialSystem } from '../player/potentialSystem.js';
-import { CompetitionSystem } from '../../competitionSystem.js';
+import { CompetitionSystem } from '../competition/competitionSystem.js';
 import { CupSystem } from '../../cupSystem.js';
 import {
     clamp,
