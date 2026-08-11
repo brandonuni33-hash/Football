@@ -37,6 +37,56 @@ Vues et coordination d'interface. La logique métier reste dans `application/` o
 
 `domain/narrative/narrativeEngine.js` est la couche canonique d'interprétation narrative.
 
+Le flux canonique est :
+
+```text
+systèmes métier -> faits résolus -> NarrativeEngine -> commandes narratives
+                 -> NarrativeStateReducer -> NarrativePresenter -> UI
+```
+
+Responsabilités internes :
+
+- `NarrativeFactCollector` adapte les sorties existantes sans recalculer le métier ;
+- `NarrativeFactNormalizer` impose un contrat immuable et un identifiant déterministe ;
+- `NarrativeContextBuilder` construit un instantané de lecture minimal ;
+- `NarrativeMemoryReader` retrouve uniquement des souvenirs réellement stockés ;
+- `NarrativeSignificance` hiérarchise les faits ;
+- `NarrativeThreadTracker` suit les histoires concrètes dans `narrativeState.storyThreads` ;
+- `NarrativeArcInterpreter` interprète la phase du récit ;
+- `NarrativeScenePlanner` limite un traitement à une scène principale ;
+- `NarrativeBeatComposer` compose les beats sans écrire dans le State ;
+- `NarrativeContinuity` refuse contradictions et informations cachées ;
+- `NarrativeStateReducer` est l'unique écrivain de `narrativeState`.
+
+`application/narrativeOrchestrator.js` coordonne le moteur et
+`application/narrativePresenter.js` expose un modèle de présentation sans DOM.
+
+### Contrat d'un fait
+
+Un fait narratif possède toujours : `id`, `type`, `source`, `occurredAt`,
+`subjectId`, `actorIds`, `metrics`, `outcome`, `certainty`, `visibility`, `tags`,
+`dedupeKey` et `payload`. Son identifiant dépend de sa clé de déduplication, jamais
+de l'heure d'exécution.
+
+### Etat et mémoires
+
+- `careerMemory` conserve les souvenirs durables créés par leur système propriétaire ;
+- `narrativeState` conserve les faits traités, fils narratifs, callbacks, hooks,
+  cooldowns, clés de beats et rythme ;
+- `notifications.threads` reste la structure de livraison des notifications et ne
+  doit jamais servir de fil narratif.
+
+### Invariants
+
+- un fait résolu n'est jamais modifié par la narration ;
+- un même `id` de fait n'est traité qu'une fois ;
+- une contradiction bloque le récit concerné au lieu d'être masquée ;
+- un callback référence toujours une mémoire existante ;
+- un fait `hidden` ne peut pas être présenté ;
+- un traitement produit au maximum une scène principale ;
+- seul `NarrativeStateReducer` modifie `narrativeState` ;
+- la composition est déterministe à faits et contexte identiques.
+
 Il peut :
 - lire les faits déjà résolus par les systèmes métier ;
 - lire `careerMemory` et les mémoires spécialisées existantes ;

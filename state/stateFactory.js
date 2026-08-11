@@ -3,6 +3,7 @@
 // Les systèmes historiques restent responsables de compléter player/social/media.
 
 import { STATE_SCHEMA_VERSION } from './stateSchema.js';
+import { createNarrativeState } from './narrativeState.js';
 
 export function createBaseState(overrides = {}) {
     return {
@@ -28,6 +29,7 @@ export function createBaseState(overrides = {}) {
         relationshipNetwork: [],
         relationshipMemory: [],
         careerMemory: [],
+        narrativeState: createNarrativeState(),
         generationHistory: [],
         secondGeneration: {
             unlocked: [],
