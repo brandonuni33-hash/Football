@@ -18,8 +18,10 @@ export class FamilyView {
     render(state = this.gateway?.state) {
         const playerId = state?.player?.id;
         const family = state?.family || {};
+        const social = state?.social || {};
         const children = (family.children || []).filter(child => child.parentPlayerId === playerId);
         const currentAge = Number(state?.player?.age || 0);
+        const partner = social.romance?.unlocked ? (social.romance.partnerName || 'En couple') : 'Célibataire';
         const options = currentAge >= 34
             ? (this.gateway.getSuccessorOptions?.(playerId, currentAge) || [])
             : [];
@@ -30,6 +32,11 @@ export class FamilyView {
                 <p style="font-size:.85rem;color:var(--text-sub);">
                     Votre vie privée évolue avec votre carrière. La seconde génération ne se débloque qu'après une naissance réelle.
                 </p>
+
+                <div style="padding:12px 14px;border:1px solid var(--border-glass);border-radius:14px;background:rgba(255,255,255,.04);margin:12px 0;">
+                    <small style="display:block;color:var(--text-sub);margin-bottom:4px;">Statut personnel</small>
+                    <strong>${escapeHtml(partner)}</strong>
+                </div>
 
                 <div class="family-summary" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0;">
                     <div class="stat-pill">❤️ Couples <strong>${(family.couples || []).filter(c => c.status === 'together').length}</strong></div>
