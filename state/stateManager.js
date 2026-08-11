@@ -3,7 +3,7 @@
 import { ensure as ensurePlayer } from '../domain/player/playerSystem.js';
 
 const STORAGE_KEY = 'street_to_pro_save_v3';
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 10;
 
 const DEFAULT_STATE = {
     schemaVersion: SCHEMA_VERSION,
@@ -21,6 +21,10 @@ const DEFAULT_STATE = {
     pendingCoachEvent: null,
     pendingMediaDilemma: null,
     pendingTransferOffer: null,
+    scouting: { observations: [], interests: [], shortlist: [], clubNeeds: {} },
+    transferInterests: [],
+    clubTransferNeeds: {},
+    transferMarket: { activity: [], lastCycle: null },
     world: { version: 1, leagues: {}, lastSeasonFinalized: null }
 };
 
@@ -92,6 +96,23 @@ function normalizeNotifications(state) {
         : current.signals.filter(item => item && !item.read && !item.archived).length;
 }
 
+function normalizeTransferMarket(state) {
+    state.scouting = state.scouting && typeof state.scouting === 'object' && !Array.isArray(state.scouting)
+        ? state.scouting
+        : cloneDefault().scouting;
+    state.scouting.observations = Array.isArray(state.scouting.observations) ? state.scouting.observations : [];
+    state.scouting.interests = Array.isArray(state.scouting.interests) ? state.scouting.interests : [];
+    state.scouting.shortlist = Array.isArray(state.scouting.shortlist) ? state.scouting.shortlist : [];
+    state.scouting.clubNeeds = state.scouting.clubNeeds && typeof state.scouting.clubNeeds === 'object' && !Array.isArray(state.scouting.clubNeeds) ? state.scouting.clubNeeds : {};
+    state.transferInterests = Array.isArray(state.transferInterests) ? state.transferInterests : [];
+    state.clubTransferNeeds = state.clubTransferNeeds && typeof state.clubTransferNeeds === 'object' && !Array.isArray(state.clubTransferNeeds) ? state.clubTransferNeeds : {};
+    state.transferMarket = state.transferMarket && typeof state.transferMarket === 'object' && !Array.isArray(state.transferMarket)
+        ? state.transferMarket
+        : cloneDefault().transferMarket;
+    state.transferMarket.activity = Array.isArray(state.transferMarket.activity) ? state.transferMarket.activity : [];
+    state.transferMarket.lastCycle ??= null;
+}
+
 function migrate(raw) {
     const state = mergeDeep(cloneDefault(), raw || {});
     state.schemaVersion = SCHEMA_VERSION;
@@ -102,6 +123,7 @@ function migrate(raw) {
     state.careerMemory = Array.isArray(state.careerMemory) ? state.careerMemory : [];
     state.relationshipMemory = Array.isArray(state.relationshipMemory) ? state.relationshipMemory : [];
     normalizeNotifications(state);
+    normalizeTransferMarket(state);
     state.calendar ??= cloneDefault().calendar;
     state.calendar.seasonSchedule ??= null;
     state.calendar.seasonMatchCursor = Number.isFinite(Number(state.calendar.seasonMatchCursor)) ? Number(state.calendar.seasonMatchCursor) : 0;
