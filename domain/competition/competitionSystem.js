@@ -41,7 +41,6 @@ const CompetitionSystem = {
         const hasImportant = evaluations.some(item => item.importance.level === 'important');
         return { type: player.age < 18 ? 'youth' : 'senior', category: schedule?.category || (player.age < 18 ? this.getYouthCategory(player.age) : 'Senior'), month, monthLabel: this.getMonthLabel(month), season: seasonYear, seasonLabel: seasonLabel(seasonYear), matches: base.length, scheduledMatches: playableEvaluations.map(item => ({ ...item.match, playable: item.playable, importance: item.importance.level, importanceScore: item.importance.score, importanceReasons: item.importance.reasons })), competition: base[0]?.competitionName || null, activities: base.length ? [player.age < 18 ? 'match_jeunes' : 'match', 'entrainement'] : ['entrainement', 'evenement'], importance: hasMajor ? 'major' : hasImportant ? 'important' : base.length >= 4 ? 'normal' : 'low', mode: playableEvaluations.some(item => item.playable) ? 'mixed' : 'simulation' };
     },
-
     recordEuropeanResults(state, scheduledMatches, matchResults) {
         const tournament = state?.europeanTournament;
         if (!tournament || tournament.eliminated || !Array.isArray(scheduledMatches)) return null;
@@ -61,5 +60,5 @@ const CompetitionSystem = {
     getSeasonSkeleton(player, year) { const schedule = this.createSeasonSchedule(player, year); return ALL_MONTHS.map(month => ({ month, monthLabel: this.getMonthLabel(month), period: this.getPeriodName(month), phase: MONTH_INFO[month]?.phase || 'offseason', matches: schedule.byMonth[month]?.matches || [] })); }
 };
 
-export { COMPETITIONS };
+export { CompetitionSystem, COMPETITIONS };
 export default CompetitionSystem;
