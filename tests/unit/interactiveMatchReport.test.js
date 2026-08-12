@@ -1,0 +1,3 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {buildInteractiveMatchReport} from '../../domain/match/interactiveMatchReport.js';
+test('le récit du match reste lié au matchId joué',()=>{const report=buildInteractiveMatchReport({matchId:'played-1',played:true,teamGoals:2,opponentGoals:1,opponent:'Rival',rating:8.1,goals:1,assists:0,events:[{gesture:'Petit pont',text:'geste'}],decisions:[{choice:'A'}]});assert.equal(report.matchId,'played-1');assert.equal(report.label,'Le récit du match');assert.match(report.text,/Petit pont/);assert.match(report.text,/1 but/);});
+test('aucun faux récit sans match interactif canonique',()=>{assert.equal(buildInteractiveMatchReport({played:true,teamGoals:3}),null);});
