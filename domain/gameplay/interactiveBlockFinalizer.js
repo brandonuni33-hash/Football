@@ -7,12 +7,28 @@ import { ConsequenceSystem } from '../decision/consequenceSystem.js';
 import { CompetitionSystem } from '../competition/competitionSystem.js';
 import CupSystem from '../competition/cupSystem.js';
 import { updateHiddenAttributes } from '../match/blockMatchSimulator.js';
+import { canonicalPlayerGoalEvents } from '../match/goalEventResolver.js';
+import { buildInteractiveMatchReport } from '../match/interactiveMatchReport.js';
+import { buildMatchBlockPresentation } from '../match/matchBlockPresentation.js';
 
 const n = value => Number.isFinite(Number(value)) ? Number(value) : 0;
 
 export function finalizeInteractiveBlock(state, results = [], trainingFocus = 'TECHNIQUE') {
     const player = state.player;
-    const matches = (Array.isArray(results) ? results : []).filter(Boolean).map((result, index) => ({ ...result, matchIndex: Number.isFinite(Number(result.matchIndex)) ? Number(result.matchIndex) : index, fixture: result.fixture || result.match || null }));
+    const matches = (Array.isArray(results) ? results : []).filter(Boolean).map((raw, index) => {
+        const result = {
+            ...raw,
+            matchIndex: Number.isFinite(Number(raw.matchIndex)) ? Number(raw.matchIndex) : index,
+            fixture: raw.fixture || raw.match || null
+        };
+        if (result.interactive && result.matchId) {
+            result.goalEvents = Array.isArray(result.goalEvents) && result.goalEvents.length
+                ? result.goalEvents
+                : canonicalPlayerGoalEvents(result, player);
+            result.interactiveReport ||= buildInteractiveMatchReport(result);
+        }
+        return result;
+    });
     const count = matches.length;
     const avgRating = count ? Number((matches.reduce((sum, result) => sum + n(result.rating), 0) / count).toFixed(1)) : 0;
     const goals = matches.reduce((sum, result) => sum + n(result.goals), 0);
@@ -22,6 +38,7 @@ export function finalizeInteractiveBlock(state, results = [], trainingFocus = 'T
     const passes = matches.reduce((sum, result) => sum + n(result.successfulPasses), 0);
     const yellowCards = matches.reduce((sum, result) => sum + n(result.yellowCards), 0);
     const scheduledMatches = matches.map(result => result.fixture).filter(fixture => fixture && (fixture.type || fixture.competitionId || fixture.leagueId));
+    const presentation = buildMatchBlockPresentation(matches);
 
     const summary = {
         rating: avgRating,
@@ -34,7 +51,8 @@ export function finalizeInteractiveBlock(state, results = [], trainingFocus = 'T
         matchesPlayed: count,
         injured: Boolean(player.isInjured),
         matchResults: matches,
-        scheduledMatches
+        scheduledMatches,
+        presentation
     };
 
     // Same block-level hooks as the simulated path, without regenerating a performance.
@@ -59,6 +77,7 @@ export function finalizeInteractiveBlock(state, results = [], trainingFocus = 'T
 
     return {
         results: matches,
+        presentation,
         summary: { ...summary, training, finance, expiredEffects, cupResult, cup: CupSystem.getSummary(state), european: europeanStatus }
     };
 }
