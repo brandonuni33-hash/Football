@@ -50,7 +50,7 @@ function crowdContext(session = {}) {
         'Autour du terrain, ce sont surtout des parents, des proches, des éducateurs et quelques habitués du club.',
         'Les familles se répartissent le long du terrain. Près des bancs, les éducateurs discutent encore avant le coup d’envoi.',
         'Quelques groupes de parents parlent entre eux pendant que des enfants jouent derrière un but. L’ambiance reste celle d’un match de jeunes.',
-        'Des proches reconnaissent les joueurs pendant l’échauffement. Les voix viennent du bord du terrain, pas d’une grande tribune.'
+        'Des proches reconnaissent les joueurs pendant l’échauffement. Les voix restent tout près de la ligne, à quelques mètres du jeu.'
     ]);
     if(tier==='youth')return stablePick(seed,'crowd-context-youth',[
         'Les familles se mêlent aux éducateurs et à quelques personnes venues observer la génération.',
