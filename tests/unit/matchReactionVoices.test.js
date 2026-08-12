@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {buildMatchReactionVoices} from '../../domain/match/matchReactionVoices.js';
+test('les réactions ont des voix distinctes et le même matchId',()=>{const items=buildMatchReactionVoices({matchId:'m9',result:'win',rating:8.2,goals:1,opponent:'Rival',events:[{gesture:'Panenka'}]});assert.equal(items.length,5);assert.equal(new Set(items.map(x=>x.voice)).size,5);assert.ok(items.every(x=>x.matchId==='m9'));assert.ok(items.every(x=>x.text.includes('Panenka')));});
