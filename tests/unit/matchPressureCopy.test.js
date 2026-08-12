@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import{pressureCopy}from'../../domain/match/matchPressureCopy.js';test('la finale et le derby n ont pas la même voix',()=>assert.notEqual(pressureCopy('finale'),pressureCopy('rivalité')));
