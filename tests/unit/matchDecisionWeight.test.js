@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import{decisionWeight}from'../../domain/match/matchDecisionWeight.js';test('une décision tardive de finale pèse plus qu un moment ordinaire',()=>assert.ok(decisionWeight({type:'final',minute:88,scoreDiff:0})>decisionWeight({type:'standard',minute:25,scoreDiff:2})));
