@@ -51,9 +51,10 @@ test('le match jouable suit toute la séquence narrative dans le bon ordre', () 
         phases.push(output.step.phase);
         if (index === 0) assert.ok(session.modifiers.goal >= .07, 'matchBonuses.goalChance doit influencer le match');
 
+        output = advanceInteractiveMatch(current, session);
+        phases.push(output.step.phase);
+
         if (index < session.moments.length - 1) {
-            output = advanceInteractiveMatch(current, session);
-            phases.push(output.step.phase);
             output = advanceInteractiveMatch(current, session);
             phases.push(output.step.phase);
             output = advanceInteractiveMatch(current, session);
