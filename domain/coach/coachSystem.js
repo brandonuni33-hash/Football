@@ -8,40 +8,21 @@ function clampRelation(value) {
     return Math.min(100, Math.max(0, Number(value ?? 50)));
 }
 
-function coachMemoryOccurrence(state, eventData, choiceIndex) {
-    const season = state?.calendar?.currentSeasonYear ?? state?.season ?? 'unknown';
-    const month = state?.calendar?.currentMonth ?? 'unknown';
-    const played = state?.player?.stats?.matchesPlayed ?? 'unknown';
-    return `${eventData?.id || 'coach-event'}|season:${season}|month:${month}|played:${played}|choice:${choiceIndex}`;
-}
+function enrichCoachMemory(state, { result, eventData, choice, coachState }) {
+    const memory = state.careerMemory?.findLast?.(item => item?.choiceId === result?.choiceId && item?.source === 'Coach')
+        || [...(state.careerMemory || [])].reverse().find(item => item?.choiceId === result?.choiceId && item?.source === 'Coach');
+    if (!memory) return null;
 
-function recordCoachMemory(state, { eventData, choice, choiceIndex, relationBefore, relationAfter, coachState }) {
-    state.careerMemory ||= [];
-    const id = `coach-memory:${coachMemoryOccurrence(state, eventData, choiceIndex)}`;
-    if (state.careerMemory.some(memory => memory?.id === id)) return null;
-
-    const coachName = coachState?.name || state.social?.formativeCoach || "l'entraîneur";
-    const relationDelta = relationAfter - relationBefore;
-    const memory = {
-        id,
-        type: 'coach-choice',
-        source: 'coach',
-        eventId: eventData?.id || null,
-        coachName,
-        title: eventData?.title || `Échange avec ${coachName}`,
-        text: choice?.response || eventData?.description || '',
-        choiceText: choice?.text || null,
-        responseText: choice?.response || null,
-        opinion: coachState?.opinion || choice?.opinionChange || 'Neutre',
-        relationBefore,
-        relationAfter,
-        relationDelta,
-        age: Number.isFinite(Number(state?.player?.age)) ? Number(state.player.age) : null,
-        occurredAt: coachMemoryOccurrence(state, eventData, choiceIndex)
-    };
-
-    state.careerMemory.push(memory);
-    if (state.careerMemory.length > 120) state.careerMemory.splice(0, state.careerMemory.length - 120);
+    memory.type = 'coach-choice';
+    memory.eventId = eventData?.id || null;
+    memory.coachName = coachState?.name || state.social?.formativeCoach || "l'entraîneur";
+    memory.eventTitle = eventData?.title || null;
+    memory.eventDescription = eventData?.description || null;
+    memory.choiceText = choice?.text || memory.text || null;
+    memory.responseText = choice?.response || memory.immediateReaction || null;
+    memory.opinion = coachState?.opinion || choice?.opinionChange || 'Neutre';
+    memory.relationAtChoice = clampRelation(coachState?.relation ?? state.player?.stats?.relationCoach ?? 50);
+    memory.relationIntent = Number(choice?.impacts?.relationCoach || choice?.consequences?.emotional?.relationCoach || 0);
     return memory;
 }
 
@@ -120,7 +101,6 @@ export class CoachSystem {
         if (!state?.player || !eventData?.choices?.[choiceIndex]) return null;
         const choice = eventData.choices[choiceIndex];
         const coachState = state.social?.coachData;
-        const relationBefore = clampRelation(coachState?.relation ?? state.player.stats?.relationCoach ?? 50);
         const result = ConsequenceSystem.applyCoachChoice(state, choice);
         if (choice.opinionChange && coachState) coachState.opinion = choice.opinionChange;
         if (coachState) {
@@ -128,15 +108,7 @@ export class CoachSystem {
             state.player.stats ||= {};
             state.player.stats.relationCoach = coachState.relation;
         }
-        const relationAfter = clampRelation(coachState?.relation ?? state.player.stats?.relationCoach ?? relationBefore);
-        const memory = recordCoachMemory(state, {
-            eventData,
-            choice,
-            choiceIndex,
-            relationBefore,
-            relationAfter,
-            coachState
-        });
+        const memory = enrichCoachMemory(state, { result, eventData, choice, coachState });
         EventBus.emit(EVENTS.RELATIONSHIP_CHANGED, { state, relation: 'coach', score: coachState?.relation ?? null, playerId: state.player.id });
         EventBus.emit(EVENTS.RELATIONSHIP_ADVICE, { state, relation: 'coach', advice: choice.opinionChange || null, playerId: state.player.id });
         return {
