@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 const CURRENT_YEAR = 2026;
+const MAX_INTERACTIVE_TRANSITIONS = 40;
 
 async function boot(page) {
   await page.goto('/index.html');
@@ -67,7 +68,12 @@ async function createDeterministicCareer(page, { fixtures = null, age = 18 } = {
       seed: 1,
       matches: matchFixtures,
       byMonth,
-      totals: { allMatches: matchFixtures.length, leagueMatches: matchFixtures.length, cupMatches: 0, europeanMatches: 0 }
+      totals: {
+        allMatches: matchFixtures.length,
+        leagueMatches: matchFixtures.length,
+        cupMatches: 0,
+        europeanMatches: 0
+      }
     };
     state.cups = {};
     state.europeanTournament = null;
@@ -109,17 +115,25 @@ async function forceInteractionPlan(page, playableIndexes) {
 }
 
 async function finishInteractiveFlow(page) {
-  return page.evaluate(() => {
+  return page.evaluate(maxTransitions => {
     const gateway = window.game.gameUI;
     let result = gateway.playNextBlock();
+    let transitions = 0;
     let decisions = 0;
+
     while (result?.interactive) {
-      decisions += 1;
-      if (decisions > 10) throw new Error('Boucle de match interactif anormalement longue.');
-      result = gateway.playNextBlock(0);
+      transitions += 1;
+      if (transitions > maxTransitions) {
+        throw new Error(`Boucle de match interactif anormalement longue (${transitions} transitions).`);
+      }
+
+      const isDecision = result?.interactiveStep?.kind === 'decision';
+      if (isDecision) decisions += 1;
+      result = gateway.playNextBlock(isDecision ? 0 : null);
     }
-    return { decisions, result };
-  });
+
+    return { decisions, transitions, result };
+  }, MAX_INTERACTIVE_TRANSITIONS);
 }
 
 test('parcours carrière complet : création → match → narration → conséquence → sauvegarde/rechargement', async ({ page }) => {
@@ -134,28 +148,22 @@ test('parcours carrière complet : création → match → narration → conséq
   const forcedPlan = await forceInteractionPlan(page, [0]);
   expect(forcedPlan.entries.filter(entry => entry.playable)).toHaveLength(1);
 
-  const flow = await page.evaluate(() => {
+  const flow = await finishInteractiveFlow(page);
+  expect(flow.decisions).toBeGreaterThan(0);
+  expect(flow.transitions).toBeGreaterThanOrEqual(flow.decisions);
+
+  const result = flow.result;
+  expect(result?.report).toBeTruthy();
+  expect(result?.narrativeScene).toBeTruthy();
+  expect(result.report.summary?.matchResults?.length || 0).toBeGreaterThanOrEqual(1);
+  expect(result.narrativeScene.type).toBe('match.end');
+  expect(result.narrativeScene.beats?.length || 0).toBeGreaterThanOrEqual(3);
+  expect(result.narrativeScene.facts?.score || null).toMatch(/^\d+-\d+$/);
+
+  const consequence = await page.evaluate(() => {
     const gateway = window.game.gameUI;
     const registry = window.game.gameSystems;
-
-    const interactionPlan = gateway.getMatchInteractionPlan();
-    const playable = interactionPlan.entries.filter(entry => entry.playable);
-    if (playable.length !== 1) {
-      throw new Error(`Le scénario CI attend exactement 1 match jouable, reçu: ${playable.length}`);
-    }
-
-    let result = gateway.playNextBlock();
-    let decisions = 0;
-    while (result?.interactive) {
-      decisions += 1;
-      if (decisions > 12) throw new Error('Boucle de match interactif anormalement longue.');
-      result = gateway.playNextBlock(0);
-    }
-
-    if (!result?.report) throw new Error('Le bloc ne retourne pas de rapport final.');
-    if (!result?.narrativeScene) throw new Error('La fin de match ne retourne pas de scène narrative.');
-
-    const consequence = registry.consequenceSystem.applyToState(
+    const applied = registry.consequenceSystem.applyToState(
       gateway.state,
       {
         id: 'ci-choice-consequence',
@@ -164,28 +172,16 @@ test('parcours carrière complet : création → match → narration → conséq
       },
       { source: 'CI' }
     );
-
     registry.blockSystem.stateManager.save(gateway.state);
-
     return {
-      decisions,
-      matchCount: result.report.summary?.matchResults?.length || 0,
-      narrativeType: result.narrativeScene.type,
-      narrativeBeats: result.narrativeScene.beats?.length || 0,
-      narrativeScore: result.narrativeScene.facts?.score || null,
-      memoryRecorded: Boolean(consequence?.memory?.recorded),
+      memoryRecorded: Boolean(applied?.memory?.recorded),
       memoryCount: gateway.state.careerMemory?.length || 0,
       savedPlayerId: gateway.state.player.id
     };
   });
 
-  expect(flow.decisions).toBeGreaterThan(0);
-  expect(flow.matchCount).toBeGreaterThanOrEqual(1);
-  expect(flow.narrativeType).toBe('match.end');
-  expect(flow.narrativeBeats).toBeGreaterThanOrEqual(3);
-  expect(flow.narrativeScore).toMatch(/^\d+-\d+$/);
-  expect(flow.memoryRecorded).toBe(true);
-  expect(flow.memoryCount).toBeGreaterThan(0);
+  expect(consequence.memoryRecorded).toBe(true);
+  expect(consequence.memoryCount).toBeGreaterThan(0);
 
   await page.reload();
   await page.waitForFunction(() => Boolean(window.game));
@@ -194,10 +190,12 @@ test('parcours carrière complet : création → match → narration → conséq
     playerId: window.game.state?.player?.id || null,
     playerName: window.game.state?.player?.firstname || window.game.state?.player?.firstName || null,
     memoryCount: window.game.state?.careerMemory?.length || 0,
-    hasConsequenceMemory: Boolean(window.game.state?.careerMemory?.some(item => item.choiceId === 'ci-choice-consequence'))
+    hasConsequenceMemory: Boolean(
+      window.game.state?.careerMemory?.some(item => item.choiceId === 'ci-choice-consequence')
+    )
   }));
 
-  expect(restored.playerId).toBe(flow.savedPlayerId);
+  expect(restored.playerId).toBe(consequence.savedPlayerId);
   expect(restored.playerName).toBe('CI');
   expect(restored.memoryCount).toBeGreaterThan(0);
   expect(restored.hasConsequenceMemory).toBe(true);
@@ -207,8 +205,16 @@ test('parcours carrière complet : création → match → narration → conséq
 test('bloc 100 % simulé : tous les matchs sont joués sans session interactive et finalisés une seule fois', async ({ page }) => {
   await boot(page);
   const fixtures = [
-    { id: 'ci-sim-1', month: 8, type: 'league', competitionId: 'CI_LEAGUE', competitionType: 'league', competitionName: 'Championnat CI', opponent: 'Club A', opponentStrength: 52, home: true },
-    { id: 'ci-sim-2', month: 8, type: 'league', competitionId: 'CI_LEAGUE', competitionType: 'league', competitionName: 'Championnat CI', opponent: 'Club B', opponentStrength: 55, home: false }
+    {
+      id: 'ci-sim-1', month: 8, type: 'league', competitionId: 'CI_LEAGUE',
+      competitionType: 'league', competitionName: 'Championnat CI', opponent: 'Club A',
+      opponentStrength: 52, home: true
+    },
+    {
+      id: 'ci-sim-2', month: 8, type: 'league', competitionId: 'CI_LEAGUE',
+      competitionType: 'league', competitionName: 'Championnat CI', opponent: 'Club B',
+      opponentStrength: 55, home: false
+    }
   ];
   const created = await createDeterministicCareer(page, { fixtures });
   const plan = await forceInteractionPlan(page, []);
@@ -244,8 +250,16 @@ test('bloc 100 % simulé : tous les matchs sont joués sans session interactive 
 test('bloc mixte : un match interactif et un match simulé sont fusionnés dans le même rapport', async ({ page }) => {
   await boot(page);
   const fixtures = [
-    { id: 'ci-mixed-1', month: 8, type: 'league', competitionId: 'CI_LEAGUE', competitionType: 'league', competitionName: 'Championnat CI', phase: 'final', round: 'Finale', opponent: 'Rival CI', opponentStrength: 60, home: true, isDerby: true },
-    { id: 'ci-mixed-2', month: 8, type: 'league', competitionId: 'CI_LEAGUE', competitionType: 'league', competitionName: 'Championnat CI', opponent: 'Club Simulation', opponentStrength: 54, home: false }
+    {
+      id: 'ci-mixed-1', month: 8, type: 'league', competitionId: 'CI_LEAGUE',
+      competitionType: 'league', competitionName: 'Championnat CI', phase: 'final', round: 'Finale',
+      opponent: 'Rival CI', opponentStrength: 60, home: true, isDerby: true
+    },
+    {
+      id: 'ci-mixed-2', month: 8, type: 'league', competitionId: 'CI_LEAGUE',
+      competitionType: 'league', competitionName: 'Championnat CI', opponent: 'Club Simulation',
+      opponentStrength: 54, home: false
+    }
   ];
   const created = await createDeterministicCareer(page, { fixtures });
   const plan = await forceInteractionPlan(page, [0]);
@@ -253,6 +267,7 @@ test('bloc mixte : un match interactif et un match simulé sont fusionnés dans 
 
   const flow = await finishInteractiveFlow(page);
   expect(flow.decisions).toBeGreaterThan(0);
+  expect(flow.transitions).toBeGreaterThanOrEqual(flow.decisions);
 
   const rows = flow.result?.report?.summary?.matchResults || [];
   expect(rows).toHaveLength(2);
