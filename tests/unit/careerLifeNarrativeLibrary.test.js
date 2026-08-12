@@ -26,7 +26,8 @@ test('les dilemmes médias incluent une réponse narrative aux choix',()=>{
 test('une naissance produit un texte intime distinct du football',()=>{
   const text=familyEventText({seed:'family-1',event:'birth',name:'Lucas'});
   assert.match(text,/Lucas/);
-  assert.match(text,/football|carrière|match|pression/i);
+  assert.match(text,/naître|naissance|téléphone|main|important/i);
+  assert.doesNotMatch(text,/score|but|passe décisive|entraînement/i);
 });
 
 test('un événement familial conserve sa narration dans la mémoire',()=>{
@@ -35,7 +36,7 @@ test('un événement familial conserve sa narration dans la mémoire',()=>{
   const couple=system.createCouple({state,playerId:'p1',partnerId:'p2',relationshipId:null});
   const event=system.applyEvent({state,couple,event:'separation',context:{careerPressure:80}});
   assert.ok(event.narrativeText);
-  assert.match(event.narrativeText,/discussion|séparation|football|vie personnelle|quitte/i);
+  assert.match(event.narrativeText,/discussion|conversation|séparation|fissur|décision|deux/i);
 });
 
 test('le coach peut créer une scène de tension lorsque la relation est basse',()=>{
@@ -50,10 +51,10 @@ test('le coach peut créer une scène de tension lorsque la relation est basse',
 
 test('les médias restent muets avant les pros puis utilisent la bibliothèque après',()=>{
   const media=new MediaSystem();
-  const youth={player:{id:'p1',firstname:'Alex',lastname:'Test',squadStatus:'En formation',stats:{matchesPlayed:5}},calendar:{currentMonth:2},media:media.initMediaData()};
-  assert.equal(media.generatePostAfterBlock(youth,{goals:2,rating:8}).post,null);
-  const pro={player:{id:'p1',firstname:'Alex',lastname:'Test',squadStatus:'Équipe première',stats:{matchesPlayed:1}},calendar:{currentMonth:3,currentSeason:1},media:media.initMediaData()};
-  const result=media.generatePostAfterBlock(pro,{goals:1,assists:1,rating:8});
+  const youth={player:{id:'p1',firstname:'Alex',lastname:'Test',age:16,squadStatus:'En formation',careerStage:'youth',stats:{matchesPlayed:5}},calendar:{currentMonth:2},media:media.initMediaData()};
+  assert.equal(media.generatePostAfterBlock(youth,{competitionName:'Championnat National U17',goals:2,rating:8}).post,null);
+  const pro={player:{id:'p1',firstname:'Alex',lastname:'Test',age:21,squadStatus:'Équipe première',careerStage:'pro',stats:{matchesPlayed:1}},calendar:{currentMonth:3,currentSeason:1},media:media.initMediaData()};
+  const result=media.generatePostAfterBlock(pro,{competitionName:'Ligue 1',goals:1,assists:1,rating:8});
   assert.ok(result.post?.content);
   assert.match(result.post.content,/Alex Test/);
 });
