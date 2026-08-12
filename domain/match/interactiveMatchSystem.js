@@ -6,6 +6,7 @@ import { InteractiveMatchRuntime } from './interactiveMatchRuntime.js';
 import { tieBreakerRules, resolveKnockoutTie } from './knockoutMatchPolicy.js';
 import { GOAL_OPPORTUNITY_CHOICES } from './goalOpportunityChoiceLibrary.js';
 import { appendSpecialFourthChoice } from './specialFourthChoiceSystem.js';
+import { enrichProfessionalStep, enrichProfessionalOutcome, applyProfessionalResultMemory } from './proMatchExperienceSystem.js';
 
 const n = value => Number.isFinite(Number(value)) ? Number(value) : 0;
 const score = session => ({ home:n(session?.score?.home), away:n(session?.score?.away) });
@@ -13,7 +14,7 @@ const ownScore = session => n(session?.score?.[session.home ? 'home' : 'away']);
 const oppScore = session => n(session?.score?.[session.home ? 'away' : 'home']);
 function setScore(session, own, opponent) { if (session.home) { session.score.home=own; session.score.away=opponent; } else { session.score.away=own; session.score.home=opponent; } }
 function baseStep(session, values={}) { return { id:`${session.id}:${values.phase}`, phase:values.phase, kind:values.kind||'narration', label:values.label||'MATCH', progress:values.progress||94, minute:values.minute??null, title:values.title||'', text:values.text||'', team:session.team, opponent:session.opponent, competition:session.competition, home:session.home, score:score(session), choices:values.choices||[], items:[], attendanceInfo:null, timedDecision:null, actionLabel:values.actionLabel||'Continuer' }; }
-function tier(session={}) { const age=n(session.playerAge??session.match?.playerAge), text=`${session.competition||''} ${session.match?.competitionName||''}`.toLowerCase(); if((age&&age<=15)||/u ?15/.test(text))return'u15'; if((age&&age<=20)||/youth|u ?1[6789]|u ?20|formation|academy|académie/.test(text))return'youth'; return'pro'; }
+function tier(session={}) { const age=n(session.playerAge??session.match?.playerAge), value=`${session.competition||''} ${session.match?.competitionName||''}`.toLowerCase(); if((age&&age<=15)||/u ?15/.test(value))return'u15'; if((age&&age<=20)||/youth|u ?1[6789]|u ?20|formation|academy|académie/.test(value))return'youth'; return'pro'; }
 function playerStillOnPitch(session={}) { const minutes=n(session.result?.minutesPlayed??session.match?.minutes??session.match?.playerSelection?.minutes??90); return minutes>=90; }
 function extraTimeIntro(session) { const youth=tier(session)!=='pro';return baseStep(session,{phase:'extra_time_intro',label:'PROLONGATION',progress:91,minute:90,title:'Il faut encore jouer',text:youth?'Le temps réglementaire ne suffit pas. Personne ne quitte le terrain : ce match doit avoir un vainqueur. Les jambes sont lourdes, les consignes deviennent courtes. Encore trente minutes.':'Le temps réglementaire ne suffit pas. Le match doit désigner un vainqueur. Après quelques secondes pour reprendre de l’air, trente minutes supplémentaires commencent.',actionLabel:'Jouer la prolongation'}); }
 function extraTimeEnd(session, resolution) { const own=resolution.teamGoals,opp=resolution.opponentGoals;return baseStep(session,{phase:'extra_time_end',label:'120 MINUTES',progress:96,minute:120,title:own===opp?'Toujours rien entre vous':`${own} – ${opp} après prolongation`,text:own===opp?'Même trente minutes de plus n’ont pas suffi. Les joueurs reviennent lentement vers le rond central. Cette fois, tout va se décider à onze mètres.':'La prolongation a enfin séparé les deux équipes. Il n’y aura pas de séance de tirs au but.',actionLabel:own===opp?'Aller aux tirs au but':'Attendre le coup de sifflet'}); }
@@ -34,28 +35,42 @@ function enrichSpecialDecision(state,session,result){
     const decision=result?.decision?{...result.decision,choices}:session?.decision||null;
     return {...result,session,step,decision};
 }
+function enrichProfessionalExperience(state,session,result){
+    const s=result?.session||session;
+    if(!s)return result;
+    const latest=s.events?.at?.(-1);
+    if(latest&&result?.event===latest){
+        const enriched=enrichProfessionalOutcome(state,s,latest);
+        if(enriched!==latest){s.events[s.events.length-1]=enriched;result={...result,event:enriched};if(result.step?.phase?.startsWith('consequence'))result.step={...result.step,text:enriched.text};}
+    }
+    const step=enrichProfessionalStep(state,s,result?.step||s.step);
+    if(step){s.step=step;result={...result,session:s,step};}
+    if(s.result){applyProfessionalResultMemory(state,s,s.result);result={...result,result:s.result};}
+    return result;
+}
 
 export function startInteractiveMatch(state,scheduledMatch,matchIndex=0){return InteractiveMatchRuntime.startInteractiveMatch(state,scheduledMatch,matchIndex);}
 export function advanceInteractiveMatch(state,activeSession,action={}){
     const session=activeSession;
-    if(session?.knockoutRuntimeStage==='extra_time_intro'){const resolution=session.knockoutResolution;setScore(session,resolution.teamGoals,resolution.opponentGoals);session.knockoutRuntimeStage='extra_time_end';session.step=extraTimeEnd(session,resolution);return{finished:false,session,step:session.step,decision:null,result:session.result};}
+    if(session?.knockoutRuntimeStage==='extra_time_intro'){const resolution=session.knockoutResolution;setScore(session,resolution.teamGoals,resolution.opponentGoals);session.knockoutRuntimeStage='extra_time_end';session.step=extraTimeEnd(session,resolution);return enrichProfessionalExperience(state,session,{finished:false,session,step:session.step,decision:null,result:session.result});}
     if(session?.knockoutRuntimeStage==='extra_time_end'){
         const resolution=session.knockoutResolution;
         if(resolution.wentToPenalties){
-            if(playerStillOnPitch(session)){session.knockoutRuntimeStage='penalty_shootout';session.step=shootoutDecision(session);return{finished:false,session,step:session.step,decision:{choices:session.step.choices,minute:120},result:session.result};}
-            session.knockoutRuntimeStage='penalty_shootout_watch';session.step=shootoutWatchingStep(session);return{finished:false,session,step:session.step,decision:null,result:session.result};
+            if(playerStillOnPitch(session)){session.knockoutRuntimeStage='penalty_shootout';session.step=shootoutDecision(session);return enrichProfessionalExperience(state,session,{finished:false,session,step:session.step,decision:{choices:session.step.choices,minute:120},result:session.result});}
+            session.knockoutRuntimeStage='penalty_shootout_watch';session.step=shootoutWatchingStep(session);return enrichProfessionalExperience(state,session,{finished:false,session,step:session.step,decision:null,result:session.result});
         }
-        applyResolution(session,resolution);session.knockoutRuntimeStage='resume';session.step=session.knockoutResumeStep;return{finished:false,session,step:session.step,decision:null,result:session.result};
+        applyResolution(session,resolution);session.knockoutRuntimeStage='resume';session.step=session.knockoutResumeStep;return enrichProfessionalExperience(state,session,{finished:false,session,step:session.step,decision:null,result:session.result});
     }
-    if(session?.knockoutRuntimeStage==='penalty_shootout_watch'){session.knockoutRuntimeStage='penalty_result';session.step=shootoutResultStep(session,session.knockoutResolution,null);return{finished:false,session,step:session.step,decision:null,result:session.result};}
+    if(session?.knockoutRuntimeStage==='penalty_shootout_watch'){session.knockoutRuntimeStage='penalty_result';session.step=shootoutResultStep(session,session.knockoutResolution,null);return enrichProfessionalExperience(state,session,{finished:false,session,step:session.step,decision:null,result:session.result});}
     if(session?.knockoutRuntimeStage==='penalty_shootout'){
-        const index=typeof action==='number'?action:action?.choiceIndex;if(!Number.isInteger(Number(index)))return{finished:false,session,step:session.step,decision:{choices:session.step.choices,minute:120},result:session.result};const choice=session.step.choices[Number(index)];if(!choice)return{finished:false,session,step:session.step,decision:{choices:session.step.choices,minute:120},result:session.result};const success=playerKickSuccess(state,choice,session),resolution={...session.knockoutResolution,penaltyScore:{...session.knockoutResolution.penaltyScore}};if(success&&resolution.shootoutWinner==='team'&&resolution.penaltyScore.team<3)resolution.penaltyScore.team=3;session.playerShootoutKick={choice:choice.text,success};session.knockoutResolution=resolution;session.knockoutRuntimeStage='penalty_result';session.step=shootoutResultStep(session,resolution,success);return{finished:false,session,step:session.step,decision:null,result:session.result};
+        const index=typeof action==='number'?action:action?.choiceIndex;if(!Number.isInteger(Number(index)))return{finished:false,session,step:session.step,decision:{choices:session.step.choices,minute:120},result:session.result};const choice=session.step.choices[Number(index)];if(!choice)return{finished:false,session,step:session.step,decision:{choices:session.step.choices,minute:120},result:session.result};const success=playerKickSuccess(state,choice,session),resolution={...session.knockoutResolution,penaltyScore:{...session.knockoutResolution.penaltyScore}};if(success&&resolution.shootoutWinner==='team'&&resolution.penaltyScore.team<3)resolution.penaltyScore.team=3;session.playerShootoutKick={choice:choice.text,success};session.knockoutResolution=resolution;session.knockoutRuntimeStage='penalty_result';session.step=shootoutResultStep(session,resolution,success);return enrichProfessionalExperience(state,session,{finished:false,session,step:session.step,decision:null,result:session.result});
     }
-    if(session?.knockoutRuntimeStage==='penalty_result'){applyResolution(session,session.knockoutResolution);session.knockoutRuntimeStage='resume';session.step=session.knockoutResumeStep;return{finished:false,session,step:session.step,decision:null,result:session.result};}
+    if(session?.knockoutRuntimeStage==='penalty_result'){applyResolution(session,session.knockoutResolution);session.knockoutRuntimeStage='resume';session.step=session.knockoutResumeStep;return enrichProfessionalExperience(state,session,{finished:false,session,step:session.step,decision:null,result:session.result});}
     if(session?.knockoutRuntimeStage==='resume')session.knockoutRuntimeStage='done';
-    const result=InteractiveMatchRuntime.advanceInteractiveMatch(state,session,action);
-    const knockout=maybeEnterKnockout(result.session||session,result);
-    return enrichSpecialDecision(state,knockout.session||session,knockout);
+    const runtime=InteractiveMatchRuntime.advanceInteractiveMatch(state,session,action);
+    const knockout=maybeEnterKnockout(runtime.session||session,runtime);
+    const pro=enrichProfessionalExperience(state,knockout.session||session,knockout);
+    return enrichSpecialDecision(state,pro.session||session,pro);
 }
 export function resolveInteractiveDecision(state,session,choiceIndex){return advanceInteractiveMatch(state,session,{choiceIndex});}
 export function commitInteractiveResult(state,result){return InteractiveMatchRuntime.commitInteractiveResult(state,result);}
