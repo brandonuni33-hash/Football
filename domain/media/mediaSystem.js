@@ -3,6 +3,7 @@
 import { EventBus } from '../../core/eventBus.js';
 import { EVENTS } from '../../core/events.js';
 import { ConsequenceSystem } from '../decision/consequenceSystem.js';
+import { MEDIA_DILEMMAS, mediaPostText, stableCareerPick } from '../narrative/careerLifeNarrativeLibrary.js';
 
 function hasProfessionalAppearance(state = {}, matchReport = {}) {
     const player = state.player || {};
@@ -17,10 +18,18 @@ function hasProfessionalAppearance(state = {}, matchReport = {}) {
     return !stillYouth && (matches > 0 || reportMatches > 0);
 }
 
+function sourceFor({ goals = 0, assists = 0, rating = 0, hype = 0 } = {}) {
+    if (goals >= 2 || hype >= 55) return 'Actu Foot';
+    if (goals || assists) return 'Le Journal du Match';
+    if (rating > 0 && rating < 5.5) return 'Chronique du club';
+    return 'Suivi jeunes pros';
+}
+
 export class MediaSystem {
     initMediaData() {
-        return { followers: 0, hypeLevel: 0, feed: [], recentDilemma: null, proCoverageUnlocked: false };
+        return { followers: 0, hypeLevel: 0, feed: [], recentDilemma: null, proCoverageUnlocked: false, recentPostKeys: [] };
     }
+
     generatePostAfterBlock(state, matchReport) {
         if (!state.media) state.media = this.initMediaData();
         const media = state.media, player = state.player;
@@ -33,48 +42,66 @@ export class MediaSystem {
         media.proCoverageUnlocked = true;
         const goalsScored = Number(matchReport?.goals || 0), assists = Number(matchReport?.assists || 0);
         const rating = Number(matchReport?.averageRating ?? matchReport?.rating ?? 0);
+        const seed = state?.narrativeState?.seed || state?.career?.seed || player?.id || 'career';
+        const matchKey = `${state.calendar?.currentSeason || 0}:${state.calendar?.currentMonth || 0}:${goalsScored}:${assists}:${rating.toFixed(1)}`;
+        const name = [player.firstname, player.lastname].filter(Boolean).join(' ') || player.firstname || 'Le joueur';
+        const content = mediaPostText({ seed, key: matchKey, name, goals: goalsScored, assists, rating });
+        const source = sourceFor({ goals: goalsScored, assists, rating, hype: media.hypeLevel });
+        const type = rating > 0 && rating < 5.5 ? 'critique' : 'media';
+
         media.followers += 80 + goalsScored * 420 + assists * 250;
         media.hypeLevel = Math.min(100, media.hypeLevel + Math.max(1, goalsScored * 5 + assists * 2));
-        let content, source, type;
-        if (goalsScored >= 2) {
-            content = `${player.firstname || 'Le jeune joueur'} frappe fort avec ${goalsScored} buts. Cette fois, sa performance oblige les observateurs à regarder de plus près.`;
-            source = 'Actu Foot'; type = 'media';
-        } else if (goalsScored === 1 || assists > 0) {
-            content = `${player.firstname || 'Le joueur'} laisse une trace directe sur le score${goalsScored ? ' avec un but' : ''}${goalsScored && assists ? ' et' : ''}${assists ? ` ${assists} passe${assists > 1 ? 's' : ''} décisive${assists > 1 ? 's' : ''}` : ''}.`;
-            source = 'Le Journal du Match'; type = 'media';
-        } else if (rating > 0 && rating < 5.5) {
-            content = `Première période plus difficile pour ${player.firstname || 'le jeune joueur'} : une prestation en retrait qui devra être suivie d’une réaction sur le terrain.`;
-            source = 'Chronique du club'; type = 'critique';
-        } else {
-            content = `${player.firstname || 'Le joueur'} poursuit ses premiers pas chez les pros. Pas d’emballement : les prochaines apparitions diront si une tendance se dessine.`;
-            source = 'Suivi jeunes pros'; type = 'media';
-        }
-        const post = { id: Date.now(), source, type, content, likes: Math.floor(Math.random() * 300) + 20, commentsCount: Math.floor(Math.random() * 25) + 1, date: `Mois ${state.calendar.currentMonth}` };
+        const post = {
+            id: Date.now(), source, type, content,
+            likes: Math.floor(Math.random() * Math.max(120, media.followers * 0.18)) + 20,
+            commentsCount: Math.floor(Math.random() * Math.max(8, media.followers * 0.012)) + 1,
+            date: `Mois ${state.calendar.currentMonth}`
+        };
         media.feed.unshift(post);
         if (media.feed.length > 10) media.feed.pop();
-        media.recentDilemma = Math.random() < 0.28 ? this.getRandomMediaDilemma() : null;
+        media.recentPostKeys ||= [];
+        media.recentPostKeys.push(matchKey);
+        if (media.recentPostKeys.length > 5) media.recentPostKeys.shift();
+
+        media.recentDilemma = Math.random() < 0.28 ? this.getRandomMediaDilemma(state) : null;
         EventBus.emit(EVENTS.MEDIA_POST_CREATED, { state, playerId: player.id, post });
         if (media.recentDilemma) EventBus.emit(EVENTS.MEDIA_DILEMMA_CREATED, { state, playerId: player.id, dilemma: media.recentDilemma });
         return { post, dilemma: media.recentDilemma };
     }
-    getRandomMediaDilemma() {
-        const dilemmas = [
-            { id: 'first_attention', title: '🎙️ Les premiers micros', description: 'Après plusieurs apparitions professionnelles, un journaliste te demande comment tu vis cette nouvelle exposition.', choices: [{ text: 'Parler du travail avant tout', effect: { hypeDelta: 2, followerDelta: 250, coachDelta: 5 } }, { text: 'Assumer tes ambitions', effect: { hypeDelta: 8, followerDelta: 800, coachDelta: -2 } }] },
-            { id: 'locker_room_story', title: '📸 Une image du vestiaire circule', description: 'Une photo anodine prise après le match commence à circuler. On te demande si tu veux commenter.', choices: [{ text: 'Répondre avec humour', effect: { moraleDelta: 3, followerDelta: 400, relationshipDelta: 3 } }, { text: 'Laisser passer', effect: { coachDelta: 3, followerDelta: 80 } }] },
-            { id: 'pression_media', title: '🎙️ Une question qui pique', description: 'Un journaliste revient précisément sur ton temps de jeu et te demande si tu t’attendais à davantage.', choices: [{ text: 'Répondre franchement sans attaquer le staff', effect: { hypeDelta: 6, moraleDelta: 3, coachDelta: -3 } }, { text: 'Rester collectif', effect: { coachDelta: 8, hypeDelta: -1 } }] }
-        ];
-        return dilemmas[Math.floor(Math.random() * dilemmas.length)];
+
+    getRandomMediaDilemma(state = {}) {
+        const seed = state?.narrativeState?.seed || state?.player?.id || 'career';
+        const recent = new Set((state?.careerMemory || []).filter(item => item?.source === 'Media').slice(-3).map(item => item?.eventId));
+        const available = MEDIA_DILEMMAS.filter(item => !recent.has(item.id));
+        const pool = available.length ? available : MEDIA_DILEMMAS;
+        const key = `${state?.calendar?.currentSeason || 0}:${state?.calendar?.currentMonth || 0}:media-dilemma`;
+        return stableCareerPick(seed, key, pool);
     }
+
     resolveDilemma(state, choiceIndex) {
         if (!state.media?.recentDilemma) return null;
         const dilemma = state.media.recentDilemma, choice = dilemma.choices?.[choiceIndex];
         if (!choice) return null;
         const eff = choice.effect || {};
-        const impacts = { 'media.hypeLevel': Number(eff.hypeDelta) || 0, 'media.followers': Number(eff.followerDelta) || 0, morale: Number(eff.moraleDelta) || 0, relationCoach: Number(eff.coachDelta) || 0, vestiaire: Number(eff.relationshipDelta) || 0 };
+        const impacts = {
+            'media.hypeLevel': Number(eff.hypeDelta) || 0,
+            'media.followers': Number(eff.followerDelta) || 0,
+            morale: Number(eff.moraleDelta) || 0,
+            relationCoach: Number(eff.coachDelta) || 0,
+            vestiaire: Number(eff.relationshipDelta) || 0
+        };
         const result = ConsequenceSystem.applyMediaChoice(state, { id: dilemma.id, consequences: { permanent: impacts } });
+        state.careerMemory ||= [];
+        state.careerMemory.push({
+            id: `media-choice-${Date.now()}`,
+            type: 'media-choice', source: 'Media', eventId: dilemma.id,
+            eventTitle: dilemma.title, choiceText: choice.text,
+            responseText: choice.response || null,
+            createdAt: new Date().toISOString()
+        });
         state.media.recentDilemma = null;
         EventBus.emit(EVENTS.MEDIA_DILEMMA_RESOLVED, { state, playerId: state.player?.id, dilemmaId: dilemma.id, choiceIndex, effects: { hidden: true } });
-        return { ...result, message: `Choix : ${choice.text || choice.texte || 'Décision'}`, dilemmaId: dilemma.id, choiceIndex };
+        return { ...result, responseText: choice.response || result.responseText, message: choice.response || `Choix : ${choice.text || choice.texte || 'Décision'}`, dilemmaId: dilemma.id, choiceIndex };
     }
 }
 export default MediaSystem;
