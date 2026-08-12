@@ -5,6 +5,7 @@ import { InteractiveMatchController } from './interactiveMatchController.js';
 
 export const InteractiveMatchSystem = Object.freeze({
     startInteractiveMatch: InteractiveMatchController.startInteractiveMatch,
+    advanceInteractiveMatch: InteractiveMatchController.advanceInteractiveMatch,
     resolveInteractiveDecision: InteractiveMatchController.resolveInteractiveDecision,
     commitInteractiveResult: InteractiveMatchController.commitInteractiveResult
 });

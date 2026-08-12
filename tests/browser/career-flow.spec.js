@@ -148,7 +148,7 @@ test('parcours carrière complet : création → match → narration → conséq
     let decisions = 0;
     while (result?.interactive) {
       decisions += 1;
-      if (decisions > 8) throw new Error('Boucle de match interactif anormalement longue.');
+      if (decisions > 12) throw new Error('Boucle de match interactif anormalement longue.');
       result = gateway.playNextBlock(0);
     }
 

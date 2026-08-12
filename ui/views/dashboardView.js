@@ -293,16 +293,8 @@ export class DashboardView {
         root?.querySelector('#play-block-btn')?.addEventListener('click', () => {
             const state = this.gateway.state;
             if (!state) return;
-            if (state.player?.isInjured) {
-                this.ui?.handleBlockResult?.(this.gateway.playNextBlock(null));
-                return;
-            }
-            const matchType = state.calendar?.currentMonth === 5 ? 'final' : 'standard';
-            if (this.gateway.shouldTriggerMatchDilemma(matchType)) {
-                const dilemma = this.gateway.getMatchDilemma(matchType, "l'adversaire");
-                this.ui?.afficherModaleMatchDilemma?.(dilemma, choice => this.ui?.handleBlockResult?.(this.gateway.playNextBlock(choice)));
-                return;
-            }
+            // Le domaine interactif décide désormais de toute la séquence :
+            // avant-match, narration, décisions, coup de sifflet et réactions.
             this.ui?.handleBlockResult?.(this.gateway.playNextBlock(null));
         });
 

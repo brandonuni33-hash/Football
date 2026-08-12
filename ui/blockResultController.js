@@ -1,6 +1,8 @@
 // ui/blockResultController.js
 // Orchestration de l'après-bloc : narration, événements, coach, transferts et propositions.
 
+import InteractiveMatchFlowController from './interactiveMatchFlowController.js';
+
 const escapeHtml = value => String(value ?? '')
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
@@ -53,11 +55,15 @@ export class BlockResultController {
         this.ui = ui;
         this.modals = modals;
         this.narrativeTimers = [];
+        this.interactiveMatchFlow = new InteractiveMatchFlowController({
+            ui,
+            onResult: next => this.handleBlockResult(next)
+        });
     }
 
     handleBlockResult(result) {
         if (!result) return;
-        if (result.interactive && result.interactiveDecision) {
+        if (result.interactive && (result.interactiveStep || result.interactiveDecision)) {
             this.showInteractiveDecision(result);
             return;
         }
@@ -187,12 +193,7 @@ export class BlockResultController {
     }
 
     showInteractiveDecision(result) {
-        const decision = result.interactiveDecision;
-        this.modals.afficherModaleMatchDilemma(decision, (_, index) => {
-            const next = this.ui.gateway?.playNextBlock(index);
-            if (next?.interactiveDecision) this.showInteractiveDecision(next);
-            else this.handleBlockResult(next);
-        });
+        this.interactiveMatchFlow.show(result);
     }
 
     openPendingInteraction(result, finish) {
