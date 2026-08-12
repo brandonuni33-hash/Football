@@ -4,18 +4,16 @@
 import RelationshipDynamics from '../relationship/relationshipDynamics.js';
 import RelationshipMemory from '../relationship/relationshipMemory.js';
 import FamilySystem from './familySystem.js';
+import { familyEventText } from '../narrative/careerLifeNarrativeLibrary.js';
 
 const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, value));
 const MALE_NAMES = ['Lucas', 'Hugo', 'Gabriel', 'Noah', 'Léo', 'Nathan', 'Ethan', 'Jules', 'Arthur', 'Louis'];
 const FEMALE_NAMES = ['Emma', 'Chloé', 'Léa', 'Jade', 'Louise', 'Alice', 'Mia', 'Rose', 'Anna', 'Inès'];
 const randomName = list => list[Math.floor(Math.random() * list.length)];
+const narrativeSeed = state => state?.narrativeState?.seed || state?.career?.seed || state?.player?.id || 'family';
 
 export class FamilyLifeSystem {
-    constructor({
-        dynamics = new RelationshipDynamics(),
-        memory = new RelationshipMemory(),
-        familySystem = new FamilySystem()
-    } = {}) {
+    constructor({ dynamics = new RelationshipDynamics(), memory = new RelationshipMemory(), familySystem = new FamilySystem() } = {}) {
         this.dynamics = dynamics;
         this.memory = memory;
         this.familySystem = familySystem;
@@ -34,16 +32,7 @@ export class FamilyLifeSystem {
         const family = this.ensure(state);
         const existing = family.couples.find(c => c.playerId === playerId && c.partnerId === partnerId);
         if (existing) return existing;
-        const couple = {
-            id: `couple_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-            playerId,
-            partnerId,
-            relationshipId: relationshipId || null,
-            status: 'together',
-            createdAt,
-            lastReviewAt: createdAt,
-            familyDesire: 50
-        };
+        const couple = { id: `couple_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, playerId, partnerId, relationshipId: relationshipId || null, status: 'together', createdAt, lastReviewAt: createdAt, familyDesire: 50 };
         family.couples.push(couple);
         return couple;
     }
@@ -57,11 +46,7 @@ export class FamilyLifeSystem {
         const familyDesire = clamp(Number(context.familyDesire ?? couple.familyDesire ?? 50));
         const pressure = clamp(careerPressure * 0.35 + distance * 0.35 + (100 - communication) * 0.20 + (100 - stability) * 0.10);
         const resilience = clamp(communication * 0.35 + stability * 0.35 + (100 - pressure) * 0.20 + familyDesire * 0.10);
-        return {
-            pressure: Math.round(pressure),
-            resilience: Math.round(resilience),
-            state: pressure >= 75 ? 'critical' : pressure >= 55 ? 'strained' : resilience >= 75 ? 'strong' : 'stable'
-        };
+        return { pressure: Math.round(pressure), resilience: Math.round(resilience), state: pressure >= 75 ? 'critical' : pressure >= 55 ? 'strained' : resilience >= 75 ? 'strong' : 'stable' };
     }
 
     applyEvent({ state, couple, event, impact = {}, context = {} }) {
@@ -71,19 +56,15 @@ export class FamilyLifeSystem {
         if (relationship) this.dynamics.apply(relationship, impact, context);
         if (event === 'separation') couple.status = 'separated';
         if (event === 'reconciliation') couple.status = 'together';
+        const narrativeType = event === 'separation' ? 'separation' : event === 'reconciliation' ? 'reconciliation' : Number(context.careerPressure || 0) >= 65 ? 'pressure' : 'support';
         const record = {
             id: `family_event_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-            type: event,
-            coupleId: couple.id,
-            playerId: couple.playerId,
-            partnerId: couple.partnerId,
-            before,
-            after: { status: couple.status },
-            createdAt: new Date().toISOString(),
-            context: { ...context }
+            type: event, coupleId: couple.id, playerId: couple.playerId, partnerId: couple.partnerId, before, after: { status: couple.status },
+            createdAt: new Date().toISOString(), context: { ...context },
+            narrativeText: familyEventText({ seed: narrativeSeed(state), event: narrativeType })
         };
         family.events.push(record);
-        this.memory.remember({ state, relationshipId: couple.relationshipId, actorId: couple.playerId, targetId: couple.partnerId, event: `family_${event}`, impact, context });
+        this.memory.remember({ state, relationshipId: couple.relationshipId, actorId: couple.playerId, targetId: couple.partnerId, event: `family_${event}`, impact, context: { ...context, narrativeText: record.narrativeText } });
         return record;
     }
 
@@ -112,25 +93,16 @@ export class FamilyLifeSystem {
 
             const gender = Math.random() < 0.51 ? 'male' : 'female';
             const firstName = gender === 'male' ? randomName(MALE_NAMES) : randomName(FEMALE_NAMES);
-            const child = this.familySystem.registerBirth({
-                state,
-                parentPlayerId: player.id,
-                firstName,
-                gender,
-                birthSeason: Number(season),
-                birthDate: new Date().toISOString()
-            });
+            const child = this.familySystem.registerBirth({ state, parentPlayerId: player.id, firstName, gender, birthSeason: Number(season), birthDate: new Date().toISOString() });
             child.partnerId = couple.partnerId;
-
             const event = family.events[family.events.length - 1];
-            births.push({ child, event });
+            if (event) event.narrativeText = familyEventText({ seed: narrativeSeed(state), event: 'birth', name: firstName });
+            births.push({ child, event, narrativeText: event?.narrativeText || familyEventText({ seed: narrativeSeed(state), event: 'birth', name: firstName }) });
         }
         return births;
     }
 
-    children(state, playerId) {
-        return this.familySystem.getChildren(state, playerId);
-    }
+    children(state, playerId) { return this.familySystem.getChildren(state, playerId); }
 }
 
 export default FamilyLifeSystem;
