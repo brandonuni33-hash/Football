@@ -3,10 +3,18 @@
 
 import { GOAL_OPPORTUNITY_CHOICES_V1 } from './goalOpportunityChoiceLibraryV1.js';
 import { GOAL_OPPORTUNITY_CHOICES_V2 } from './goalOpportunityChoiceLibraryV2.js';
+import { GOAL_OPPORTUNITY_CHOICES_V3 } from './goalOpportunityChoiceLibraryV3.js';
+import { GOAL_OPPORTUNITY_CHOICES_V4 } from './goalOpportunityChoiceLibraryV4.js';
+import { GOAL_OPPORTUNITY_CHOICES_V5 } from './goalOpportunityChoiceLibraryV5.js';
+import { GOAL_OPPORTUNITY_CHOICES_V6 } from './goalOpportunityChoiceLibraryV6.js';
 
 export const GOAL_OPPORTUNITY_CHOICES = Object.freeze([
   ...GOAL_OPPORTUNITY_CHOICES_V1,
-  ...GOAL_OPPORTUNITY_CHOICES_V2
+  ...GOAL_OPPORTUNITY_CHOICES_V2,
+  ...GOAL_OPPORTUNITY_CHOICES_V3,
+  ...GOAL_OPPORTUNITY_CHOICES_V4,
+  ...GOAL_OPPORTUNITY_CHOICES_V5,
+  ...GOAL_OPPORTUNITY_CHOICES_V6
 ]);
 
 function hashIndex(seed, max) {
@@ -34,9 +42,19 @@ function chanceForGroup(group) {
   return 0;
 }
 
+const SPECIAL_REQUIREMENTS = new Set([
+  'requiresDraw','requiresFatigue','requiresWetPitch','requiresSetPieceTaker','requiresDuelAdvantage'
+]);
+
+function genericRequirementKey(requirement) {
+  const suffix = requirement.slice('requires'.length);
+  return suffix ? suffix[0].toLowerCase() + suffix.slice(1) : '';
+}
+
 function contextAllows(item, context) {
   const { minute, scoreFor, scoreAgainst, fatigue, directOpponent, wetPitch, setPieceTaker, shootout } = context;
   if (item.minMinute && minute < item.minMinute) return false;
+  if (item.maxMinute && minute > item.maxMinute) return false;
   if (item.requiresDraw && scoreFor !== scoreAgainst) return false;
   if (item.requiresFatigue && Number(fatigue || 0) < 55) return false;
   if (item.requiresWetPitch && wetPitch !== true) return false;
@@ -47,6 +65,14 @@ function contextAllows(item, context) {
     const won = Number(directOpponent?.playerDuelsWon || 0);
     const lost = Number(directOpponent?.opponentDuelsWon || 0);
     if (!(won >= 1 && won > lost)) return false;
+  }
+  // Les scènes liées à un fait précis (recruteur connu, retour de suspension,
+  // prolongation, consigne coach, etc.) restent invisibles tant que ce fait
+  // n'est pas fourni par l'état canonique. On n'invente jamais le contexte.
+  for (const [key, required] of Object.entries(item)) {
+    if (!required || !/^requires[A-Z]/.test(key) || SPECIAL_REQUIREMENTS.has(key)) continue;
+    const contextKey = genericRequirementKey(key);
+    if (context[contextKey] !== true) return false;
   }
   return true;
 }
@@ -62,13 +88,14 @@ export function selectGoalOpportunity({
   directOpponent = null,
   wetPitch = false,
   setPieceTaker = false,
-  shootout = false
+  shootout = false,
+  ...contextSignals
 } = {}) {
   const group = goalOpportunityPositionGroup(position);
   const trigger = hashIndex(`${seed}:${index}:trigger`, 100);
   if (trigger >= chanceForGroup(group)) return null;
 
-  const context = { minute, scoreFor, scoreAgainst, fatigue, directOpponent, wetPitch, setPieceTaker, shootout };
+  const context = { minute, scoreFor, scoreAgainst, fatigue, directOpponent, wetPitch, setPieceTaker, shootout, ...contextSignals };
   const candidates = GOAL_OPPORTUNITY_CHOICES.filter(item => item.groups.includes(group) && contextAllows(item, context));
   if (!candidates.length) return null;
 
