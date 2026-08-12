@@ -50,13 +50,15 @@ function playerMindsetText(player = {}) {
     return null;
 }
 
-function coachObservation(fact, evaluation, context) {
+function coachObservation(fact, evaluation, context, memory) {
     const payload = fact.payload || {};
     const coach = context?.relationships?.coach || {};
+    const callback = memory?.callbacksByFactId?.[fact.id] || null;
     const parts = [sentence(payload.text)];
     const relationship = coachRelationshipText(coach);
-    const mindset = playerMindsetText(context?.player);
+    if (callback?.memoryType === 'coach-choice' && callback.text) parts.push(callback.text);
     if (relationship) parts.push(relationship);
+    const mindset = playerMindsetText(context?.player);
     if (mindset) parts.push(mindset);
 
     return {
@@ -70,12 +72,13 @@ function coachObservation(fact, evaluation, context) {
         factId: fact.id,
         occurredAt: fact.occurredAt,
         delay: 900,
+        callbackMemoryId: callback?.memoryType === 'coach-choice' ? callback.memoryId : null,
         emphasis: ['important', 'major', 'exceptional'].includes(evaluation?.importance || payload.importance)
     };
 }
 
-function observation(fact, evaluation, context) {
-    if (fact.type === 'coach.interaction.created') return coachObservation(fact, evaluation, context);
+function observation(fact, evaluation, context, memory) {
+    if (fact.type === 'coach.interaction.created') return coachObservation(fact, evaluation, context, memory);
 
     const payload = fact.payload || {};
     const category = payload.category || fact.source || 'career';
@@ -95,12 +98,12 @@ function observation(fact, evaluation, context) {
 }
 
 export class NarrativeWorldBeatComposer {
-    compose({ facts = [], evaluations = [], context = {} } = {}) {
+    compose({ facts = [], evaluations = [], context = {}, memory = {} } = {}) {
         const evaluationById = new Map(evaluations.map(item => [item.factId, item]));
         const worldFacts = facts.filter(fact => fact.type !== 'match.completed');
         const ranked = [...worldFacts].sort((left, right) =>
             (evaluationById.get(right.id)?.score || 0) - (evaluationById.get(left.id)?.score || 0));
-        const allObservations = ranked.map(fact => observation(fact, evaluationById.get(fact.id), context));
+        const allObservations = ranked.map(fact => observation(fact, evaluationById.get(fact.id), context, memory));
         const passiveBeats = allObservations.slice(0, 3);
         const journalEntries = [...allObservations].reverse().map(item => ({
             id: stableNarrativeId('journal', item.factId),
