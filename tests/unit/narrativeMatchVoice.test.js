@@ -113,7 +113,7 @@ test('une grosse prestation dans une défaite garde une émotion contradictoire'
 
     const text = mindsetBeat(output)?.text || '';
     assert.ok(text.length > 0);
-    assert.match(text, /défaite|résultat|victoire|consoler|frustration/i);
+    assert.match(text, /défaite|résultat|consoler|frustration/i);
 });
 
 test('une entrée décisive fait sentir la valeur des minutes données', () => {
