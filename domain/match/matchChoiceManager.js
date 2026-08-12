@@ -73,7 +73,7 @@ export class MatchChoiceManager {
     static shouldTriggerDilemma(matchType){if(matchType==='final'||matchType==='rival')return true;return Math.random()<.35;}
     static getMatchDilemma(matchType,opponentName,position='BU'){
         if(matchType==='final')return ensureFour({type:'final',title:'🏆 Finale contre '+opponentName,description:"Le match a basculé dans une zone où chaque décision compte davantage. Comment voulez-vous imposer votre rôle ?",choices:[
-            {text:'Jouer avec davantage d’audace',impacts:{stats:{mental:2},matchBonuses:{ratingBonus:.12,goalChance:.05,assistChance:.04,fatigueRisk:3}}},
+            {text:'Jouer avec davantage d’audace',impacts:{stats:{mental:2},matchBonuses:{ratingBonus:.12,goalChance:.09,assistChance:.04,fatigueRisk:3}}},
             {text:'Rester fidèle à votre rôle et ne rien forcer',impacts:{stats:{discipline:2,mental:1},matchBonuses:{ratingBonus:.1,passAccuracy:.08}}},
             {text:'Prendre plus de responsabilités dans les moments chauds',impacts:{stats:{charisme:2},matchBonuses:{teamBoost:.08,ratingBonus:.1}}}
         ]});
