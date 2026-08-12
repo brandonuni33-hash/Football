@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import{decisionOutcomeText}from'../../domain/match/matchDecisionOutcomeText.js';test('réussite et échec d un geste ne racontent pas la même chose',()=>assert.notEqual(decisionOutcomeText({gesture:'Panenka',success:true}),decisionOutcomeText({gesture:'Panenka',success:false})));
