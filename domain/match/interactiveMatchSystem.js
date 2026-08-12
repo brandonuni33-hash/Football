@@ -5,6 +5,7 @@
 import { InteractiveMatchRuntime } from './interactiveMatchRuntime.js';
 import { tieBreakerRules, resolveKnockoutTie } from './knockoutMatchPolicy.js';
 import { GOAL_OPPORTUNITY_CHOICES } from './goalOpportunityChoiceLibrary.js';
+import { appendSpecialFourthChoice } from './specialFourthChoiceSystem.js';
 
 const n = value => Number.isFinite(Number(value)) ? Number(value) : 0;
 const score = session => ({ home:n(session?.score?.home), away:n(session?.score?.away) });
@@ -22,6 +23,17 @@ function shootoutResultStep(session, resolution, playerKick=null) { const pens=r
 function applyResolution(session,resolution) { session.knockoutResolution=resolution;setScore(session,resolution.teamGoals,resolution.opponentGoals);if(session.result){session.result.regulationScore=resolution.regulationScore;session.result.wentToExtraTime=resolution.wentToExtraTime;session.result.wentToPenalties=resolution.wentToPenalties;session.result.penaltyScore=resolution.penaltyScore;session.result.shootoutWinner=resolution.shootoutWinner||null;session.result.teamGoals=resolution.teamGoals;session.result.opponentGoals=resolution.opponentGoals;session.result.score={...session.score};const won=resolution.wentToPenalties?resolution.shootoutWinner==='team':resolution.teamGoals>resolution.opponentGoals;session.result.result=won?'win':'loss';if(playerStillOnPitch(session))session.result.minutesPlayed=Math.max(n(session.result.minutesPlayed),120);} }
 function playerKickSuccess(state, choice={}, session={}) { const tech=n(state?.player?.attributes?.tir??state?.player?.attributes?.technique??state?.player?.overall??50),style=String(choice.style||'safe'),base=style==='safe'?.79:style==='technical'?.75:.64;let h=2166136261;for(const c of `${session.id}|${choice.text}|shootout`){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}const roll=(h>>>0)/4294967296;return roll<Math.max(.42,Math.min(.93,base+(tech-50)/240)); }
 function maybeEnterKnockout(session,result) { if(!session?.result||session.knockoutRuntimeStage)return result;const rules=tieBreakerRules(session.match||{});if(!rules.eligible||ownScore(session)!==oppScore(session))return result;const resolution=resolveKnockoutTie({match:session.match,teamGoals:ownScore(session),opponentGoals:oppScore(session),seed:session.id,playerEdge:(n(session.result.rating)-6.5)*5});session.knockoutResolution=resolution;session.knockoutResumeStep=session.step;session.knockoutRuntimeStage='extra_time_intro';session.step=extraTimeIntro(session);return {...result,finished:false,session,step:session.step,decision:null,result:session.result}; }
+function enrichSpecialDecision(state,session,result){
+    const step=result?.step||session?.step;
+    if(!step||step.kind!=='decision'||step.phase==='penalty_shootout')return result;
+    const canonical=session?.decision?.choices||result?.decision?.choices||step.choices||[];
+    const choices=appendSpecialFourthChoice(canonical,state,{id:session?.decision?.opportunityId||step.id||`${session?.id}:${step.minute}`,seed:session?.match?.id||session?.id,title:step.title||session?.decision?.title,description:step.text||session?.decision?.description,minute:step.minute});
+    if(choices.length===canonical.length)return result;
+    if(session?.decision)session.decision.choices=choices;
+    step.choices=choices;
+    const decision=result?.decision?{...result.decision,choices}:session?.decision||null;
+    return {...result,session,step,decision};
+}
 
 export function startInteractiveMatch(state,scheduledMatch,matchIndex=0){return InteractiveMatchRuntime.startInteractiveMatch(state,scheduledMatch,matchIndex);}
 export function advanceInteractiveMatch(state,activeSession,action={}){
@@ -41,7 +53,9 @@ export function advanceInteractiveMatch(state,activeSession,action={}){
     }
     if(session?.knockoutRuntimeStage==='penalty_result'){applyResolution(session,session.knockoutResolution);session.knockoutRuntimeStage='resume';session.step=session.knockoutResumeStep;return{finished:false,session,step:session.step,decision:null,result:session.result};}
     if(session?.knockoutRuntimeStage==='resume')session.knockoutRuntimeStage='done';
-    const result=InteractiveMatchRuntime.advanceInteractiveMatch(state,session,action);return maybeEnterKnockout(result.session||session,result);
+    const result=InteractiveMatchRuntime.advanceInteractiveMatch(state,session,action);
+    const knockout=maybeEnterKnockout(result.session||session,result);
+    return enrichSpecialDecision(state,knockout.session||session,knockout);
 }
 export function resolveInteractiveDecision(state,session,choiceIndex){return advanceInteractiveMatch(state,session,{choiceIndex});}
 export function commitInteractiveResult(state,result){return InteractiveMatchRuntime.commitInteractiveResult(state,result);}
