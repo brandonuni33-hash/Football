@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {buildGoalPresentation} from '../../domain/match/goalPresentation.js';
+test('un visuel de but exige un but canonique identifiable',()=>{assert.equal(buildGoalPresentation({}),null);const goal=buildGoalPresentation({matchId:'m1',scorer:'Alex',minute:82,score:{home:2,away:1},gesture:'Extérieur du pied'});assert.equal(goal.matchId,'m1');assert.equal(goal.scorer,'Alex');assert.deepEqual(goal.score,{home:2,away:1});assert.equal(goal.requiresContinue,true);});
