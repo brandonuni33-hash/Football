@@ -2,7 +2,7 @@ name: Architecture Check
 
 on:
   push:
-    branches: [main, gh-pages]
+    branches: [main, gh-pages, 'narrative/**', 'fix/**']
   pull_request:
     branches: [main]
   workflow_dispatch:

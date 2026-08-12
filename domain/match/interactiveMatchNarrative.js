@@ -1,57 +1,118 @@
 // Compose les étapes présentables d'un match jouable. Ce module ne modifie pas le State.
+import { MATCH_COPY, contextualFlow, stablePick } from './matchNarrativeLibrary.js';
+import { decisionNarration } from './matchDecisionNarration.js';
+import { decisionOutcomeText } from './matchDecisionOutcomeText.js';
+import { directOpponentBeat } from './directOpponentSystem.js';
+import { PLAYER_INNER_VOICE_CATALOG } from '../narrative/playerInnerVoiceCatalog.js';
 
 const scoreSnapshot = session => ({ home: Number(session?.score?.home) || 0, away: Number(session?.score?.away) || 0 });
 
+function stableNumber(seed, min, max) {
+    const text = String(seed || 'match');
+    let hash = 2166136261;
+    for (let i = 0; i < text.length; i++) { hash ^= text.charCodeAt(i); hash = Math.imul(hash, 16777619); }
+    return min + ((hash >>> 0) % Math.max(1, max - min + 1));
+}
+
 function step(session, values = {}) {
     return {
-        id: `${session.id}:${values.phase}`,
-        phase: values.phase,
-        kind: values.kind || 'narration',
-        label: values.label || 'MATCH',
-        progress: Number(values.progress) || 0,
-        minute: values.minute ?? null,
-        title: values.title || '', text: values.text || '',
-        team: session.team, opponent: session.opponent, competition: session.competition,
-        home: session.home, score: scoreSnapshot(session), choices: values.choices || [], items: values.items || [],
-        // Une scène narrative n'avance jamais seule. Seules les décisions explicitement
-        // marquées timedDecision peuvent expirer dans l'UI.
-        timedDecision: values.timedDecision || null,
-        actionLabel: values.actionLabel || 'Continuer'
+        id: `${session.id}:${values.phase}`, phase: values.phase, kind: values.kind || 'narration', label: values.label || 'MATCH',
+        progress: Number(values.progress) || 0, minute: values.minute ?? null, title: values.title || '', text: values.text || '',
+        team: session.team, opponent: session.opponent, competition: session.competition, home: session.home, score: scoreSnapshot(session),
+        choices: values.choices || [], items: values.items || [], attendanceInfo: values.attendanceInfo || null,
+        innerVoice: values.innerVoice || null,
+        timedDecision: values.timedDecision || null, actionLabel: values.actionLabel || 'Continuer'
     };
 }
 
-function stakesText(session) {
-    if (session.type === 'final') return `Une finale face à ${session.opponent}. Chaque ballon peut changer une carrière.`;
-    if (session.type === 'rival') return `Le stade gronde déjà. Face à ${session.opponent}, personne ne veut céder un centimètre.`;
-    if (session.importance === 'important' || session.importance === 'exceptional') return `Ce rendez-vous contre ${session.opponent} peut peser lourd dans la dynamique de la saison.`;
-    return `Les tribunes se remplissent pendant que les deux équipes terminent leur échauffement.`;
+function contextText(session = {}) {
+    return [session.level,session.competition,session.match?.competitionName,session.match?.competition,session.match?.ageCategory,session.match?.category,session.match?.level,session.match?.division].filter(Boolean).join(' ').toLowerCase();
+}
+function playerAge(session = {}) { return Number(session.playerAge ?? session.match?.playerAge ?? session.match?.age ?? session.match?.player?.age ?? 0) || 0; }
+function careerTier(session = {}) { const age=playerAge(session),text=contextText(session);if((age&&age<=15)||/\bu ?15\b|moins de 15/.test(text))return'u15';if((age&&age<=18)||/\bu ?1[678]\b|formation|academy|académie|jeune/.test(text))return'youth';if(/amateur|semi.?pro|régional|regional|national 2|national 3|district/.test(text))return'semi';return'pro'; }
+function stadiumCapacity(session = {}) { return Number(session.stadiumCapacity ?? session.capacity ?? session.match?.stadiumCapacity ?? session.match?.capacity ?? session.match?.stadium?.capacity ?? 0) || 0; }
+function matchSeed(session = {}) { return session.match?.id || `${session.matchIndex || 0}:${session.team}:${session.opponent}:${session.competition}`; }
+
+function innerVoicePick(session,key,predicate){
+    const age=playerAge(session);
+    const candidates=PLAYER_INNER_VOICE_CATALOG.filter(item=>item?.text&&Number(item.intensity||1)<=3&&predicate(item)&&!(age&&age<=15&&item.raw&&Number(item.intensity||1)>=3));
+    const chosen=stablePick(matchSeed(session),`inner-voice:${key}`,candidates);
+    return chosen?.text||null;
+}
+function chanceInnerVoice(session,decision,index){
+    if(!decision?.isGoalOpportunity)return null;
+    return innerVoicePick(session,`chance:${index}:${decision.minute}`,item=>item.family==='big_chance'||item.tags?.includes('chance'));
+}
+function consequenceInnerVoice(session,event,index){
+    if(!event?.gesture||stableNumber(`${matchSeed(session)}:voice-consequence:${index}`,0,2)!==0)return null;
+    const failed=/échoue|ne passe pas|perd le ballon|récupère|fenêtre se referme|lit ton geste/i.test(`${event?.title||''} ${event?.text||''}`);
+    return innerVoicePick(session,`consequence:${index}:${failed?'fail':'success'}`,item=>failed?(item.family==='doubt'||item.tags?.includes('after_mistake')):(item.family==='confidence'||item.tags?.includes('success')));
+}
+function finalInnerVoice(session,result={}){
+    if(Number(result.goals)>=3)return innerVoicePick(session,`final-haul:${result.goals}`,item=>item.family==='ego'||item.family==='goal');
+    if(result.result==='loss'&&Number(result.rating||0)<6)return innerVoicePick(session,'final-loss',item=>item.family==='doubt'||item.tags?.includes('resilience'));
+    if(Number(result.rating||0)>=8)return innerVoicePick(session,'final-high',item=>item.family==='confidence'||item.tags?.includes('confidence_high'));
+    return null;
 }
 
-export function buildPreMatchStep(session) { return step(session, { phase:'pre_match', label:'AVANT-MATCH', progress:4, title:`${session.team} · ${session.opponent}`, text:stakesText(session), actionLabel:'Entrer sur la pelouse' }); }
-export function buildKickoffStep(session) {
-    const venue = session.home ? 'Ton public pousse dès les premières passes.' : 'Le stade adverse tente de couvrir les voix de ton équipe.';
-    return step(session, { phase:'kickoff', label:'COUP D’ENVOI', progress:10, minute:0, title:'Le ballon roule', text:`${venue} Le match cherche encore son rythme.`, actionLabel:'Continuer' });
-}
-export function buildDecisionStep(session, decision, index) {
-    const total = Math.max(1, session.moments?.length || 1);
-    return step(session, { phase:`moment_${index+1}`, kind:'decision', label:`MOMENT ${index+1}/${total}`, progress:Math.round(18 + ((index+1)/(total+1))*62), minute:decision.minute, title:decision.title, text:decision.description, choices:decision.choices, timedDecision:decision.timedDecision || null, actionLabel:'Choisir' });
-}
-export function buildConsequenceStep(session, event, index) { return step(session, { phase:`consequence_${index+1}`, label:'CONSÉQUENCE', progress:Math.min(86, 28 + index*13), minute:event.minute, title:event.title || 'Ta décision change la séquence', text:event.text, actionLabel:'Continuer' }); }
-export function buildContinuationStep(session) {
-    const teamGoals=session.score[session.home?'home':'away'], opponentGoals=session.score[session.home?'away':'home'];
-    const text=teamGoals>opponentGoals?`${session.opponent} avance ses lignes. Ton équipe doit maintenant résister sans renoncer à jouer.`:teamGoals<opponentGoals?`Le temps défile et ton équipe doit prendre davantage de risques pour revenir.`:`Le rapport de force reste indécis. Une seule accélération peut faire basculer le match.`;
-    return step(session,{phase:'match_continues',label:'LE MATCH CONTINUE',progress:52,minute:session.moments?.[session.currentMoment]||48,title:'Le jeu reprend ses droits',text,actionLabel:'Continuer'});
+export function attendance(session = {}) {
+    const capacity=stadiumCapacity(session),known=Number(session.attendance ?? session.match?.attendance ?? 0),seed=`${matchSeed(session)}:${session.matchIndex||0}:${session.opponent}`;
+    if(known>0){
+        const exact=session.attendanceLocked===true||session.match?.attendanceLocked===true;
+        const jitter=exact?0:stableNumber(`${seed}:attendance-jitter`,-7,7)/100;
+        const varied=Math.max(1,Math.round(known*(1+jitter)));
+        return capacity>0?Math.min(varied,capacity):varied;
+    }
+    const tier=careerTier(session),special=session.type==='rival'||session.type==='final'||['important','exceptional'].includes(session.importance);
+    const ranges={u15:special?[90,260]:[45,165],youth:special?[220,1400]:[90,520],semi:special?[850,6800]:[220,3000],pro:special?[18000,62000]:[5000,39000]};
+    let[min,max]=ranges[tier];if(capacity>0){max=Math.min(max,capacity);min=Math.min(min,max);}const reputation=Number(session.clubReputation??session.match?.clubReputation??session.match?.reputation??50);const base=stableNumber(`${seed}:${session.importance}`,min,max),factor=Number.isFinite(reputation)?Math.max(.72,Math.min(1.12,.78+reputation/220)):1,adjusted=Math.round(base*factor);return Math.max(1,capacity>0?Math.min(adjusted,capacity):adjusted);
 }
 
-const UNEXPECTED_CONTEXTS=[
-{id:'opponent_press',title:'L’adversaire change de rythme',text:'Le bloc adverse monte soudainement de vingt mètres et étouffe les premières relances.',effects:{rating:-.04,fatigue:2,opponentThreat:.16}},
-{id:'space_opens',title:'Une brèche apparaît',text:'Un défenseur adverse semble touché. Des espaces commencent à s’ouvrir entre les lignes.',effects:{goal:.07,assist:.04,opponentThreat:-.03}},
-{id:'crowd_surge',title:'Le stade se réveille',text:'Une décision arbitrale met le feu aux tribunes. Le match devient plus rapide et plus nerveux.',effects:{rating:.05,fatigue:1,cards:.04,opponentThreat:.06}},
-{id:'coach_shift',title:'Le coach change le plan',text:'Depuis la ligne de touche, le coach exige davantage de liberté entre les lignes.',effects:{goal:.04,assist:.06,rating:.04,opponentThreat:.02}}];
+function crowdContext(session = {}) {
+    const tier=careerTier(session),seed=matchSeed(session);
+    if(tier==='u15')return stablePick(seed,'crowd-context-u15',[
+        'Autour du terrain, ce sont surtout des parents, des proches, des éducateurs et quelques habitués du club.',
+        'Les familles se répartissent le long du terrain. Près des bancs, les éducateurs discutent encore avant le coup d’envoi.',
+        'Quelques groupes de parents parlent entre eux pendant que des enfants jouent derrière un but. L’ambiance reste celle d’un match de jeunes.',
+        'Des proches reconnaissent les joueurs pendant l’échauffement. Tout se passe à quelques mètres de la ligne.'
+    ]);
+    if(tier==='youth')return stablePick(seed,'crowd-context-youth',[
+        'Les familles se mêlent aux éducateurs et à quelques personnes venues observer la génération.',
+        'Autour du terrain, les proches côtoient quelques membres de staffs et observateurs discrets.',
+        'L’ambiance reste proche du terrain : familles et éducateurs suivent l’échauffement à quelques mètres des joueurs.'
+    ]);
+    if(tier==='semi')return stablePick(seed,'crowd-context-semi',[
+        'Les habitués du club prennent place autour du terrain et dans la petite tribune.',
+        'Les premiers chants viennent d’un petit groupe de fidèles pendant que le reste du public s’installe.',
+        'La petite tribune se remplit progressivement, mais une partie du public préfère rester debout près du terrain.'
+    ]);
+    return stablePick(seed,'crowd-context-pro',[
+        'Le stade prend du volume à mesure que les deux équipes terminent leur échauffement.',
+        'Les tribunes se densifient et le bruit devient continu quelques minutes avant l’entrée des équipes.',
+        'Les chants descendent des tribunes pendant que les derniers ballons d’échauffement quittent la pelouse.'
+    ]);
+}
+
+function attendanceInfo(session={}){const count=attendance(session);return{count,label:`${count.toLocaleString('fr-FR')} spectateur${count>1?'s':''}`,context:crowdContext(session)};}
+function stakesText(session) { const tier=careerTier(session);if(session.type==='final')return`Une finale. Dans les dernières minutes avant de sortir, les conversations deviennent plus courtes.`;if(session.type==='rival')return`Les premiers duels semblent déjà avoir commencé pendant l’échauffement. Personne n’a besoin de rappeler pourquoi ce match compte.`;if(session.importance==='important'||session.importance==='exceptional')return`Ce rendez-vous peut modifier la dynamique de la saison. Le vestiaire le sait sans avoir besoin d’en faire un discours.`;if(tier==='u15'||tier==='youth')return`L’échauffement se termine. Le coach rassemble le groupe une dernière fois, puis chacun rejoint sa position pour les premiers duels.`;return`L’échauffement se termine. Dans quelques secondes, le premier ballon dira tout de suite quel rythme l’adversaire veut imposer.`; }
+function positionNarrativeLabel(position) { const p=String(position||'').toUpperCase();if(['GK','GB','G'].includes(p))return'gardien';if(['DC','CB','DD','RB','DG','LB','D'].includes(p))return'défenseur';if(['MC','CM','MOC','CAM','MD','MG','M','MDC','CDM'].includes(p))return'milieu';if(['AD','RW','AG','LW'].includes(p))return'ailier';if(['BU','ST','AC','CF'].includes(p))return'attaquant';return position||null; }
+function memoryFromSession(session = {}) { const decisions=session.decisions||[],events=session.events||[],pressureMisses=decisions.filter(item=>item?.timedOut).length,technicalFailures=events.filter(item=>/échoue|ne passe pas|perd le ballon|récupère|trop long|lit ton geste/i.test(`${item?.title||''} ${item?.text||''}`)).length,successfulDuels=Number(session.directOpponent?.playerDuelsWon)||0;return{pressureMisses,technicalFailures,defenderStress:successfulDuels>=2?.5:successfulDuels?.25:0}; }
+function playerScore(session = {}) { return Number(session.score?.[session.home?'home':'away'])||0; }
+function opponentScore(session = {}) { return Number(session.score?.[session.home?'away':'home'])||0; }
+function confidenceValue(session = {}) { const raw=Number(session.playerConfidence??session.confidence??session.match?.playerConfidence??50);return Number.isFinite(raw)?raw:50; }
+function fatigueValue(session = {}) { const raw=Number(session.playerFatigue??session.fatigue??session.match?.playerFatigue);if(Number.isFinite(raw))return raw;return Math.max(0,Math.min(100,(Number(session.modifiers?.fatigue)||0)*11)); }
+
+export function buildPreMatchStep(session) { return step(session,{phase:'pre_match',label:'AVANT-MATCH',progress:4,title:`${session.team} · ${session.opponent}`,text:stakesText(session),attendanceInfo:attendanceInfo(session),actionLabel:'Entrer sur la pelouse'}); }
+export function buildKickoffStep(session) { const tier=careerTier(session),opening=stablePick(matchSeed(session),'kickoff',MATCH_COPY.opening),venue=session.home?(tier==='u15'||tier==='youth'?'Depuis le bord du terrain, les proches réagissent aux premiers duels.':'Ton public réagit aux premières prises de balle.'):(tier==='u15'||tier==='youth'?'Les encouragements adverses se font entendre à quelques mètres de la ligne.':'Le public adverse réagit à chaque ballon récupéré.');const direct=directOpponentBeat(session.directOpponent,{minute:0,index:0,playerPosition:positionNarrativeLabel(session.playerPosition)});return step(session,{phase:'kickoff',label:'COUP D’ENVOI',progress:10,minute:0,title:'Les premières secondes',text:`${venue} ${opening}${direct?` ${direct}`:''}`,actionLabel:'Continuer'}); }
+export function buildDecisionStep(session,decision,index){const total=Math.max(1,session.moments?.length||1),narration=decisionNarration({minute:decision.minute,memory:memoryFromSession(session),index,position:positionNarrativeLabel(session.playerPosition||session.match?.playerPosition),age:playerAge(session),level:contextText(session),competition:session.competition,score:scoreSnapshot(session),home:session.home,confidence:confidenceValue(session),fatigue:fatigueValue(session),coachTrust:Number(session.coachTrust??session.match?.coachTrust??50),directOpponent:session.directOpponent}),decisionText=decision.isGoalOpportunity?decision.description:(narration||decision.description);return step(session,{phase:`moment_${index+1}`,kind:'decision',label:decision.isGoalOpportunity?'OCCASION DE BUT':`MOMENT ${index+1}/${total}`,progress:Math.round(18+((index+1)/(total+1))*62),minute:decision.minute,title:decision.title,text:decisionText,choices:decision.choices,innerVoice:chanceInnerVoice(session,decision,index),timedDecision:decision.timedDecision||null,actionLabel:'Choisir'});}
+function genericControllerCopy(text=''){return/donne de l’air au collectif|déplace le rapport de force|imposes? ton choix dans l’impact|match absorbe ton choix|assumes? ta décision|initiative crée une situation dangereuse|prix de l’audace/i.test(text);}
+export function buildConsequenceStep(session,event,index){const source=`${event?.title||''} ${event?.text||''}`,failed=/échoue|ne passe pas|perd le ballon|récupère|fenêtre se referme|lit ton geste/i.test(source),duel=/duel|vis-à-vis|adversaire direct/i.test(source);let text=event?.text||'';if(event?.timedOut||event?.gesture||duel){text=decisionOutcomeText({gesture:event?.gesture||null,success:!failed,duel,timedOut:Boolean(event?.timedOut),minute:event?.minute,score:scoreSnapshot(session),home:session.home,position:positionNarrativeLabel(session.playerPosition||session.match?.playerPosition),confidence:confidenceValue(session)});}else if(!text||genericControllerCopy(text)){text=stablePick(matchSeed(session),`consequence:${index}:${event?.minute||0}`,failed?MATCH_COPY.failure:MATCH_COPY.success);}return step(session,{phase:`consequence_${index+1}`,label:'CONSÉQUENCE',progress:Math.min(86,28+index*13),minute:event.minute,title:event.title||(failed?'L’action se referme':'Tu gagnes un temps'),text,innerVoice:consequenceInnerVoice(session,event,index),actionLabel:'Continuer'});}
+export function buildContinuationStep(session){const forGoals=playerScore(session),againstGoals=opponentScore(session),minute=session.moments?.[session.currentMoment]||48,text=contextualFlow({seed:matchSeed(session),key:`flow:${session.currentMoment}:${minute}:${forGoals}-${againstGoals}`,scoreFor:forGoals,scoreAgainst:againstGoals,confidence:confidenceValue(session),fatigue:fatigueValue(session)}),title=forGoals>againstGoals?'Ils doivent se découvrir':forGoals<againstGoals?'Le temps prend du poids':'Le match reste ouvert';return step(session,{phase:'match_continues',label:'TEMPS DE JEU',progress:52,minute,title,text,actionLabel:'Continuer'});}
+const UNEXPECTED_CONTEXTS=[{id:'opponent_press',title:'Le pressing monte',text:'Leur première ligne avance d’un bloc. À chaque relance, tu as moins de temps pour contrôler et lever la tête.',effects:{rating:-.04,fatigue:2,opponentThreat:.16}},{id:'space_opens',title:'Un espace se dessine',text:'Leur milieu ne suit plus tous les décrochages. Entre les lignes, quelques mètres commencent à apparaître.',effects:{goal:.07,assist:.04,opponentThreat:-.03}},{id:'crowd_surge',title:'La tension monte',text:'Une décision arbitrale déclenche plusieurs réactions autour du terrain. Les duels deviennent plus nerveux.',effects:{rating:.05,fatigue:1,cards:.04,opponentThreat:.06}},{id:'coach_shift',title:'Le coach ajuste',text:'Depuis la ligne, le coach te fait signe de jouer plus haut et d’attaquer l’espace dès la récupération.',effects:{goal:.04,assist:.06,rating:.04,opponentThreat:.02}},{id:'direct_opponent',title:'Ton vis-à-vis s’adapte',text:'Après les derniers duels, ton adversaire direct modifie sa distance. Il ne veut plus te laisser recevoir dans les mêmes conditions.',effects:{goal:.035,assist:.025,duel:.04}},{id:'tempo_drop',title:'Le rythme retombe',text:'Pendant quelques minutes, les deux équipes prennent moins de risques. Les déplacements sans ballon deviennent plus importants que les accélérations.',effects:{fatigue:-1,opponentThreat:-.02}}];
 export function createUnexpectedContext(session,roll=Math.random()){const index=Math.min(UNEXPECTED_CONTEXTS.length-1,Math.floor(Math.max(0,roll)*UNEXPECTED_CONTEXTS.length));return{...UNEXPECTED_CONTEXTS[index],effects:{...UNEXPECTED_CONTEXTS[index].effects}};}
-export function buildUnexpectedStep(session,context){return step(session,{phase:'unexpected_event',label:'LE MATCH CHANGE',progress:61,minute:session.moments?.[session.currentMoment]||57,title:context.title,text:context.text,actionLabel:'Continuer'});}
-export function buildFullTimeStep(session,result){const contribution=result.goals>1?`${result.goals} buts`:result.goals===1?'1 but':'';const assist=result.assists>1?`${result.assists} passes décisives`:result.assists===1?'1 passe décisive':'';const impact=[contribution,assist].filter(Boolean).join(' et ');const finalDecision=session.events.at(-1)?.text||'';return step(session,{phase:'full_time_sequence',label:'FIN DE MATCH',progress:90,minute:90,title:'Les dernières minutes se jouent',text:`${finalDecision} ${session.opponent} jette ses dernières forces dans la bataille.${impact?` Ton match porte la trace de ${impact}.`:''}`.trim(),actionLabel:'Attendre le coup de sifflet'});}
-export function buildFinalWhistleStep(session,result){const verdict=result.result==='win'?'La victoire est acquise.':result.result==='loss'?'La défaite est actée.':'Les deux équipes se quittent dos à dos.';return step(session,{phase:'final_whistle',label:'COUP DE SIFFLET',progress:97,minute:90,title:`${result.teamGoals} – ${result.opponentGoals}`,text:`${verdict} Pendant quelques secondes, le bruit du stade couvre tout le reste.`,actionLabel:'Voir les réactions'});}
-export function buildPostMatchReactions(state,session,result){const coachName=state?.social?.coachData?.name||state?.social?.formativeCoach||'Le coach';const lockerText=result.result==='win'?(result.rating>=7.5?'Tes coéquipiers viennent te chercher dès l’entrée du vestiaire. Ton influence n’est passée inaperçue.':'Le vestiaire savoure le résultat, entre soulagement et fatigue.'):result.result==='loss'?'Le silence s’installe. Chacun rejoue mentalement les moments qui ont échappé à l’équipe.':'Le groupe reste partagé entre frustration et sentiment d’avoir résisté.';const coachText=result.rating>=8?`${coachName} te félicite devant le groupe, puis te rappelle que ce niveau crée de nouvelles attentes.`:result.rating<5.8?`${coachName} ne hausse pas le ton, mais son regard suffit : il attend une réaction au prochain match.`:`${coachName} souligne ton sérieux et pointe déjà le détail à corriger pour la suite.`;const mediaText=result.goals>=2?`Les premières alertes parlent déjà de ton ${result.goals===2?'doublé':result.goals===3?'triplé':result.goals===4?'quadruplé':`${result.goals} buts`}. Ton téléphone commence à vibrer.`:result.goals===1||result.assists>0?'Les médias retiennent ton influence directe sur le score.':result.rating>=7.5?'Les observateurs saluent une performance solide, même sans statistique décisive.':'Les commentaires se concentrent davantage sur le résultat collectif.';return[{id:'locker-room',icon:'👕',label:'VESTIAIRE',text:lockerText},{id:'coach',icon:'🧠',label:'COACH',text:coachText},{id:'media',icon:'🎙️',label:'MÉDIAS',text:mediaText}];}
-export function buildReactionsStep(session,reactions){return step(session,{phase:'reactions',kind:'reactions',label:'APRÈS-MATCH',progress:100,title:'Le match continue hors du terrain',text:'Le score est figé, mais ses effets commencent seulement à se propager.',items:reactions,actionLabel:'Continuer la carrière'});}
-export default {buildPreMatchStep,buildKickoffStep,buildDecisionStep,buildConsequenceStep,buildContinuationStep,createUnexpectedContext,buildUnexpectedStep,buildFullTimeStep,buildFinalWhistleStep,buildPostMatchReactions,buildReactionsStep};
+export function buildUnexpectedStep(session,context){return step(session,{phase:'unexpected_event',label:'LE MATCH CHANGE',progress:61,minute:session.moments?.[session.currentMoment]||57,title:context.title,text:context.id==='direct_opponent'?(directOpponentBeat(session.directOpponent,{minute:session.moments?.[session.currentMoment]||57,index:session.currentMoment,playerPosition:positionNarrativeLabel(session.playerPosition)})||context.text):context.text,actionLabel:'Continuer'});}
+export function buildFullTimeStep(session,result){const contribution=result.goals>1?`${result.goals} buts`:result.goals===1?'1 but':'',assist=result.assists>1?`${result.assists} passes décisives`:result.assists===1?'1 passe décisive':'',impact=[contribution,assist].filter(Boolean).join(' et '),close=Math.abs(Number(result.teamGoals)-Number(result.opponentGoals))<=1,ending=result.result==='win'?(close?'Ton équipe défend chaque seconde comme une possession. L’adversaire jette encore ses dernières forces devant.':'Le bloc adverse continue d’avancer, mais le match lui échappe peu à peu.'):result.result==='loss'?'Ton équipe remet encore un ballon devant. Personne ne veut être celui qui accepte que ce soit fini.':'Les deux équipes gardent assez d’énergie pour une dernière accélération.';return step(session,{phase:'full_time_sequence',label:'FIN DE MATCH',progress:90,minute:90,title:'Les dernières possessions',text:`${ending}${impact?` Ta rencontre porte déjà la trace de ${impact}.`:''}`,actionLabel:'Attendre le coup de sifflet'});}
+export function buildFinalWhistleStep(session,result){const verdict=result.result==='win'?'C’est gagné.':result.result==='loss'?'Le coup de sifflet coupe la dernière tentative. La défaite est là.':'Le coup de sifflet arrive sans que personne n’ait réussi à prendre le dernier avantage.',tier=careerTier(session),after=tier==='u15'||tier==='youth'?'Les joueurs cherchent leur souffle pendant que les proches attendent près de la ligne.':'Pendant quelques secondes, les réactions autour de la pelouse couvrent les conversations entre joueurs.';return step(session,{phase:'final_whistle',label:'COUP DE SIFFLET',progress:97,minute:90,title:`${result.teamGoals} – ${result.opponentGoals}`,text:`${verdict} ${after}`,innerVoice:finalInnerVoice(session,result),actionLabel:'Voir les réactions'});}
+export function buildPostMatchReactions(state,session,result){const tier=careerTier({...session,playerAge:state?.player?.age??playerAge(session)}),coachName=state?.social?.coachData?.name||state?.social?.formativeCoach||'Le coach',lockerText=result.result==='win'?(result.rating>=7.5?'À peine entré, tu reçois deux tapes sur l’épaule. Tes partenaires savent quelles séquences ont fait basculer la rencontre.':'Les discussions reprennent dans le vestiaire. La fatigue laisse enfin de la place au résultat.'):result.result==='loss'?'Personne ne parle tout de suite. Chacun retrouve sa place et rejoue ses propres actions.':'Le groupe reste partagé. Quelques joueurs parlent déjà de l’action qui aurait pu faire basculer le match.',coachText=result.rating>=8?`${coachName} te retient une seconde : « Garde ça. Mais demain, on repart de zéro. »`:result.rating<5.8?`${coachName} ne fait pas de discours. « Demain, on regarde ça ensemble. »`:`${coachName} s’arrête près de toi : « Il y a du bon. Et un détail qu’on va corriger. »`;let outside;if(tier==='u15'){outside={id:'outside',icon:'👥',label:'BORD DU TERRAIN',text:result.goals>0?'Ton coach te lance un regard satisfait en quittant la zone des bancs. Un peu plus loin, ta famille applaudit encore et tes amis reparlent déjà de l’action. Les adversaires, eux, rangent leurs affaires sans vraiment regarder de ton côté.':'Les familles attendent près du terrain. Quelques proches débriefent déjà chaque action pendant que les joueurs récupèrent leurs sacs.'};}else if(tier==='youth'){outside={id:'outside',icon:'📋',label:'FORMATION',text:result.rating>=7.5||result.goals||result.assists?'En regagnant les vestiaires, tu remarques quelques éducateurs encore en discussion près du terrain.':'Les éducateurs échangent encore près du terrain. Rien de public : la hiérarchie se construit surtout à l’entraînement et dans les matchs.'};}else if(tier==='semi'){outside={id:'outside',icon:'🗣️',label:'AUTOUR DU CLUB',text:result.goals>=2?`Ton ${result.goals===2?'doublé':`${result.goals} buts`} devient déjà le sujet des conversations à la sortie.`:result.rating>=7.5?'Quelques habitués du club commentent ta prestation en quittant la petite tribune.':'À la sortie, les discussions portent surtout sur le résultat collectif.'};}else{outside={id:'outside',icon:'🎙️',label:'MÉDIAS',text:result.goals>=2?`Les premières alertes retiennent ton ${result.goals===2?'doublé':result.goals===3?'triplé':`${result.goals} buts`}. Ton téléphone commence à vibrer.`:result.goals===1||result.assists>0?'Ton action décisive revient dans les premiers commentaires du match.':result.rating>=7.5?'Quelques observateurs soulignent ton activité même sans statistique décisive.':'Les réactions parlent surtout du résultat collectif.'};}return[{id:'locker-room',icon:'👕',label:'VESTIAIRE',text:lockerText},{id:'coach',icon:'🧠',label:'COACH',text:coachText},outside];}
+export function buildReactionsStep(session,reactions){return step(session,{phase:'reactions',kind:'reactions',label:'APRÈS-MATCH',progress:100,title:'Ce que le match laisse derrière lui',text:'Le score ne bougera plus. Le coach, le groupe et toi ne retiendrez pas forcément les mêmes moments — certains reviendront plus tard.',items:reactions,actionLabel:'Continuer la carrière'});}
+export default{buildPreMatchStep,buildKickoffStep,buildDecisionStep,buildConsequenceStep,buildContinuationStep,createUnexpectedContext,buildUnexpectedStep,buildFullTimeStep,buildFinalWhistleStep,buildPostMatchReactions,buildReactionsStep,attendance};

@@ -34,6 +34,26 @@ function importanceForDelta(delta) {
     return Math.abs(n(delta)) >= 8 ? 'important' : 'normal';
 }
 
+function consequenceTitle(consequence = {}) {
+    const raw = String(consequence.label || '').trim();
+    const key = raw.toLowerCase();
+    const delta = n(consequence.result?.delta);
+    const technical = /^(attributes?|stats?|media|player|career|social|relationships?)\.|^(relationcoach|vestiaire|morale|fitness|mental|discipline|charisme)$/i.test(raw);
+    if (!technical && raw && !/[._]/.test(raw)) return raw;
+    if (/vitesse|speed|accel/.test(key)) return delta < 0 ? 'Tes jambes répondent moins bien' : 'Tu gagnes en explosivité';
+    if (/controle|control|technique|dribble/.test(key)) return delta < 0 ? 'Ton toucher demande du travail' : 'Ton toucher devient plus sûr';
+    if (/passe|passing/.test(key)) return delta < 0 ? 'Ta justesse baisse un peu' : 'Ta lecture du jeu progresse';
+    if (/tir|shoot/.test(key)) return delta < 0 ? 'La finition te résiste davantage' : 'Tu te sens plus juste devant le but';
+    if (/puissance|physique|fitness/.test(key)) return delta < 0 ? 'Le corps rappelle ses limites' : 'Le travail physique commence à payer';
+    if (/defense|défense/.test(key)) return delta < 0 ? 'Tes repères défensifs se brouillent' : 'Tes repères défensifs deviennent plus nets';
+    if (/relationcoach/.test(key)) return delta < 0 ? 'La confiance du coach se fragilise' : 'La confiance avec le coach grandit';
+    if (/vestiaire|relationship/.test(key)) return delta < 0 ? 'Le vestiaire prend ses distances' : 'Ta place dans le groupe se renforce';
+    if (/morale|mental/.test(key)) return delta < 0 ? 'Le doute laisse une trace' : 'La confiance revient peu à peu';
+    if (/discipline/.test(key)) return delta < 0 ? 'Ton attitude te rattrape' : 'Ta maîtrise commence à se voir';
+    if (/media|reputation|charisme/.test(key)) return delta < 0 ? 'Le regard extérieur se refroidit' : 'Ton nom commence à circuler davantage';
+    return delta < 0 ? 'Une décision passée laisse une trace' : delta > 0 ? 'Une décision passée commence à payer' : 'Une décision passée refait surface';
+}
+
 function occurrenceOf(state, result, index) {
     const fixture = result?.fixture || {};
     if (fixture.playedAt || fixture.date) return String(fixture.playedAt || fixture.date);
@@ -140,10 +160,10 @@ export class NarrativeFactCollector {
                 identity: consequence.id || `${consequence.choiceId}|${occurrence}`,
                 metrics: { delta: n(consequence.result?.delta) },
                 outcome: { status: 'revealed', change: consequence.result || null },
-                tags: ['decision', consequence.source, consequence.label].filter(Boolean),
+                tags: ['decision', consequence.source].filter(Boolean),
                 payload: {
                     category: 'decision',
-                    title: consequence.label || 'Une décision passée refait surface',
+                    title: consequenceTitle(consequence),
                     text: consequence.narrative || 'Une décision passée commence à produire ses effets.',
                     choiceId: consequence.choiceId || null,
                     originalVisibility: consequence.visibility || null,
@@ -258,7 +278,7 @@ export class NarrativeFactCollector {
                     title: activity.to === 'offer' ? 'Un intérêt devient concret' : 'Un club passe au contact direct',
                     text: activity.to === 'offer'
                         ? 'Les discussions ont franchi un cap et une proposition peut désormais arriver.'
-                        : 'Le suivi ne se limite plus aux tribunes : le club cherche désormais un contact.',
+                        : 'Le suivi ne se limite plus aux observations : le club cherche désormais un contact.',
                     clubId: activity.clubId || null,
                     interestId: activity.interestId || null,
                     importance: activity.to === 'offer' ? 'major' : 'important'

@@ -3,6 +3,8 @@
 // par GameEngine. Les règles restent dans les systèmes historiques pendant
 // la migration.
 
+import { eventResponse } from '../career/careerEventNarrativeLibrary.js';
+
 export class InteractionSystem {
     constructor({ eventEngine, coachSystem, mediaSystem, playerLogic, careerSystem, stateManager } = {}) {
         Object.assign(this, { eventEngine, coachSystem, mediaSystem, playerLogic, careerSystem, stateManager });
@@ -11,11 +13,19 @@ export class InteractionSystem {
     resolveEventChoice(state, choiceIndex) {
         if (!state?.pendingEvent) return null;
         const event = state.pendingEvent;
+        const choices = event.choices || event.choix || [];
+        const choice = choices[Number(choiceIndex)] || null;
         const result = this.eventEngine.resolveChoice(state, event.id, choiceIndex);
         state.pendingEvent = null;
         this.playerLogic.ensure(state.player);
         this.stateManager.save(state);
-        return result;
+        if (!result) return result;
+        return {
+            ...result,
+            responseText: eventResponse(choice, result.responseText || result.immediateReaction || ''),
+            eventTitle: event.title || event.titre || null,
+            choiceText: choice?.text || choice?.texte || result.choiceText || null
+        };
     }
 
     resolveCoachChoice(state, choiceIndex) {

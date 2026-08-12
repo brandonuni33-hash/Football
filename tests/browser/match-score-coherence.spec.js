@@ -43,5 +43,5 @@ test('le récapitulatif affiche discrètement buts et passes décisives', async 
   });
 
   expect(result.text).toContain('⚽ 1');
-  expect(result.text).toContain('A 1');
+  expect(result.text).toContain('🎯 1');
 });

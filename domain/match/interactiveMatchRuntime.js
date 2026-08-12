@@ -1,302 +1,51 @@
 // Couche d'intégration du Match v3.
-// Elle enrichit le contrôleur canonique sans dupliquer la simulation :
-// mémoire intra-match, scènes de but et rapport factuel.
+// Elle enrichit le contrôleur canonique sans dupliquer la simulation : mémoire intra-match, scènes de but et rapport factuel.
 
 import { InteractiveMatchController } from './interactiveMatchController.js';
-import {
-    createMatchMemory,
-    recordMatchChoice,
-    recordPressureMiss,
-    delayedMatchEffect
-} from './interactiveMatchMemory.js';
+import { createMatchMemory,recordMatchChoice,recordPressureMiss,delayedMatchEffect } from './interactiveMatchMemory.js';
 import { canonicalPlayerGoalEvents } from './goalEventResolver.js';
 import { buildGoalPresentation } from './goalPresentation.js';
 import { buildInteractiveMatchReport } from './interactiveMatchReport.js';
 
-const n = value => Number.isFinite(Number(value)) ? Number(value) : 0;
+const n=value=>Number.isFinite(Number(value))?Number(value):0;
+function playerTeamScore(session={}){return n(session?.score?.[session.home?'home':'away']);}
+function positionGroup(position=''){const p=String(position||'').toUpperCase();if(['GK','GB','G'].includes(p))return'goalkeeper';if(['DC','CB','DD','RB','DG','LB','D'].includes(p))return'defender';if(['MC','CM','MOC','CAM','MD','MG','M','MDC','CDM'].includes(p))return'midfielder';if(['AD','RW','AG','LW'].includes(p))return'winger';return'attacker';}
+function matchTier(session={}){const age=n(session.playerAge??session.match?.playerAge??session.match?.age),text=[session.competition,session.match?.competitionName,session.match?.ageCategory,session.match?.category,session.match?.level].filter(Boolean).join(' ').toLowerCase();if((age&&age<=15)||/u ?15/.test(text))return'u15';if((age&&age<=18)||/u ?1[678]|formation|academy|académie|jeune/.test(text))return'youth';if(/amateur|semi|régional|regional|national 2|national 3|district/.test(text))return'semi';return'pro';}
+function ensureRuntime(session){if(!session)return session;session.matchMemory||=createMatchMemory();session.appliedMemoryEffects=Array.isArray(session.appliedMemoryEffects)?session.appliedMemoryEffects:[];session.goalPresentationQueue=Array.isArray(session.goalPresentationQueue)?session.goalPresentationQueue:[];return session;}
+function applyRuntimeEffects(session,effects={}){session.modifiers||={rating:0,goal:0,assist:0,duel:0,fatigue:0,cards:0,opponentThreat:0};for(const key of['rating','goal','assist','duel','fatigue','cards','opponentThreat'])session.modifiers[key]=n(session.modifiers[key])+n(effects[key]);}
+function applyDelayedMemoryEffect(session,minute=null){const delayed=delayedMatchEffect(session.matchMemory);if(!delayed||session.appliedMemoryEffects.includes(delayed.id))return null;session.appliedMemoryEffects.push(delayed.id);applyRuntimeEffects(session,delayed.effects||{});const memoryEvent={title:delayed.title,icon:'🧠',text:delayed.text,minute,memoryEffect:delayed.id};session.events||=[];session.events.push(memoryEvent);if(session.step?.phase?.startsWith('consequence_'))session.step={...session.step,text:`${session.step.text} ${delayed.text}`.trim()};return memoryEvent;}
+function recordResolvedDecision(session,{choice=null,timedOut=false,minute=null}={}){ensureRuntime(session);const event=session.events?.findLast?.(item=>item?.decisionIndex===session.currentMoment)||session.events?.at?.(-1)||{};if(timedOut)recordPressureMiss(session.matchMemory);else if(choice)recordMatchChoice(session.matchMemory,choice,{...event,failedTechnique:Boolean(event.failedTechnique||event.title==='Il lit ton geste')});return applyDelayedMemoryEffect(session,minute);}
+function goalMinute(session){const eventMinute=session.events?.slice?.().reverse?.().find(item=>Number.isFinite(Number(item?.minute)))?.minute;if(Number.isFinite(Number(eventMinute)))return Number(eventMinute);const previousMoment=session.moments?.[Math.max(0,n(session.currentMoment)-1)];return Number.isFinite(Number(previousMoment))?Number(previousMoment):90;}
 
-function playerTeamScore(session = {}) {
-    return n(session?.score?.[session.home ? 'home' : 'away']);
-}
-
-function ensureRuntime(session) {
-    if (!session) return session;
-    session.matchMemory ||= createMatchMemory();
-    session.appliedMemoryEffects = Array.isArray(session.appliedMemoryEffects) ? session.appliedMemoryEffects : [];
-    session.goalPresentationQueue = Array.isArray(session.goalPresentationQueue) ? session.goalPresentationQueue : [];
-    return session;
-}
-
-function applyRuntimeEffects(session, effects = {}) {
-    session.modifiers ||= { rating:0, goal:0, assist:0, duel:0, fatigue:0, cards:0, opponentThreat:0 };
-    for (const key of ['rating', 'goal', 'assist', 'duel', 'fatigue', 'cards', 'opponentThreat']) {
-        session.modifiers[key] = n(session.modifiers[key]) + n(effects[key]);
+function goalNarrative(session,latestGesture){
+    const group=positionGroup(session.playerPosition),lastChoice=session.decisions?.at?.(-1)?.choice||'';
+    if(group==='attacker'||group==='winger'){
+        if(/second poteau|centre|profondeur|espace|appel/i.test(lastChoice))return`Ton déplacement met ton vis-à-vis en retard. Un deuxième défenseur vient couvrir, ce qui ouvre une zone ailleurs. Le ballon y arrive, repart en une touche et l’action se termine au fond.`;
+        if(latestGesture)return`Ton ${String(latestGesture).toLowerCase()} casse le premier duel. La défense doit coulisser dans l’urgence, un partenaire profite de l’espace libéré et la séquence va jusqu’au but.`;
+        return`Ton appel oblige la ligne à reculer. Un défenseur te suit, un autre hésite, et cette hésitation suffit : le ballon traverse la zone libre puis l’action se termine au fond.`;
     }
+    if(group==='midfielder')return`Tu reçois entre les lignes et attires un adversaire hors de sa zone. La passe suivante casse le premier rideau ; deux touches plus tard, la défense court vers son propre but et l’action finit au fond.`;
+    if(group==='defender')return`Tout part d’une récupération propre. Tu joues vers l’avant au lieu de rendre le ballon, la transition prend de la vitesse et l’équipe attaque une défense encore ouverte. La séquence va jusqu’au bout.`;
+    return`Ta relance élimine le premier pressing. Le ballon remonte sans être rendu, l’équipe trouve l’espace derrière la ligne adverse et transforme la séquence en but.`;
 }
 
-function applyDelayedMemoryEffect(session, minute = null) {
-    const delayed = delayedMatchEffect(session.matchMemory);
-    if (!delayed || session.appliedMemoryEffects.includes(delayed.id)) return null;
+function goalReaction(session){const tier=matchTier(session);if(tier==='u15'){return session.home?'Ton coach serre le poing. Près des bancs, tes coéquipiers bondissent. Ta famille applaudit, des amis hurlent au bord du terrain et, en face, plusieurs épaules tombent d’un coup.':'Le banc se lève immédiatement. Quelques proches venus au déplacement applaudissent tandis que les joueurs adverses restent figés une seconde avant de repartir vers le centre.';}if(tier==='youth'){return session.home?'Le banc se lève. Les familles réagissent au bord du terrain et plusieurs éducateurs échangent un regard pendant que les joueurs se regroupent.':'Ton banc explose pendant que, autour du terrain, les réactions adverses retombent brutalement.';}if(tier==='semi')return session.home?'La petite tribune monte d’un ton et le banc se lève presque en même temps.':'Le bruit se coupe une fraction de seconde, puis ton banc couvre tout le reste.';return session.home?'Le stade bascule d’un seul coup. Les tribunes se lèvent avant même que les joueurs aient fini de célébrer.':'Le stade adverse se coupe net une fraction de seconde. Depuis ton banc, les voix explosent immédiatement.';}
 
-    session.appliedMemoryEffects.push(delayed.id);
-    applyRuntimeEffects(session, delayed.effects || {});
+function enqueueTeamGoals(session,beforeTeamGoals){ensureRuntime(session);const afterTeamGoals=playerTeamScore(session),delta=Math.max(0,afterTeamGoals-n(beforeTeamGoals));if(!delta)return[];const latestGesture=session.events?.slice?.().reverse?.().find(item=>item?.gesture)?.gesture||null,minute=goalMinute(session),startTeamGoals=afterTeamGoals-delta,generated=[];for(let index=0;index<delta;index++){const teamGoals=startTeamGoals+index+1,score=session.home?{home:teamGoals,away:n(session.score?.away)}:{home:n(session.score?.home),away:teamGoals};const presentation=buildGoalPresentation({matchId:session.id,scorer:'Ton équipe',minute,score,gesture:latestGesture,celebration:goalNarrative(session,latestGesture),stadiumReaction:goalReaction(session)});if(presentation)generated.push(presentation);}session.goalPresentationQueue.push(...generated);return generated;}
+function goalStep(session,presentation,index=0){return{id:`${session.id}:goal:${presentation.minute}:${index}`,phase:'goal',kind:'goal',label:'⚽ BUT',progress:Math.min(92,Math.max(15,Math.round((n(presentation.minute)/90)*100))),minute:presentation.minute,title:'BUT !',text:`${presentation.celebration} ${presentation.stadiumReaction}`.trim(),team:session.team,opponent:session.opponent,competition:session.competition,home:session.home,score:{...presentation.score},choices:[],items:[],timedDecision:null,actionLabel:'Reprendre le match',goal:presentation};}
+function exposeNextGoal(session,resumeStep){if(!session.goalPresentationQueue?.length)return false;session.runtimeResumeStep||=resumeStep||session.step||null;const presentation=session.goalPresentationQueue.shift();session.step=goalStep(session,presentation,n(session.runtimeGoalSequence));session.runtimeGoalSequence=n(session.runtimeGoalSequence)+1;return true;}
+function continueAfterGoal(session){ensureRuntime(session);if(session.goalPresentationQueue.length){const presentation=session.goalPresentationQueue.shift();session.step=goalStep(session,presentation,n(session.runtimeGoalSequence));session.runtimeGoalSequence=n(session.runtimeGoalSequence)+1;}else{session.step=session.runtimeResumeStep||session.step;session.runtimeResumeStep=null;}return{finished:false,session,step:session.step,decision:session.step?.kind==='decision'?session.decision:null,event:session.events?.at?.(-1)||null};}
 
-    const memoryEvent = {
-        title: delayed.title,
-        icon: '🧠',
-        text: delayed.text,
-        minute,
-        memoryEffect: delayed.id
-    };
-    session.events ||= [];
-    session.events.push(memoryEvent);
-
-    if (session.step?.phase?.startsWith('consequence_')) {
-        session.step = {
-            ...session.step,
-            text: `${session.step.text} ${delayed.text}`.trim()
-        };
-    }
-    return memoryEvent;
-}
-
-function recordResolvedDecision(session, { choice = null, timedOut = false, minute = null } = {}) {
-    ensureRuntime(session);
-    const event = session.events?.findLast?.(item => item?.decisionIndex === session.currentMoment)
-        || session.events?.at?.(-1)
-        || {};
-
-    if (timedOut) recordPressureMiss(session.matchMemory);
-    else if (choice) {
-        const enrichedEvent = {
-            ...event,
-            failedTechnique: Boolean(event.failedTechnique || event.title === 'Le geste ne passe pas')
-        };
-        recordMatchChoice(session.matchMemory, choice, enrichedEvent);
-    }
-
-    return applyDelayedMemoryEffect(session, minute);
-}
-
-function goalMinute(session) {
-    const eventMinute = session.events?.slice?.().reverse?.().find(item => Number.isFinite(Number(item?.minute)))?.minute;
-    if (Number.isFinite(Number(eventMinute))) return Number(eventMinute);
-    const previousMoment = session.moments?.[Math.max(0, n(session.currentMoment) - 1)];
-    if (Number.isFinite(Number(previousMoment))) return Number(previousMoment);
-    return 90;
-}
-
-function enqueueTeamGoals(session, beforeTeamGoals) {
-    ensureRuntime(session);
-    const afterTeamGoals = playerTeamScore(session);
-    const delta = Math.max(0, afterTeamGoals - n(beforeTeamGoals));
-    if (!delta) return [];
-
-    const latestGesture = session.events?.slice?.().reverse?.().find(item => item?.gesture)?.gesture || null;
-    const minute = goalMinute(session);
-    const startTeamGoals = afterTeamGoals - delta;
-    const generated = [];
-
-    for (let index = 0; index < delta; index++) {
-        const teamGoals = startTeamGoals + index + 1;
-        const score = session.home
-            ? { home: teamGoals, away: n(session.score?.away) }
-            : { home: n(session.score?.home), away: teamGoals };
-        const presentation = buildGoalPresentation({
-            matchId: session.id,
-            scorer: 'Ton équipe',
-            minute,
-            score,
-            gesture: latestGesture,
-            celebration: latestGesture
-                ? `L’action déclenche l’explosion. ${latestGesture} reste dans les regards pendant que tes coéquipiers convergent.`
-                : 'Le ballon finit au fond et tout le bloc explose. Tes coéquipiers convergent pendant que le stade bascule.',
-            stadiumReaction: session.home
-                ? 'Les tribunes se lèvent d’un seul mouvement.'
-                : 'Pendant une seconde, le stade adverse se coupe avant que les voix de ton banc n’éclatent.'
-        });
-        if (presentation) generated.push(presentation);
-    }
-
-    session.goalPresentationQueue.push(...generated);
-    return generated;
-}
-
-function goalStep(session, presentation, index = 0) {
-    return {
-        id: `${session.id}:goal:${presentation.minute}:${index}`,
-        phase: 'goal',
-        kind: 'goal',
-        label: '⚽ BUT',
-        progress: Math.min(92, Math.max(15, Math.round((n(presentation.minute) / 90) * 100))),
-        minute: presentation.minute,
-        title: 'BUT !',
-        text: `${presentation.celebration} ${presentation.stadiumReaction}`.trim(),
-        team: session.team,
-        opponent: session.opponent,
-        competition: session.competition,
-        home: session.home,
-        score: { ...presentation.score },
-        choices: [],
-        items: [],
-        timedDecision: null,
-        actionLabel: 'Reprendre le match',
-        goal: presentation
-    };
-}
-
-function exposeNextGoal(session, resumeStep) {
-    if (!session.goalPresentationQueue?.length) return false;
-    session.runtimeResumeStep ||= resumeStep || session.step || null;
-    const presentation = session.goalPresentationQueue.shift();
-    session.step = goalStep(session, presentation, n(session.runtimeGoalSequence));
-    session.runtimeGoalSequence = n(session.runtimeGoalSequence) + 1;
-    return true;
-}
-
-function continueAfterGoal(session) {
-    ensureRuntime(session);
-    if (session.goalPresentationQueue.length) {
-        const presentation = session.goalPresentationQueue.shift();
-        session.step = goalStep(session, presentation, n(session.runtimeGoalSequence));
-        session.runtimeGoalSequence = n(session.runtimeGoalSequence) + 1;
-    } else {
-        session.step = session.runtimeResumeStep || session.step;
-        session.runtimeResumeStep = null;
-    }
-    return {
-        finished: false,
-        session,
-        step: session.step,
-        decision: session.step?.kind === 'decision' ? session.decision : null,
-        event: session.events?.at?.(-1) || null
-    };
-}
-
-function buildFactGroundedReactions(state, session, result) {
-    const coachName = state?.social?.coachData?.name || state?.social?.formativeCoach || 'Le coach';
-    const relation = n(state?.player?.stats?.relationCoach ?? 50);
-    const decisiveEvent = result.events?.find(event => event?.gesture || event?.timedOut)
-        || result.events?.find(event => event?.memoryEffect)
-        || result.events?.at?.(-1)
-        || null;
-    const lastDecision = result.decisions?.at?.(-1) || null;
-    const firstGoal = result.goalEvents?.[0] || null;
-
-    let lockerText;
-    if (result.result === 'win' && decisiveEvent?.gesture) {
-        lockerText = `Dans le vestiaire, on revient sur ton ${String(decisiveEvent.gesture).toLowerCase()} à la ${n(decisiveEvent.minute)}e. Le geste a marqué les esprits autant que le résultat.`;
-    } else if (result.result === 'loss' && lastDecision?.timedOut) {
-        lockerText = `Le vestiaire reste silencieux. Personne ne te désigne, mais tu repenses à cette fenêtre laissée filer à la ${n(lastDecision.minute)}e.`;
-    } else if (result.goals > 0 && firstGoal) {
-        lockerText = `Tes coéquipiers reviennent sur ton impact au score. Ton premier but de la rencontre est rattaché à la ${n(firstGoal.minute)}e minute.`;
-    } else if (result.result === 'win') {
-        lockerText = `Le groupe savoure la victoire ${result.teamGoals}-${result.opponentGoals}. Ton match est commenté pour ce qu’il a réellement produit, pas pour une impression générale.`;
-    } else if (result.result === 'loss') {
-        lockerText = `Le groupe encaisse la défaite ${result.teamGoals}-${result.opponentGoals}. Les discussions reviennent sur les moments précis où le match a échappé à l’équipe.`;
-    } else {
-        lockerText = `Le nul ${result.teamGoals}-${result.opponentGoals} laisse le vestiaire partagé. Chacun rejoue les séquences qui auraient pu faire basculer la rencontre.`;
-    }
-
-    let coachText;
-    if (lastDecision?.timedOut) {
-        coachText = `${coachName} revient précisément sur l’hésitation de la ${n(lastDecision.minute)}e : « Dans ces moments-là, ta décision doit arriver avant le doute. »`;
-    } else if (decisiveEvent?.gesture && result.rating >= 7.5) {
-        coachText = relation >= 65
-            ? `${coachName} te glisse qu’il reconnaît ton audace dans ce ${String(decisiveEvent.gesture).toLowerCase()}, puis insiste : il veut la même personnalité avec encore plus de maîtrise.`
-            : `${coachName} cite ton ${String(decisiveEvent.gesture).toLowerCase()} comme exemple de ce que tu peux apporter, tout en te demandant de rester juste dans tes prises de risque.`;
-    } else if (result.rating < 5.8) {
-        coachText = `${coachName} ne généralise pas ta prestation : il revient sur ton dernier choix — « ${lastDecision?.choice || 'la dernière séquence'} » — et te demande une réponse au prochain match.`;
-    } else {
-        coachText = `${coachName} s’appuie sur ta note de ${Number(result.rating).toFixed(1)} et sur tes décisions du match pour te donner un axe clair de progression.`;
-    }
-
-    let mediaText;
-    if (result.goals >= 2) {
-        mediaText = `Les premières publications retiennent ${result.goals} buts contre ${result.opponent}${firstGoal ? `, avec un premier inscrit autour de la ${n(firstGoal.minute)}e` : ''}.`;
-    } else if (result.goals === 1 && firstGoal) {
-        mediaText = `Les médias isolent ton but contre ${result.opponent}, rattaché à la ${n(firstGoal.minute)}e minute, comme l’un des faits centraux du match.`;
-    } else if (result.assists > 0) {
-        mediaText = `Les comptes-rendus soulignent tes ${result.assists} passe${result.assists > 1 ? 's' : ''} décisive${result.assists > 1 ? 's' : ''} contre ${result.opponent}, sans t’attribuer d’action qui n’existe pas dans le résultat.`;
-    } else if (decisiveEvent?.gesture) {
-        mediaText = `Même sans statistique décisive, plusieurs observateurs retiennent ton ${String(decisiveEvent.gesture).toLowerCase()} à la ${n(decisiveEvent.minute)}e comme l’image forte de ta prestation.`;
-    } else {
-        mediaText = `Les commentaires restent centrés sur le ${result.teamGoals}-${result.opponentGoals} contre ${result.opponent} et ta note de ${Number(result.rating).toFixed(1)}.`;
-    }
-
-    return [
-        { id:'locker-room', icon:'👕', label:'VESTIAIRE', text:lockerText },
-        { id:'coach', icon:'🧠', label:'COACH', text:coachText },
-        { id:'media', icon:'🎙️', label:'MÉDIAS', text:mediaText }
-    ];
-}
-
-function enrichResolvedResult(state, session) {
-    if (!session?.result) return;
-    session.result.goalEvents = canonicalPlayerGoalEvents(session.result, state?.player || {});
-    session.result.interactiveReport = buildInteractiveMatchReport(session.result);
-    session.result.matchMemory = { ...(session.matchMemory || createMatchMemory()) };
-    session.result.postMatchReactions = buildFactGroundedReactions(state, session, session.result);
-}
-
-export function startInteractiveMatch(state, scheduledMatch, matchIndex = 0) {
-    return ensureRuntime(InteractiveMatchController.startInteractiveMatch(state, scheduledMatch, matchIndex));
-}
-
-export function advanceInteractiveMatch(state, activeSession, action = {}) {
-    const session = ensureRuntime(activeSession);
-
-    // Une scène de but est une vraie étape manuelle : elle ne fait jamais avancer le moteur
-    // tant que le joueur n'a pas appuyé sur « Reprendre le match ».
-    if (session.step?.kind === 'goal') return continueAfterGoal(session);
-
-    const beforeTeamGoals = playerTeamScore(session);
-    const wasDecision = session.step?.kind === 'decision';
-    const timedOut = Boolean(action && typeof action === 'object' && action.timedOut === true);
-    const choiceIndex = typeof action === 'number' ? action : action?.choiceIndex;
-    const choice = wasDecision && !timedOut && Number.isInteger(Number(choiceIndex))
-        ? session.decision?.choices?.[Number(choiceIndex)] || null
-        : null;
-    const minute = session.decision?.minute ?? session.step?.minute ?? null;
-
-    const result = InteractiveMatchController.advanceInteractiveMatch(state, session, action);
-    const nextSession = ensureRuntime(result.session || session);
-
-    if (wasDecision && (timedOut || choice)) {
-        recordResolvedDecision(nextSession, { choice, timedOut, minute });
-    }
-
-    enqueueTeamGoals(nextSession, beforeTeamGoals);
-    enrichResolvedResult(state, nextSession);
-
-    if (!result.finished && nextSession.goalPresentationQueue.length) {
-        const resumeStep = nextSession.step;
-        exposeNextGoal(nextSession, resumeStep);
-        return {
-            ...result,
-            session: nextSession,
-            step: nextSession.step,
-            decision: null,
-            event: nextSession.events?.at?.(-1) || null
-        };
-    }
-
-    return { ...result, session: nextSession, result: nextSession.result || result.result };
-}
-
-export function resolveInteractiveDecision(state, session, choiceIndex) {
-    return advanceInteractiveMatch(state, session, { choiceIndex });
-}
-
-export function commitInteractiveResult(state, result) {
-    return InteractiveMatchController.commitInteractiveResult(state, result);
-}
-
-export const InteractiveMatchRuntime = Object.freeze({
-    startInteractiveMatch,
-    advanceInteractiveMatch,
-    resolveInteractiveDecision,
-    commitInteractiveResult
-});
-
+function buildFactGroundedReactions(state,session,result){const coachName=state?.social?.coachData?.name||state?.social?.formativeCoach||'Le coach',relation=n(state?.player?.stats?.relationCoach??50),decisiveEvent=result.events?.find(event=>event?.gesture||event?.timedOut)||result.events?.find(event=>event?.memoryEffect)||result.events?.at?.(-1)||null,lastDecision=result.decisions?.at?.(-1)||null,firstGoal=result.goalEvents?.[0]||null,tier=matchTier({...session,playerAge:state?.player?.age??session.playerAge});let lockerText;if(result.result==='win'&&decisiveEvent?.gesture)lockerText=`Dans le vestiaire, un coéquipier revient sur ton geste de la ${n(decisiveEvent.minute)}e. Pas pour en faire une légende : simplement parce que c’est l’un des moments où le match a changé.`;else if(result.result==='loss'&&lastDecision?.timedOut)lockerText=`Le vestiaire reste silencieux. Personne ne te désigne, mais tu repenses à cette fenêtre laissée filer à la ${n(lastDecision.minute)}e.`;else if(result.goals>0&&firstGoal)lockerText=`Tes coéquipiers reviennent sur ton impact au score. Ton premier but de la rencontre est rattaché à la ${n(firstGoal.minute)}e minute.`;else if(result.result==='win')lockerText=`Le groupe savoure la victoire ${result.teamGoals}-${result.opponentGoals}. Les discussions reviennent sur les séquences qui ont réellement fait pencher le match.`;else if(result.result==='loss')lockerText=`Le groupe encaisse la défaite ${result.teamGoals}-${result.opponentGoals}. Chacun rejoue les moments précis où la rencontre a échappé à l’équipe.`;else lockerText=`Le nul ${result.teamGoals}-${result.opponentGoals} laisse le vestiaire partagé. Une seule action différente aurait pu changer la soirée.`;let coachText;if(lastDecision?.timedOut)coachText=`${coachName} revient précisément sur l’hésitation de la ${n(lastDecision.minute)}e : « Dans ces moments-là, ta décision doit arriver avant le doute. »`;else if(decisiveEvent?.gesture&&result.rating>=7.5)coachText=relation>=65?`${coachName} reconnaît ton audace sur cette séquence, puis insiste sur la maîtrise nécessaire pour la répéter.`:`${coachName} cite cette action comme exemple de ce que tu peux apporter sans te demander de forcer chaque ballon.`;else if(result.rating<5.8)coachText=`${coachName} revient sur ton dernier choix — « ${lastDecision?.choice||'la dernière séquence'} » — plutôt que de résumer tout ton match à une mauvaise note.`;else coachText=`${coachName} s’appuie sur ta note de ${Number(result.rating).toFixed(1)} et sur deux décisions précises du match pour te donner un axe de progression.`;
+ const base=[{id:'locker-room',icon:'👕',label:'VESTIAIRE',text:lockerText},{id:'coach',icon:'🧠',label:'COACH',text:coachText}];
+ if(tier==='u15')return[...base,{id:'outside',icon:'👥',label:'BORD DU TERRAIN',text:result.goals>0?'Ta famille applaudit encore quand tu récupères tes affaires. Tes amis reparlent de l’action avec beaucoup plus d’excitation que toi, tandis que les adversaires quittent la zone en silence.':'Les proches attendent près du terrain. Le débrief commence déjà entre parents, joueurs et éducateurs.'}];
+ if(tier==='youth')return[...base,{id:'outside',icon:'📋',label:'FORMATION',text:result.rating>=7.5||result.goals||result.assists?'Quelques éducateurs restent en discussion près du terrain. Tu ne sais pas exactement ce qu’ils disent, mais tu remarques que plusieurs regards reviennent vers toi.':'Les staffs échangent encore pendant que les joueurs regagnent les vestiaires.'}];
+ if(tier==='semi')return[...base,{id:'outside',icon:'🗣️',label:'AUTOUR DU CLUB',text:result.goals>=2?'Ta performance devient déjà le sujet principal des conversations à la sortie.':'Les habitués commentent le résultat en quittant la petite tribune.'}];
+ let mediaText;if(result.goals>=2)mediaText=`Les premières publications retiennent ${result.goals} buts dans cette rencontre${firstGoal?`, avec un premier inscrit autour de la ${n(firstGoal.minute)}e`:''}.`;else if(result.goals===1&&firstGoal)mediaText=`Les comptes-rendus isolent ton but autour de la ${n(firstGoal.minute)}e minute comme l’un des faits centraux de la rencontre.`;else if(result.assists>0)mediaText=`Les comptes-rendus soulignent tes ${result.assists} passe${result.assists>1?'s':''} décisive${result.assists>1?'s':''}.`;else if(decisiveEvent?.gesture)mediaText=`Même sans statistique décisive, plusieurs observateurs retiennent ton geste à la ${n(decisiveEvent.minute)}e.`;else mediaText=`Les commentaires restent centrés sur le ${result.teamGoals}-${result.opponentGoals} et ta note de ${Number(result.rating).toFixed(1)}.`;return[...base,{id:'media',icon:'🎙️',label:'MÉDIAS',text:mediaText}];}
+function enrichResolvedResult(state,session){if(!session?.result)return;session.result.goalEvents=canonicalPlayerGoalEvents(session.result,state?.player||{});session.result.interactiveReport=buildInteractiveMatchReport(session.result);session.result.matchMemory={...(session.matchMemory||createMatchMemory())};session.result.postMatchReactions=buildFactGroundedReactions(state,session,session.result);}
+export function startInteractiveMatch(state,scheduledMatch,matchIndex=0){return ensureRuntime(InteractiveMatchController.startInteractiveMatch(state,scheduledMatch,matchIndex));}
+export function advanceInteractiveMatch(state,activeSession,action={}){const session=ensureRuntime(activeSession);if(session.step?.kind==='goal')return continueAfterGoal(session);const beforeTeamGoals=playerTeamScore(session),wasDecision=session.step?.kind==='decision',timedOut=Boolean(action&&typeof action==='object'&&action.timedOut===true),choiceIndex=typeof action==='number'?action:action?.choiceIndex,choice=wasDecision&&!timedOut&&Number.isInteger(Number(choiceIndex))?session.decision?.choices?.[Number(choiceIndex)]||null:null,minute=session.decision?.minute??session.step?.minute??null;const result=InteractiveMatchController.advanceInteractiveMatch(state,session,action),nextSession=ensureRuntime(result.session||session);if(wasDecision&&(timedOut||choice))recordResolvedDecision(nextSession,{choice,timedOut,minute});enqueueTeamGoals(nextSession,beforeTeamGoals);enrichResolvedResult(state,nextSession);if(!result.finished&&nextSession.goalPresentationQueue.length){const resumeStep=nextSession.step;exposeNextGoal(nextSession,resumeStep);return{...result,session:nextSession,step:nextSession.step,decision:null,event:nextSession.events?.at?.(-1)||null};}return{...result,session:nextSession,result:nextSession.result||result.result};}
+export function resolveInteractiveDecision(state,session,choiceIndex){return advanceInteractiveMatch(state,session,{choiceIndex});}
+export function commitInteractiveResult(state,result){return InteractiveMatchController.commitInteractiveResult(state,result);}
+export const InteractiveMatchRuntime=Object.freeze({startInteractiveMatch,advanceInteractiveMatch,resolveInteractiveDecision,commitInteractiveResult});
 export default InteractiveMatchRuntime;
