@@ -86,6 +86,24 @@ test('un but plus tard dans la saison ne peut pas être raconté comme le premie
     assert.doesNotMatch(mindsetBeat(output)?.text || '', /premier but de ta carrière/i);
 });
 
+test('un ancien but de carrière empêche toute fausse narration de premier but même après une longue carrière', () => {
+    const seasonHistory = Array.from({ length: 12 }, (_, index) => ({
+        seasonLabel: `${2014 + index}/${2015 + index}`,
+        goals: index === 0 ? 1 : 0
+    }));
+    const current = state({
+        player: { stats: { matchesPlayed: 1, goals: 1, assists: 0, averageRating: 7.6 } },
+        seasonHistory
+    });
+    const output = new NarrativeEngine().processMatchEnd({
+        state: current,
+        report: report({ teamGoals: 1, opponentGoals: 0, rating: 7.6, goals: 1 })
+    });
+
+    assert.equal(output.primaryScene.facts.firstCareerGoal, false);
+    assert.notEqual(output.primaryScene.title, 'Le premier restera à part');
+});
+
 test('une grosse prestation dans une défaite garde une émotion contradictoire', () => {
     const current = state({ player: { stats: { matchesPlayed: 5, goals: 2, assists: 1, averageRating: 7.2 } } });
     const output = new NarrativeEngine().processMatchEnd({
