@@ -114,17 +114,19 @@ function performanceText(player, result) {
 
 function blockOverviewText(results, impactMatch) {
     if (results.length <= 1) return null;
-    const wins = results.filter(result => result.result === 'win').length;
-    const draws = results.filter(result => result.result === 'draw').length;
-    const losses = results.filter(result => result.result === 'loss').length;
     const appearances = results.filter(result => result.playerPlayed !== false).length;
     const starts = results.filter(result => result.playerPlayed !== false && result.started !== false).length;
-    const record = [`${wins} victoire${wins > 1 ? 's' : ''}`];
-    if (draws) record.push(`${draws} nul${draws > 1 ? 's' : ''}`);
-    if (losses) record.push(`${losses} défaite${losses > 1 ? 's' : ''}`);
-    if (!appearances) return `Cette période comptait ${results.length} matchs pour ton équipe : ${record.join(', ')}. Le staff ne t’a pas utilisé.`;
+    if (!appearances) {
+        return `Le staff ne t’a pas utilisé sur cette séquence. La concurrence a pris de l’avance et la prochaine occasion comptera davantage.`;
+    }
     const opponent = impactMatch?.opponent || 'un adversaire';
-    return `Cette période comptait ${results.length} matchs pour ton équipe : ${record.join(', ')}. Tu as disputé ${appearances} rencontre${appearances > 1 ? 's' : ''}, dont ${starts} comme titulaire. Ton empreinte la plus nette est venue face à ${opponent}.`;
+    if (appearances === results.length && starts === appearances) {
+        return `Tu as conservé une vraie continuité dans le onze. Ton empreinte la plus nette est venue face à ${opponent}.`;
+    }
+    if (starts === 0) {
+        return `Tes minutes sont venues du banc. Tu cherches encore le match capable de modifier la hiérarchie.`;
+    }
+    return `Ton statut a bougé entre titularisations et passages sur le banc. Face à ${opponent}, tu as laissé la trace la plus nette.`;
 }
 
 function atmosphereText(result, importance) {
@@ -305,7 +307,7 @@ export class NarrativeBeatComposer {
             tone: toneFor(featured),
             title: titleFor(featured, importance, results.length, firstCareerGoal),
             subtitle: results.length > 1
-                ? `${results.length} matchs d'équipe · ${playerResults.length} apparition${playerResults.length > 1 ? 's' : ''}`
+                ? `${playerResults.length} apparition${playerResults.length > 1 ? 's' : ''} · statut en mouvement`
                 : `${featured.competitionName} · ${featured.opponent}`,
             matchIndex: featured.matchIndex ?? null,
             impactMatchIndex: impactMatch?.matchIndex ?? null,
