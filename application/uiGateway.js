@@ -1,6 +1,18 @@
 // application/uiGateway.js
 // Contrat unique entre l'interface et l'application.
 
+function interactivePayload(session, extra = {}) {
+    const step = session?.step || null;
+    return {
+        interactive: true,
+        interactiveStep: step,
+        interactiveDecision: step?.kind === 'decision' ? session?.decision || null : null,
+        interactiveEvent: extra.event || null,
+        matchImportance: extra.matchImportance || session?.importance || null,
+        playerSelection: extra.playerSelection || session?.match?.playerSelection || null
+    };
+}
+
 export class UIGateway {
     constructor({ application, engine } = {}) {
         if (!application) throw new Error('UIGateway requires a GameApplication.');
@@ -18,12 +30,8 @@ export class UIGateway {
         const active = state.activeMatchSession;
 
         if (active) {
-            const choices = active.decision?.choices || [];
-            const choiceIndex = typeof choice === 'number'
-                ? choice
-                : Math.max(0, choices.findIndex(item => item === choice || item?.text === choice?.text || item?.texte === choice?.texte));
-            const result = this.resolveInteractiveMatchDecision(choiceIndex);
-            if (!result.finished) return { interactive: true, interactiveDecision: result.decision, interactiveEvent: result.event || null };
+            const result = this.advanceInteractiveMatch(choice);
+            if (!result.finished) return interactivePayload(result.session, { event: result.event });
         }
 
         const next = this.getNextPlayableMatch();
@@ -32,13 +40,10 @@ export class UIGateway {
             fixture.playerSelection = next.selection || null;
             fixture.minutes = next.selection?.minutes || 90;
             const session = this.startInteractiveMatch(fixture, next.matchIndex);
-            return {
-                interactive: true,
-                interactiveDecision: session?.decision || null,
-                interactiveEvent: null,
+            return interactivePayload(session, {
                 matchImportance: next.importance || null,
                 playerSelection: next.selection || null
-            };
+            });
         }
 
         return this.completeInteractiveBlock();
@@ -164,10 +169,23 @@ export class UIGateway {
     }
 
     resolveInteractiveMatchDecision(choiceIndex) {
+        return this.advanceInteractiveMatch(choiceIndex);
+    }
+
+    advanceInteractiveMatch(choice = null) {
         const manager = this.application.registry?.interactiveMatchSystem;
         const session = this.state?.activeMatchSession;
         if (!manager || !session) throw new Error('Aucun match interactif actif.');
-        const result = manager.resolveInteractiveDecision(this.state, session, choiceIndex);
+        const choices = session.decision?.choices || [];
+        const choiceIndex = session.step?.kind !== 'decision'
+            ? null
+            : typeof choice === 'number'
+                ? choice
+                : choices.findIndex(item => item === choice || item?.text === choice?.text || item?.texte === choice?.texte);
+        const normalizedChoiceIndex = Number.isInteger(choiceIndex) && choiceIndex >= 0 ? choiceIndex : null;
+        const result = manager.advanceInteractiveMatch
+            ? manager.advanceInteractiveMatch(this.state, session, { choiceIndex: normalizedChoiceIndex })
+            : manager.resolveInteractiveDecision(this.state, session, normalizedChoiceIndex);
         if (result.finished) {
             manager.commitInteractiveResult(this.state, result.result);
             this.state.interactiveBlockResults ||= [];

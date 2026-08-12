@@ -33,6 +33,35 @@ Infrastructure générique : événements, commandes, bus et contrats transverse
 ### `ui/`
 Vues et coordination d'interface. La logique métier reste dans `application/` ou `domain/`.
 
+## Match jouable
+
+`domain/match/interactiveMatchController.js` est l'unique propriétaire de la session
+et de sa machine de phases. `InteractiveMatchSystem`, enregistré dans
+`application/systemRegistry.js`, en expose l'API canonique. Les textes et modèles
+présentables sont composés sans mutation par `interactiveMatchNarrative.js`.
+
+La séquence est fixe :
+
+```text
+avant-match -> coup d'envoi -> moment 1 -> conséquence immédiate
+-> reprise automatique -> événement inattendu -> moment 2
+-> fin de match -> coup de sifflet -> vestiaire / coach / médias
+```
+
+Chaque match jouable contient exactement deux décisions. Les anciens
+`impacts.matchBonuses` sont normalisés par le domaine avant application : l'UI ne
+lit et ne calcule aucun bonus. `UIGateway` avance la session et
+`ui/interactiveMatchFlowController.js` présente seulement l'étape courante. Le
+résultat n'est validé et ajouté au bloc qu'après la séquence de réactions.
+
+Invariants :
+
+- une seule session active dans `state.activeMatchSession` ;
+- le score affiché provient toujours de cette session ;
+- les buts et passes du joueur sont inclus dans le score de son équipe ;
+- les statistiques sont validées une seule fois à la fin ;
+- les réactions d'après-match décrivent le résultat réellement résolu.
+
 ## Narrative Engine
 
 `domain/narrative/narrativeEngine.js` est la couche canonique d'interprétation narrative.
