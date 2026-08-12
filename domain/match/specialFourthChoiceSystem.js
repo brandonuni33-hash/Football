@@ -1,6 +1,6 @@
 // Street to Pro — 4e choix contextuel de match.
 // Le choix supplémentaire vient d'un acquis réel : origine ou entraînement.
-// IMPORTANT : la source reste cachée à l'UI. On affiche une action de football, jamais « Réflexe futsal ».
+// IMPORTANT : la source reste cachée à l'UI. On affiche une action de football, jamais une étiquette d'origine.
 
 const norm=v=>String(v??'').trim().toUpperCase();
 const arr=v=>Array.isArray(v)?v:[];
@@ -29,7 +29,7 @@ function textOf(context={}){return norm(`${context.title||''} ${context.descript
 const ORIGIN_CHOICES={
   FUTSAL:[
     {key:'futsal-sole',when:/PETIT ESPACE|PRESSION|DOS AU BUT|ENCERCL|SURFACE|DUEL/,text:'Bloquer le ballon sous la semelle puis repartir de l’autre côté',gesture:'Semelle et sortie opposée',style:'technical',impacts:{ratingBonus:.2,duelBonus:.11,technicalRisk:.11}},
-    {key:'futsal-toe',when:/FRAPP|BUT|GARDIEN|FINITION|ANGLE/,text:'Armer presque sans élan et piquer du bout du pied',gesture:'Pointu futsal',style:'technical',impacts:{ratingBonus:.2,goalChance:.11,technicalRisk:.14}},
+    {key:'futsal-toe',when:/FRAPP|BUT|GARDIEN|FINITION|ANGLE/,text:'Armer presque sans élan et piquer du bout du pied',gesture:'Frappe du bout du pied',style:'technical',impacts:{ratingBonus:.2,goalChance:.11,technicalRisk:.14}},
     {key:'futsal-wall',when:/PASSE|REMISE|UNE-DEUX|PARTENAIRE|COÉQUIPIER/,text:'Jouer en une touche et replonger immédiatement dans l’espace',gesture:'Appui-remise instantané',style:'technical',impacts:{ratingBonus:.18,passAccuracy:.11,assistChance:.06,technicalRisk:.08}},
     {key:'futsal-feint',when:/.*/,text:'Attendre le dernier appui puis sortir par un changement de direction très court',gesture:'Changement d’appui court',style:'technical',impacts:{ratingBonus:.18,duelBonus:.1,technicalRisk:.12}}
   ],
@@ -37,13 +37,13 @@ const ORIGIN_CHOICES={
     {key:'street-nutmeg',when:/DUEL|DÉFENSEUR|LATÉRAL|VIS-À-VIS|MARQUAGE/,text:'L’attirer sur ton premier geste puis tenter le petit pont',gesture:'Petit pont',style:'spectacular',impacts:{ratingBonus:.22,duelBonus:.14,technicalRisk:.19}},
     {key:'street-body',when:/PETIT ESPACE|ENCERCL|PRESSION|AXE/,text:'Improviser une feinte de corps pour sortir là où personne ne t’attend',gesture:'Feinte instinctive',style:'technical',impacts:{ratingBonus:.2,duelBonus:.12,technicalRisk:.15}},
     {key:'street-no-look',when:/PASSE|CENTRE|PARTENAIRE|COÉQUIPIER|APPEL/,text:'Masquer complètement ton regard avant de servir l’appel',gesture:'Passe masquée',style:'spectacular',impacts:{ratingBonus:.21,assistChance:.08,passAccuracy:.08,technicalRisk:.14}},
-    {key:'street-elastic',when:/.*/,text:'Provoquer encore et sortir un geste improvisé en un contre un',gesture:'Geste de rue',style:'spectacular',impacts:{ratingBonus:.21,duelBonus:.13,technicalRisk:.18}}
+    {key:'street-elastic',when:/.*/,text:'Provoquer encore et sortir un geste improvisé en un contre un',gesture:'Geste improvisé',style:'spectacular',impacts:{ratingBonus:.21,duelBonus:.13,technicalRisk:.18}}
   ],
   ATHLETE:[
-    {key:'athlete-burst',when:/ESPACE|PROFONDEUR|COURSE|TRANSITION|DERRIÈRE|ACCÉLÉR/,text:'Allonger la première touche et déclencher ton accélération maximale',gesture:'Explosivité pure',style:'physical',impacts:{ratingBonus:.18,duelBonus:.09,fatigueRisk:2,technicalRisk:.08}},
+    {key:'athlete-burst',when:/ESPACE|PROFONDEUR|COURSE|TRANSITION|DERRIÈRE|ACCÉLÉR/,text:'Allonger la première touche et déclencher ton accélération maximale',gesture:'Accélération plein régime',style:'physical',impacts:{ratingBonus:.18,duelBonus:.09,fatigueRisk:2,technicalRisk:.08}},
     {key:'athlete-contact',when:/CONTACT|PHYSIQUE|DOS AU BUT|MARQUAGE|DÉFENSEUR/,text:'Absorber le contact et continuer sur ta puissance',gesture:'Passage en puissance',style:'physical',impacts:{ratingBonus:.18,duelBonus:.13,fatigueRisk:2,technicalRisk:.09}},
-    {key:'athlete-air',when:/CENTRE|AÉRIEN|TÊTE|RETOMBÉE/,text:'Attaquer la retombée plus haut et plus tôt que tout le monde',gesture:'Détente explosive',style:'physical',impacts:{ratingBonus:.19,goalChance:.06,duelBonus:.12,fatigueRisk:2,technicalRisk:.09}},
-    {key:'athlete-carry',when:/.*/,text:'Porter le ballon plein axe en misant sur ta puissance de course',gesture:'Percussion athlétique',style:'physical',impacts:{ratingBonus:.16,duelBonus:.1,fatigueRisk:2,technicalRisk:.1}}
+    {key:'athlete-air',when:/CENTRE|AÉRIEN|TÊTE|RETOMBÉE/,text:'Attaquer la retombée plus haut et plus tôt que tout le monde',gesture:'Prendre le ballon au-dessus',style:'physical',impacts:{ratingBonus:.19,goalChance:.06,duelBonus:.12,fatigueRisk:2,technicalRisk:.09}},
+    {key:'athlete-carry',when:/.*/,text:'Porter le ballon plein axe en misant sur ta puissance de course',gesture:'Percussion plein axe',style:'physical',impacts:{ratingBonus:.16,duelBonus:.1,fatigueRisk:2,technicalRisk:.1}}
   ]
 };
 
