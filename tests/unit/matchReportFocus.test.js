@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import{reportFocus}from'../../domain/match/matchReportFocus.js';test('un geste marquant prime sur la note',()=>assert.equal(reportFocus({rating:9,events:[{gesture:'Sombrero',minute:60}]}).type,'gesture'));

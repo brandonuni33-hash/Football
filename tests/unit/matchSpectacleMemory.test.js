@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import{careerWorthyMatchMoment}from'../../domain/match/matchSpectacleMemory.js';test('une panenka ratée en finale peut devenir un souvenir',()=>{const m=careerWorthyMatchMoment({matchId:'m',type:'final',gesture:'Panenka',success:false,minute:88});assert.ok(m);assert.match(m.memoryText,/manqué/);});

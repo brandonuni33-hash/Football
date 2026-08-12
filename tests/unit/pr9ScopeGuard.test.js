@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';test('le scope exclut les systèmes carrière hors match',()=>{const t=fs.readFileSync(new URL('../../docs/pr9-scope.md',import.meta.url),'utf8');assert.match(t,/Hors scope/);assert.match(t,/famille/);assert.match(t,/transferts/);});

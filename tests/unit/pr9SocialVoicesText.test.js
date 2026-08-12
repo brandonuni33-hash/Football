@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';test('le contrat contient les sept voix demandées',()=>{const t=fs.readFileSync(new URL('../../docs/pr9-social-voices.md',import.meta.url),'utf8');for(const x of['enthousiaste','critique','tactique','ancien joueur','provocateur','rival','proche du club'])assert.match(t,new RegExp(x));});

@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import{decisionPressureState}from'../../domain/match/matchDecisionPressureState.js';test('le timeout ne signifie jamais choix automatique',()=>assert.equal(decisionPressureState({timedDecision:{seconds:5}}).timeoutOutcome,'opportunity-lost'));

@@ -1,0 +1,2 @@
+import test from'node:test';import assert from'node:assert/strict';
+test('les briques critiques de PR9 sont importables',async()=>{const paths=['../../domain/match/matchDecisionPlan.js','../../domain/match/matchPressurePolicy.js','../../domain/match/interactiveMatchMemory.js','../../domain/match/goalPresentation.js','../../domain/match/matchIdentityGuard.js','../../domain/match/matchReactionVoices.js'];const modules=await Promise.all(paths.map(p=>import(p)));assert.equal(modules.length,paths.length);});

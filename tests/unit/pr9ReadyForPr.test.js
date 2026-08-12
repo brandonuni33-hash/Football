@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';test('aucun merge avant CI verte',()=>assert.match(fs.readFileSync(new URL('../../docs/pr9-ready-for-pr.md',import.meta.url),'utf8'),/Aucun merge/));

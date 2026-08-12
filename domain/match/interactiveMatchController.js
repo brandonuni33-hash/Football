@@ -1,311 +1,38 @@
 // domain/match/interactiveMatchController.js
 // Propriétaire unique de la session et de la machine de phases du match jouable.
-
 import { PlayerLogic } from '../../player.js';
 import { PotentialSystem } from '../player/potentialSystem.js';
 import { ConsequenceSystem } from '../decision/consequenceSystem.js';
 import { MatchChoiceManager } from './matchChoiceManager.js';
-import {
-    clamp, number, positionGroup, opponentName, isHomeMatch, competitionLabel,
-    matchType, importanceFor, buildScore, reconcilePlayerContributions
-} from './matchHelpers.js';
-import {
-    buildPreMatchStep, buildKickoffStep, buildDecisionStep, buildConsequenceStep,
-    buildContinuationStep, createUnexpectedContext, buildUnexpectedStep,
-    buildFullTimeStep, buildFinalWhistleStep, buildPostMatchReactions, buildReactionsStep
-} from './interactiveMatchNarrative.js';
-
-const FLOW_VERSION = 2;
-const CONSEQUENCE_MAP = {
-    technique: 'attributes.controle', physique: 'attributes.puissance', vitesse: 'attributes.vitesse',
-    defense: 'attributes.defense', mental: 'mental', charisme: 'reputation', discipline: 'discipline',
-    relationCoach: 'relationCoach', vestiaire: 'vestiaire'
-};
-
-function choiceConsequences(choice = {}) {
-    const source = choice.consequences || {};
-    const permanent = { ...(source.permanent || {}), ...(source.emotional || {}) };
-    for (const [key, value] of Object.entries(choice.impacts?.stats || {})) {
-        const target = CONSEQUENCE_MAP[key];
-        if (target && Number.isFinite(Number(value)) && permanent[target] === undefined) permanent[target] = Number(value);
-    }
-    if (!Object.keys(permanent).length && !Array.isArray(source.temporary) && !Array.isArray(source.effects)) return null;
-    return { ...source, permanent, temporary: [...(source.temporary || []), ...(source.effects || [])] };
-}
-
-function mechanicalImpacts(choice = {}) {
-    const impacts = choice.impacts || {};
-    // Les choix historiques rangent leurs effets de match dans `matchBonuses`.
-    // Ils sont normalisés ici une seule fois avant d'être appliqués à la session.
-    return { ...(impacts.matchBonuses || {}), ...impacts };
-}
-
-function decisionDescription(session, moment, index, fallback) {
-    if (index === 0) {
-        return `À la ${moment}e minute, une première brèche apparaît face à ${session.opponent}. ${fallback || 'Comment veux-tu peser sur cette séquence ?'}`;
-    }
-    const context = session.unexpectedContext?.text || 'Le rapport de force a changé depuis ta première décision.';
-    return `${context} À la ${moment}e minute, tu dois maintenant adapter ton jeu.`;
-}
-
-function buildDecision(session, moment, index) {
-    const dilemma = MatchChoiceManager.getMatchDilemma(session.type, session.opponent);
-    const configured = dilemma?.choices || [];
-    const fallback = [
-        { text: 'Prendre l’initiative', impacts: { ratingBonus: .16, goalChance: .05, fatigueRisk: 3 } },
-        { text: 'Jouer simple et sécuriser', impacts: { ratingBonus: .08, passAccuracy: .08, fatigueRisk: -1 } },
-        { text: 'Chercher le duel', impacts: { ratingBonus: .04, duelBonus: .10, cardRisk: .06, fatigueRisk: 2 } },
-        { text: 'Rester patient', impacts: { ratingBonus: .03, assistChance: .05, fatigueRisk: -2 } }
-    ];
-    const choices = (configured.length >= 2 ? configured : fallback).slice(0, 4).map(choice => ({
-        ...choice,
-        text: choice.text || choice.texte || choice.label || 'Choisir',
-        impacts: mechanicalImpacts(choice),
-        consequences: choiceConsequences(choice)
-    }));
-    return {
-        id: `${session.id}:decision:${index + 1}`,
-        minute: moment,
-        phase: moment < 45 ? 'Première période' : 'Seconde période',
-        title: index === 0 ? `${moment}' · La première occasion de peser` : `${moment}' · Le match bascule`,
-        description: decisionDescription(session, moment, index, dilemma?.description),
-        choices
-    };
-}
-
-function playableDecisionMoments(match) {
-    const selection = match?.playerSelection;
-    const minutes = Math.max(1, number(match?.minutes ?? selection?.minutes ?? 90));
-    if (selection?.started !== false) return importanceFor(match) === 'exceptional' ? [24, 74] : [31, 68];
-    const entryMinute = Math.max(45, 90 - minutes);
-    const first = Math.min(84, entryMinute + Math.max(3, Math.round(minutes * .28)));
-    return [first, Math.min(88, Math.max(first + 4, entryMinute + Math.round(minutes * .72)))];
-}
-
-function playerTeamScore(session) {
-    return number(session.score[session.home ? 'home' : 'away']);
-}
-
-function opponentScore(session) {
-    return number(session.score[session.home ? 'away' : 'home']);
-}
-
-function setPlayerTeamScore(session, value) {
-    session.score[session.home ? 'home' : 'away'] = Math.max(0, Math.floor(number(value)));
-}
-
-function setOpponentScore(session, value) {
-    session.score[session.home ? 'away' : 'home'] = Math.max(0, Math.floor(number(value)));
-}
-
-function applyEffects(session, effects = {}) {
-    session.modifiers.rating += number(effects.ratingBonus ?? effects.rating);
-    session.modifiers.goal += number(effects.goalChance ?? effects.goal) + number(effects.counterAttack) * .20;
-    session.modifiers.assist += number(effects.assistChance ?? effects.assist) + number(effects.counterAttack) * .08;
-    session.modifiers.duel += number(effects.duelBonus ?? effects.duel);
-    session.modifiers.fatigue += number(effects.fatigueRisk ?? effects.fatigue);
-    session.modifiers.cards += number(effects.cardRisk ?? effects.cards);
-    session.modifiers.opponentThreat += number(effects.opponentThreat);
-    session.modifiers.rating += number(effects.passAccuracy) * .20 + number(effects.teamBoost) * .18;
-}
-
-function resolveChoice(state, session, choiceIndex, decisionIndex) {
-    const decision = session.decision;
-    const choice = decision?.choices?.[Number(choiceIndex)];
-    if (!choice) throw new Error('Choix de match invalide.');
-    const consequence = choice.consequences
-        ? ConsequenceSystem.applyToState(state, { ...choice, impacts: {}, consequences: choice.consequences }, { source: 'Match' })
-        : null;
-    applyEffects(session, choice.impacts || {});
-    const roll = Math.random();
-    let event;
-    if (roll < clamp(.16 + number(choice.impacts?.goalChance) * 1.6, .12, .58)) {
-        event = { title: 'La défense recule', icon: '⚡', text: 'Ton initiative crée une situation dangereuse et oblige le bloc adverse à se désorganiser.' };
-    } else if (roll < .42 + number(choice.impacts?.passAccuracy)) {
-        event = { title: 'Ton équipe gagne du terrain', icon: '🎯', text: 'Ta décision donne de l’air au collectif et déplace le rapport de force.' };
-    } else if (number(choice.impacts?.duelBonus) > 0) {
-        event = { title: 'Le duel donne le ton', icon: '🛡️', text: 'Tu imposes ton choix dans l’impact. Le match devient plus physique autour de toi.' };
-    } else {
-        event = { title: 'Le match absorbe ton choix', icon: '🧠', text: consequence?.responseText || 'Tu assumes ta décision et te replaces pendant que l’action continue.' };
-    }
-    event = { ...event, minute: decision.minute, decisionIndex, choice: choice.text };
-    session.decisions.push({ minute: decision.minute, phase: decision.phase, choice: choice.text, consequence: consequence?.queued || 0, event: event.text });
-    session.events.push(event);
-    return event;
-}
-
-function simulateMiddlePhase(session) {
-    const teamChance = clamp(.30 + session.modifiers.goal + session.modifiers.assist * .35, .12, .72);
-    const opponentChance = clamp(.28 + session.modifiers.opponentThreat - session.modifiers.duel * .22, .08, .68);
-    if (Math.random() < teamChance) setPlayerTeamScore(session, playerTeamScore(session) + 1);
-    if (Math.random() < opponentChance) setOpponentScore(session, opponentScore(session) + 1);
-}
-
-function generatedContribution(chance, max) {
-    let total = 0;
-    for (let index = 0; index < max; index++) {
-        if (Math.random() < clamp(chance * (1 - index * .18), .01, .72)) total += 1;
-    }
-    return total;
-}
-
-function finalizeResult(state, session) {
-    const player = state.player;
-    const group = positionGroup(player.position);
-    const opponentStrength = number(session.match?.opponentStrength ?? session.match?.opponentOverall ?? 50) || 50;
-    const rating = Number(clamp(session.playerRatingBase + session.modifiers.rating + (Math.random() - .5) * 1.05, 4, 10).toFixed(1));
-    const goalChance = clamp(.04 + number(player.attributes?.tir ?? 40) / 99 * .16 + session.modifiers.goal, .01, .72);
-    const assistChance = clamp(.06 + number(player.attributes?.passe ?? 40) / 99 * .18 + session.modifiers.assist, .01, .68);
-    const generatedTeamGoals = Math.max(playerTeamScore(session), buildScore({ player, rating, group, goalChance, opponentStrength }));
-    const generatedOpponentGoals = Math.max(opponentScore(session), Math.floor(Math.random() * Math.max(1, 1 + opponentStrength / 58 + session.modifiers.opponentThreat)));
-    const rawGoals = group === 'goalkeeper' ? 0 : generatedContribution(goalChance, group === 'attacker' ? 4 : 2);
-    const rawAssists = generatedContribution(assistChance, 2);
-    const contributions = reconcilePlayerContributions(generatedTeamGoals, rawGoals, rawAssists);
-    const selection = session.match?.playerSelection || { started: true, appearance: 'starter', minutes: 90 };
-    const teamGoals = contributions.teamGoals;
-    const opponentGoals = Math.min(6, Math.max(0, generatedOpponentGoals));
-    const yellowCards = Math.random() < clamp(session.modifiers.cards, 0, .72) ? 1 : 0;
-    const fatigueCost = clamp(Math.round(session.modifiers.fatigue), -3, 8);
-    setPlayerTeamScore(session, teamGoals);
-    setOpponentScore(session, opponentGoals);
-    return {
-        matchIndex: session.matchIndex, fixture: session.match,
-        competitionId: session.match?.competitionId || null,
-        competitionType: session.match?.competitionType || session.match?.type || null,
-        competitionName: session.competition, phase: session.match?.phase || null,
-        round: session.match?.round || session.match?.europeanRound || null,
-        type: session.type, importance: session.importance, opponent: session.opponent,
-        opponentStrength, home: session.home, venue: session.match?.venue || null,
-        score: { ...session.score }, teamGoals, opponentGoals,
-        result: teamGoals > opponentGoals ? 'win' : teamGoals < opponentGoals ? 'loss' : 'draw',
-        rating, goals: contributions.goals, assists: contributions.assists,
-        tackles: group === 'goalkeeper' ? 0 : Math.max(1, Math.floor(2 + Math.random() * 6 + session.modifiers.duel * 8)),
-        yellowCards, fatigueCost,
-        cleanSheet: group === 'goalkeeper' && opponentGoals === 0,
-        played: true, playerPlayed: true,
-        appearance: selection.appearance || (selection.started === false ? 'substitute' : 'starter'),
-        started: selection.started !== false,
-        minutesPlayed: number(session.match?.minutes ?? selection.minutes ?? 90) || 90,
-        decisions: [...session.decisions], events: [...session.events], interactiveFlowVersion: FLOW_VERSION
-    };
-}
-
-function migrateActiveSession(session) {
-    if (session.flowVersion) return session;
-    session.flowVersion = FLOW_VERSION;
-    session.team ||= 'Ton équipe';
-    session.modifiers ||= { rating: 0, goal: 0, assist: 0, duel: 0, fatigue: 0, cards: 0, opponentThreat: 0 };
-    session.modifiers.opponentThreat ||= 0;
-    session.stage = session.decision ? (number(session.currentMoment) > 0 ? 'moment_2' : 'moment_1') : 'pre_match';
-    session.step = session.decision ? buildDecisionStep(session, session.decision, session.stage === 'moment_1' ? 0 : 1) : buildPreMatchStep(session);
-    return session;
-}
-
-export function startInteractiveMatch(state, scheduledMatch, matchIndex = 0) {
-    if (!state?.player) throw new Error('Impossible de démarrer un match sans joueur.');
-    const moments = playableDecisionMoments(scheduledMatch);
-    const session = {
-        id: `match-session-${Date.now()}-${matchIndex}`, flowVersion: FLOW_VERSION,
-        matchIndex, match: scheduledMatch, type: matchType(scheduledMatch), importance: importanceFor(scheduledMatch),
-        team: state.player.club || 'Ton équipe', opponent: opponentName(scheduledMatch),
-        home: isHomeMatch(scheduledMatch), competition: competitionLabel(scheduledMatch),
-        moments, currentMoment: 0, decisions: [], events: [], score: { home: 0, away: 0 },
-        modifiers: { rating: 0, goal: 0, assist: 0, duel: 0, fatigue: 0, cards: 0, opponentThreat: 0 },
-        playerRatingBase: 6.2 + (number(state.player.overall) - 50) * .035,
-        stage: 'pre_match', step: null, decision: null, result: null, reactions: [], finished: false
-    };
-    session.step = buildPreMatchStep(session);
-    return session;
-}
-
-export function advanceInteractiveMatch(state, activeSession, action = {}) {
-    if (!state?.player || !activeSession || activeSession.finished) throw new Error('Session de match invalide.');
-    const session = migrateActiveSession(activeSession);
-    const choiceIndex = typeof action === 'number' ? action : action?.choiceIndex;
-
-    if (session.step?.kind === 'decision' && (choiceIndex === null || choiceIndex === undefined || !Number.isInteger(Number(choiceIndex)))) {
-        return { finished: false, session, step: session.step, decision: session.decision, event: session.events.at(-1) || null };
-    }
-
-    if (session.stage === 'pre_match') {
-        session.stage = 'kickoff';
-        session.step = buildKickoffStep(session);
-    } else if (session.stage === 'kickoff') {
-        session.stage = 'moment_1';
-        session.decision = buildDecision(session, session.moments[0], 0);
-        session.step = buildDecisionStep(session, session.decision, 0);
-    } else if (session.stage === 'moment_1') {
-        const event = resolveChoice(state, session, choiceIndex, 0);
-        session.currentMoment = 1;
-        session.stage = 'consequence_1';
-        session.step = buildConsequenceStep(session, event, 0);
-    } else if (session.stage === 'consequence_1') {
-        simulateMiddlePhase(session);
-        session.stage = 'match_continues';
-        session.step = buildContinuationStep(session);
-    } else if (session.stage === 'match_continues') {
-        session.unexpectedContext = createUnexpectedContext(session);
-        applyEffects(session, session.unexpectedContext.effects);
-        session.stage = 'unexpected_event';
-        session.step = buildUnexpectedStep(session, session.unexpectedContext);
-    } else if (session.stage === 'unexpected_event') {
-        session.stage = 'moment_2';
-        session.decision = buildDecision(session, session.moments[1], 1);
-        session.step = buildDecisionStep(session, session.decision, 1);
-    } else if (session.stage === 'moment_2') {
-        resolveChoice(state, session, choiceIndex, 1);
-        session.result = finalizeResult(state, session);
-        session.result.postMatchReactions = buildPostMatchReactions(state, session, session.result);
-        session.stage = 'full_time_sequence';
-        session.decision = null;
-        session.step = buildFullTimeStep(session, session.result);
-    } else if (session.stage === 'full_time_sequence') {
-        session.stage = 'final_whistle';
-        session.step = buildFinalWhistleStep(session, session.result);
-    } else if (session.stage === 'final_whistle') {
-        session.reactions = session.result?.postMatchReactions || buildPostMatchReactions(state, session, session.result);
-        session.stage = 'reactions';
-        session.step = buildReactionsStep(session, session.reactions);
-    } else if (session.stage === 'reactions') {
-        session.stage = 'complete';
-        session.step = null;
-        session.finished = true;
-        return { finished: true, session, result: session.result, events: session.events };
-    } else {
-        throw new Error(`Phase de match inconnue : ${session.stage}`);
-    }
-    return { finished: false, session, step: session.step, decision: session.step?.kind === 'decision' ? session.decision : null, event: session.events.at(-1) || null };
-}
-
-export function resolveInteractiveDecision(state, session, choiceIndex) {
-    return advanceInteractiveMatch(state, session, { choiceIndex });
-}
-
-export function commitInteractiveResult(state, result) {
-    const player = state?.player;
-    if (!player || !result) return null;
-    player.stats ||= {};
-    const previous = number(player.stats.matchesPlayed);
-    const total = previous + 1;
-    player.stats.matchesPlayed = total;
-    player.stats.starts = number(player.stats.starts) + (result.started === false ? 0 : 1);
-    player.stats.subAppearances = number(player.stats.subAppearances) + (result.started === false ? 1 : 0);
-    player.stats.minutesPlayed = number(player.stats.minutesPlayed) + number(result.minutesPlayed || 90);
-    player.stats.goals = number(player.stats.goals) + number(result.goals);
-    player.stats.assists = number(player.stats.assists) + number(result.assists);
-    player.stats.tackles = number(player.stats.tackles) + number(result.tackles);
-    player.stats.yellowCards = number(player.stats.yellowCards) + number(result.yellowCards);
-    if (result.cleanSheet) player.stats.cleanSheets = number(player.stats.cleanSheets) + 1;
-    player.stats.averageRating = Number((((number(player.stats.averageRating) * previous) + number(result.rating)) / total).toFixed(1));
-    player.morale = clamp(number(player.morale ?? 50) + (result.rating >= 7 ? 2 : result.rating < 5.5 ? -2 : 0), 0, 100);
-    const fitnessCost = Math.max(1, Math.round(number(result.minutesPlayed || 90) / 30) + number(result.fatigueCost));
-    player.fitness = clamp(number(player.fitness ?? 80) - fitnessCost, 0, 100);
-    PotentialSystem.recordMatch(player, { rating: result.rating }, 1);
-    PlayerLogic.applyProgression(player, { xp: Math.round(70 + result.rating * 40 + result.goals * 90 + result.assists * 60), type: 'match' });
-    return result;
-}
-
-export const InteractiveMatchController = Object.freeze({
-    startInteractiveMatch, advanceInteractiveMatch, resolveInteractiveDecision, commitInteractiveResult
-});
-export default InteractiveMatchController;
+import { clamp,number,positionGroup,opponentName,isHomeMatch,competitionLabel,matchType,importanceFor,buildScore,reconcilePlayerContributions } from './matchHelpers.js';
+import { buildPreMatchStep,buildKickoffStep,buildDecisionStep,buildConsequenceStep,buildContinuationStep,createUnexpectedContext,buildUnexpectedStep,buildFullTimeStep,buildFinalWhistleStep,buildPostMatchReactions,buildReactionsStep } from './interactiveMatchNarrative.js';
+const FLOW_VERSION=3;
+const CONSEQUENCE_MAP={technique:'attributes.controle',physique:'attributes.puissance',vitesse:'attributes.vitesse',defense:'attributes.defense',mental:'mental',charisme:'reputation',discipline:'discipline',relationCoach:'relationCoach',vestiaire:'vestiaire'};
+function choiceConsequences(choice={}){const source=choice.consequences||{},permanent={...(source.permanent||{}),...(source.emotional||{})};for(const[key,value]of Object.entries(choice.impacts?.stats||{})){const target=CONSEQUENCE_MAP[key];if(target&&Number.isFinite(Number(value))&&permanent[target]===undefined)permanent[target]=Number(value);}if(!Object.keys(permanent).length&&!Array.isArray(source.temporary)&&!Array.isArray(source.effects))return null;return{...source,permanent,temporary:[...(source.temporary||[]),...(source.effects||[])]};}
+function mechanicalImpacts(choice={}){const impacts=choice.impacts||{};return{...(impacts.matchBonuses||{}),...impacts};}
+function technicalRating(player={}){const a=player.attributes||{};return clamp((number(a.controle??a.dribble??a.technique??player.technique)||40)*.55+(number(a.dribble??a.controle??a.technique??player.technique)||40)*.45,1,99);}
+function originId(player={}){return String(player.origin?.id||player.origin||'').toUpperCase();}
+function techniqueChoices(player,session,moment){const tech=technicalRating(player),origin=originId(player),futsal=origin==='FUTSAL',street=origin==='STREET';const pressure=moment>=78||session.type==='final'||session.type==='rival';const pool=[];
+ if(tech>=62&&(futsal||street||tech>=75))pool.push({text:'Éliminer dans un petit espace',gesture:futsal?'Réflexe futsal':street?'Instinct street':'Geste technique',impacts:{ratingBonus:.12,duelBonus:.12,goalChance:.035,fatigueRisk:2,technicalRisk:.08}});
+ if(tech>=72&&(futsal||street))pool.push({text:'Tenter le petit pont',gesture:'Petit pont',impacts:{ratingBonus:.16,duelBonus:.16,goalChance:.045,fatigueRisk:2,technicalRisk:.13}});
+ if(tech>=80)pool.push({text:'Créer avec l’extérieur du pied',gesture:'Extérieur du pied',impacts:{ratingBonus:.15,assistChance:.075,goalChance:.025,technicalRisk:.09}});
+ if(tech>=86&&pressure)pool.push({text:'Tenter le geste que personne n’attend',gesture:futsal?'Sombrero / talonnade':'Geste acrobatique',impacts:{ratingBonus:.2,goalChance:.075,assistChance:.04,fatigueRisk:3,technicalRisk:.18}});
+ return pool;}
+function decisionCount(match){const selection=match?.playerSelection,minutes=Math.max(1,number(match?.minutes??selection?.minutes??90)),type=matchType(match),importance=importanceFor(match);if(selection?.started===false)return clamp(Math.round(minutes/18),1,3);if(type==='final')return 4+Math.floor(Math.random()*3);if(type==='rival')return 3+Math.floor(Math.random()*3);if(importance==='exceptional')return 3+Math.floor(Math.random()*3);if(importance==='important')return 2+Math.floor(Math.random()*3);return 1+Math.floor(Math.random()*2);}
+function playableDecisionMoments(match){const count=decisionCount(match),selection=match?.playerSelection,minutes=Math.max(1,number(match?.minutes??selection?.minutes??90)),start=selection?.started===false?Math.max(45,90-minutes):8,end=selection?.started===false?88:86;if(count===1)return[Math.round((start+end)/2)];const span=end-start;return Array.from({length:count},(_,i)=>Math.round(start+span*((i+1)/(count+1))));}
+function pressureTimer(state,session,moment,index){const decisive=session.type==='final'||session.type==='rival'||session.importance==='exceptional';const late=moment>=76;const last=index===session.moments.length-1;if(!decisive||(!late&&!last))return null;const mental=number(state.player?.mental??state.player?.attributes?.mental??50),seconds=clamp(Math.round(5+(mental-50)/18),4,8);return{seconds,reason:session.type==='final'?'finale':session.type==='rival'?'rivalité':'moment décisif'};}
+function decisionDescription(session,moment,index,fallback){if(index===0)return`À la ${moment}e minute, une première brèche apparaît face à ${session.opponent}. ${fallback||'Comment veux-tu peser sur cette séquence ?'}`;const previous=session.events.at(-1)?.text||session.unexpectedContext?.text||'Le rapport de force a changé.';return`${previous} À la ${moment}e minute, une nouvelle décision se présente.`;}
+function buildDecision(state,session,moment,index){const dilemma=MatchChoiceManager.getMatchDilemma(session.type,session.opponent),configured=dilemma?.choices||[],fallback=[{text:'Prendre l’initiative',impacts:{ratingBonus:.16,goalChance:.05,fatigueRisk:3}},{text:'Jouer simple et sécuriser',impacts:{ratingBonus:.08,passAccuracy:.08,fatigueRisk:-1}},{text:'Chercher le duel',impacts:{ratingBonus:.04,duelBonus:.10,cardRisk:.06,fatigueRisk:2}},{text:'Rester patient',impacts:{ratingBonus:.03,assistChance:.05,fatigueRisk:-2}}];let raw=[...(configured.length>=2?configured:fallback),...techniqueChoices(state.player,session,moment)];const seen=new Set();raw=raw.filter(c=>{const k=c.text||c.texte||c.label;if(seen.has(k))return false;seen.add(k);return true;}).slice(0,5);const choices=raw.map(choice=>({...choice,text:choice.text||choice.texte||choice.label||'Choisir',impacts:mechanicalImpacts(choice),consequences:choiceConsequences(choice)}));return{id:`${session.id}:decision:${index+1}`,minute:moment,phase:moment<45?'Première période':'Seconde période',title:index===0?`${moment}' · La première occasion de peser`:`${moment}' · Le match te demande une réponse`,description:decisionDescription(session,moment,index,dilemma?.description),choices,timedDecision:pressureTimer(state,session,moment,index)};}
+function playerTeamScore(s){return number(s.score[s.home?'home':'away']);}function opponentScore(s){return number(s.score[s.home?'away':'home']);}function setPlayerTeamScore(s,v){s.score[s.home?'home':'away']=Math.max(0,Math.floor(number(v)));}function setOpponentScore(s,v){s.score[s.home?'away':'home']=Math.max(0,Math.floor(number(v)));}
+function applyEffects(s,e={}){s.modifiers.rating+=number(e.ratingBonus??e.rating);s.modifiers.goal+=number(e.goalChance??e.goal)+number(e.counterAttack)*.20;s.modifiers.assist+=number(e.assistChance??e.assist)+number(e.counterAttack)*.08;s.modifiers.duel+=number(e.duelBonus??e.duel);s.modifiers.fatigue+=number(e.fatigueRisk??e.fatigue);s.modifiers.cards+=number(e.cardRisk??e.cards);s.modifiers.opponentThreat+=number(e.opponentThreat);s.modifiers.rating+=number(e.passAccuracy)*.20+number(e.teamBoost)*.18;}
+function resolveChoice(state,s,choiceIndex,decisionIndex){const d=s.decision,c=d?.choices?.[Number(choiceIndex)];if(!c)throw new Error('Choix de match invalide.');const consequence=c.consequences?ConsequenceSystem.applyToState(state,{...c,impacts:{},consequences:c.consequences},{source:'Match'}):null;applyEffects(s,c.impacts||{});const tech=technicalRating(state.player),risk=number(c.impacts?.technicalRisk),failed=risk>0&&Math.random()<clamp(risk-(tech-50)/260,.03,.32);let event;if(failed)event={title:'Le geste ne passe pas',icon:'⚠️',text:`Tu assumes le risque, mais ${c.gesture||'le geste'} échoue. L’adversaire récupère et le match te rappelle immédiatement le prix de l’audace.`};else{const roll=Math.random();if(roll<clamp(.16+number(c.impacts?.goalChance)*1.6,.12,.58))event={title:c.gesture||'La défense recule',icon:'⚡',text:`${c.gesture?`${c.gesture} : `:''}ton initiative crée une situation dangereuse et oblige le bloc adverse à se désorganiser.`};else if(roll<.42+number(c.impacts?.passAccuracy))event={title:'Ton équipe gagne du terrain',icon:'🎯',text:'Ta décision donne de l’air au collectif et déplace le rapport de force.'};else if(number(c.impacts?.duelBonus)>0)event={title:'Le duel donne le ton',icon:'🛡️',text:'Tu imposes ton choix dans l’impact. Le match devient plus physique autour de toi.'};else event={title:'Le match absorbe ton choix',icon:'🧠',text:consequence?.responseText||'Tu assumes ta décision et te replaces pendant que l’action continue.'};}event={...event,minute:d.minute,decisionIndex,choice:c.text,gesture:c.gesture||null};s.decisions.push({minute:d.minute,phase:d.phase,choice:c.text,gesture:c.gesture||null,consequence:consequence?.queued||0,event:event.text});s.events.push(event);return event;}
+function resolveTimeout(s){const d=s.decision,event={title:'Une seconde de trop',icon:'⏱️',text:'Tu hésites. La fenêtre se referme avant que tu puisses agir.',minute:d.minute,decisionIndex:s.currentMoment,choice:'Aucune décision — temps écoulé',timedOut:true};s.modifiers.rating-=.08;s.modifiers.opponentThreat+=.04;s.decisions.push({minute:d.minute,phase:d.phase,choice:event.choice,timedOut:true,event:event.text});s.events.push(event);return event;}
+function simulateMiddlePhase(s){const teamChance=clamp(.30+s.modifiers.goal+s.modifiers.assist*.35,.12,.72),opponentChance=clamp(.28+s.modifiers.opponentThreat-s.modifiers.duel*.22,.08,.68);if(Math.random()<teamChance)setPlayerTeamScore(s,playerTeamScore(s)+1);if(Math.random()<opponentChance)setOpponentScore(s,opponentScore(s)+1);}
+function generatedContribution(chance,max){let total=0;for(let i=0;i<max;i++)if(Math.random()<clamp(chance*(1-i*.18),.01,.72))total++;return total;}
+function finalizeResult(state,s){const player=state.player,group=positionGroup(player.position),opponentStrength=number(s.match?.opponentStrength??s.match?.opponentOverall??50)||50,rating=Number(clamp(s.playerRatingBase+s.modifiers.rating+(Math.random()-.5)*1.05,4,10).toFixed(1)),goalChance=clamp(.04+number(player.attributes?.tir??40)/99*.16+s.modifiers.goal,.01,.72),assistChance=clamp(.06+number(player.attributes?.passe??40)/99*.18+s.modifiers.assist,.01,.68),generatedTeamGoals=Math.max(playerTeamScore(s),buildScore({player,rating,group,goalChance,opponentStrength})),generatedOpponentGoals=Math.max(opponentScore(s),Math.floor(Math.random()*Math.max(1,1+opponentStrength/58+s.modifiers.opponentThreat))),rawGoals=group==='goalkeeper'?0:generatedContribution(goalChance,group==='attacker'?4:2),rawAssists=generatedContribution(assistChance,2),contributions=reconcilePlayerContributions(generatedTeamGoals,rawGoals,rawAssists),selection=s.match?.playerSelection||{started:true,appearance:'starter',minutes:90},teamGoals=contributions.teamGoals,opponentGoals=Math.min(6,Math.max(0,generatedOpponentGoals)),yellowCards=Math.random()<clamp(s.modifiers.cards,0,.72)?1:0,fatigueCost=clamp(Math.round(s.modifiers.fatigue),-3,8);setPlayerTeamScore(s,teamGoals);setOpponentScore(s,opponentGoals);return{matchId:s.id,matchIndex:s.matchIndex,fixture:s.match,competitionId:s.match?.competitionId||null,competitionType:s.match?.competitionType||s.match?.type||null,competitionName:s.competition,phase:s.match?.phase||null,round:s.match?.round||s.match?.europeanRound||null,type:s.type,importance:s.importance,opponent:s.opponent,opponentStrength,home:s.home,venue:s.match?.venue||null,score:{...s.score},teamGoals,opponentGoals,result:teamGoals>opponentGoals?'win':teamGoals<opponentGoals?'loss':'draw',rating,goals:contributions.goals,assists:contributions.assists,tackles:group==='goalkeeper'?0:Math.max(1,Math.floor(2+Math.random()*6+s.modifiers.duel*8)),yellowCards,fatigueCost,cleanSheet:group==='goalkeeper'&&opponentGoals===0,played:true,playerPlayed:true,appearance:selection.appearance||(selection.started===false?'substitute':'starter'),started:selection.started!==false,minutesPlayed:number(s.match?.minutes??selection.minutes??90)||90,decisions:[...s.decisions],events:[...s.events],interactiveFlowVersion:FLOW_VERSION};}
+function migrateActiveSession(s){if(s.flowVersion>=FLOW_VERSION)return s;s.flowVersion=FLOW_VERSION;s.team||='Ton équipe';s.modifiers||={rating:0,goal:0,assist:0,duel:0,fatigue:0,cards:0,opponentThreat:0};s.modifiers.opponentThreat||=0;s.moments=Array.isArray(s.moments)&&s.moments.length?s.moments:playableDecisionMoments(s.match);s.currentMoment=number(s.currentMoment);s.stage=s.decision?`moment_${s.currentMoment+1}`:'pre_match';s.step=s.decision?buildDecisionStep(s,s.decision,s.currentMoment):buildPreMatchStep(s);return s;}
+export function startInteractiveMatch(state,scheduledMatch,matchIndex=0){if(!state?.player)throw new Error('Impossible de démarrer un match sans joueur.');const moments=playableDecisionMoments(scheduledMatch),s={id:`match-session-${Date.now()}-${matchIndex}`,flowVersion:FLOW_VERSION,matchIndex,match:scheduledMatch,type:matchType(scheduledMatch),importance:importanceFor(scheduledMatch),team:state.player.club||'Ton équipe',opponent:opponentName(scheduledMatch),home:isHomeMatch(scheduledMatch),competition:competitionLabel(scheduledMatch),moments,currentMoment:0,decisions:[],events:[],score:{home:0,away:0},modifiers:{rating:0,goal:0,assist:0,duel:0,fatigue:0,cards:0,opponentThreat:0},playerRatingBase:6.2+(number(state.player.overall)-50)*.035,stage:'pre_match',step:null,decision:null,result:null,reactions:[],finished:false};s.step=buildPreMatchStep(s);return s;}
+export function advanceInteractiveMatch(state,activeSession,action={}){if(!state?.player||!activeSession||activeSession.finished)throw new Error('Session de match invalide.');const s=migrateActiveSession(activeSession),choiceIndex=typeof action==='number'?action:action?.choiceIndex,timedOut=Boolean(action?.timedOut);if(s.step?.kind==='decision'&&!timedOut&&(choiceIndex===null||choiceIndex===undefined||!Number.isInteger(Number(choiceIndex))))return{finished:false,session:s,step:s.step,decision:s.decision,event:s.events.at(-1)||null};if(s.stage==='pre_match'){s.stage='kickoff';s.step=buildKickoffStep(s);}else if(s.stage==='kickoff'){s.stage='decision';s.decision=buildDecision(state,s,s.moments[0],0);s.step=buildDecisionStep(s,s.decision,0);}else if(s.stage==='decision'){const index=s.currentMoment,event=timedOut?resolveTimeout(s):resolveChoice(state,s,choiceIndex,index);s.stage='consequence';s.step=buildConsequenceStep(s,event,index);}else if(s.stage==='consequence'){simulateMiddlePhase(s);s.currentMoment+=1;if(s.currentMoment<s.moments.length){s.stage='match_continues';s.step=buildContinuationStep(s);}else{s.result=finalizeResult(state,s);s.result.postMatchReactions=buildPostMatchReactions(state,s,s.result);s.stage='full_time_sequence';s.decision=null;s.step=buildFullTimeStep(s,s.result);}}else if(s.stage==='match_continues'){s.unexpectedContext=createUnexpectedContext(s);applyEffects(s,s.unexpectedContext.effects);s.stage='unexpected_event';s.step=buildUnexpectedStep(s,s.unexpectedContext);}else if(s.stage==='unexpected_event'){s.stage='decision';s.decision=buildDecision(state,s,s.moments[s.currentMoment],s.currentMoment);s.step=buildDecisionStep(s,s.decision,s.currentMoment);}else if(s.stage==='full_time_sequence'){s.stage='final_whistle';s.step=buildFinalWhistleStep(s,s.result);}else if(s.stage==='final_whistle'){s.reactions=s.result?.postMatchReactions||buildPostMatchReactions(state,s,s.result);s.stage='reactions';s.step=buildReactionsStep(s,s.reactions);}else if(s.stage==='reactions'){s.stage='complete';s.step=null;s.finished=true;return{finished:true,session:s,result:s.result,events:s.events};}else throw new Error(`Phase de match inconnue : ${s.stage}`);return{finished:false,session:s,step:s.step,decision:s.step?.kind==='decision'?s.decision:null,event:s.events.at(-1)||null};}
+export function resolveInteractiveDecision(state,session,choiceIndex){return advanceInteractiveMatch(state,session,{choiceIndex});}
+export function commitInteractiveResult(state,result){const player=state?.player;if(!player||!result)return null;player.stats||={};const previous=number(player.stats.matchesPlayed),total=previous+1;player.stats.matchesPlayed=total;player.stats.starts=number(player.stats.starts)+(result.started===false?0:1);player.stats.subAppearances=number(player.stats.subAppearances)+(result.started===false?1:0);player.stats.minutesPlayed=number(player.stats.minutesPlayed)+number(result.minutesPlayed||90);player.stats.goals=number(player.stats.goals)+number(result.goals);player.stats.assists=number(player.stats.assists)+number(result.assists);player.stats.tackles=number(player.stats.tackles)+number(result.tackles);player.stats.yellowCards=number(player.stats.yellowCards)+number(result.yellowCards);if(result.cleanSheet)player.stats.cleanSheets=number(player.stats.cleanSheets)+1;player.stats.averageRating=Number((((number(player.stats.averageRating)*previous)+number(result.rating))/total).toFixed(1));player.morale=clamp(number(player.morale??50)+(result.rating>=7?2:result.rating<5.5?-2:0),0,100);const fitnessCost=Math.max(1,Math.round(number(result.minutesPlayed||90)/30)+number(result.fatigueCost));player.fitness=clamp(number(player.fitness??80)-fitnessCost,0,100);PotentialSystem.recordMatch(player,{rating:result.rating},1);PlayerLogic.applyProgression(player,{xp:Math.round(70+result.rating*40+result.goals*90+result.assists*60),type:'match'});return result;}
+export const InteractiveMatchController=Object.freeze({startInteractiveMatch,advanceInteractiveMatch,resolveInteractiveDecision,commitInteractiveResult});export default InteractiveMatchController;

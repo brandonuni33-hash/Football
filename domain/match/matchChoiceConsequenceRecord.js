@@ -1,0 +1,2 @@
+export function matchChoiceConsequenceRecord({matchId,decision,choice,event,matchEvolution={},statistics={},narrative=[]}={}){if(!matchId||!decision||!choice)return null;return{matchId,decisionId:decision.id,minute:decision.minute,choice:choice.text||choice.label,immediate:event||null,matchEvolution:{...matchEvolution},delayed:{sourceChoice:choice.text||choice.label,active:true},statistics:{...statistics},narrative:{hooks:[...narrative]}};}
+export default matchChoiceConsequenceRecord;

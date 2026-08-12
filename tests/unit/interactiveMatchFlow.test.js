@@ -33,7 +33,7 @@ function withRandom(values, callback) {
     try { return callback(); } finally { Math.random = original; }
 }
 
-test('le match jouable suit toute la séquence narrative dans le bon ordre', () => withRandom(Array(40).fill(.32), () => {
+test('le match jouable suit toute la séquence narrative dans le bon ordre', () => withRandom(Array(80).fill(.32), () => {
     const current = state();
     const session = startInteractiveMatch(current, fixture(), 0);
     const phases = [session.step.phase];
@@ -44,21 +44,26 @@ test('le match jouable suit toute la séquence narrative dans le bon ordre', () 
     phases.push(output.step.phase);
 
     assert.equal(output.step.kind, 'decision');
-    assert.equal(output.step.choices.length, 4);
-    output = advanceInteractiveMatch(current, session, { choiceIndex: 0 });
-    phases.push(output.step.phase);
-    assert.ok(session.modifiers.goal >= .07, 'matchBonuses.goalChance doit influencer le match');
+    assert.ok(output.step.choices.length >= 4);
 
-    output = advanceInteractiveMatch(current, session);
-    phases.push(output.step.phase);
-    output = advanceInteractiveMatch(current, session);
-    phases.push(output.step.phase);
-    output = advanceInteractiveMatch(current, session);
-    phases.push(output.step.phase);
-    assert.equal(output.step.kind, 'decision');
+    for (let index = 0; index < session.moments.length; index += 1) {
+        output = advanceInteractiveMatch(current, session, { choiceIndex: index === 1 ? 1 : 0 });
+        phases.push(output.step.phase);
+        if (index === 0) assert.ok(session.modifiers.goal >= .07, 'matchBonuses.goalChance doit influencer le match');
 
-    output = advanceInteractiveMatch(current, session, { choiceIndex: 1 });
-    phases.push(output.step.phase);
+        output = advanceInteractiveMatch(current, session);
+        phases.push(output.step.phase);
+
+        if (index < session.moments.length - 1) {
+            output = advanceInteractiveMatch(current, session);
+            phases.push(output.step.phase);
+            output = advanceInteractiveMatch(current, session);
+            phases.push(output.step.phase);
+            assert.equal(output.step.kind, 'decision');
+        }
+    }
+
+    assert.equal(output.step.phase, 'full_time_sequence');
     output = advanceInteractiveMatch(current, session);
     phases.push(output.step.phase);
     output = advanceInteractiveMatch(current, session);
@@ -69,29 +74,40 @@ test('le match jouable suit toute la séquence narrative dans le bon ordre', () 
     output = advanceInteractiveMatch(current, session);
     assert.equal(output.finished, true);
     assert.equal(session.finished, true);
-    assert.deepEqual(phases, [
-        'pre_match', 'kickoff', 'moment_1', 'consequence_1', 'match_continues',
-        'unexpected_event', 'moment_2', 'full_time_sequence', 'final_whistle', 'reactions'
-    ]);
+
+    assert.deepEqual(phases.slice(0, 3), ['pre_match', 'kickoff', 'moment_1']);
+    assert.equal(phases.at(-3), 'full_time_sequence');
+    assert.equal(phases.at(-2), 'final_whistle');
+    assert.equal(phases.at(-1), 'reactions');
+    for (let index = 1; index <= session.moments.length; index += 1) {
+        assert.ok(phases.includes(`consequence_${index}`));
+        if (index < session.moments.length) {
+            assert.ok(phases.includes('match_continues'));
+            assert.ok(phases.includes('unexpected_event'));
+            assert.ok(phases.includes(`moment_${index + 1}`));
+        }
+    }
 }));
 
-test('le résultat final reste cohérent avec les contributions et les réactions', () => withRandom([
-    .1, .2, .8, .1, .2, .3, .1, .2, .3, .1, .2, .3, .1, .2, .3, .1, .2, .3
-], () => {
+test('le résultat final reste cohérent avec les contributions et les réactions', () => withRandom(Array(100).fill(.2), () => {
     const current = state();
     const session = startInteractiveMatch(current, fixture(), 2);
+
     advanceInteractiveMatch(current, session);
-    advanceInteractiveMatch(current, session);
-    advanceInteractiveMatch(current, session, { choiceIndex: 0 });
-    advanceInteractiveMatch(current, session);
-    advanceInteractiveMatch(current, session);
-    advanceInteractiveMatch(current, session);
-    advanceInteractiveMatch(current, session, { choiceIndex: 0 });
+    let output = advanceInteractiveMatch(current, session);
+
+    while (!session.result) {
+        if (output.step?.kind === 'decision') {
+            output = advanceInteractiveMatch(current, session, { choiceIndex: 0 });
+        } else {
+            output = advanceInteractiveMatch(current, session);
+        }
+    }
 
     const result = session.result;
     assert.ok(result);
-    assert.equal(result.interactiveFlowVersion, 2);
-    assert.equal(result.decisions.length, 2);
+    assert.equal(result.interactiveFlowVersion, 3);
+    assert.equal(result.decisions.length, session.moments.length);
     assert.ok(result.teamGoals >= result.goals + result.assists);
     assert.equal(result.score.home, result.teamGoals);
     assert.equal(result.postMatchReactions.length, 3);

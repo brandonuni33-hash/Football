@@ -1,0 +1,2 @@
+export function technicalProfile(player={}){const a=player.attributes||{},control=Number(a.controle??50)||50,dribble=Number(a.dribble??control)||control,pass=Number(a.passe??50)||50,shot=Number(a.tir??50)||50,origin=String(player.origin?.id||player.origin||'').toUpperCase();return{origin,control,dribble,pass,shot,technique:Math.round(control*.45+dribble*.4+pass*.1+shot*.05),futsalBonus:origin==='FUTSAL'?.1:0,streetBonus:origin==='STREET'?.1:0};}
+export default technicalProfile;

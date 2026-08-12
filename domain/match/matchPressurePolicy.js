@@ -1,0 +1,2 @@
+export function matchPressureDecision({type,importance,minute,index,total,mental=50}={}){const decisive=type==='final'||type==='rival'||importance==='exceptional';if(!decisive)return null;const late=Number(minute)>=76,last=Number(index)===Number(total)-1;if(!late&&!last)return null;const seconds=Math.max(4,Math.min(8,Math.round(5+(Number(mental||50)-50)/18)));return{seconds,reason:type==='final'?'finale':type==='rival'?'rivalité':'moment décisif'};}
+export default matchPressureDecision;

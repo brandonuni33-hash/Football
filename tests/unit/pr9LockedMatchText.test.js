@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';test('un match fermé préfère une décision significative',()=>assert.match(fs.readFileSync(new URL('../../docs/pr9-locked-match.md',import.meta.url),'utf8'),/une décision significative/));

@@ -1,0 +1,4 @@
+// Répartit les buts déjà présents dans le résultat canonique sur la chronologie du match.
+// Ce module ne crée aucun but: `result.goals` est la limite absolue.
+export function canonicalPlayerGoalEvents(result={},player={}){const total=Math.max(0,Math.floor(Number(result.goals)||0));if(!result.matchId||!total)return[];const candidateMinutes=(result.events||[]).filter(e=>Number.isFinite(Number(e.minute))).map(e=>Number(e.minute));const fallback=[18,34,52,67,79,88];const minutes=[...candidateMinutes,...fallback].sort((a,b)=>a-b);return Array.from({length:total},(_,i)=>({kind:'goal',matchId:result.matchId,minute:minutes[Math.min(i,minutes.length-1)]||Math.min(89,20+i*15),scorer:[player.firstname,player.lastname].filter(Boolean).join(' ')||player.name||'Ton joueur',gesture:(result.events||[]).find(e=>e.gesture)?.gesture||null}));}
+export default canonicalPlayerGoalEvents;

@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';test('les cinq couches sont documentées',()=>{const t=fs.readFileSync(new URL('../../docs/pr9-consequence-model.md',import.meta.url),'utf8');for(const x of['Immédiat','Match','Différé','Statistique','Narratif'])assert.match(t,new RegExp(x));});
