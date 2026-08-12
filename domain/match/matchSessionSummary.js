@@ -1,0 +1,2 @@
+export function matchSessionSummary(session={}){return{matchId:session.id||session.result?.matchId||null,decisionCount:Array.isArray(session.decisions)?session.decisions.length:0,eventCount:Array.isArray(session.events)?session.events.length:0,score:session.result?.score||session.score||null,finished:Boolean(session.finished),flowVersion:session.flowVersion||session.result?.interactiveFlowVersion||null};}
+export default matchSessionSummary;
