@@ -4,8 +4,8 @@ export function buildGoalPresentation({ matchId, scorer, minute, score, gesture=
     return {
         kind:'goal', matchId, minute:Number(minute), scorer:String(scorer),
         score:{home:Number(score.home)||0,away:Number(score.away)||0}, gesture:gesture||null,
-        celebration:celebration||'Tu te retournes vers les tribunes pendant que tes coéquipiers arrivent.',
-        stadiumReaction:stadiumReaction||'Le stade réagit d’un seul mouvement.',
+        celebration:celebration||'Le ballon franchit la ligne. Tes coéquipiers réagissent avant même que l’action ait vraiment le temps de retomber.',
+        stadiumReaction:stadiumReaction||'Autour de la pelouse, les réactions arrivent d’un seul coup.',
         requiresContinue:true
     };
 }
