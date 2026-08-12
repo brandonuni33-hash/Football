@@ -1,0 +1,2 @@
+export function timeoutConsequence({matchId,minute,reason='pression'}={}){if(!matchId)return null;return{matchId,minute:Number(minute)||null,immediate:'La fenêtre se referme avant ton geste.',matchEvolution:{opponentThreat:.04},statistics:{rating:-.08},delayed:{tag:'hesitation',text:'Cette hésitation peut revenir si le match t’offre une nouvelle fenêtre sous pression.'},narrative:{tag:'pressure-miss',reason}};}
+export default timeoutConsequence;
