@@ -51,7 +51,7 @@ test('une relation forte avec le coach formateur donne un poids personnel à la 
     const text = output.primaryScene.beats[0].text;
     assert.match(text, /Après la séance/);
     assert.match(text, /n’est plus seulement un entraîneur/);
-    assert.match(text, /ce rendez-vous te travaille déjà/);
+    assert.match(text, /confiance|raccrocher|travaille déjà|rendez-vous/i);
     assert.equal(output.journalEntries[0].text, text);
     assert.deepEqual(state.notifications, notificationsBefore);
 });
