@@ -7,7 +7,7 @@ import TransferView from '../../ui/views/transferView.js';
 test('les événements santé utilisent une description incarnée', () => {
   const text = eventDescription({ id:'blessure_legere', description:'fallback' });
   assert.match(text, /douleur|cuisse|accélération/i);
-  assert.doesNotEqual(text, 'fallback');
+  assert.notEqual(text, 'fallback');
 });
 
 test('un choix agent renvoie une vraie réaction narrative', () => {
