@@ -1,0 +1,9 @@
+const fact=result=>{const event=result?.events?.find(e=>e.gesture||e.timedOut)||result?.events?.at(-1);if(event?.gesture)return event.gesture;if(event?.timedOut)return'l’hésitation dans le moment chaud';if(result?.goals>=3)return`les ${result.goals} buts`;if(result?.goals===2)return'le doublé';if(result?.goals===1)return'le but';if(result?.assists)return`${result.assists} passe${result.assists>1?'s':''} décisive${result.assists>1?'s':''}`;return'la prestation';};
+export function buildMatchReactionVoices(result={}){if(!result.matchId)return[];const f=fact(result),positive=result.result==='win'||result.rating>=7;return[
+{id:`${result.matchId}:fan-hot`,matchId:result.matchId,voice:'supporter enthousiaste',text:positive?`« ${f} ! C’est exactement pour vivre des soirées comme ça qu’on vient au stade. »`:`« ${f}, ça fait mal… mais on veut le revoir tenter, pas se cacher. »`},
+{id:`${result.matchId}:fan-critical`,matchId:result.matchId,voice:'supporter critique',text:result.rating<6?`« On peut parler de ${f}, mais il faudra surtout une réponse au prochain match. »`:`« Très bien pour ${f}. Maintenant, il faut reproduire ça quand le match se ferme. »`},
+{id:`${result.matchId}:tactical`,matchId:result.matchId,voice:'journaliste tactique',text:`« Au-delà de ${f}, ses choix ont modifié la façon dont ${result.opponent||'l’adversaire'} défendait sa zone. »`},
+{id:`${result.matchId}:former`,matchId:result.matchId,voice:'ancien joueur',text:`« ${f}, tout le monde le voit. Ce qui m’intéresse, c’est la décision prise une seconde avant. »`},
+{id:`${result.matchId}:provocative`,matchId:result.matchId,voice:'média provocateur',text:positive?`« ${f} suffit-il déjà à parler d’un nouveau statut ? »`:`« ${f} : accident de parcours ou premier vrai signal d’alerte ? »`}
+];}
+export default buildMatchReactionVoices;
