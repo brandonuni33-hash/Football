@@ -1,0 +1,3 @@
+import test from'node:test';import assert from'node:assert/strict';import{decisionRange,decisionCountForMatch}from'../../domain/match/matchDecisionPlan.js';
+test('plages de décisions du cahier des charges',()=>{assert.deepEqual(decisionRange({type:'standard'}),[1,2]);assert.deepEqual(decisionRange({importance:'important'}),[2,4]);assert.deepEqual(decisionRange({type:'rival'}),[3,5]);assert.deepEqual(decisionRange({type:'final'}),[4,6]);assert.deepEqual(decisionRange({started:false}),[1,3]);});
+test('le nombre varie dans sa plage',()=>{assert.equal(decisionCountForMatch({type:'final',playerSelection:{started:true}},0),4);assert.equal(decisionCountForMatch({type:'final',playerSelection:{started:true}},.99),6);});
