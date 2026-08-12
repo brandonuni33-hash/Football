@@ -33,3 +33,14 @@ test('les choix de duel changent selon le poste', () => {
     assert.match(striker.map(choice => choice.text).join(' '), /appel|contact|provoquer/i);
     assert.match(defender.map(choice => choice.text).join(' '), /sortir|temporiser|couper/i);
 });
+
+test('deux duels gagnés peuvent transformer le prochain moment en vraie situation de but', () => {
+    let opponent = createDirectOpponent({ seed:'breakthrough', playerPosition:'BU', strength:58 });
+    opponent = updateDirectOpponent(opponent, { success:true, duel:true, choice:'Demander le ballon dans les pieds et provoquer' });
+    opponent = updateDirectOpponent(opponent, { success:true, duel:true, choice:'Prendre l’appel dans son dos' });
+    const choices = directOpponentChoiceSet({ playerPosition:'BU', minute:68, opponent });
+    const text = choices.map(choice => choice.text).join(' | ');
+    assert.match(text, /Frapper avant le retour du dernier défenseur/i);
+    assert.match(text, /coéquipier qui te réclame le ballon/i);
+    assert.match(text, /Feinter la frappe/i);
+});
