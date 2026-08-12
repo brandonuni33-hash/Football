@@ -20,13 +20,12 @@ export class CareerView {
         const age=Number(player.age||0), canRetire=Boolean(player.canRetire)||age>=34;
         const squadStatus=player.squadStatus||(age<18?'En formation':'À déterminer');
         const notificationState=state?.notifications;
-        // On garde les événements les plus récents, mais on les affiche dans le sens naturel
-        // de lecture : ancien en haut, nouveau en bas.
+        // Les notifications temporaires Coach/Famille ont leur section dédiée.
+        // Les entrées du Narrative Engine, elles, restent dans le journal : ce sont des faits persistants de la carrière.
         const signals=(Array.isArray(notificationState)?notificationState:(notificationState?.signals||[]))
             .filter(note=>!note?.archived&&!isSocialNotification(note)&&!isDedicatedSection(note)).slice(-30);
         const unreadCount=signals.filter(note=>!note?.read).length;
-        const narrativeEntries=(this.narrativePresenter?.getJournal?.(state)||[])
-            .filter(entry=>!isDedicatedSection(entry)).slice(-20);
+        const narrativeEntries=(this.narrativePresenter?.getJournal?.(state)||[]).slice(-20);
         return `
             <div class="app-pane career-app-pane" data-view="career">
                 <div class="career-app-heading"><div><span class="career-app-kicker">TON PARCOURS</span><h3 class="pane-title">Carrière</h3></div>${unreadCount?`<span class="career-app-unread">${Math.min(99,unreadCount)}</span>`:''}</div>
