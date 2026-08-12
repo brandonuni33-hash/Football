@@ -1,6 +1,8 @@
 // ui/views/eventView.js
 // Présentation pure des événements de carrière.
 
+import { eventDescription } from '../../domain/career/careerEventNarrativeLibrary.js';
+
 export class EventView {
     constructor({ ui, gateway } = {}) {
         this.ui = ui;
@@ -15,7 +17,7 @@ export class EventView {
                 <div class="event-modal-card">
                     <div class="event-modal-category">${event.categorie || 'Événement carrière'}</div>
                     <h3 class="event-modal-title">${event.title || event.titre || 'Événement'}</h3>
-                    <p class="event-modal-desc">${event.description || ''}</p>
+                    <p class="event-modal-desc">${eventDescription(event)}</p>
                     ${choices.map((choice, index) => `
                         <button class="btn-event-choice" data-event-choice="${index}">
                             ${choice.text || choice.texte || choice.label || ''}
@@ -32,9 +34,6 @@ export class EventView {
                 const index = Number(button.dataset.eventChoice);
                 const result = this.gateway.resolveEventChoice(index);
 
-                // Un choix important ne disparaît jamais silencieusement :
-                // même si ses valeurs sont cachées, le joueur reçoit une
-                // réaction narrative immédiate.
                 if (result?.responseText || result?.immediateReaction || result?.changes?.length || result?.temporary?.length || result?.xp) {
                     this.ui?.afficherModaleConsequences?.(result, () => {
                         this.ui?.renderDashboard?.();
