@@ -15,10 +15,10 @@ function stableIndex(seed, size) {
 
 function group(position = '') {
     const value = String(position || '').toUpperCase();
-    if (['GK', 'GB', 'G'].includes(value)) return 'goalkeeper';
-    if (['DC', 'CB', 'DD', 'RB', 'DG', 'LB', 'D'].includes(value)) return 'defender';
-    if (['MC', 'CM', 'MOC', 'CAM', 'MD', 'MG', 'M', 'MDC', 'CDM'].includes(value)) return 'midfielder';
-    if (['AD', 'RW', 'AG', 'LW'].includes(value)) return 'winger';
+    if (['GK', 'GB', 'G', 'GARDIEN', 'GOALKEEPER'].includes(value)) return 'goalkeeper';
+    if (['DC', 'CB', 'DD', 'RB', 'DG', 'LB', 'D', 'DÉFENSEUR', 'DEFENSEUR', 'LATÉRAL', 'LATERAL'].includes(value)) return 'defender';
+    if (['MC', 'CM', 'MOC', 'CAM', 'MD', 'MG', 'M', 'MDC', 'CDM', 'MILIEU', 'MILIEU RELAYEUR'].includes(value)) return 'midfielder';
+    if (['AD', 'RW', 'AG', 'LW', 'AILIER'].includes(value)) return 'winger';
     return 'attacker';
 }
 
@@ -74,7 +74,7 @@ export function updateDirectOpponent(opponent, { success = null, duel = false, c
         next.rememberedChoices.push(String(choice));
         if (next.rememberedChoices.length > 4) next.rememberedChoices.shift();
     }
-    if (duel || /duel|éliminer|provoquer|petit pont|déborder|dribb/i.test(String(choice))) {
+    if (duel || /duel|éliminer|provoquer|petit pont|déborder|dribb|feinter/i.test(String(choice))) {
         if (success === true) next.playerDuelsWon += 1;
         if (success === false) next.opponentDuelsWon += 1;
     }
@@ -105,8 +105,20 @@ export function directOpponentBeat(opponent, { minute = 0, index = 0, playerPosi
     return `Le duel avec ton vis-à-vis reste indécis. Aucun de vous deux n’a encore réussi à imposer complètement sa manière de jouer.`;
 }
 
-export function directOpponentChoiceSet({ playerPosition = '', minute = 0 } = {}) {
+function breakthroughChoices() {
+    return [
+        { text:'Frapper avant le retour du dernier défenseur', impacts:{ratingBonus:.14,goalChance:.14,technicalRisk:.075,fatigueRisk:1} },
+        { text:'Décaler le coéquipier qui te réclame le ballon', impacts:{ratingBonus:.14,assistChance:.14,passAccuracy:.07,fatigueRisk:0} },
+        { text:'Feinter la frappe et tenter d’éliminer le dernier défenseur', impacts:{ratingBonus:.2,goalChance:.18,duelBonus:.12,technicalRisk:.19,fatigueRisk:2} },
+        { text:'Fixer jusqu’au dernier instant avant de choisir', impacts:{ratingBonus:.12,goalChance:.085,assistChance:.085,technicalRisk:.11,fatigueRisk:1} }
+    ];
+}
+
+export function directOpponentChoiceSet({ playerPosition = '', minute = 0, opponent = null } = {}) {
     const positionGroup = group(playerPosition);
+    const won = Number(opponent?.playerDuelsWon) || 0;
+    const lost = Number(opponent?.opponentDuelsWon) || 0;
+    if ((positionGroup === 'attacker' || positionGroup === 'winger') && won >= 2 && won > lost) return breakthroughChoices();
     if (positionGroup === 'attacker') return [
         { text:'Prendre l’appel dans son dos', impacts:{ratingBonus:.08,goalChance:.075,fatigueRisk:2,duelBonus:.05} },
         { text:'Décrocher pour l’attirer puis repartir', impacts:{ratingBonus:.1,assistChance:.055,goalChance:.035,fatigueRisk:2} },
