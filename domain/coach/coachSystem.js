@@ -4,6 +4,28 @@ import { ConsequenceSystem } from '../decision/consequenceSystem.js';
 import { EventBus } from '../../core/eventBus.js';
 import { EVENTS } from '../../core/events.js';
 
+function clampRelation(value) {
+    return Math.min(100, Math.max(0, Number(value ?? 50)));
+}
+
+function enrichCoachMemory(state, { result, eventData, choice, coachState }) {
+    const memory = state.careerMemory?.findLast?.(item => item?.choiceId === result?.choiceId && item?.source === 'Coach')
+        || [...(state.careerMemory || [])].reverse().find(item => item?.choiceId === result?.choiceId && item?.source === 'Coach');
+    if (!memory) return null;
+
+    memory.type = 'coach-choice';
+    memory.eventId = eventData?.id || null;
+    memory.coachName = coachState?.name || state.social?.formativeCoach || "l'entraîneur";
+    memory.eventTitle = eventData?.title || null;
+    memory.eventDescription = eventData?.description || null;
+    memory.choiceText = choice?.text || memory.text || null;
+    memory.responseText = choice?.response || memory.immediateReaction || null;
+    memory.opinion = coachState?.opinion || choice?.opinionChange || 'Neutre';
+    memory.relationAtChoice = clampRelation(coachState?.relation ?? state.player?.stats?.relationCoach ?? 50);
+    memory.relationIntent = Number(choice?.impacts?.relationCoach || choice?.consequences?.emotional?.relationCoach || 0);
+    return memory;
+}
+
 export class CoachSystem {
     static checkCoachInteraction(state) {
         if (!state?.player) return null;
@@ -14,7 +36,7 @@ export class CoachSystem {
         state.social ||= {};
         state.social.coachData ||= { name: coachName, relation: player.stats?.relationCoach || 50, opinion: 'Neutre', hasLeftClub: false };
         const coachState = state.social.coachData;
-        coachState.relation = Math.min(100, Math.max(0, Number(coachState.relation ?? player.stats?.relationCoach ?? 50)));
+        coachState.relation = clampRelation(coachState.relation ?? player.stats?.relationCoach ?? 50);
         if (player.stats) player.stats.relationCoach = coachState.relation;
         const hasTransferred = coachState.hasLeftClub || (player.club !== state.social?.youthClubName);
 
@@ -82,10 +104,11 @@ export class CoachSystem {
         const result = ConsequenceSystem.applyCoachChoice(state, choice);
         if (choice.opinionChange && coachState) coachState.opinion = choice.opinionChange;
         if (coachState) {
-            coachState.relation = Math.min(100, Math.max(0, Number(coachState.relation ?? state.player.stats?.relationCoach ?? 50)));
+            coachState.relation = clampRelation(coachState.relation ?? state.player.stats?.relationCoach ?? 50);
             state.player.stats ||= {};
             state.player.stats.relationCoach = coachState.relation;
         }
+        const memory = enrichCoachMemory(state, { result, eventData, choice, coachState });
         EventBus.emit(EVENTS.RELATIONSHIP_CHANGED, { state, relation: 'coach', score: coachState?.relation ?? null, playerId: state.player.id });
         EventBus.emit(EVENTS.RELATIONSHIP_ADVICE, { state, relation: 'coach', advice: choice.opinionChange || null, playerId: state.player.id });
         return {
@@ -93,7 +116,8 @@ export class CoachSystem {
             responseText: choice.response || result.responseText,
             relationshipHint: choice.opinionChange || 'Le coach garde ta réponse en tête.',
             newRelation: coachState?.relation ?? 50,
-            newOpinion: coachState?.opinion || 'Neutre'
+            newOpinion: coachState?.opinion || 'Neutre',
+            memoryId: memory?.id || null
         };
     }
 

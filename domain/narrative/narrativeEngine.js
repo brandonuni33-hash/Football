@@ -93,7 +93,7 @@ export class NarrativeEngine {
         const arcs = this.arcInterpreter.interpret({ facts: freshFacts, evaluations, threadTransitions, context });
         const plan = this.scenePlanner.plan({ facts: freshFacts, evaluations, arcs, context });
         const matchComposition = this.beatComposer.compose({ plan, context, memory });
-        const worldComposition = this.worldBeatComposer.compose({ facts: freshFacts, evaluations, context });
+        const worldComposition = this.worldBeatComposer.compose({ facts: freshFacts, evaluations, context, memory });
         const composition = {
             ...matchComposition,
             primaryScene: matchComposition.primaryScene || worldComposition.primaryScene,

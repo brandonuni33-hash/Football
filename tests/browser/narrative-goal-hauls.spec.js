@@ -31,7 +31,8 @@ test('la narration distingue doublé triplé quadruplé et scores supérieurs', 
   expect(texts['4']).toContain('un quadruplé');
   expect(texts['5']).toContain('un quintuplé');
   expect(texts['6']).toContain('un sextuplé');
-  expect(texts['7']).toContain('7 buts qui ont pesé');
+  expect(texts['7']).toContain('7 buts');
+  expect(texts['7']).toContain('performance impossible à réduire à une simple ligne de statistiques');
   expect(texts['3']).not.toContain('doublé');
   expect(texts['4']).not.toContain('doublé');
 });

@@ -3,34 +3,80 @@
 import { normalizeNarrativeState } from '../../state/narrativeState.js';
 import { freezeNarrativeValue, stableNarrativeId } from './narrativeFactNormalizer.js';
 
+const finiteOrNull = value => Number.isFinite(Number(value)) ? Number(value) : null;
+const clamp = (value, min = 0, max = 100) => value === null ? null : Math.min(max, Math.max(min, value));
+
 function playerSnapshot(player = {}) {
+    const stats = player.stats || {};
     return {
         id: player.id || null,
         firstName: player.firstname || player.firstName || null,
         lastName: player.lastname || player.lastName || null,
-        age: Number.isFinite(Number(player.age)) ? Number(player.age) : null,
+        age: finiteOrNull(player.age),
         clubId: player.clubId || null,
         club: player.club || null,
-        position: player.position || player.positionId || null
+        position: player.position || player.positionId || null,
+        mindset: {
+            morale: clamp(finiteOrNull(player.morale ?? stats.morale)),
+            fitness: clamp(finiteOrNull(player.fitness)),
+            mental: clamp(finiteOrNull(player.mental ?? stats.mental)),
+            discipline: clamp(finiteOrNull(player.discipline ?? stats.discipline))
+        },
+        seasonStats: {
+            matchesPlayed: finiteOrNull(stats.matchesPlayed),
+            goals: finiteOrNull(stats.goals),
+            assists: finiteOrNull(stats.assists),
+            averageRating: finiteOrNull(stats.averageRating)
+        }
     };
+}
+
+function coachSnapshot(state = {}) {
+    const social = state.social || {};
+    const coachData = social.coachData || {};
+    const name = coachData.name || social.formativeCoach || null;
+    const relation = clamp(finiteOrNull(coachData.relation ?? state.player?.stats?.relationCoach));
+    return {
+        name,
+        relation,
+        opinion: coachData.opinion || null,
+        vision: social.coachVision || null,
+        hasLeftClub: Boolean(coachData.hasLeftClub),
+        isFormative: Boolean(name && social.formativeCoach && name === social.formativeCoach)
+    };
+}
+
+function completedCareerGoals(history = []) {
+    if (!Array.isArray(history)) return null;
+    let total = 0;
+    for (const season of history) {
+        if (season?.goals === undefined || season?.goals === null || !Number.isFinite(Number(season.goals))) return null;
+        total += Number(season.goals);
+    }
+    return total;
 }
 
 export class NarrativeContextBuilder {
     build({ state, facts = [] } = {}) {
-        const seasonHistory = Array.isArray(state?.career?.seasonHistory)
-            ? state.career.seasonHistory.slice(-10).map(item => ({ ...item }))
+        const fullSeasonHistory = Array.isArray(state?.career?.seasonHistory)
+            ? state.career.seasonHistory
             : [];
+        const seasonHistory = fullSeasonHistory.slice(-10).map(item => ({ ...item }));
         const factIds = facts.map(fact => fact.id).sort();
         return freezeNarrativeValue({
             seed: stableNarrativeId('seed', factIds),
             blockKey: stableNarrativeId('block', facts.map(fact => fact.dedupeKey).sort()),
             player: playerSnapshot(state?.player),
+            relationships: { coach: coachSnapshot(state) },
             calendar: {
                 season: state?.calendar?.currentSeasonYear ?? state?.season ?? null,
                 month: state?.calendar?.currentMonth ?? null,
                 period: state?.calendar?.currentPeriod || null
             },
-            career: { seasonHistory },
+            career: {
+                seasonHistory,
+                completedGoals: completedCareerGoals(fullSeasonHistory)
+            },
             narrativeState: normalizeNarrativeState(state?.narrativeState),
             factIds
         });
