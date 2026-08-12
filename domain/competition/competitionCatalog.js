@@ -15,8 +15,10 @@ export const COMPETITIONS = {
     NATIONAL_CUP: { id: 'NATIONAL_CUP', name: 'Coupe nationale', type: 'cup', matches: null },
     CHAMPIONS_LEAGUE: { id: 'CHAMPIONS_LEAGUE', name: 'Ligue des Champions', type: 'continental', matches: 8 },
     EUROPA_LEAGUE: { id: 'EUROPA_LEAGUE', name: 'Ligue Europa', type: 'continental', matches: 8 },
+    YOUTH_LEAGUE: { id: 'YOUTH_LEAGUE', name: 'UEFA Youth League', type: 'continental_youth', matches: null, minAge: 16, maxAge: 19 },
     EURO: { id: 'EURO', name: 'Euro', type: 'international', matches: null },
-    WORLD_CUP: { id: 'WORLD_CUP', name: 'Coupe du Monde', type: 'international', matches: null }
+    WORLD_CUP: { id: 'WORLD_CUP', name: 'Coupe du Monde', type: 'international', matches: null },
+    U20_WORLD_CUP: { id: 'U20_WORLD_CUP', name: 'Coupe du Monde U20', type: 'international_youth', matches: null, minAge: 17, maxAge: 20 }
 };
 
 export const SEASON_MONTHS = [8, 9, 10, 11, 12, 1, 2, 3, 4, 5];
