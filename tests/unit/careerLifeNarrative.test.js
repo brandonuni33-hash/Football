@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { eventDescription, eventResponse } from '../../domain/career/careerEventNarrativeLibrary.js';
+import { eventDescription, eventResponse, CAREER_MILESTONE_COPY } from '../../domain/career/careerEventNarrativeLibrary.js';
 import { CareerLifecycleSystem } from '../../domain/career/careerLifecycleSystem.js';
 import TransferView from '../../ui/views/transferView.js';
 
@@ -13,6 +13,12 @@ test('les événements santé utilisent une description incarnée', () => {
 test('un choix agent renvoie une vraie réaction narrative', () => {
   const text = eventResponse({ id:'avis_famille' });
   assert.match(text, /proches|contrat|table/i);
+});
+
+test('les grandes étapes disposent de textes dédiés', () => {
+  assert.match(CAREER_MILESTONE_COPY.first_contract, /signature|professionnel/i);
+  assert.match(CAREER_MILESTONE_COPY.comeback, /soins|feuille de match/i);
+  assert.match(CAREER_MILESTONE_COPY.captain, /brassard/i);
 });
 
 test('la retraite raconte la fin de carrière avec les faits disponibles', () => {
