@@ -1,0 +1,2 @@
+export function goalNarration({scorer='Ton joueur',minute,gesture=null,homeTeam='Ton équipe',awayTeam='Adversaire',score}={}){if(!score||!Number.isFinite(Number(minute)))return null;const how=gesture?`${gesture}. `:'';return{title:`BUT · ${scorer}`,text:`${how}${Number(minute)}e minute. Le score passe à ${Number(score.home)||0}–${Number(score.away)||0}. Pendant une seconde, le reste du match disparaît derrière la réaction du stade.`,scoreLine:`${homeTeam} ${Number(score.home)||0} – ${Number(score.away)||0} ${awayTeam}`};}
+export default goalNarration;
