@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';test('les neuf exigences sont mappées',()=>{const t=fs.readFileSync(new URL('../../docs/pr9-implementation-map.md',import.meta.url),'utf8');for(let i=1;i<=9;i++)assert.match(t,new RegExp(`\\n${i}\\.`));});
