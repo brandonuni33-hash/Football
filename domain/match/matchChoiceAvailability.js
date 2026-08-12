@@ -1,0 +1,2 @@
+export function choiceAvailable(choice={},context={}){if(choice.requiresPosition&&choice.requiresPosition!==context.position)return false;if(Number(choice.minTechnique||0)>Number(context.technique||0))return false;if(choice.contexts?.length&&!choice.contexts.includes(context.situation))return false;if(choice.origins?.length&&!choice.origins.includes(String(context.origin||'').toUpperCase()))return false;if(choice.requiresTrailing&&Number(context.scoreDiff)>=0)return false;return true;}
+export default choiceAvailable;
