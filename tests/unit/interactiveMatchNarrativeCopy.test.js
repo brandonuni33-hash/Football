@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
     buildPreMatchStep,
     buildKickoffStep,
+    buildDecisionStep,
     buildContinuationStep,
     buildPostMatchReactions
 } from '../../domain/match/interactiveMatchNarrative.js';
@@ -38,6 +39,22 @@ test('le match jouable ne réutilise plus les anciens fillers', () => {
     assert.doesNotMatch(copy, /Les tribunes se remplissent/i);
     assert.doesNotMatch(copy, /Le ballon roule/i);
     assert.doesNotMatch(copy, /Le match cherche encore son rythme/i);
+    assert.doesNotMatch(copy, /quelques regards et quelques mots/i);
+});
+
+test('une occasion de but peut faire entendre la petite voix sans afficher une étiquette', () => {
+    const s = session();
+    const decision = {
+        minute:34,
+        title:'Le dégagement arrive à trente mètres',
+        description:'Un ballon repoussé te revient en pleine course.',
+        isGoalOpportunity:true,
+        choices:[{text:'Frapper'},{text:'Contrôler'},{text:'Donner'}]
+    };
+    const step = buildDecisionStep(s, decision, 0);
+    assert.ok(step.innerVoice);
+    assert.equal(typeof step.innerVoice, 'string');
+    assert.doesNotMatch(step.innerVoice, /pensée|petite voix/i);
 });
 
 test('une rencontre U15 sépare une affluence crédible de son contexte', () => {
