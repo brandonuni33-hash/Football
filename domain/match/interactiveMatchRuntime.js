@@ -173,11 +173,70 @@ function continueAfterGoal(session) {
     };
 }
 
+function buildFactGroundedReactions(state, session, result) {
+    const coachName = state?.social?.coachData?.name || state?.social?.formativeCoach || 'Le coach';
+    const relation = n(state?.player?.stats?.relationCoach ?? 50);
+    const decisiveEvent = result.events?.find(event => event?.gesture || event?.timedOut)
+        || result.events?.find(event => event?.memoryEffect)
+        || result.events?.at?.(-1)
+        || null;
+    const lastDecision = result.decisions?.at?.(-1) || null;
+    const firstGoal = result.goalEvents?.[0] || null;
+
+    let lockerText;
+    if (result.result === 'win' && decisiveEvent?.gesture) {
+        lockerText = `Dans le vestiaire, on revient sur ton ${String(decisiveEvent.gesture).toLowerCase()} à la ${n(decisiveEvent.minute)}e. Le geste a marqué les esprits autant que le résultat.`;
+    } else if (result.result === 'loss' && lastDecision?.timedOut) {
+        lockerText = `Le vestiaire reste silencieux. Personne ne te désigne, mais tu repenses à cette fenêtre laissée filer à la ${n(lastDecision.minute)}e.`;
+    } else if (result.goals > 0 && firstGoal) {
+        lockerText = `Tes coéquipiers reviennent sur ton impact au score. Ton premier but de la rencontre est rattaché à la ${n(firstGoal.minute)}e minute.`;
+    } else if (result.result === 'win') {
+        lockerText = `Le groupe savoure la victoire ${result.teamGoals}-${result.opponentGoals}. Ton match est commenté pour ce qu’il a réellement produit, pas pour une impression générale.`;
+    } else if (result.result === 'loss') {
+        lockerText = `Le groupe encaisse la défaite ${result.teamGoals}-${result.opponentGoals}. Les discussions reviennent sur les moments précis où le match a échappé à l’équipe.`;
+    } else {
+        lockerText = `Le nul ${result.teamGoals}-${result.opponentGoals} laisse le vestiaire partagé. Chacun rejoue les séquences qui auraient pu faire basculer la rencontre.`;
+    }
+
+    let coachText;
+    if (lastDecision?.timedOut) {
+        coachText = `${coachName} revient précisément sur l’hésitation de la ${n(lastDecision.minute)}e : « Dans ces moments-là, ta décision doit arriver avant le doute. »`;
+    } else if (decisiveEvent?.gesture && result.rating >= 7.5) {
+        coachText = relation >= 65
+            ? `${coachName} te glisse qu’il reconnaît ton audace dans ce ${String(decisiveEvent.gesture).toLowerCase()}, puis insiste : il veut la même personnalité avec encore plus de maîtrise.`
+            : `${coachName} cite ton ${String(decisiveEvent.gesture).toLowerCase()} comme exemple de ce que tu peux apporter, tout en te demandant de rester juste dans tes prises de risque.`;
+    } else if (result.rating < 5.8) {
+        coachText = `${coachName} ne généralise pas ta prestation : il revient sur ton dernier choix — « ${lastDecision?.choice || 'la dernière séquence'} » — et te demande une réponse au prochain match.`;
+    } else {
+        coachText = `${coachName} s’appuie sur ta note de ${Number(result.rating).toFixed(1)} et sur tes décisions du match pour te donner un axe clair de progression.`;
+    }
+
+    let mediaText;
+    if (result.goals >= 2) {
+        mediaText = `Les premières publications retiennent ${result.goals} buts contre ${result.opponent}${firstGoal ? `, avec un premier inscrit autour de la ${n(firstGoal.minute)}e` : ''}.`;
+    } else if (result.goals === 1 && firstGoal) {
+        mediaText = `Les médias isolent ton but contre ${result.opponent}, rattaché à la ${n(firstGoal.minute)}e minute, comme l’un des faits centraux du match.`;
+    } else if (result.assists > 0) {
+        mediaText = `Les comptes-rendus soulignent tes ${result.assists} passe${result.assists > 1 ? 's' : ''} décisive${result.assists > 1 ? 's' : ''} contre ${result.opponent}, sans t’attribuer d’action qui n’existe pas dans le résultat.`;
+    } else if (decisiveEvent?.gesture) {
+        mediaText = `Même sans statistique décisive, plusieurs observateurs retiennent ton ${String(decisiveEvent.gesture).toLowerCase()} à la ${n(decisiveEvent.minute)}e comme l’image forte de ta prestation.`;
+    } else {
+        mediaText = `Les commentaires restent centrés sur le ${result.teamGoals}-${result.opponentGoals} contre ${result.opponent} et ta note de ${Number(result.rating).toFixed(1)}.`;
+    }
+
+    return [
+        { id:'locker-room', icon:'👕', label:'VESTIAIRE', text:lockerText },
+        { id:'coach', icon:'🧠', label:'COACH', text:coachText },
+        { id:'media', icon:'🎙️', label:'MÉDIAS', text:mediaText }
+    ];
+}
+
 function enrichResolvedResult(state, session) {
     if (!session?.result) return;
     session.result.goalEvents = canonicalPlayerGoalEvents(session.result, state?.player || {});
     session.result.interactiveReport = buildInteractiveMatchReport(session.result);
     session.result.matchMemory = { ...(session.matchMemory || createMatchMemory()) };
+    session.result.postMatchReactions = buildFactGroundedReactions(state, session, session.result);
 }
 
 export function startInteractiveMatch(state, scheduledMatch, matchIndex = 0) {
