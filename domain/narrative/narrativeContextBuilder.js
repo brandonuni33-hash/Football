@@ -21,6 +21,12 @@ function playerSnapshot(player = {}) {
             fitness: clamp(finiteOrNull(player.fitness)),
             mental: clamp(finiteOrNull(player.mental ?? stats.mental)),
             discipline: clamp(finiteOrNull(player.discipline ?? stats.discipline))
+        },
+        seasonStats: {
+            matchesPlayed: finiteOrNull(stats.matchesPlayed),
+            goals: finiteOrNull(stats.goals),
+            assists: finiteOrNull(stats.assists),
+            averageRating: finiteOrNull(stats.averageRating)
         }
     };
 }
