@@ -138,25 +138,13 @@ function atmosphereText(result, importance) {
     return `Les joueurs se dispersent lentement pendant que le stade retrouve son calme.`;
 }
 
-function completedCareerGoals(context = {}) {
-    const history = context?.career?.seasonHistory;
-    if (!Array.isArray(history)) return null;
-    let total = 0;
-    for (const season of history) {
-        if (season?.goals === undefined || season?.goals === null || !Number.isFinite(Number(season.goals))) return null;
-        total += Number(season.goals);
-    }
-    return total;
-}
-
 function firstCareerGoalMatch(context, results = []) {
     const seasonGoals = finite(context?.player?.seasonStats?.goals);
-    if (seasonGoals === null) return null;
+    const previousGoals = finite(context?.career?.completedGoals);
+    if (seasonGoals === null || previousGoals === null || previousGoals !== 0) return null;
     const played = results.filter(result => result.playerPlayed !== false);
     const blockGoals = played.reduce((sum, result) => sum + n(result.goals), 0);
     if (blockGoals <= 0 || seasonGoals !== blockGoals) return null;
-    const previousGoals = completedCareerGoals(context);
-    if (previousGoals !== 0) return null;
     const scorers = played.filter(result => n(result.goals) > 0)
         .sort((left, right) => n(left.matchIndex) - n(right.matchIndex));
     return scorers[0]?.factId || null;
@@ -296,7 +284,7 @@ export class NarrativeBeatComposer {
         const callback = memory?.callbacksByFactId?.[featuredFact.id] || null;
         const continuity = memory?.continuityByFactId?.[featuredFact.id] || null;
         const overview = blockOverviewText(results, impactMatch);
-        const narrativeFocus = impactMatch || (featured.playerPlayed ? featured : featured);
+        const narrativeFocus = impactMatch || featured;
         const firstGoalFactId = firstCareerGoalMatch(context, results);
         const firstCareerGoal = Boolean(firstGoalFactId && narrativeFocus?.factId === firstGoalFactId);
         const mindsetText = playerMindsetText(context, narrativeFocus, importance, { firstCareerGoal });
