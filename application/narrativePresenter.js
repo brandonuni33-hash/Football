@@ -17,8 +17,9 @@ export class NarrativePresenter {
     }
 
     getJournal(state) {
+        // Le journal raconte la carrière comme une chronologie : les premières étapes
+        // restent en haut et les nouveaux événements s'ajoutent en bas.
         return [...(state?.narrativeState?.journalEntries || [])]
-            .reverse()
             .map(entry => Object.freeze({
                 id: entry.id,
                 category: entry.category || 'career',
