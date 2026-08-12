@@ -6,6 +6,9 @@
     place-items: center;
     padding: 18px;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
     background:
         radial-gradient(circle at 50% 4%, rgba(35, 145, 164, .18), transparent 36%),
         linear-gradient(180deg, rgba(3, 10, 18, .94), rgba(4, 9, 16, .985));
@@ -30,163 +33,46 @@
     align-items: center;
 }
 
-.interactive-match-header {
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 15px;
-}
-
+.interactive-match-header { justify-content: space-between; gap: 16px; margin-bottom: 15px; }
 .interactive-match-header > div { display: grid; gap: 3px; }
 .interactive-match-header strong { font-size: .72rem; color: rgba(226, 238, 246, .58); }
+.interactive-match-kicker { color: #8cd8df; font-size: .62rem; font-weight: 900; letter-spacing: .14em; }
+.interactive-match-minute { min-width: 40px; padding: 7px 8px; border-radius: 11px; color: #a8edf2; background: rgba(88, 195, 207, .08); font-size: .75rem; font-weight: 900; text-align: center; }
 
-.interactive-match-kicker {
-    color: #8cd8df;
-    font-size: .62rem;
-    font-weight: 900;
-    letter-spacing: .14em;
-}
-
-.interactive-match-minute {
-    min-width: 40px;
-    padding: 7px 8px;
-    border-radius: 11px;
-    color: #a8edf2;
-    background: rgba(88, 195, 207, .08);
-    font-size: .75rem;
-    font-weight: 900;
-    text-align: center;
-}
-
-.interactive-match-scoreboard {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-    gap: 11px;
-    min-height: 69px;
-    padding: 10px 12px;
-    border: 1px solid rgba(255, 255, 255, .07);
-    border-radius: 17px;
-    background: rgba(255, 255, 255, .025);
-}
-
-.interactive-match-scoreboard > span {
-    overflow: hidden;
-    color: rgba(239, 247, 251, .76);
-    font-size: .68rem;
-    font-weight: 800;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
+.interactive-match-scoreboard { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 11px; min-height: 69px; padding: 10px 12px; border: 1px solid rgba(255, 255, 255, .07); border-radius: 17px; background: rgba(255, 255, 255, .025); }
+.interactive-match-scoreboard > span { overflow: hidden; color: rgba(239, 247, 251, .76); font-size: .68rem; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
 .interactive-match-scoreboard > span:last-child { text-align: right; }
 .interactive-match-scoreboard > strong { display: flex; align-items: center; gap: 8px; font-size: 1.45rem; }
 .interactive-match-scoreboard b { min-width: 19px; text-align: center; }
 .interactive-match-scoreboard i { color: rgba(255, 255, 255, .28); font-style: normal; }
 
-.interactive-match-progress {
-    height: 3px;
-    margin: 17px 3px 7px;
-    overflow: hidden;
-    border-radius: 5px;
-    background: rgba(255, 255, 255, .07);
-}
+.interactive-match-progress { height: 3px; margin: 17px 3px 7px; overflow: hidden; border-radius: 5px; background: rgba(255, 255, 255, .07); }
+.interactive-match-progress span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #4ba5b0, #8ee1e6); transition: width .45s ease; }
 
-.interactive-match-progress span {
-    display: block;
-    height: 100%;
-    border-radius: inherit;
-    background: linear-gradient(90deg, #4ba5b0, #8ee1e6);
-    transition: width .45s ease;
-}
+.interactive-match-attendance { margin: 13px 0 4px; padding: 11px 13px; border: 1px solid rgba(139, 218, 226, .10); border-radius: 14px; background: rgba(86, 175, 187, .035); }
+.interactive-match-attendance strong { display: block; color: #a8edf2; font-size: .77rem; font-weight: 900; letter-spacing: .025em; }
+.interactive-match-attendance p { margin: 4px 0 0; color: rgba(225, 237, 245, .57); font-size: .68rem; line-height: 1.42; }
 
-.interactive-match-milestones {
-    display: flex;
-    justify-content: space-between;
-    color: rgba(226, 238, 246, .33);
-    font-size: .46rem;
-    font-weight: 800;
-    letter-spacing: .02em;
-}
-
-.interactive-match-story {
-    position: relative;
-    display: block;
-    min-height: 134px;
-    margin: 19px 0 15px;
-    padding: 19px 17px 17px 50px;
-    border-radius: 18px;
-    background: rgba(255, 255, 255, .032);
-}
-
-.interactive-match-phase-icon {
-    position: absolute;
-    top: 20px;
-    left: 17px;
-    display: grid;
-    place-items: center;
-    width: 23px;
-    height: 23px;
-    border-radius: 9px;
-    color: #8bdce2;
-    background: rgba(79, 179, 190, .1);
-    font-size: .68rem;
-    font-weight: 900;
-}
-
+.interactive-match-story { position: relative; display: block; min-height: 134px; margin: 19px 0 15px; padding: 19px 17px 17px 50px; border-radius: 18px; background: rgba(255, 255, 255, .032); }
+.interactive-match-phase-icon { position: absolute; top: 20px; left: 17px; display: grid; place-items: center; width: 23px; height: 23px; border-radius: 9px; color: #8bdce2; background: rgba(79, 179, 190, .1); font-size: .68rem; font-weight: 900; }
 .interactive-match-story h2 { margin: 0 0 9px; font-size: 1.08rem; line-height: 1.2; }
 .interactive-match-story p { margin: 0; color: rgba(225, 237, 245, .69); font-size: .82rem; line-height: 1.53; }
+.interactive-match-story .interactive-match-inner-voice { margin: 13px 0 0; padding-left: 11px; border-left: 2px solid rgba(171, 151, 235, .32); color: rgba(205, 192, 245, .86); font-size: .77rem; font-style: italic; line-height: 1.45; }
 
 .interactive-match-choices { display: grid; gap: 9px; }
 .interactive-match-choices button,
-.interactive-match-continue {
-    width: 100%;
-    min-height: 51px;
-    border: 1px solid rgba(123, 202, 211, .12);
-    border-radius: 14px;
-    color: #eef9fc;
-    background: rgba(103, 183, 193, .055);
-    cursor: pointer;
-}
-
-.interactive-match-choices button {
-    display: grid;
-    grid-template-columns: 25px 1fr;
-    gap: 10px;
-    align-items: center;
-    padding: 11px 13px;
-    text-align: left;
-}
-
+.interactive-match-continue { width: 100%; min-height: 51px; border: 1px solid rgba(123, 202, 211, .12); border-radius: 14px; color: #eef9fc; background: rgba(103, 183, 193, .055); cursor: pointer; }
+.interactive-match-choices button { display: grid; grid-template-columns: 25px minmax(0,1fr); gap: 4px 10px; align-items: center; padding: 11px 13px; text-align: left; }
 .interactive-match-choices button:hover,
 .interactive-match-continue:hover { border-color: rgba(130, 219, 229, .27); background: rgba(103, 183, 193, .1); }
-.interactive-match-choices button > span { color: #75cbd3; font-size: .64rem; font-weight: 900; }
-.interactive-match-choices button > strong { font-size: .76rem; line-height: 1.35; }
+.interactive-match-choices button > span { grid-row: 1 / span 2; color: #75cbd3; font-size: .64rem; font-weight: 900; }
+.interactive-match-choices button > strong { grid-column: 2; font-size: .76rem; line-height: 1.35; }
+.interactive-match-choices button > small { grid-column: 2; color: rgba(174, 219, 224, .46); font-size: .58rem; line-height: 1.2; }
+.interactive-match-continue { padding: 13px 16px; color: #baf2f5; font-size: .76rem; font-weight: 900; letter-spacing: .035em; }
 
-.interactive-match-continue {
-    padding: 13px 16px;
-    color: #baf2f5;
-    font-size: .76rem;
-    font-weight: 900;
-    letter-spacing: .035em;
-}
-
-.interactive-match-auto {
-    display: block;
-    margin-top: 9px;
-    color: rgba(225, 237, 245, .36);
-    font-size: .55rem;
-    text-align: center;
-}
-
+.interactive-match-pressure { margin-top: 12px; padding: 8px 10px; border-radius: 10px; background: rgba(220, 116, 80, .08); color: #f1c4ae; font-size: .65rem; font-weight: 800; }
 .interactive-match-reactions { display: grid; gap: 8px; margin-bottom: 13px; }
-.interactive-match-reactions article {
-    align-items: flex-start;
-    gap: 11px;
-    padding: 11px 12px;
-    border: 1px solid rgba(255, 255, 255, .06);
-    border-radius: 13px;
-    background: rgba(255, 255, 255, .025);
-}
-
+.interactive-match-reactions article { align-items: flex-start; gap: 11px; padding: 11px 12px; border: 1px solid rgba(255, 255, 255, .06); border-radius: 13px; background: rgba(255, 255, 255, .025); }
 .interactive-match-reactions article > span { font-size: .95rem; }
 .interactive-match-reactions strong { color: #8dd9df; font-size: .55rem; letter-spacing: .09em; }
 .interactive-match-reactions p { margin: 4px 0 0; color: rgba(226, 238, 246, .67); font-size: .7rem; line-height: 1.38; }

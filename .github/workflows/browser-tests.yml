@@ -2,7 +2,7 @@ name: Browser tests
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'narrative/**', 'fix/**']
   pull_request:
     branches: [main]
 
