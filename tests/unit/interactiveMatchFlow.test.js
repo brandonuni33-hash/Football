@@ -8,7 +8,7 @@ import {
 function state() {
     return {
         player: {
-            id: 'player-flow', firstname: 'Alex', lastname: 'Test', club: 'Street FC',
+            id: 'player-flow', firstname: 'Alex', lastname: 'Test', age: 24, club: 'Street FC',
             position: 'BU', overall: 72, potential: 82, morale: 70, fitness: 90,
             attributes: { tir: 74, passe: 66, controle: 70, puissance: 68, vitesse: 73 },
             stats: {}, hidden: {}, temporaryEffects: []
@@ -20,7 +20,7 @@ function state() {
 
 function fixture() {
     return {
-        id: 'final-flow', phase: 'Finale', competitionName: 'Coupe',
+        id: 'final-flow', phase: 'Finale', competitionName: 'Coupe professionnelle',
         opponent: 'Rival City', opponentStrength: 67, home: true,
         playerSelection: { selected: true, started: true, appearance: 'starter', minutes: 90 }
     };
@@ -49,7 +49,7 @@ test('le match jouable suit toute la séquence narrative dans le bon ordre', () 
     for (let index = 0; index < session.moments.length; index += 1) {
         output = advanceInteractiveMatch(current, session, { choiceIndex: index === 1 ? 1 : 0 });
         phases.push(output.step.phase);
-        if (index === 0) assert.ok(session.modifiers.goal >= .07, 'matchBonuses.goalChance doit influencer le match');
+        if (index === 0) assert.ok(session.modifiers.goal >= .07, 'goalChance doit influencer le match');
 
         output = advanceInteractiveMatch(current, session);
         phases.push(output.step.phase);
@@ -69,7 +69,8 @@ test('le match jouable suit toute la séquence narrative dans le bon ordre', () 
     output = advanceInteractiveMatch(current, session);
     phases.push(output.step.phase);
     assert.equal(output.step.kind, 'reactions');
-    assert.deepEqual(output.step.items.map(item => item.id), ['locker-room', 'coach', 'media']);
+    assert.deepEqual(output.step.items.map(item => item.id), ['locker-room', 'coach', 'outside']);
+    assert.equal(output.step.items[2].label, 'MÉDIAS');
 
     output = advanceInteractiveMatch(current, session);
     assert.equal(output.finished, true);
