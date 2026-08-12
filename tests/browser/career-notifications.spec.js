@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('Carrière exclut les notifications réseaux sociaux', async ({ page }) => {
+test('Carrière garde les actualités carrière sans dupliquer Coach ni Réseaux', async ({ page }) => {
   await page.goto('/index.html');
 
   const result = await page.evaluate(async () => {
@@ -11,9 +11,10 @@ test('Carrière exclut les notifications réseaux sociaux', async ({ page }) => 
     const state = {
       player: { age: 19, club: 'Test FC', overall: 72 },
       notifications: {
-        unreadCount: 2,
+        unreadCount: 3,
         signals: [
-          { id: 'career-news-1', title: 'Le coach te félicite', body: 'Ta progression est remarquée.', category: 'coach', read: false },
+          { id: 'career-news-1', title: 'Le prochain match approche', body: 'Le groupe se prépare.', category: 'match', read: false },
+          { id: 'coach-news-1', title: 'Le coach te félicite', body: 'Ta progression est remarquée.', category: 'coach', read: false },
           { id: 'social-news-1', title: 'Une publication parle de toi', body: 'Nouveau post.', category: 'media', read: false }
         ]
       }
@@ -33,7 +34,7 @@ test('Carrière exclut les notifications réseaux sociaux', async ({ page }) => 
   });
 
   expect(result.unreadBadge).toBe('1');
-  expect(result.titles).toEqual(['Le coach te félicite']);
+  expect(result.titles).toEqual(['Le prochain match approche']);
   expect(result.opened).toEqual(['career-news-1']);
 });
 
