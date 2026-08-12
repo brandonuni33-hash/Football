@@ -1,0 +1,2 @@
+import test from'node:test';import assert from'node:assert/strict';import{buildMatchConsequenceChain}from'../../domain/match/matchConsequenceChain.js';
+test('une décision expose les cinq niveaux de conséquences',()=>{const c=buildMatchConsequenceChain({matchId:'m',decision:{id:'d'},event:{text:'Faute obtenue'},memory:{defenderStress:.4,spaceCreated:.1},statEffects:{rating:.1},narrativeHooks:['coach']});assert.ok(c.immediate);assert.ok(c.matchEvolution);assert.equal(c.delayed.eligible,true);assert.equal(c.statistics.rating,.1);assert.deepEqual(c.narrative.hooks,['coach']);});
