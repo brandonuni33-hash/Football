@@ -46,11 +46,22 @@ function coachSnapshot(state = {}) {
     };
 }
 
+function completedCareerGoals(history = []) {
+    if (!Array.isArray(history)) return null;
+    let total = 0;
+    for (const season of history) {
+        if (season?.goals === undefined || season?.goals === null || !Number.isFinite(Number(season.goals))) return null;
+        total += Number(season.goals);
+    }
+    return total;
+}
+
 export class NarrativeContextBuilder {
     build({ state, facts = [] } = {}) {
-        const seasonHistory = Array.isArray(state?.career?.seasonHistory)
-            ? state.career.seasonHistory.slice(-10).map(item => ({ ...item }))
+        const fullSeasonHistory = Array.isArray(state?.career?.seasonHistory)
+            ? state.career.seasonHistory
             : [];
+        const seasonHistory = fullSeasonHistory.slice(-10).map(item => ({ ...item }));
         const factIds = facts.map(fact => fact.id).sort();
         return freezeNarrativeValue({
             seed: stableNarrativeId('seed', factIds),
@@ -62,7 +73,10 @@ export class NarrativeContextBuilder {
                 month: state?.calendar?.currentMonth ?? null,
                 period: state?.calendar?.currentPeriod || null
             },
-            career: { seasonHistory },
+            career: {
+                seasonHistory,
+                completedGoals: completedCareerGoals(fullSeasonHistory)
+            },
             narrativeState: normalizeNarrativeState(state?.narrativeState),
             factIds
         });
