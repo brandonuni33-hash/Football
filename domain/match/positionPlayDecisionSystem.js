@@ -93,7 +93,9 @@ export function enrichPositionPlayDecision(state={},session={},result={}){
   const replacement=buildPositionPlayDecision(state,s,current);
   if(!replacement)return result;
   s.decision=replacement;
-  const nextStep={...step,title:replacement.title,text:replacement.description,description:replacement.description,choices:replacement.choices};
+  const total=Math.max(1,Array.isArray(s.moments)?s.moments.length:1);
+  const index=Math.min(total-1,Math.max(0,n(s.currentMoment)));
+  const nextStep={...step,label:`MOMENT ${index+1}/${total}`,title:replacement.title,text:replacement.description,description:replacement.description,choices:replacement.choices,innerVoice:null};
   s.step=nextStep;
   return {...result,session:s,step:nextStep,decision:replacement};
 }
