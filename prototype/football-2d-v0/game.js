@@ -1,12 +1,12 @@
 import { createSprite2DProfile } from "../avatar-v0/sprite2dProfile.js";
-import { createFootball2DState, stepFootball2D } from "./football2dModel.js";
 import { createInputController } from "./input.js";
 import { renderFootball2D } from "./renderer.js";
+import { createScenarioState, stepScenario } from "./scenarioModel.js";
 
 const canvas = document.querySelector("#game");
 const ctx = canvas.getContext("2d");
 const profile = createSprite2DProfile("elias", 24);
-let state = createFootball2DState();
+let state = createScenarioState();
 let previousTime = performance.now();
 
 const input = createInputController({
@@ -20,7 +20,7 @@ document.querySelector("#player-name").textContent = `${profile.name} · ${profi
 
 document.querySelector("#reset").addEventListener("click", () => {
   const goals = state.goals;
-  state = { ...createFootball2DState(), goals };
+  state = { ...createScenarioState(), goals };
   document.querySelector("#goal-flash").hidden = true;
 });
 
@@ -30,7 +30,7 @@ function frame(now) {
   previousTime = now;
 
   if (state.status !== "goal") {
-    state = stepFootball2D(state, controls, dt);
+    state = stepScenario(state, controls, dt);
   }
 
   document.querySelector("#goal-count").textContent = String(state.goals);
