@@ -62,6 +62,16 @@ export const DEFAULT_AVATAR_APPEARANCE = freeze({
   number: 9,
 });
 
+export const AGE_STAGES = freeze([
+  freeze({ id: "academy", label: "Adolescent", minAge: 14, maxAge: 16 }),
+  freeze({ id: "young", label: "Jeune joueur", minAge: 17, maxAge: 20 }),
+  freeze({ id: "prime", label: "Pleine maturité", minAge: 21, maxAge: 27 }),
+  freeze({ id: "experienced", label: "Joueur expérimenté", minAge: 28, maxAge: 33 }),
+  freeze({ id: "veteran", label: "Vétéran", minAge: 34, maxAge: 45 }),
+]);
+
+export const DEFAULT_AGE_APPEARANCE = freeze({ age: 15, stage: "academy" });
+
 const validIds = Object.fromEntries(
   Object.entries(AVATAR_OPTIONS).map(([key, values]) => [key, new Set(values.map((value) => value.id))]),
 );
@@ -70,17 +80,26 @@ export function normalizeAvatarAppearance(input = {}) {
   const normalized = { ...DEFAULT_AVATAR_APPEARANCE };
 
   for (const key of Object.keys(AVATAR_OPTIONS)) {
-    if (validIds[key].has(input[key])) {
-      normalized[key] = input[key];
-    }
+    if (validIds[key].has(input[key])) normalized[key] = input[key];
   }
 
   const parsedNumber = Number.parseInt(input.number, 10);
-  if (Number.isFinite(parsedNumber)) {
-    normalized.number = Math.min(99, Math.max(1, parsedNumber));
-  }
+  if (Number.isFinite(parsedNumber)) normalized.number = Math.min(99, Math.max(1, parsedNumber));
 
   return normalized;
+}
+
+export function normalizeAgeAppearance(input = {}) {
+  const parsedAge = Number.parseInt(input.age, 10);
+  const age = Number.isFinite(parsedAge) ? Math.min(45, Math.max(14, parsedAge)) : DEFAULT_AGE_APPEARANCE.age;
+  const stage = resolveAgeStage(age);
+  return { age, stage: stage.id };
+}
+
+export function resolveAgeStage(age) {
+  const parsedAge = Number.parseInt(age, 10);
+  const safeAge = Number.isFinite(parsedAge) ? Math.min(45, Math.max(14, parsedAge)) : DEFAULT_AGE_APPEARANCE.age;
+  return AGE_STAGES.find((stage) => safeAge >= stage.minAge && safeAge <= stage.maxAge) ?? AGE_STAGES.at(-1);
 }
 
 export function getAvatarOption(group, id) {
@@ -101,4 +120,9 @@ export function createAvatarSignature(input = {}) {
     appearance.boots,
     `n${appearance.number}`,
   ].join("|");
+}
+
+export function createAvatarPresentationSignature(appearanceInput = {}, ageInput = {}) {
+  const ageAppearance = normalizeAgeAppearance(ageInput);
+  return `${createAvatarSignature(appearanceInput)}|age-${ageAppearance.age}|stage-${ageAppearance.stage}`;
 }
