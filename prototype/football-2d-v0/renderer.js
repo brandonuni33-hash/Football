@@ -1,6 +1,7 @@
 import { FIELD } from "./football2dModel.js";
 
 function line(ctx,x1,y1,x2,y2){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
+function marker(ctx,entity,fill,stroke,size=18){if(!entity)return;ctx.fillStyle="#0005";ctx.beginPath();ctx.ellipse(entity.x+2,entity.y+10,size+5,7,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=fill;ctx.strokeStyle=stroke;ctx.lineWidth=3;ctx.beginPath();ctx.arc(entity.x,entity.y,size,0,Math.PI*2);ctx.fill();ctx.stroke();}
 
 export function renderFootball2D(ctx,state,profile,shotPower=0){
   ctx.clearRect(0,0,FIELD.w,FIELD.h);
@@ -11,6 +12,9 @@ export function renderFootball2D(ctx,state,profile,shotPower=0){
   ctx.strokeRect(FIELD.goalX-135,FIELD.goalTop-55,135,FIELD.goalBottom-FIELD.goalTop+110);
   ctx.strokeStyle="#f3bd41";ctx.lineWidth=5;line(ctx,FIELD.goalX,FIELD.goalTop,FIELD.goalX,FIELD.goalBottom);
   ctx.strokeStyle="#f3bd4155";ctx.lineWidth=2;for(let x=FIELD.goalX;x<FIELD.w;x+=10)line(ctx,x,FIELD.goalTop,x,FIELD.goalBottom);
+
+  marker(ctx,state.defender,"#b8bec6","#4b1118",18);
+  marker(ctx,state.keeper,"#e9a33b","#442b08",20);
 
   const p=state.player;const angle=Math.atan2(p.facingY,p.facingX);
   ctx.save();ctx.translate(p.x,p.y);ctx.rotate(angle);
