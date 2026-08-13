@@ -17,6 +17,7 @@ import {
   getReferenceAgeCheckpoint,
   getReferencePlayer,
 } from "../../prototype/avatar-v0/referenceCast.js";
+import { createSprite2DProfile } from "../../prototype/avatar-v0/sprite2dProfile.js";
 
 test("normalizeAvatarAppearance keeps valid values", () => {
   const result = normalizeAvatarAppearance({
@@ -145,4 +146,30 @@ test("sprite seeds inherit the locked portrait identity at every age", () => {
   assert.equal(nao35.hairColor, "copper");
   assert.equal(nao35.spriteScale, 0.99);
   assert.equal(createReferenceSpriteSeed("unknown", 24), null);
+});
+
+test("derived 2D profiles preserve each locked player's field-readable identity", () => {
+  const elias = createSprite2DProfile("elias", 24);
+  const malik = createSprite2DProfile("malik", 24);
+  const nao = createSprite2DProfile("nao", 24);
+
+  assert.equal(elias.number, 8);
+  assert.equal(elias.hairStyle, "waves");
+  assert.equal(malik.number, 9);
+  assert.equal(malik.headAccessory, "black-band");
+  assert.equal(nao.number, 11);
+  assert.equal(nao.hairColor, "copper");
+  assert.equal(createSprite2DProfile("unknown", 24), null);
+});
+
+test("derived 2D profile changes age scale without changing locked cosmetics", () => {
+  const academy = createSprite2DProfile("malik", 15);
+  const prime = createSprite2DProfile("malik", 24);
+  const veteran = createSprite2DProfile("malik", 35);
+
+  assert.ok(academy.bodyScale < prime.bodyScale);
+  assert.ok(veteran.bodyScale < prime.bodyScale);
+  assert.equal(academy.hairStyle, prime.hairStyle);
+  assert.equal(veteran.headAccessory, prime.headAccessory);
+  assert.equal(veteran.number, prime.number);
 });
