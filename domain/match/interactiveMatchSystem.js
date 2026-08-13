@@ -8,6 +8,7 @@ import { GOAL_OPPORTUNITY_CHOICES } from './goalOpportunityChoiceLibrary.js';
 import { appendSpecialFourthChoice } from './specialFourthChoiceSystem.js';
 import { enrichPositionPlayDecision } from './positionPlayDecisionSystem.js';
 import { applyProfessionalMatchRhythm } from './professionalMatchRhythmSystem.js';
+import { exposeOpponentScoreChange } from './opponentGoalPresentationSystem.js';
 import { enrichProfessionalStep, enrichProfessionalOutcome, applyProfessionalResultMemory } from './proMatchExperienceSystem.js';
 
 const n = value => Number.isFinite(Number(value)) ? Number(value) : 0;
@@ -69,8 +70,10 @@ export function advanceInteractiveMatch(state,activeSession,action={}){
     }
     if(session?.knockoutRuntimeStage==='penalty_result'){applyResolution(session,session.knockoutResolution);session.knockoutRuntimeStage='resume';session.step=session.knockoutResumeStep;return enrichProfessionalExperience(state,session,{finished:false,session,step:session.step,decision:null,result:session.result});}
     if(session?.knockoutRuntimeStage==='resume')session.knockoutRuntimeStage='done';
+    const opponentBefore=oppScore(session);
     const runtime=InteractiveMatchRuntime.advanceInteractiveMatch(state,session,action);
-    const knockout=maybeEnterKnockout(runtime.session||session,runtime);
+    const withOpponentGoal=exposeOpponentScoreChange(runtime.session||session,runtime,opponentBefore);
+    const knockout=maybeEnterKnockout(withOpponentGoal.session||session,withOpponentGoal);
     const positioned=enrichPositionPlayDecision(state,knockout.session||session,knockout);
     const pro=enrichProfessionalExperience(state,positioned.session||session,positioned);
     return enrichSpecialDecision(state,pro.session||session,pro);
