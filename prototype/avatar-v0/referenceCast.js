@@ -1,3 +1,4 @@
+import { getAgeRenderRules } from "./ageRenderRules.js";
 import { normalizeAgeAppearance, normalizeAvatarAppearance } from "./avatarModel.js";
 import { normalizeVisualIdentity } from "./playerVisualIdentity.js";
 
@@ -123,4 +124,28 @@ export function getReferenceAgeCheckpoint(playerId, age) {
   if (!player) return null;
   const normalized = normalizeAgeAppearance({ age });
   return player.ageCheckpoints.find((checkpoint) => checkpoint.age === normalized.age) ?? null;
+}
+
+export function createReferenceSpriteSeed(playerId, age = 24) {
+  const player = getReferencePlayer(playerId);
+  if (!player) return null;
+
+  const ageAppearance = normalizeAgeAppearance({ age });
+  const ageRules = getAgeRenderRules(ageAppearance.stage);
+
+  return freeze({
+    playerId: player.id,
+    age: ageAppearance.age,
+    stage: ageAppearance.stage,
+    skinTone: player.appearance.skinTone,
+    hairStyle: player.appearance.hairStyle,
+    hairColor: player.appearance.hairColor,
+    headAccessory: player.appearance.headAccessory,
+    bodyType: player.appearance.bodyType,
+    sleeves: player.appearance.sleeves,
+    boots: player.appearance.boots,
+    number: player.appearance.number,
+    spriteScale: ageRules.spriteScale,
+    recognitionMarkers: freeze([...player.spriteMarkers]),
+  });
 }
