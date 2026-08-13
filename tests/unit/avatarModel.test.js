@@ -13,6 +13,7 @@ import { createPlayerIdentitySignature } from "../../prototype/avatar-v0/playerV
 import {
   REFERENCE_AGES,
   STP_REFERENCE_CAST,
+  createReferenceSpriteSeed,
   getReferenceAgeCheckpoint,
   getReferencePlayer,
 } from "../../prototype/avatar-v0/referenceCast.js";
@@ -130,4 +131,18 @@ test("each reference player carries sprite-readable identity markers", () => {
   for (const player of Object.values(STP_REFERENCE_CAST)) {
     assert.ok(player.spriteMarkers.length >= 4);
   }
+});
+
+test("sprite seeds inherit the locked portrait identity at every age", () => {
+  const elias15 = createReferenceSpriteSeed("elias", 15);
+  const malik24 = createReferenceSpriteSeed("malik", 24);
+  const nao35 = createReferenceSpriteSeed("nao", 35);
+
+  assert.equal(elias15.hairColor, "black");
+  assert.equal(elias15.spriteScale, 0.94);
+  assert.equal(malik24.headAccessory, "black-band");
+  assert.equal(malik24.spriteScale, 1);
+  assert.equal(nao35.hairColor, "copper");
+  assert.equal(nao35.spriteScale, 0.99);
+  assert.equal(createReferenceSpriteSeed("unknown", 24), null);
 });
