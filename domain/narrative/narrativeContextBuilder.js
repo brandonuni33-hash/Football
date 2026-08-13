@@ -16,6 +16,9 @@ function playerSnapshot(player = {}) {
         clubId: player.clubId || null,
         club: player.club || null,
         position: player.position || player.positionId || null,
+        careerStage: player.careerStage || player.stage || null,
+        squadStatus: player.squadStatus || player.squad || player.teamStatus || null,
+        contractType: player.contract?.type || player.contractType || null,
         mindset: {
             morale: clamp(finiteOrNull(player.morale ?? stats.morale)),
             fitness: clamp(finiteOrNull(player.fitness)),
@@ -75,7 +78,8 @@ export class NarrativeContextBuilder {
             },
             career: {
                 seasonHistory,
-                completedGoals: completedCareerGoals(fullSeasonHistory)
+                completedGoals: completedCareerGoals(fullSeasonHistory),
+                stage: state?.career?.stage || state?.careerStage || null
             },
             narrativeState: normalizeNarrativeState(state?.narrativeState),
             factIds
