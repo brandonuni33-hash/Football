@@ -1,65 +1,30 @@
 import {
   AVATAR_OPTIONS,
-  DEFAULT_AVATAR_APPEARANCE,
   createAvatarSignature,
   getAvatarOption,
+  normalizeAgeAppearance,
   normalizeAvatarAppearance,
 } from "./avatarModel.js";
+import { getAgeRenderRules } from "./ageRenderRules.js";
+import { REFERENCE_AGES, STP_REFERENCE_CAST } from "./referenceCast.js";
+import { createSprite2DProfile } from "./sprite2dProfile.js";
+
+const initialPlayer = STP_REFERENCE_CAST.elias;
 
 const state = {
-  appearance: normalizeAvatarAppearance(DEFAULT_AVATAR_APPEARANCE),
+  referencePlayerId: initialPlayer.id,
+  age: initialPlayer.referenceAge,
+  appearance: normalizeAvatarAppearance(initialPlayer.appearance),
 };
-
-const presets = [
-  {
-    label: "Profil A",
-    appearance: {
-      skinTone: "light-01",
-      hairStyle: "medium-straight",
-      hairColor: "dark-brown",
-      facialHair: "none",
-      headAccessory: "none",
-      bodyType: "lean",
-      sleeves: "short",
-      boots: "white",
-      number: 11,
-    },
-  },
-  {
-    label: "Profil B",
-    appearance: {
-      skinTone: "dark-01",
-      hairStyle: "dreads-short",
-      hairColor: "blond",
-      facialHair: "goatee",
-      headAccessory: "black-band",
-      bodyType: "powerful",
-      sleeves: "long",
-      boots: "red",
-      number: 9,
-    },
-  },
-  {
-    label: "Profil C",
-    appearance: {
-      skinTone: "medium-01",
-      hairStyle: "braids",
-      hairColor: "black",
-      facialHair: "stubble",
-      headAccessory: "white-band",
-      bodyType: "athletic",
-      sleeves: "short",
-      boots: "blue",
-      number: 10,
-    },
-  },
-];
 
 const controls = document.querySelector("#avatar-controls");
 const presetControls = document.querySelector("#preset-controls");
+const ageControls = document.querySelector("#age-controls");
 const signature = document.querySelector("#avatar-signature");
 const jsonOutput = document.querySelector("#avatar-json");
 const player = document.querySelector("#player-preview");
+const spriteName = document.querySelector("#sprite-name");
+const spriteAge = document.querySelector("#sprite-age");
 
 const labels = {
   skinTone: "Teinte de peau",
@@ -116,17 +81,33 @@ function buildControls() {
 }
 
 function buildPresets() {
-  presets.forEach((preset) => {
+  for (const referencePlayer of Object.values(STP_REFERENCE_CAST)) {
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = preset.label;
+    button.dataset.referencePlayer = referencePlayer.id;
+    button.textContent = referencePlayer.name;
     button.addEventListener("click", () => {
-      state.appearance = normalizeAvatarAppearance(preset.appearance);
+      state.referencePlayerId = referencePlayer.id;
+      state.appearance = normalizeAvatarAppearance(referencePlayer.appearance);
       syncControls();
       render();
     });
     presetControls.append(button);
-  });
+  }
+}
+
+function buildAgeControls() {
+  for (const age of REFERENCE_AGES) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.referenceAge = String(age);
+    button.textContent = `${age} ans`;
+    button.addEventListener("click", () => {
+      state.age = age;
+      render();
+    });
+    ageControls.append(button);
+  }
 }
 
 function syncControls() {
@@ -135,35 +116,79 @@ function syncControls() {
   });
 }
 
+function syncActiveButtons() {
+  document.querySelectorAll("[data-reference-player]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.referencePlayer === state.referencePlayerId);
+  });
+
+  document.querySelectorAll("[data-reference-age]").forEach((button) => {
+    button.classList.toggle("active", Number(button.dataset.referenceAge) === state.age);
+  });
+}
+
 function updateAppearance(patch) {
+  state.referencePlayerId = null;
   state.appearance = normalizeAvatarAppearance({ ...state.appearance, ...patch });
   syncControls();
   render();
 }
 
-function render() {
+function buildCustomSpriteProfile() {
   const appearance = state.appearance;
+  const ageAppearance = normalizeAgeAppearance({ age: state.age });
+  const ageRules = getAgeRenderRules(ageAppearance.stage);
   const skin = getAvatarOption("skinTone", appearance.skinTone);
   const hair = getAvatarOption("hairColor", appearance.hairColor);
   const accessory = getAvatarOption("headAccessory", appearance.headAccessory);
   const boots = getAvatarOption("boots", appearance.boots);
   const body = getAvatarOption("bodyType", appearance.bodyType);
 
-  player.style.setProperty("--skin", skin.color);
-  player.style.setProperty("--hair", hair.color);
-  player.style.setProperty("--accessory", accessory.color);
-  player.style.setProperty("--boots", boots.color);
-  player.style.setProperty("--body-scale", String(body.scale));
-  player.dataset.hair = appearance.hairStyle;
-  player.dataset.facialHair = appearance.facialHair;
-  player.dataset.accessory = appearance.headAccessory;
-  player.dataset.sleeves = appearance.sleeves;
-  player.querySelector(".shirt-number").textContent = appearance.number;
+  return {
+    playerId: null,
+    name: "Avatar personnalisé",
+    age: ageAppearance.age,
+    stage: ageAppearance.stage,
+    number: appearance.number,
+    skinColor: skin?.color ?? "#c9875f",
+    hairStyle: appearance.hairStyle,
+    hairCssColor: hair?.color ?? "#151515",
+    headAccessory: appearance.headAccessory,
+    accessoryColor: accessory?.color ?? "transparent",
+    bodyType: appearance.bodyType,
+    bodyScale: (body?.scale ?? 1) * ageRules.spriteScale,
+    sleeves: appearance.sleeves,
+    bootsColor: boots?.color ?? "#171717",
+    spriteMarkers: [],
+  };
+}
 
-  signature.textContent = createAvatarSignature(appearance);
-  jsonOutput.textContent = JSON.stringify(appearance, null, 2);
+function render() {
+  const profile = state.referencePlayerId
+    ? createSprite2DProfile(state.referencePlayerId, state.age)
+    : buildCustomSpriteProfile();
+
+  player.style.setProperty("--skin", profile.skinColor);
+  player.style.setProperty("--hair", profile.hairCssColor);
+  player.style.setProperty("--accessory", profile.accessoryColor);
+  player.style.setProperty("--boots", profile.bootsColor);
+  player.style.setProperty("--body-scale", String(profile.bodyScale));
+  player.dataset.hair = profile.hairStyle;
+  player.dataset.facialHair = state.appearance.facialHair;
+  player.dataset.accessory = profile.headAccessory;
+  player.dataset.sleeves = profile.sleeves;
+  player.dataset.ageStage = profile.stage;
+  player.querySelector(".shirt-number").textContent = profile.number;
+
+  spriteName.textContent = profile.name;
+  spriteAge.textContent = `${profile.age} ans · ${profile.stage}`;
+  signature.textContent = createAvatarSignature(state.appearance);
+  jsonOutput.textContent = JSON.stringify(profile, null, 2);
+
+  syncActiveButtons();
 }
 
 buildControls();
 buildPresets();
+buildAgeControls();
+syncControls();
 render();
