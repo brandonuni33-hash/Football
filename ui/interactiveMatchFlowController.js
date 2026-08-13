@@ -9,6 +9,7 @@ function innerVoiceHtml(text){if(!text)return'';return`<p class="interactive-mat
 
 const PRO_COMPETITION=/ligue\s?[12]|premier league|championship|la liga|serie a|bundesliga|eredivisie|primeira|champions league|europa league|conference league|coupe de france|fa cup|copa del rey|coppa italia|dfb|\bsenior\b|\bnational\b/i;
 const YOUTH_COMPETITION=/\bu\s?(?:15|16|17|18|19|20|21|23)\b|youth|jeune|academy|acad[eé]mie|formation|r[eé]serve|espoirs?/i;
+const SHOT_WORDS=/\b(?:frappe|frappes|frapper|frappé|frappée|frappés|frappées|tir|tirs|tire|tires|tirer|tiré|tirée|tirés|tirées|finition)\b/i;
 
 export function matchPresentationTier(state={},step={}){
     const player=state.player||{},age=Number(player.age||0);
@@ -50,7 +51,7 @@ function u15DecisionTitle(state={},step={}){
     const all=`${step.title||''} ${step.text||''} ${(step.choices||[]).map(choice=>choice.text||choice.texte||choice.label||'').join(' ')}`.toLowerCase();
     if(/penalty|point de penalty/.test(all))return'Ton penalty';
     if(/appel|dans son dos|dos de la défense/.test(all))return'Un espace dans son dos';
-    if(/frapp|tir|finition/.test(all)||/occasion de but/i.test(step.label||''))return'Tu peux tenter ta chance';
+    if(SHOT_WORDS.test(all)||/occasion de but/i.test(step.label||''))return'Tu peux tenter ta chance';
     if(/centre|surface/.test(all))return'Le ballon peut partir';
     if(/protéger|contact|te colle/.test(all))return'Il te colle';
     if(/dribb|élimin|provoqu|duel|latéral/.test(all))return'Face à ton défenseur';
@@ -61,7 +62,7 @@ function u15DecisionTitle(state={},step={}){
 function u15DecisionPrompt(state={},step={}){
     const all=`${step.title||''} ${step.text||''} ${(step.choices||[]).map(choice=>choice.text||choice.texte||choice.label||'').join(' ')}`.toLowerCase();
     if(/penalty|point de penalty/.test(all))return'Tu poses le ballon. Le gardien attend ton choix.';
-    if(/frapp|tir|finition/.test(all)||/occasion de but/i.test(step.label||'')){const short=compactText(step.text,24,2);return short||'Le but est devant toi. Tu dois choisir vite.';}
+    if(SHOT_WORDS.test(all)||/occasion de but/i.test(step.label||'')){const short=compactText(step.text,24,2);return short||'Le but est devant toi. Tu dois choisir vite.';}
     const group=positionGroup(state);
     if(group==='goalkeeper')return'Le ballon revient vers toi. Le pressing arrive.';
     if(group==='defender')return'Ton adversaire reçoit près de ta zone. Tu dois choisir comment défendre.';
@@ -79,7 +80,7 @@ function choiceIntent(choice={}){
         {re:/appel.*dos|dans son dos|profondeur/,icon:'↗',title:'Partir dans son dos',subtitle:'Attaquer l’espace',tone:'attack'},
         {re:/décroch|attir.*repart|emmener.*zone/,icon:'↩',title:'L’attirer vers toi',subtitle:'Puis repartir',tone:'smart'},
         {re:/protéger|contact|garder.*ballon/,icon:'◆',title:'Protéger le ballon',subtitle:'Et jouer simple',tone:'control'},
-        {re:/frapp|tirer|finition|volée|panenka/,icon:'◎',title:'Frapper',subtitle:'Tenter ta chance',tone:'attack'},
+        {re:/\b(?:frappe|frappes|frapper|frappé|frappée|frappés|frappées|tir|tirs|tire|tires|tirer|tiré|tirée|tirés|tirées|finition|volée|panenka)\b/,icon:'◎',title:'Frapper',subtitle:'Tenter ta chance',tone:'attack'},
         {re:/centre|centrer/,icon:'↗',title:'Centrer',subtitle:'Chercher un partenaire',tone:'collective'},
         {re:/une-deux|passe|servir|décaler|donner|remettre|une touche/,icon:'⇄',title:'Jouer avec un partenaire',subtitle:'Faire avancer l’action',tone:'collective'},
         {re:/dribb|élimin|provoqu|petit pont|feint/,icon:'⚡',title:'Le provoquer',subtitle:'Tenter de passer',tone:'duel'},
