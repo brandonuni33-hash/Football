@@ -25,7 +25,7 @@ test('une occasion ratée par le moteur ne peut pas devenir un but canonique',()
  assert.equal(event.teamGoal,false);
  assert.equal(event.playerGoal,false);
  assert.equal(s.score.home,1);
- assert.equal(s.suppressAmbientTeamGoalOnce,true);
+ assert.equal(s.suppressAmbientTeamGoalOnce,false);
 });
 
 test('une frappe OCC produit parfois un but et grave immédiatement le score',()=>{
@@ -41,6 +41,7 @@ test('une frappe OCC produit parfois un but et grave immédiatement le score',()
  assert.equal(scored.s.score.home,2);
  assert.equal(scored.s.decisions[0].playerGoal,true);
  assert.deepEqual(scored.event.scoreAfter,{home:2,away:0});
+ assert.equal(scored.s.suppressAmbientTeamGoalOnce,true);
 });
 
 test('un choix collectif OCC peut produire une vraie passe décisive',()=>{
