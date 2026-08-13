@@ -49,9 +49,9 @@ function scoreAgainst(step={}){return Number(step.score?.[step.home===false?'hom
 function u15DecisionTitle(state={},step={}){
     const all=`${step.title||''} ${step.text||''} ${(step.choices||[]).map(choice=>choice.text||choice.texte||choice.label||'').join(' ')}`.toLowerCase();
     if(/penalty|point de penalty/.test(all))return'Ton penalty';
-    if(/frapp|tir|finition|but/.test(all))return'Tu peux tenter ta chance';
-    if(/centre|surface/.test(all))return'Le ballon peut partir';
     if(/appel|dans son dos|dos de la défense/.test(all))return'Un espace dans son dos';
+    if(/frapp|tir|finition/.test(all)||/occasion de but/i.test(step.label||''))return'Tu peux tenter ta chance';
+    if(/centre|surface/.test(all))return'Le ballon peut partir';
     if(/protéger|contact|te colle/.test(all))return'Il te colle';
     if(/dribb|élimin|provoqu|duel|latéral/.test(all))return'Face à ton défenseur';
     if(/press|moins de temps/.test(all))return'Tu as peu de temps';
@@ -61,7 +61,7 @@ function u15DecisionTitle(state={},step={}){
 function u15DecisionPrompt(state={},step={}){
     const all=`${step.title||''} ${step.text||''} ${(step.choices||[]).map(choice=>choice.text||choice.texte||choice.label||'').join(' ')}`.toLowerCase();
     if(/penalty|point de penalty/.test(all))return'Tu poses le ballon. Le gardien attend ton choix.';
-    if(/frapp|tir|finition|but/.test(all)){const short=compactText(step.text,24,2);return short||'Le but est devant toi. Tu dois choisir vite.';}
+    if(/frapp|tir|finition/.test(all)||/occasion de but/i.test(step.label||'')){const short=compactText(step.text,24,2);return short||'Le but est devant toi. Tu dois choisir vite.';}
     const group=positionGroup(state);
     if(group==='goalkeeper')return'Le ballon revient vers toi. Le pressing arrive.';
     if(group==='defender')return'Ton adversaire reçoit près de ta zone. Tu dois choisir comment défendre.';
