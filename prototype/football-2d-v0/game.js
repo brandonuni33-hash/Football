@@ -7,6 +7,7 @@ import { createScenarioState, stepScenario } from "./scenarioModel.js";
 const canvas = document.querySelector("#game");
 const ctx = canvas.getContext("2d");
 const profile = createSprite2DProfile("elias", 24);
+const STP_FEEL = Object.freeze({ playerSpeed: 100, ballControl: 100, shotPower: 109 });
 let state = createScenarioState();
 let previousTime = performance.now();
 let tuning = { ...DEFAULT_FEEL_TUNING };
@@ -24,6 +25,12 @@ const tuningControls = {
   shotPower: { input: document.querySelector("#shot-tuning"), output: document.querySelector("#shot-value") },
 };
 
+function applyStpFeel() {
+  tuningControls.playerSpeed.input.value = String(STP_FEEL.playerSpeed);
+  tuningControls.ballControl.input.value = String(STP_FEEL.ballControl);
+  tuningControls.shotPower.input.value = String(STP_FEEL.shotPower);
+}
+
 function syncTuningFromUI() {
   tuning = {
     playerSpeed: Number(tuningControls.playerSpeed.input.value) / 100,
@@ -36,7 +43,7 @@ function syncTuningFromUI() {
 for (const control of Object.values(tuningControls)) control.input.addEventListener("input", syncTuningFromUI);
 
 document.querySelector("#feel-reset").addEventListener("click", () => {
-  for (const control of Object.values(tuningControls)) control.input.value = "100";
+  applyStpFeel();
   syncTuningFromUI();
 });
 
@@ -61,5 +68,6 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
+applyStpFeel();
 syncTuningFromUI();
 requestAnimationFrame(frame);
