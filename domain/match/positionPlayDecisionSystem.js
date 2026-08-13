@@ -11,6 +11,7 @@ import {
   selectWingerPlayOpportunity,
   buildWingerPlayDecision
 } from './wingerPlayOpportunityLibrary.js';
+import { youthMatchTier } from './youthMatchExperienceSystem.js';
 
 const n=value=>Number.isFinite(Number(value))?Number(value):0;
 function hash(seed=''){let h=2166136261;for(const c of String(seed)){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}return h>>>0;}
@@ -24,9 +25,14 @@ function previousMistake(session={}){const e=previousEvent(session);if(!e)return
 function playmakingMomentum(session={}){const e=previousEvent(session);if(!e||previousMistake(session))return false;return /ligne est cassée|ouvre la suite|met en retard|duel tourne pour toi|face au jeu|gagne immédiatement/i.test(`${e.title||''} ${e.text||''}`);}
 function canonicalBool(session={},key){return session?.match?.[key]===true||session?.[key]===true;}
 
-// Les décisions non offensives génériques deviennent systématiquement du jeu de poste.
-// Une vraie occasion de but peut être remplacée, mais moins souvent : on garde donc
-// un équilibre entre « jouer son poste » et « vivre une occasion décisive ».
+// La profondeur tactique apparaît avec la carrière : aucune bibliothèque avancée
+// en U15 ; en formation plus âgée, elle n'apparaît que ponctuellement.
+function youthAllowsAdvancedPositionPlay(state={},session={}){
+  const tier=youthMatchTier(state,session);
+  if(tier==='u15')return false;
+  if(tier!=='youth')return true;
+  return hash(`${session.match?.id||session.id}:${session.currentMoment||0}:youth-tactical-depth`)%100<35;
+}
 function shouldReplace(currentDecision={},session={},position=''){
   if(!currentDecision?.isGoalOpportunity)return true;
   const roll=hash(`${session.match?.id||session.id}:${session.currentMoment||0}:${position}:position-play`)%100;
@@ -61,6 +67,7 @@ export function buildPositionPlayDecision(state={},session={},currentDecision=nu
   if(!current)return null;
   const position=normalizedPosition(state.player?.position||state.player?.positionId||session.playerPosition);
   if(!isExclusiveMidfieldPosition(position)&&!isWinger(position))return null;
+  if(!youthAllowsAdvancedPositionPlay(state,session))return null;
   if(!shouldReplace(current,session,position))return null;
   const context=baseContext(state,session,position);
   let built=null;
