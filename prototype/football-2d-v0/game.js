@@ -1,1 +1,42 @@
-console.log("STP Football 2D V0");
+import { createSprite2DProfile } from "../avatar-v0/sprite2dProfile.js";
+import { createFootball2DState, stepFootball2D } from "./football2dModel.js";
+import { createInputController } from "./input.js";
+import { renderFootball2D } from "./renderer.js";
+
+const canvas = document.querySelector("#game");
+const ctx = canvas.getContext("2d");
+const profile = createSprite2DProfile("elias", 24);
+let state = createFootball2DState();
+let previousTime = performance.now();
+
+const input = createInputController({
+  joystick: document.querySelector("#joystick"),
+  stick: document.querySelector("#stick"),
+  shoot: document.querySelector("#shoot"),
+  powerFill: document.querySelector("#power-fill"),
+});
+
+document.querySelector("#player-name").textContent = `${profile.name} · ${profile.age} ans`;
+
+document.querySelector("#reset").addEventListener("click", () => {
+  const goals = state.goals;
+  state = { ...createFootball2DState(), goals };
+  document.querySelector("#goal-flash").hidden = true;
+});
+
+function frame(now) {
+  const controls = input.read();
+  const dt = Math.min(0.05, (now - previousTime) / 1000);
+  previousTime = now;
+
+  if (state.status !== "goal") {
+    state = stepFootball2D(state, controls, dt);
+  }
+
+  document.querySelector("#goal-count").textContent = String(state.goals);
+  document.querySelector("#goal-flash").hidden = state.status !== "goal";
+  renderFootball2D(ctx, state, profile, controls.charge);
+  requestAnimationFrame(frame);
+}
+
+requestAnimationFrame(frame);
