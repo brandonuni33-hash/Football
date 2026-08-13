@@ -46,9 +46,10 @@ export function resolveGoalOpportunityOutcome(state={},session={},context={}){
   session.events[eventIndex]=enriched;
   const lastDecision=Array.isArray(session.decisions)?session.decisions[session.decisions.length-1]:null;
   if(lastDecision){Object.assign(lastDecision,{outcome,playerGoal,playerAssist,teamGoal,scoreAfter:after,opportunityId:decision.opportunityId||lastDecision.opportunityId||null,isGoalOpportunity:true});}
-  // Empêche l'ancien simulateur d'ajouter immédiatement un second but d'équipe
-  // juste après la résolution de cette occasion jouée.
-  session.suppressAmbientTeamGoalOnce=true;
+  // Le verrou anti-double-but n'est nécessaire que lorsqu'une OCC vient réellement
+  // de modifier le score. Une occasion manquée ne doit pas empêcher un but collectif
+  // indépendant dans la séquence de jeu suivante.
+  session.suppressAmbientTeamGoalOnce=teamGoal;
   return enriched;
 }
 
