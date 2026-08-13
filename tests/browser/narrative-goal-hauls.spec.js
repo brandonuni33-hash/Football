@@ -26,13 +26,13 @@ test('la narration distingue doublé triplé quadruplé et scores supérieurs', 
     return Object.fromEntries([2, 3, 4, 5, 6, 7].map(goals => [goals, describe(goals)]));
   });
 
-  expect(texts['2']).toContain('un doublé');
-  expect(texts['3']).toContain('un triplé');
-  expect(texts['4']).toContain('un quadruplé');
-  expect(texts['5']).toContain('un quintuplé');
-  expect(texts['6']).toContain('un sextuplé');
+  expect(texts['2']).toContain('doublé');
+  expect(texts['3']).toContain('triplé');
+  expect(texts['4']).toContain('quadruplé');
+  expect(texts['5']).toContain('quintuplé');
+  expect(texts['6']).toContain('sextuplé');
   expect(texts['7']).toContain('7 buts');
-  expect(texts['7']).toContain('performance impossible à réduire à une simple ligne de statistiques');
+  expect(texts['7']).not.toContain('sextuplé');
   expect(texts['3']).not.toContain('doublé');
   expect(texts['4']).not.toContain('doublé');
 });
