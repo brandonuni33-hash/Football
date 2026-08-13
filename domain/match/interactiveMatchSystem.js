@@ -7,6 +7,7 @@ import { tieBreakerRules, resolveKnockoutTie } from './knockoutMatchPolicy.js';
 import { GOAL_OPPORTUNITY_CHOICES } from './goalOpportunityChoiceLibrary.js';
 import { appendSpecialFourthChoice } from './specialFourthChoiceSystem.js';
 import { enrichPositionPlayDecision } from './positionPlayDecisionSystem.js';
+import { applyProfessionalMatchRhythm } from './professionalMatchRhythmSystem.js';
 import { enrichProfessionalStep, enrichProfessionalOutcome, applyProfessionalResultMemory } from './proMatchExperienceSystem.js';
 
 const n = value => Number.isFinite(Number(value)) ? Number(value) : 0;
@@ -50,7 +51,7 @@ function enrichProfessionalExperience(state,session,result){
     return result;
 }
 
-export function startInteractiveMatch(state,scheduledMatch,matchIndex=0){return InteractiveMatchRuntime.startInteractiveMatch(state,scheduledMatch,matchIndex);}
+export function startInteractiveMatch(state,scheduledMatch,matchIndex=0){const session=InteractiveMatchRuntime.startInteractiveMatch(state,scheduledMatch,matchIndex);return applyProfessionalMatchRhythm(state,session);}
 export function advanceInteractiveMatch(state,activeSession,action={}){
     const session=activeSession;
     if(session?.knockoutRuntimeStage==='extra_time_intro'){const resolution=session.knockoutResolution;setScore(session,resolution.teamGoals,resolution.opponentGoals);session.knockoutRuntimeStage='extra_time_end';session.step=extraTimeEnd(session,resolution);return enrichProfessionalExperience(state,session,{finished:false,session,step:session.step,decision:null,result:session.result});}
