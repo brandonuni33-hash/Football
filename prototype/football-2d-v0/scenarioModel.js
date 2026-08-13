@@ -1,18 +1,1 @@
-import{FIELD,createFootball2DState,stepFootball2D}from"./football2dModel.js";
-import{createOpponentState,stepOpponentAI}from"./opponentAI.js";
-import{stepGoalkeeper}from"./goalkeeperAI.js";
-
-export function createScenarioState(){return{...createFootball2DState(),...createOpponentState(FIELD)};}
-
-export function stepScenario(state,input={},dt=1/60){
-  const slice=Math.min(dt,.02);
-  const previousBall={...state.ball};
-  let next=stepFootball2D(state,input,slice);
-  if(next.status==="goal")return next;
-
-  const defense=stepOpponentAI({defender:next.defender,keeper:next.keeper,player:next.player,ball:next.ball,possession:next.possession},FIELD,slice);
-  next={...next,defender:defense.defender,keeper:defense.keeper,ball:defense.ball,possession:defense.possession,lastEvent:defense.event??next.lastEvent};
-
-  const keeping=stepGoalkeeper(next.keeper,previousBall,next.ball,FIELD,slice);
-  return{...next,keeper:keeping.keeper,ball:keeping.ball,possession:keeping.event?false:next.possession,lastEvent:keeping.event??next.lastEvent};
-}
+import{FIELD,createFootball2DState,stepFootball2D}from"./football2dModel.js";import{createOpponentState,stepOpponentAI}from"./opponentAI.js";import{stepGoalkeeper}from"./goalkeeperAI.js";export function createScenarioState(){return{...createFootball2DState(),...createOpponentState(FIELD)}}export function stepScenario(s,i={},dt=1/60){const total=Math.min(Math.max(dt,0),.05),count=Math.max(1,Math.ceil(total/(1/90))),slice=total/count;let n={...s};for(let x=0;x<count;x++){const before={...n.ball};n=stepFootball2D(n,x?{...i,shootReleased:false}:i,slice);if(n.status==="goal")break;const d=stepOpponentAI({defender:n.defender,keeper:n.keeper,player:n.player,ball:n.ball,possession:n.possession},FIELD,slice);n={...n,defender:d.defender,keeper:d.keeper,ball:d.ball,possession:d.possession,lastEvent:d.event??n.lastEvent};const k=stepGoalkeeper(n.keeper,before,n.ball,FIELD,slice);n={...n,keeper:k.keeper,ball:k.ball,possession:k.event?false:n.possession,lastEvent:k.event??n.lastEvent}}return n}
