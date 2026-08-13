@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>STP — Football 2D V0</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">STREET TO PRO · PROTOTYPE 2D</p>
+        <h1>Elias 24 — sensation de jeu</h1>
+      </div>
+      <div class="hud">
+        <strong id="player-name">Elias Morel · 24 ans</strong>
+        <span>Buts : <b id="goal-count">0</b></span>
+      </div>
+    </header>
+
+    <section class="game-wrap">
+      <canvas id="game" width="960" height="540" aria-label="Prototype jouable Street to Pro"></canvas>
+      <div id="goal-flash" class="goal-flash" hidden>BUT !</div>
+
+      <div class="mobile-controls" aria-label="Contrôles tactiles">
+        <div id="joystick" class="joystick"><div id="stick" class="stick"></div></div>
+        <button id="shoot" class="shoot" type="button">
+          <span>TIR</span>
+          <i id="power-fill"></i>
+        </button>
+      </div>
+    </section>
+
+    <section class="instructions">
+      <p><strong>Mobile :</strong> joystick à gauche, maintiens TIR puis relâche.</p>
+      <p><strong>Clavier :</strong> ZQSD / WASD / flèches + espace.</p>
+      <p>V0 volontairement limité : déplacement, conduite, ballon indépendant et tir. Aucun défenseur ni gardien pour l’instant.</p>
+      <button id="reset" type="button">Replacer le ballon</button>
+    </section>
+  </main>
+  <script type="module" src="./game.js"></script>
+</body>
+</html>
