@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>STP — Avatar V0</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <section class="intro">
+      <p class="eyebrow">STREET TO PRO · AVATAR V0</p>
+      <h1>Identité visuelle du joueur</h1>
+      <p>
+        Ce prototype ne cherche pas encore à être beau. Il vérifie qu'une même fiche d'apparence peut produire
+        plusieurs joueurs reconnaissables avant de servir aux portraits manga et aux sprites 2D.
+      </p>
+    </section>
+
+    <section class="workspace">
+      <div class="preview-panel">
+        <div class="stage" aria-label="Aperçu simplifié du joueur">
+          <div id="player-preview" class="player" data-hair="waves" data-facial-hair="none" data-accessory="none" data-sleeves="short">
+            <div class="hair hair-back"></div>
+            <div class="head">
+              <div class="hair hair-front"></div>
+              <div class="head-band"></div>
+              <div class="face-detail"></div>
+            </div>
+            <div class="neck"></div>
+            <div class="upper-body">
+              <div class="arm arm-left"><span class="forearm"></span></div>
+              <div class="shirt"><span class="shirt-number">9</span></div>
+              <div class="arm arm-right"><span class="forearm"></span></div>
+            </div>
+            <div class="shorts"></div>
+            <div class="legs">
+              <div class="leg"><span class="boot"></span></div>
+              <div class="leg"><span class="boot"></span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="preset-block">
+          <h2>Test d'identités</h2>
+          <p>Ces trois profils servent à vérifier qu'on distingue bien des joueurs différents avec le même système.</p>
+          <div id="preset-controls" class="preset-controls"></div>
+        </div>
+      </div>
+
+      <div class="editor-panel">
+        <h2>Créateur V0</h2>
+        <div id="avatar-controls" class="controls"></div>
+
+        <div class="data-block">
+          <h2>Identité canonique</h2>
+          <p id="avatar-signature" class="signature"></p>
+          <pre id="avatar-json"></pre>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

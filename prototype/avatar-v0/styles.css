@@ -1,0 +1,201 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #0d0f12;
+  color: #f2f2f2;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #20242b 0, #0d0f12 48%);
+}
+
+button, select, input { font: inherit; }
+
+.shell {
+  width: min(1100px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 32px 0 56px;
+}
+
+.intro { max-width: 720px; margin-bottom: 24px; }
+.intro h1 { margin: 6px 0 12px; font-size: clamp(2rem, 6vw, 4rem); line-height: .95; }
+.intro p { color: #b8bdc6; line-height: 1.6; }
+.eyebrow { margin: 0; font-size: .78rem; letter-spacing: .18em; color: #e1b44d !important; font-weight: 700; }
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(300px, .9fr);
+  gap: 20px;
+}
+
+.preview-panel, .editor-panel {
+  border: 1px solid #303641;
+  border-radius: 22px;
+  background: rgba(21, 24, 29, .92);
+  overflow: hidden;
+}
+
+.stage {
+  min-height: 520px;
+  display: grid;
+  place-items: center;
+  background:
+    linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px),
+    #171b21;
+  background-size: 32px 32px;
+}
+
+.player {
+  --skin: #c9875f;
+  --hair: #151515;
+  --accessory: transparent;
+  --boots: #171717;
+  --body-scale: 1;
+  position: relative;
+  width: 150px;
+  height: 370px;
+  transform: scaleX(var(--body-scale));
+  transform-origin: center bottom;
+}
+
+.head {
+  position: absolute;
+  z-index: 3;
+  top: 52px;
+  left: 50%;
+  width: 72px;
+  height: 88px;
+  transform: translateX(-50%);
+  border-radius: 46% 46% 48% 48%;
+  background: var(--skin);
+  border: 3px solid #0c0d0f;
+}
+
+.neck {
+  position: absolute;
+  z-index: 1;
+  top: 128px;
+  left: 50%;
+  width: 34px;
+  height: 42px;
+  transform: translateX(-50%);
+  background: var(--skin);
+  border: 3px solid #0c0d0f;
+}
+
+.hair { position: absolute; z-index: 5; background: var(--hair); }
+.hair-front { top: -13px; left: 5px; width: 58px; height: 30px; border-radius: 50% 50% 28% 28%; }
+.hair-back { top: 35px; left: 42px; width: 66px; height: 46px; border-radius: 48% 48% 30% 30%; }
+
+.player[data-hair="buzz"] .hair-front { height: 17px; top: -5px; }
+.player[data-hair="buzz"] .hair-back { height: 24px; top: 45px; }
+.player[data-hair="waves"] .hair-front { height: 20px; top: -6px; }
+.player[data-hair="curly-top"] .hair-front { top: -26px; left: 0; width: 68px; height: 45px; border-radius: 50%; }
+.player[data-hair="curly-top"] .hair-back { top: 24px; left: 35px; width: 80px; height: 62px; border-radius: 50%; }
+.player[data-hair="dreads-short"] .hair-front { top: -18px; height: 34px; border-radius: 45%; box-shadow: -12px 16px 0 -7px var(--hair), 12px 18px 0 -7px var(--hair), 24px 23px 0 -8px var(--hair); }
+.player[data-hair="dreads-short"] .hair-back { height: 80px; top: 24px; border-radius: 40%; }
+.player[data-hair="braids"] .hair-front { top: -12px; height: 23px; border-radius: 50%; box-shadow: -18px 25px 0 -8px var(--hair), 17px 28px 0 -8px var(--hair); }
+.player[data-hair="braids"] .hair-back { height: 100px; top: 25px; width: 48px; left: 51px; border-radius: 40%; }
+.player[data-hair="medium-straight"] .hair-front { top: -15px; height: 34px; }
+.player[data-hair="medium-straight"] .hair-back { top: 27px; height: 98px; border-radius: 44% 44% 35% 35%; }
+
+.head-band {
+  display: none;
+  position: absolute;
+  z-index: 7;
+  top: 12px;
+  left: -2px;
+  width: 70px;
+  height: 9px;
+  background: var(--accessory);
+  border: 2px solid #0c0d0f;
+  border-radius: 6px;
+}
+.player:not([data-accessory="none"]) .head-band { display: block; }
+
+.face-detail::before,
+.face-detail::after {
+  content: "";
+  position: absolute;
+  top: 42px;
+  width: 7px;
+  height: 3px;
+  background: #111;
+  border-radius: 50%;
+}
+.face-detail::before { left: 18px; }
+.face-detail::after { right: 18px; }
+
+.player[data-facial-hair="stubble"] .face-detail { position: absolute; left: 20px; bottom: 8px; width: 28px; height: 18px; border-bottom: 6px solid rgba(20,20,20,.6); border-radius: 50%; }
+.player[data-facial-hair="goatee"] .face-detail { position: absolute; left: 29px; bottom: 4px; width: 12px; height: 20px; border-bottom: 12px solid #222; border-radius: 50%; }
+
+.upper-body { position: absolute; top: 156px; left: 50%; width: 142px; height: 118px; transform: translateX(-50%); }
+.shirt {
+  position: absolute;
+  z-index: 3;
+  left: 29px;
+  width: 84px;
+  height: 104px;
+  border: 3px solid #0c0d0f;
+  border-radius: 20px 20px 12px 12px;
+  background: #d8ad45;
+  display: grid;
+  place-items: center;
+}
+.shirt-number { color: #151515; font-size: 2rem; font-weight: 900; }
+.arm { position: absolute; z-index: 2; top: 7px; width: 30px; height: 105px; background: #d8ad45; border: 3px solid #0c0d0f; border-radius: 16px; }
+.arm-left { left: 9px; transform: rotate(7deg); }
+.arm-right { right: 9px; transform: rotate(-7deg); }
+.forearm { position: absolute; left: 2px; bottom: -4px; width: 20px; height: 55px; background: var(--skin); border-radius: 12px; }
+.player[data-sleeves="long"] .forearm { height: 30px; }
+
+.shorts { position: absolute; z-index: 3; top: 251px; left: 50%; width: 88px; height: 48px; transform: translateX(-50%); background: #17191e; border: 3px solid #0c0d0f; border-radius: 8px 8px 14px 14px; }
+.legs { position: absolute; top: 286px; left: 50%; width: 82px; height: 78px; transform: translateX(-50%); display: flex; justify-content: space-between; }
+.leg { position: relative; width: 27px; height: 72px; background: var(--skin); border: 3px solid #0c0d0f; border-radius: 10px; }
+.boot { position: absolute; left: -4px; bottom: -13px; width: 38px; height: 20px; background: var(--boots); border: 3px solid #0c0d0f; border-radius: 14px 18px 7px 7px; }
+
+.preset-block, .editor-panel { padding: 22px; }
+.preset-block { border-top: 1px solid #303641; }
+h2 { margin: 0 0 8px; font-size: 1rem; }
+.preset-block p, .data-block p { margin: 0 0 14px; color: #9fa6b1; line-height: 1.5; }
+.preset-controls { display: flex; flex-wrap: wrap; gap: 8px; }
+button {
+  border: 1px solid #434a56;
+  border-radius: 999px;
+  background: #222730;
+  color: #fff;
+  padding: 9px 14px;
+  cursor: pointer;
+}
+button:hover { border-color: #e1b44d; }
+
+.controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.control { display: grid; gap: 6px; color: #aeb4bd; font-size: .82rem; }
+select, input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #3b424d;
+  border-radius: 10px;
+  background: #111419;
+  color: #fff;
+  padding: 8px 10px;
+}
+.data-block { margin-top: 24px; padding-top: 20px; border-top: 1px solid #303641; }
+.signature { word-break: break-all; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #e1b44d !important; }
+pre { margin: 0; padding: 14px; overflow: auto; border-radius: 12px; background: #0b0d10; color: #cfd4da; font-size: .78rem; }
+
+@media (max-width: 780px) {
+  .workspace { grid-template-columns: 1fr; }
+  .stage { min-height: 430px; }
+  .player { transform: scale(.88) scaleX(var(--body-scale)); }
+}
+
+@media (max-width: 460px) {
+  .shell { width: min(100% - 20px, 1100px); padding-top: 20px; }
+  .controls { grid-template-columns: 1fr; }
+}
