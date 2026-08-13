@@ -1,5 +1,24 @@
 # STP Avatar — pipeline de production officiel
 
+## Référence visuelle verrouillée
+
+La planche de casting validée avec **Elias Morel, Malik Sissoko et Nao Ferreira à 24 ans** devient la référence visuelle officielle pour les avatars STP.
+
+À partir de maintenant, on ne recherche plus une nouvelle direction artistique. Toute production avatar doit reprendre le même ADN :
+
+- visages et proportions crédibles ;
+- finition semi-réaliste manga ;
+- trait net et ombrage graphique ;
+- maillot STP noir avec accents jaune-orangé ;
+- fond sombre, texturé et dynamique ;
+- expression calme et déterminée ;
+- légère vue 3/4 ;
+- même traitement de lumière, mêmes proportions et même niveau de détail entre les identités.
+
+Le ratio **70–80 % crédible / 20–30 % manga** reste la référence pour l'avatar standard. Les scènes émotionnelles peuvent ponctuellement augmenter l'intensité manga si le récit le justifie, sans modifier l'identité visuelle.
+
+La prochaine question à résoudre n'est plus « quel style choisir ? », mais : **reconnaît-on immédiatement le même joueur à différents âges puis dans son sprite 2D ?**
+
 ## Principe
 
 **Une seule personne, trois couches visuelles.**
@@ -92,6 +111,10 @@ Les couches 11 à 14 peuvent être plus manga dans une scène émotionnelle fort
 - même point d'ancrage du visage, du cou et des épaules ;
 - export master haute définition avant déclinaisons UI.
 
+### Orientation UI
+
+L'orientation du portrait peut être adaptée à sa position dans l'interface. Si l'image est affichée à gauche, le joueur peut regarder légèrement vers l'intérieur de l'écran. Cette orientation est une variante de composition, pas une nouvelle DA.
+
 ## 5. Sprite 2D — identité minimale obligatoire
 
 Le sprite n'a pas besoin de reproduire le visage détaillé. Il doit permettre de reconnaître le joueur en moins d'une seconde grâce à :
@@ -157,4 +180,6 @@ Premier lot :
 - 1 seul kit neutre STP ;
 - aucun effet émotionnel fort.
 
-Une fois ce lot validé, la prochaine pose à produire sera une **pose de but important**, pas une bibliothèque complète.
+Le casting de référence est désormais verrouillé : **Elias Morel, Malik Sissoko et Nao Ferreira**.
+
+Une fois le vieillissement et les sprites validés, la prochaine pose à produire sera une **pose de but important**, pas une bibliothèque complète.
