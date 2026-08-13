@@ -1,1 +1,2 @@
-// Goalkeeper prototype AI
+const clamp=(v,min,max)=>Math.min(max,Math.max(min,v));
+export function stepGoalkeeper(keeper,previousBall,ball,field,dt){const k={...keeper};const b={...ball};const target=clamp(b.y,field.goalTop+16,field.goalBottom-16);const delta=target-k.y;k.y+=Math.sign(delta)*Math.min(Math.abs(delta),192*dt);let event=null;const crossed=previousBall.x<=k.x&&b.x>=k.x;const reach=Math.abs(b.y-k.y)<=27;if(crossed&&reach&&b.vx>0){b.x=k.x-10;b.vx=-Math.max(340,Math.abs(b.vx)*.72);b.vy+=(b.y>=k.y?1:-1)*90;event="save";}return{keeper:k,ball:b,event};}
