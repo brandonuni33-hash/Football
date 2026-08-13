@@ -31,7 +31,7 @@ export function stepOpponentAI({ defender, keeper, player, ball, possession }, f
 
   const distance = Math.hypot(nextBall.x - nextDefender.x, nextBall.y - nextDefender.y);
   const speed = Math.hypot(nextBall.vx, nextBall.vy);
-  if (distance < 27 && speed < 300) {
+  if (nextPossession && distance < 27 && speed < 300) {
     nextBall.vx = -Math.max(220, Math.abs(nextBall.vx) * 0.65);
     nextBall.vy += (nextBall.y >= nextDefender.y ? 1 : -1) * 135;
     nextPossession = false;
