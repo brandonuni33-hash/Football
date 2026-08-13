@@ -7,9 +7,118 @@ import { COACH_COPY, stableCareerPick } from '../narrative/careerLifeNarrativeLi
 
 const clampRelation = value => Math.min(100, Math.max(0, Number(value ?? 50)));
 const recentCoachEventIds = state => (state?.careerMemory || []).filter(item => item?.type === 'coach-choice' || item?.source === 'Coach').slice(-4).map(item => item.eventId).filter(Boolean);
+const YOUTH_CONTEXT = /\bu\s?(?:15|16|17|18|19|20|21|23)\b|youth|jeune|academy|acad[eé]mie|formation|r[eé]serve|espoirs?/i;
+const PRO_CONTEXT = /professional|professionnel|\bpro\b|first.?team|premi[eè]re.?[eé]quipe|\bsenior\b/i;
+
+const YOUTH_COACH_COPY = Object.freeze({
+    attention: [
+        "À l’entraînement, le coach pose un peu plus souvent les yeux sur toi.",
+        "Depuis quelques séances, tu remarques que le coach te regarde un peu plus longtemps.",
+        "Le coach suit plusieurs de tes passages à l’entraînement sans vraiment quitter l’exercice des yeux."
+    ],
+    touch: [
+        "Ta première touche plaît au coach. Il te le fait comprendre d’un simple signe.",
+        "Sur un exercice, ton toucher de balle attire le regard du coach.",
+        "Tu réussis plusieurs contrôles propres. Le coach ne dit presque rien, mais il continue de te regarder."
+    ],
+    effort: [
+        "Le coach remarque ton sérieux aujourd’hui. Un petit signe de tête suffit.",
+        "Tu ne lâches pas la séance. Le coach le voit.",
+        "À la fin d’un exercice, le coach te glisse simplement : « Continue comme ça. »"
+    ],
+    trust: [
+        "Le coach vient te parler un peu plus souvent qu’avant. La confiance commence à se sentir.",
+        "Avant la séance, le coach te donne deux mots rien qu’à toi. Tu sens qu’il te connaît mieux.",
+        "Le coach te sourit après une bonne action. Ce n’est pas grand-chose, mais tu sens que le lien change."
+    ],
+    tension: [
+        "Le coach te parle moins qu’avant. Son regard passe plus vite sur toi.",
+        "Tu sens un peu de distance avec le coach ces derniers jours.",
+        "À l’entraînement, le coach reste plus froid avec toi. Tu le remarques tout de suite."
+    ],
+    fatigue: [
+        "Le coach voit que tes jambes sont lourdes et vient te demander si ça va.",
+        "Tu tires un peu sur les jambes. Le coach le remarque avant la fin de la séance.",
+        "Le coach te fait sortir quelques minutes plus tôt. Il a vu que tu étais fatigué."
+    ]
+});
 
 function seedFor(state) { return state?.narrativeState?.seed || state?.career?.seed || state?.player?.id || 'coach'; }
 function coachLine(state, key, pool) { return stableCareerPick(seedFor(state), `${state?.calendar?.currentSeason || 0}:${state?.calendar?.currentMonth || 0}:${key}`, pool); }
+
+function isYouthCoachContext(state = {}) {
+    const player = state.player || {};
+    const age = Number(player.age || 0);
+    const labels = [
+        player.careerStage,
+        player.stage,
+        player.squadStatus,
+        player.squad,
+        player.teamStatus,
+        player.contract?.type,
+        player.contractType,
+        state.career?.stage,
+        state.careerStage
+    ].filter(Boolean).join(' ');
+    if (PRO_CONTEXT.test(labels)) return false;
+    if (YOUTH_CONTEXT.test(labels)) return true;
+    return age > 0 && age <= 18;
+}
+
+function youthCoachCandidates(state, coachState) {
+    const player = state.player || {};
+    const candidates = [
+        {
+            id:'coach_youth_attention', title:`👀 ${coachState.name} te remarque davantage`,
+            description:coachLine(state,'youth-attention',YOUTH_COACH_COPY.attention),
+            choices:[
+                {text:'Continuer simplement',impacts:{mental:1,relationCoach:4},opinionChange:'Satisfait',response:'Tu continues sans chercher à en faire plus. Le coach garde un œil sur toi.'},
+                {text:'Lui demander ce qu’il a remarqué',impacts:{mental:2,relationCoach:6},opinionChange:'Fier',response:'Il te répond avec un sourire : « Continue. Tu progresses. »'}
+            ]
+        },
+        {
+            id:'coach_youth_touch', title:`⚽ Ton ballon plaît à ${coachState.name}`,
+            description:coachLine(state,'youth-touch',YOUTH_COACH_COPY.touch),
+            choices:[
+                {text:'Rester naturel',impacts:{technique:1,relationCoach:4},opinionChange:'Satisfait',response:'Tu gardes ton jeu simple. Le coach apprécie que tu ne forces rien.'},
+                {text:'Lui demander un conseil',impacts:{technique:2,mental:1,relationCoach:6},opinionChange:'Fier',response:'Il te donne un conseil très court, puis te renvoie jouer.'}
+            ]
+        },
+        {
+            id:'coach_youth_effort', title:`👍 ${coachState.name} voit tes efforts`,
+            description:coachLine(state,'youth-effort',YOUTH_COACH_COPY.effort),
+            choices:[
+                {text:'Continuer comme ça',impacts:{discipline:2,relationCoach:5},opinionChange:'Satisfait',response:'Tu repars dans l’exercice. Le coach n’a pas besoin d’en dire plus.'},
+                {text:'Lui dire que tu veux progresser',impacts:{mental:2,relationCoach:6},opinionChange:'Fier',response:'Il te répond simplement : « Alors garde cette envie. »'}
+            ]
+        }
+    ];
+    if (Number(player.fitness ?? 100) < 68) candidates.push({
+        id:'coach_youth_fatigue', title:`💬 ${coachState.name} vient te voir`,
+        description:coachLine(state,'youth-fatigue',YOUTH_COACH_COPY.fatigue),
+        choices:[
+            {text:'Dire que tu es fatigué',impacts:{fitness:10,relationCoach:7},opinionChange:'Fier',response:'Il te fait souffler un peu. « C’est bien de me le dire. »'},
+            {text:'Dire que ça va',impacts:{mental:1,fitness:-2,relationCoach:0},opinionChange:'Neutre',response:'Il te laisse continuer, mais garde un œil sur toi.'}
+        ]
+    });
+    if (coachState.relation >= 65) candidates.push({
+        id:'coach_youth_trust', title:`🤝 Le lien avec ${coachState.name} grandit`,
+        description:coachLine(state,'youth-trust',YOUTH_COACH_COPY.trust),
+        choices:[
+            {text:'Lui dire que ça te fait plaisir',impacts:{morale:2,relationCoach:6},opinionChange:'Fier',response:'Il sourit. « C’est bien. Maintenant continue de jouer. »'},
+            {text:'Rester concentré',impacts:{mental:2,relationCoach:4},opinionChange:'Satisfait',response:'Tu retournes vite dans la séance. Il apprécie ton sérieux.'}
+        ]
+    });
+    if (coachState.relation <= 40) candidates.push({
+        id:'coach_youth_distance', title:`↔️ ${coachState.name} est plus distant`,
+        description:coachLine(state,'youth-tension',YOUTH_COACH_COPY.tension),
+        choices:[
+            {text:'Aller lui parler',impacts:{mental:2,relationCoach:6},opinionChange:'Neutre',response:'La discussion est courte, mais le contact revient un peu.'},
+            {text:'Rester dans ta séance',impacts:{discipline:1,relationCoach:-2},opinionChange:'Neutre',response:'Tu continues à travailler. Le froid reste là pour l’instant.'}
+        ]
+    });
+    return candidates;
+}
 
 function enrichCoachMemory(state, { result, eventData, choice, coachState }) {
     const memory = state.careerMemory?.findLast?.(item => item?.choiceId === result?.choiceId && item?.source === 'Coach')
@@ -52,6 +161,10 @@ export class CoachSystem {
         if (player.stats) player.stats.relationCoach = coachState.relation;
         const hasTransferred = coachState.hasLeftClub || (state.social?.youthClubName && player.club !== state.social.youthClubName);
         if (Math.random() >= 0.42) return null;
+
+        if (!hasTransferred && isYouthCoachContext(state)) {
+            return pickFresh(state, youthCoachCandidates(state, coachState));
+        }
 
         const candidates = [];
         if (!hasTransferred) {
