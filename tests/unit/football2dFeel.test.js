@@ -16,3 +16,14 @@ test("player speed tuning changes travelled distance", () => {
 test("shot tuning changes shot velocity", () => {
   assert.ok(shotSpeedFromPower(1, { shotPower: 1.2 }) > shotSpeedFromPower(1, { shotPower: 0.8 }));
 });
+
+test("sustained dribble keeps the ball under control instead of accumulating runaway speed", () => {
+  let state = createFootball2DState();
+  for (let frame = 0; frame < 120; frame += 1) {
+    state = stepFootball2D(state, { moveX: 1, moveY: 0 }, 1 / 60);
+    assert.equal(state.possession, true);
+  }
+  const distance = Math.hypot(state.ball.x - state.player.x, state.ball.y - state.player.y);
+  assert.ok(distance < 55);
+  assert.ok(Math.hypot(state.ball.vx, state.ball.vy) < 150);
+});
