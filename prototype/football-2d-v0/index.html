@@ -32,10 +32,23 @@
       </div>
     </section>
 
+    <section class="feel-lab" aria-label="Réglages de sensation">
+      <div class="feel-title">
+        <div><p class="eyebrow">FEEL LAB</p><h2>Régler la sensation avant d'ajouter du contenu</h2></div>
+        <button id="feel-reset" type="button">Réglage STP</button>
+      </div>
+      <div class="feel-grid">
+        <label>Vitesse joueur <output id="speed-value">100%</output><input id="speed-tuning" type="range" min="80" max="120" value="100" step="1"></label>
+        <label>Contrôle ballon <output id="control-value">100%</output><input id="control-tuning" type="range" min="70" max="130" value="100" step="1"></label>
+        <label>Puissance tir <output id="shot-value">100%</output><input id="shot-tuning" type="range" min="80" max="120" value="100" step="1"></label>
+      </div>
+      <p class="feel-help">Contrôle ballon bas = ballon plus libre et exigeant. Haut = conduite plus serrée et assistée.</p>
+    </section>
+
     <section class="instructions">
       <p><strong>Mobile :</strong> joystick à gauche, maintiens TIR puis relâche.</p>
       <p><strong>Clavier :</strong> ZQSD / WASD / flèches + espace.</p>
-      <p>V0 : déplacement, conduite, ballon indépendant, tir chargé, un défenseur qui contient/intervient et un gardien qui se place/arrête.</p>
+      <p>V0 : déplacement, conduite, ballon indépendant, tir chargé, un défenseur et un gardien.</p>
       <button id="reset" type="button">Recommencer l’action</button>
     </section>
   </main>
