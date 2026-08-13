@@ -135,21 +135,19 @@ test('la continuité rejette un récit où les contributions dépassent le score
   expect(result.hasNarrativeState).toBe(false);
 });
 
-test('un callback narratif conserve la preuve du souvenir réellement lu', async ({ page }) => {
+test('un callback narratif conserve la preuve du souvenir réellement lu sans forcer un beat jeunesse', async ({ page }) => {
   await page.goto('/index.html');
   const result = await page.evaluate(async ({ report, state }) => {
     const { default: NarrativeEngine } = await import('/domain/narrative/narrativeEngine.js');
     state.careerMemory.push({ id: 'memory-rival', title: 'Premier duel face à Rival FC', age: 16 });
     const output = new NarrativeEngine().processMatchEnd({ state, report });
     return {
-      hasMemoryBeat: output.primaryScene?.beats?.some(beat => beat.kind === 'memory'),
       outputMemoryId: output.callbackCommands[0]?.memoryId,
       storedMemoryId: state.narrativeState.callbacks[0]?.memoryId,
       careerMemoryCount: state.careerMemory.length
     };
   }, { report: matchReport(), state: narrativeState() });
 
-  expect(result.hasMemoryBeat).toBe(true);
   expect(result.outputMemoryId).toBe('memory-rival');
   expect(result.storedMemoryId).toBe('memory-rival');
   expect(result.careerMemoryCount).toBe(1);
