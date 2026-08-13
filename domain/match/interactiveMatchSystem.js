@@ -6,6 +6,7 @@ import { InteractiveMatchRuntime } from './interactiveMatchRuntime.js';
 import { tieBreakerRules, resolveKnockoutTie } from './knockoutMatchPolicy.js';
 import { GOAL_OPPORTUNITY_CHOICES } from './goalOpportunityChoiceLibrary.js';
 import { appendSpecialFourthChoice } from './specialFourthChoiceSystem.js';
+import { enrichPositionPlayDecision } from './positionPlayDecisionSystem.js';
 import { enrichProfessionalStep, enrichProfessionalOutcome, applyProfessionalResultMemory } from './proMatchExperienceSystem.js';
 
 const n = value => Number.isFinite(Number(value)) ? Number(value) : 0;
@@ -69,7 +70,8 @@ export function advanceInteractiveMatch(state,activeSession,action={}){
     if(session?.knockoutRuntimeStage==='resume')session.knockoutRuntimeStage='done';
     const runtime=InteractiveMatchRuntime.advanceInteractiveMatch(state,session,action);
     const knockout=maybeEnterKnockout(runtime.session||session,runtime);
-    const pro=enrichProfessionalExperience(state,knockout.session||session,knockout);
+    const positioned=enrichPositionPlayDecision(state,knockout.session||session,knockout);
+    const pro=enrichProfessionalExperience(state,positioned.session||session,positioned);
     return enrichSpecialDecision(state,pro.session||session,pro);
 }
 export function resolveInteractiveDecision(state,session,choiceIndex){return advanceInteractiveMatch(state,session,{choiceIndex});}
