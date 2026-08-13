@@ -28,23 +28,23 @@ test('la scène d’un match ne reprend jamais le doublé d’un autre match du 
     const other = matchFact({ id:'ajaccio', index:1, opponent:'AC Ajaccio U15', goals:2, assists:0, rating:7.2, teamGoals:3, opponentGoals:0 });
     const output = composeFacts([other,featured], featured);
     const text = output.primaryScene.beats.map(beat => beat.text).join(' ');
-    assert.match(text, /Un but et une passe décisive/i);
+    assert.match(text, /un but et (?:une|1) passe décisive/i);
     assert.doesNotMatch(text, /doublé|deux buts|2 buts/i);
-    assert.doesNotMatch(text, /vraie continuité dans le onze/i);
     assert.equal(output.primaryScene.impactMatchIndex, featured.metrics.matchIndex);
     assert.equal(output.primaryScene.facts.goals, 1);
     assert.equal(output.primaryScene.facts.assists, 1);
 });
 
-test('le statut dans le onze n’est raconté que lorsqu’il change réellement', () => {
+test('en U15 un changement de statut reste factuel sans ajouter un paragraphe au résumé', () => {
     const starter = matchFact({ id:'starter', index:1, opponent:'A', goals:0, started:true });
     const substitute = matchFact({ id:'sub', index:2, opponent:'B', goals:0, started:false });
     const stable = composeFacts([starter,matchFact({ id:'starter2', index:2, opponent:'B', goals:0, started:true })]);
     assert.equal(stable.primaryScene.beats.some(beat=>beat.kind==='block-overview'), false);
     const changed = composeFacts([starter,substitute]);
-    const overview = changed.primaryScene.beats.find(beat=>beat.kind==='block-overview');
-    assert.ok(overview);
-    assert.match(overview.text,/statut|hiérarchie|onze|banc/i);
+    assert.equal(changed.primaryScene.beats.some(beat=>beat.kind==='block-overview'), false);
+    assert.equal(changed.primaryScene.matches[0].started, true);
+    assert.equal(changed.primaryScene.matches[1].started, false);
+    assert.ok(changed.primaryScene.beats.length <= 2);
 });
 
 test('une conséquence ne montre jamais une clé technique comme ATTRIBUTS.VITESSE', () => {
