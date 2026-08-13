@@ -18,9 +18,9 @@ test('le coup de sifflet final ne fabrique plus de buts absents du live',()=>{
   const result=InteractiveMatchController.advanceInteractiveMatch(st,session,{});
   assert.equal(result.session.stage,'full_time_sequence');
   assert.deepEqual(result.session.score,{home:2,away:1});
-  assert.deepEqual(result.result.score,{home:2,away:1});
-  assert.equal(result.result.teamGoals,2);
-  assert.equal(result.result.opponentGoals,1);
+  assert.deepEqual(result.session.result.score,{home:2,away:1});
+  assert.equal(result.session.result.teamGoals,2);
+  assert.equal(result.session.result.opponentGoals,1);
  }finally{Math.random=oldRandom;}
 });
 
@@ -34,7 +34,7 @@ test('le contrôleur ne s’attribue plus aléatoirement buts et passes au momen
  const oldRandom=Math.random;Math.random=()=>0.99;
  try{
   const result=InteractiveMatchController.advanceInteractiveMatch(st,session,{});
-  assert.equal(result.result.goals,0);
-  assert.equal(result.result.assists,0);
+  assert.equal(result.session.result.goals,0);
+  assert.equal(result.session.result.assists,0);
  }finally{Math.random=oldRandom;}
 });
