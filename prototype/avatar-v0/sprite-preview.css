@@ -39,8 +39,7 @@
 .stage-label span { color: #e1b44d; font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; }
 
 .player {
-  --age-scale: 1;
-  transform: scale(var(--age-scale)) scaleX(var(--body-scale));
+  transform: scale(var(--body-scale));
   transition: transform .18s ease;
 }
 
@@ -104,6 +103,6 @@
 
 @media (max-width: 780px) {
   .player {
-    transform: scale(calc(.88 * var(--age-scale))) scaleX(var(--body-scale));
+    transform: scale(calc(.88 * var(--body-scale)));
   }
 }
