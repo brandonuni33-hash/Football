@@ -9,17 +9,21 @@
 <body>
   <main class="shell">
     <section class="intro">
-      <p class="eyebrow">STREET TO PRO · AVATAR V0</p>
-      <h1>Identité visuelle du joueur</h1>
+      <p class="eyebrow">STREET TO PRO · AVATAR / SPRITE V0</p>
+      <h1>Identité portrait → sprite 2D</h1>
       <p>
-        Ce prototype ne cherche pas encore à être beau. Il vérifie qu'une même fiche d'apparence peut produire
-        plusieurs joueurs reconnaissables avant de servir aux portraits manga et aux sprites 2D.
+        La direction artistique est verrouillée. Ce prototype vérifie désormais qu'une même identité canonique
+        reste immédiatement reconnaissable à différents âges puis dans une représentation 2D simplifiée.
       </p>
     </section>
 
     <section class="workspace">
       <div class="preview-panel">
-        <div class="stage" aria-label="Aperçu simplifié du joueur">
+        <div class="stage" aria-label="Aperçu simplifié du sprite 2D">
+          <div class="stage-label">
+            <strong id="sprite-name">Elias Morel</strong>
+            <span id="sprite-age">24 ans · prime</span>
+          </div>
           <div id="player-preview" class="player" data-hair="waves" data-facial-hair="none" data-accessory="none" data-sleeves="short">
             <div class="hair hair-back"></div>
             <div class="head">
@@ -30,7 +34,7 @@
             <div class="neck"></div>
             <div class="upper-body">
               <div class="arm arm-left"><span class="forearm"></span></div>
-              <div class="shirt"><span class="shirt-number">9</span></div>
+              <div class="shirt"><span class="shirt-number">8</span></div>
               <div class="arm arm-right"><span class="forearm"></span></div>
             </div>
             <div class="shorts"></div>
@@ -42,18 +46,23 @@
         </div>
 
         <div class="preset-block">
-          <h2>Test d'identités</h2>
-          <p>Ces trois profils servent à vérifier qu'on distingue bien des joueurs différents avec le même système.</p>
+          <h2>Cast STP verrouillé</h2>
+          <p>Un seul renderer, trois identités. Les boutons chargent directement la fiche canonique validée.</p>
           <div id="preset-controls" class="preset-controls"></div>
+
+          <h2 class="subheading">Âge de production</h2>
+          <p>Le vieillissement adapte la silhouette sans remplacer les choix visuels du joueur.</p>
+          <div id="age-controls" class="preset-controls"></div>
         </div>
       </div>
 
       <div class="editor-panel">
-        <h2>Créateur V0</h2>
+        <h2>Apparence courante</h2>
+        <p class="panel-copy">Les contrôles restent éditables pour tester qu'un changement cosmétique ne casse pas le renderer.</p>
         <div id="avatar-controls" class="controls"></div>
 
         <div class="data-block">
-          <h2>Identité canonique</h2>
+          <h2>Profil sprite dérivé</h2>
           <p id="avatar-signature" class="signature"></p>
           <pre id="avatar-json"></pre>
         </div>
