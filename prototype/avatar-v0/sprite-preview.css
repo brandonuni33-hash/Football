@@ -1,0 +1,109 @@
+.stage {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(225, 180, 77, .12), transparent 30%),
+    linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px),
+    #101318;
+  background-size: auto, 32px 32px, 32px 32px, auto;
+}
+
+.stage::after {
+  content: "STP 2D";
+  position: absolute;
+  right: 22px;
+  bottom: 18px;
+  color: rgba(225, 180, 77, .12);
+  font-weight: 900;
+  font-size: clamp(2rem, 7vw, 5rem);
+  letter-spacing: -.06em;
+  pointer-events: none;
+}
+
+.stage-label {
+  position: absolute;
+  z-index: 20;
+  top: 18px;
+  left: 18px;
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid rgba(225, 180, 77, .35);
+  border-radius: 12px;
+  background: rgba(8, 10, 13, .82);
+  backdrop-filter: blur(8px);
+}
+
+.stage-label strong { font-size: .92rem; }
+.stage-label span { color: #e1b44d; font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; }
+
+.player {
+  --age-scale: 1;
+  transform: scale(var(--age-scale)) scaleX(var(--body-scale));
+  transition: transform .18s ease;
+}
+
+.shirt,
+.arm {
+  background: #15191f;
+  border-color: #07090b;
+}
+
+.shirt {
+  box-shadow: inset 0 0 0 2px rgba(225, 180, 77, .18);
+}
+
+.shirt::before {
+  content: "STP";
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #e1b44d;
+  font-size: .62rem;
+  font-weight: 900;
+  letter-spacing: .06em;
+}
+
+.shirt-number {
+  color: #f1f1ee;
+  text-shadow: 0 2px 0 #050607;
+}
+
+.shorts {
+  background: #0f1216;
+}
+
+.preset-controls button.active {
+  border-color: #e1b44d;
+  background: #e1b44d;
+  color: #111317;
+  font-weight: 800;
+}
+
+.subheading {
+  margin-top: 22px;
+}
+
+.panel-copy {
+  margin: 0 0 18px;
+  color: #9fa6b1;
+  line-height: 1.5;
+  font-size: .88rem;
+}
+
+.player[data-age-stage="academy"] .head {
+  border-radius: 48% 48% 50% 50%;
+}
+
+.player[data-age-stage="veteran"] .face-detail::before,
+.player[data-age-stage="veteran"] .face-detail::after {
+  box-shadow: 0 7px 0 -2px rgba(40, 25, 20, .28);
+}
+
+@media (max-width: 780px) {
+  .player {
+    transform: scale(calc(.88 * var(--age-scale))) scaleX(var(--body-scale));
+  }
+}
