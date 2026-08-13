@@ -33,6 +33,8 @@ Cible officielle : **semi-réaliste manga**.
 
 Ratio de référence : **70–80 % crédible / 20–30 % manga**.
 
+Ce ratio concerne principalement **l'avatar standard, l'identité générale du joueur et sa représentation habituelle**. Les scènes émotionnelles importantes peuvent dépasser ponctuellement ce niveau de stylisation lorsque le récit le justifie : ombres plus graphiques, regard amplifié, composition plus dramatique ou contraste renforcé. La crédibilité physique du joueur reste néanmoins conservée.
+
 ## À faire
 
 - garder des silhouettes crédibles ;
@@ -53,7 +55,7 @@ Elles doivent évoquer le passage, la pression, l'ascension, la solitude, le rê
 - effets manga sur chaque action ;
 - interruptions de match uniquement décoratives ;
 - héros caricaturaux ;
-- coiffures de base exagérées ;
+- présenter des coiffures irréalistes comme norme de base ;
 - visages trop gacha ou jeu de combat ;
 - fonds surchargés en couleurs vives ;
 - marketing visuellement éloigné du jeu ;
@@ -87,6 +89,8 @@ Le marketing peut être plus dynamique, stylisé et iconique, mais doit rester f
 
 **Montrer STP plus intense, jamais différent.**
 
+**Le marketing peut amplifier l'intensité, jamais modifier l'identité visuelle.**
+
 ## Rareté des scènes manga fortes
 
 Usage pertinent : premier match important, humiliation, blessure sérieuse, grand choix de carrière, signature importante, rivalité forte, refus/mise à l'écart, montée en pro, grande finale, sélection, fin de carrière.
@@ -100,6 +104,33 @@ Le créateur peut être légèrement plus manga que le reste du jeu car il porte
 Il doit donner envie de créer son personnage, rendre les personnalisations évidentes, montrer le lien entre portrait manga et sprite 2D, et rester premium et lisible.
 
 Il ne doit pas dériver vers un anime de collection ni présenter les looks extravagants comme norme de base.
+
+## Évolution visuelle avec l'âge
+
+Objectif : faire sentir qu'une carrière traverse réellement la vie d'un footballeur sans perdre l'identité du personnage.
+
+**L'âge transforme le joueur. Il ne remplace jamais son identité.**
+
+Étapes de référence :
+
+- **14–16 ans — adolescent** : visage légèrement plus rond, traits plus doux, corps moins développé, pilosité limitée ;
+- **17–20 ans — jeune joueur** : mâchoire qui se dessine, silhouette plus athlétique, visage encore jeune ;
+- **21–27 ans — pleine maturité** : version de référence adulte de l'avatar ;
+- **28–33 ans — joueur expérimenté** : traits légèrement plus affirmés et barbe potentiellement plus dense ;
+- **34 ans et + — vétéran** : quelques marques d'expression et une maturité plus visible, sans vieillissement caricatural.
+
+Le vieillissement peut agir automatiquement sur la maturité du visage, la mâchoire, le développement corporel, la densité potentielle de barbe, les rides d'expression tardives et certaines postures de portrait.
+
+Il ne doit pas remplacer automatiquement la coiffure, la couleur de cheveux, les tatouages, les accessoires ou le style personnel choisis par le joueur.
+
+Le **portrait manga** porte l'essentiel du passage du temps. Le **sprite 2D** ne reprend que les indices d'âge nécessaires à la cohérence et à la reconnaissance.
+
+Le système de données doit séparer :
+
+- `appearance` : identité et cosmétiques stables ;
+- `ageAppearance` : âge courant et stade visuel dérivé.
+
+Cette séparation doit permettre d'afficher le même joueur à 15, 20, 27, 33 ou 36 ans tout en le reconnaissant immédiatement.
 
 ## Test de cohérence STP
 
