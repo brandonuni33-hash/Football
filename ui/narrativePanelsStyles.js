@@ -14,7 +14,7 @@ export function installNarrativePanelsStyles() {
         .stp-narrative-panels{
             position:relative;
             display:grid;
-            grid-template-rows:repeat(3,minmax(0,1fr));
+            grid-template-rows:repeat(var(--stp-panel-count,3),minmax(0,1fr));
             width:100%;
             height:100dvh;
             min-height:560px;
