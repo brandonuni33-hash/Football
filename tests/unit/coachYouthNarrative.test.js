@@ -8,7 +8,8 @@ function makeState(player = {}) {
         social: { formativeCoach:'Coach Martin', youthClubName:'Club Formation', coachData:{ name:'Coach Martin', relation:52, opinion:'Neutre', hasLeftClub:false, seasonsTogether:1, youthPhase:'observing', youthInteractionCount:0 } },
         career: { seed:'coach-youth-seed' },
         calendar: { currentSeasonYear:2026, currentMonth:9 },
-        careerMemory: []
+        careerMemory: [],
+        consequences: []
     };
 }
 
