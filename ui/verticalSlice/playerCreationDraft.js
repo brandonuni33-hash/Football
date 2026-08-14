@@ -4,12 +4,14 @@
 
 export const VERTICAL_SLICE_START_AGE = 14;
 export const VERTICAL_SLICE_RAISED_IN_COUNTRY = 'France';
+export const PREFERRED_FOOTS = Object.freeze(['RIGHT', 'LEFT']);
 
 export const CREATION_STEPS = Object.freeze([
     'identity',
     'appearance',
     'body',
     'position',
+    'preferredFoot',
     'nationalities',
     'childhoodCountry'
 ]);
@@ -22,6 +24,7 @@ export function createPlayerCreationDraft(seed = {}) {
         height: Number(seed.height) || 168,
         weight: Number(seed.weight) || 56,
         position: seed.position ?? null,
+        preferredFoot: seed.preferredFoot ?? null,
         primaryNationality: seed.primaryNationality ?? seed.nationality ?? null,
         secondaryNationality: seed.secondaryNationality ?? null,
         raisedInCountry: seed.raisedInCountry ?? VERTICAL_SLICE_RAISED_IN_COUNTRY,
@@ -41,6 +44,7 @@ export function validatePlayerCreationDraft(draft = {}) {
     if (!Number.isFinite(weight) || weight < 30 || weight > 110) errors.weight = 'Poids invalide.';
 
     if (!draft.position) errors.position = 'Poste requis.';
+    if (!PREFERRED_FOOTS.includes(draft.preferredFoot)) errors.preferredFoot = 'Pied fort requis.';
     if (!draft.primaryNationality) errors.primaryNationality = 'Nationalité principale requise.';
     if (draft.secondaryNationality && draft.secondaryNationality === draft.primaryNationality) {
         errors.secondaryNationality = 'La seconde nationalité doit être différente.';
@@ -69,6 +73,7 @@ export function toCareerCreationIdentity(draft = {}) {
         height: Number(draft.height),
         weight: Number(draft.weight),
         position: draft.position,
+        preferredFoot: draft.preferredFoot,
         nationality: draft.primaryNationality,
         primaryNationality: draft.primaryNationality,
         secondaryNationality: draft.secondaryNationality || null,
