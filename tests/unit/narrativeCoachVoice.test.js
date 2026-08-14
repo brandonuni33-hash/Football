@@ -28,7 +28,7 @@ function baseState(overrides = {}) {
     };
 }
 
-test('une relation forte avec le coach formateur donne un poids personnel à la scène', () => {
+test('une relation forte avec le coach formateur reste personnelle sans devenir un paragraphe', () => {
     const state = baseState({
         player: { morale: 27, stats: { matchesPlayed: 0, relationCoach: 88 } },
         social: { coachData: { name: 'Marc Delmas', relation: 88, opinion: 'Fier', hasLeftClub: false } }
@@ -49,9 +49,8 @@ test('une relation forte avec le coach formateur donne un poids personnel à la 
     assert.equal(output.primaryScene.type, 'world.update');
     assert.equal(output.primaryScene.title, 'Marc Delmas veut te parler');
     const text = output.primaryScene.beats[0].text;
-    assert.match(text, /Après la séance/);
-    assert.match(text, /n’est plus seulement un entraîneur/);
-    assert.match(text, /confiance|raccrocher|travaille déjà|rendez-vous/i);
+    assert.equal(text, 'Après la séance, Marc Delmas te demande de rester quelques minutes.');
+    assert.doesNotMatch(text, /n’est plus seulement|fatigue rend|autre poids|confiance s’est construite/i);
     assert.equal(output.journalEntries[0].text, text);
     assert.deepEqual(state.notifications, notificationsBefore);
 });
@@ -101,8 +100,10 @@ test('un choix coach enrichit la mémoire canonique sans créer de doublon', () 
     assert.equal(memory.relationIntent, 10);
 });
 
-test('un futur échange coach peut rappeler une réponse réellement choisie', () => {
-    const state = baseState();
+test('un souvenir coach reste discret en formation mais peut revenir plus tard chez les pros', () => {
+    const state = baseState({
+        player: { age: 20, careerStage: 'professional', squadStatus: 'first team', stats: { matchesPlayed: 12, relationCoach: 50 } }
+    });
     CoachSystem.resolveCoachChoice(state, 0, {
         id: 'coach-first-friction',
         title: 'Premier désaccord',
@@ -129,7 +130,8 @@ test('un futur échange coach peut rappeler une réponse réellement choisie', (
 
     const beat = output.primaryScene.beats[0];
     assert.equal(beat.callbackMemoryId, state.careerMemory[0].id);
-    assert.match(beat.text, /pas votre premier moment de tension/);
+    assert.match(beat.text, /première tension/i);
     assert.match(beat.text, /Lui rejeter la faute/);
-    assert.match(beat.text, /n’a pas oublié/);
+    assert.match(beat.text, /n’a pas oublié/i);
+    assert.doesNotMatch(beat.text, /votre premier|votre précédente/i);
 });
