@@ -25,6 +25,11 @@ function learnedTokens(state={}){
 
 function hasToken(tokens,words=[]){return words.some(word=>tokens.some(token=>token.includes(norm(word))));}
 function textOf(context={}){return norm(`${context.title||''} ${context.description||''} ${(context.choices||[]).map(c=>c.text||'').join(' ')}`);}
+function isProtectedSetPiece(context={}){
+  const id=norm(context.id||context.opportunityId);
+  const text=textOf(context);
+  return context.isPenalty===true||context.shootout===true||['OCC-014','OCC-040'].includes(id)||/\bPENALTY\b|TIRS? AU BUT|POINT DE PENALTY/.test(text);
+}
 
 const ORIGIN_CHOICES={
   FUTSAL:[
@@ -72,6 +77,7 @@ function trainingCandidate(state,context){
 }
 
 export function selectSpecialFourthChoice(state={},context={}){
+  if(isProtectedSetPiece(context))return null;
   const origin=originCandidate(state,context);
   const trained=trainingCandidate(state,context);
   if(!origin&&!trained)return null;
@@ -83,7 +89,7 @@ export function selectSpecialFourthChoice(state={},context={}){
 
 export function appendSpecialFourthChoice(baseChoices=[],state={},context={}){
   const choices=arr(baseChoices).map(item=>({...item}));
-  if(choices.length!==3)return choices;
+  if(choices.length!==3||isProtectedSetPiece({...context,choices}))return choices;
   const special=selectSpecialFourthChoice(state,{...context,choices});
   if(!special)return choices;
   if(choices.some(c=>norm(c.text)===norm(special.text)))return choices;
