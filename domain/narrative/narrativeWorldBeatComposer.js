@@ -12,6 +12,12 @@ function sentence(text) {
 }
 
 function seedFor(context = {}) { return context.seed || context?.player?.id || 'career'; }
+function youthCoachContext(context = {}) {
+    const player = context.player || {}, age = Number(player.age || 0);
+    const labels = [player.careerStage,player.stage,player.squadStatus,player.contract?.type].filter(Boolean).join(' ').toLowerCase();
+    if (/professional|professionnel|\bpro\b|first.?team|premi[eè]re.?[eé]quipe|\bsenior\b/.test(labels)) return false;
+    return (age > 0 && age <= 18) || /youth|jeune|academy|acad[eé]mie|formation|u\s?1[5-9]/.test(labels);
+}
 
 function coachRelationshipText(coach = {}) {
     const relation = n(coach.relation);
@@ -43,6 +49,18 @@ function coachObservation(fact, evaluation, context, memory) {
     const payload = fact.payload || {};
     const coach = context?.relationships?.coach || {};
     const callback = memory?.callbacksByFactId?.[fact.id] || null;
+    const formative = youthCoachContext(context);
+    // En formation, l'événement du coach doit rester un moment humain très court.
+    // Les souvenirs, jauges et états physiques restent mémorisés mais ne viennent
+    // plus transformer une phrase simple en paragraphe de remplissage.
+    if (formative) {
+        return {
+            id:stableNarrativeId('observation',fact.id),key:`${fact.id}:world-observation`,kind:'world-observation',category:'coach',
+            title:payload.title || (coach.name ? `${coach.name} vient te voir` : 'Le coach vient te voir'),
+            text:sentence(payload.text),importance:evaluation?.importance || payload.importance || 'normal',factId:fact.id,
+            occurredAt:fact.occurredAt,delay:650,callbackMemoryId:null,emphasis:false,shortForm:true
+        };
+    }
     const parts = [sentence(payload.text)];
     const relationship = coachRelationshipText(coach);
     if (callback?.memoryType === 'coach-choice' && callback.text) parts.push(callback.text);
@@ -148,7 +166,8 @@ export class NarrativeWorldBeatComposer {
             primaryScene: {
                 id: stableNarrativeId('narrative_world', passiveBeats.map(item => item.factId)), type: 'world.update', importance: first.importance, tone: 'reflection',
                 title: first.category === 'coach' ? first.title : first.category === 'family' ? first.title : 'Le monde continue de bouger',
-                subtitle: first.category === 'coach' ? 'Un échange qui peut compter dans la relation'
+                subtitle: first.shortForm ? 'Le lien se construit petit à petit'
+                    : first.category === 'coach' ? 'Un échange qui peut compter dans la relation'
                     : first.category === 'family' ? 'Il y a aussi une vie loin du terrain'
                     : `${worldFacts.length} évolution${worldFacts.length > 1 ? 's' : ''} autour de ta carrière`,
                 matches: [], beats: passiveBeats, sourceFactIds: ranked.map(fact => fact.id),
