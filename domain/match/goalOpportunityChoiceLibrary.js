@@ -108,11 +108,15 @@ export function selectGoalOpportunity({
 
 export function buildGoalOpportunityDecision(opportunity, { minute = 0 } = {}) {
   if (!opportunity) return null;
+  const isPenalty = opportunity.id === 'OCC-014' || opportunity.id === 'OCC-040';
   return {
     opportunityId: opportunity.id,
     title: `${minute}' · ${opportunity.title}`,
     description: opportunity.description,
-    choices: opportunity.choices.map(item => ({ ...item, opportunityId: opportunity.id }))
+    choices: opportunity.choices.map(item => ({ ...item, opportunityId: opportunity.id })),
+    isSetPiece:Boolean(opportunity.setPiece || opportunity.shootoutOnly),
+    isPenalty,
+    shootoutOnly:Boolean(opportunity.shootoutOnly)
   };
 }
 
