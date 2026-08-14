@@ -93,9 +93,10 @@ function choiceIntent(choice={}){
 }
 export function choicePresentation(choice={},tier='adult'){
     const intent=choiceIntent(choice),canonical=intent.raw,gesture=String(choice.gesture||'').trim();
-    if(tier==='u15')return{...choice,displayTitle:intent.title,displaySubtitle:intent.subtitle,displayIcon:intent.icon,displayTone:intent.tone};
-    if(tier==='youth')return{...choice,displayTitle:intent.title,displaySubtitle:gesture&&gesture!==canonical?gesture:intent.subtitle,displayIcon:intent.icon,displayTone:intent.tone};
-    return{...choice,displayTitle:canonical,displaySubtitle:gesture&&gesture!==canonical?gesture:intent.subtitle,displayIcon:intent.icon,displayTone:intent.tone};
+    const authoredTitle=String(choice.displayTitle||'').trim(),authoredSubtitle=String(choice.displaySubtitle||'').trim(),authoredIcon=String(choice.displayIcon||'').trim(),authoredTone=String(choice.displayTone||'').trim();
+    const fallbackTitle=tier==='adult'?canonical:intent.title;
+    const fallbackSubtitle=tier==='u15'?intent.subtitle:(gesture&&gesture!==canonical?gesture:intent.subtitle);
+    return{...choice,displayTitle:authoredTitle||fallbackTitle,displaySubtitle:authoredSubtitle||fallbackSubtitle,displayIcon:authoredIcon||intent.icon,displayTone:authoredTone||intent.tone};
 }
 
 export function ageAppropriateMatchPresentation(step={},state={}){
