@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('camera prototype loads and exposes the four test states', async ({ page }) => {
+test('camera prototype exposes player-facing camera settings', async ({ page }) => {
   await page.goto('/camera-test/');
 
   await expect(page).toHaveTitle('STP — Camera Test');
@@ -11,12 +11,20 @@ test('camera prototype loads and exposes the four test states', async ({ page })
     await expect(page.getByRole('button', { name: label })).toBeVisible();
   }
 
-  await page.getByRole('button', { name: 'DANGER' }).click();
-  await expect(page.locator('#stateLabel')).toHaveText('DANGER');
+  await page.getByRole('button', { name: 'CAMÉRA' }).click();
+  await expect(page.locator('#settings')).toHaveClass(/open/);
+  await expect(page.locator('#sensitivity')).toHaveValue('50');
+  await expect(page.getByRole('button', { name: 'Standard' })).toHaveClass(/active/);
 
-  await page.getByRole('button', { name: 'RÉGLAGES' }).click();
-  await expect(page.locator('#debug')).toHaveClass(/open/);
-  await expect(page.locator('#zoomAdj')).toHaveValue('1');
+  await page.locator('#sensitivity').fill('75');
+  await expect(page.locator('#sensValue')).toHaveText('75 %');
+
+  await page.getByRole('button', { name: 'Large' }).click();
+  await expect(page.getByRole('button', { name: 'Large' })).toHaveClass(/active/);
+
+  await page.getByRole('button', { name: 'Réinitialiser les réglages STP' }).click();
+  await expect(page.locator('#sensitivity')).toHaveValue('50');
+  await expect(page.getByRole('button', { name: 'Standard' })).toHaveClass(/active/);
 
   await page.getByRole('button', { name: 'FRAPPE' }).click();
   await expect(page.locator('#stateLabel')).toHaveText('SHOT');
