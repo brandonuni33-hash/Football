@@ -78,12 +78,12 @@ test('ouvrir Mercato sans offre ne fabrique jamais une fausse offre sans club', 
     return { emptyHtml, malformedHtml, realHtml };
   });
 
-  expect(result.emptyHtml).toContain('Aucune offre officielle');
+  expect(result.emptyHtml).toContain('Rien à décider pour l’instant');
   expect(result.emptyHtml).not.toContain('Nouveau club');
-  expect(result.malformedHtml).toContain('Aucune offre officielle');
+  expect(result.malformedHtml).toContain('Rien à décider pour l’instant');
   expect(result.malformedHtml).not.toContain('Nouveau club');
   expect(result.realHtml).toContain('FC Exemple');
-  expect(result.realHtml).toContain('Accepter');
+  expect(result.realHtml).toContain('data-transfer-action="accept"');
 });
 
 test('16 ans : un club observe puis crée un intérêt avant toute offre officielle', async ({ page }) => {
