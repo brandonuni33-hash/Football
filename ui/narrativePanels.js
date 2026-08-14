@@ -141,6 +141,7 @@ export class NarrativePanels {
         const shell = document.createElement('section');
         shell.className = 'stp-narrative-panels';
         shell.dataset.sceneId = this.scene.id;
+        shell.style.setProperty('--stp-panel-count', String(this.scene.panels.length));
         if (this.scene.label) shell.setAttribute('aria-label', this.scene.label);
 
         this.panelElements = this.scene.panels.map((panel, index) => {
