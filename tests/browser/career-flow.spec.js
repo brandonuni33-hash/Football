@@ -60,7 +60,7 @@ async function createDeterministicCareer(page, { fixtures = null, age = 18 } = {
     byMonth[8].matches = matchFixtures;
 
     state.calendar.seasonSchedule = {
-      version: 4,
+      version: 5,
       seasonYear: year,
       seasonLabel: `${year}-${year + 1}`,
       generatedForAge: playerAge,
