@@ -149,7 +149,8 @@ test('la narration distingue les matchs de l équipe des apparitions du joueur',
     };
   });
 
-  expect(result.subtitle).toContain("2 matchs d'équipe");
+  expect(result.subtitle).toContain('1 apparition');
+  expect(result.subtitle).not.toContain("matchs d'équipe");
   expect(result.appearances).toBe(1);
   expect(result.firstLabel).toContain('banc');
   expect(result.secondLabel).toContain('Entré en jeu');
