@@ -6,6 +6,11 @@ import { InteractiveMatchRuntime } from './interactiveMatchRuntime.js';
 import { tieBreakerRules, resolveKnockoutTie } from './knockoutMatchPolicy.js';
 import { GOAL_OPPORTUNITY_CHOICES } from './goalOpportunityChoiceLibrary.js';
 import { appendSpecialFourthChoice } from './specialFourthChoiceSystem.js';
+import { enrichPositionPlayDecision } from './positionPlayDecisionSystem.js';
+import { applyProfessionalMatchRhythm } from './professionalMatchRhythmSystem.js';
+import { exposeOpponentScoreChange } from './opponentGoalPresentationSystem.js';
+import { enrichMatchFlowStep } from './matchFlowExperienceSystem.js';
+import { enrichYouthMatchResult } from './youthMatchExperienceSystem.js';
 import { enrichProfessionalStep, enrichProfessionalOutcome, applyProfessionalResultMemory } from './proMatchExperienceSystem.js';
 
 const n = value => Number.isFinite(Number(value)) ? Number(value) : 0;
@@ -35,6 +40,13 @@ function enrichSpecialDecision(state,session,result){
     const decision=result?.decision?{...result.decision,choices}:session?.decision||null;
     return {...result,session,step,decision};
 }
+function enrichFlowExperience(state,session,result){
+    const s=result?.session||session;
+    if(!s)return result;
+    const step=enrichMatchFlowStep(state,s,result?.step||s.step);
+    if(step){s.step=step;return{...result,session:s,step};}
+    return result;
+}
 function enrichProfessionalExperience(state,session,result){
     const s=result?.session||session;
     if(!s)return result;
@@ -49,28 +61,33 @@ function enrichProfessionalExperience(state,session,result){
     return result;
 }
 
-export function startInteractiveMatch(state,scheduledMatch,matchIndex=0){return InteractiveMatchRuntime.startInteractiveMatch(state,scheduledMatch,matchIndex);}
+export function startInteractiveMatch(state,scheduledMatch,matchIndex=0){const session=InteractiveMatchRuntime.startInteractiveMatch(state,scheduledMatch,matchIndex);return applyProfessionalMatchRhythm(state,session);}
 export function advanceInteractiveMatch(state,activeSession,action={}){
     const session=activeSession;
-    if(session?.knockoutRuntimeStage==='extra_time_intro'){const resolution=session.knockoutResolution;setScore(session,resolution.teamGoals,resolution.opponentGoals);session.knockoutRuntimeStage='extra_time_end';session.step=extraTimeEnd(session,resolution);return enrichProfessionalExperience(state,session,{finished:false,session,step:session.step,decision:null,result:session.result});}
+    if(session?.knockoutRuntimeStage==='extra_time_intro'){const resolution=session.knockoutResolution;setScore(session,resolution.teamGoals,resolution.opponentGoals);session.knockoutRuntimeStage='extra_time_end';session.step=extraTimeEnd(session,resolution);return enrichYouthMatchResult(state,session,enrichProfessionalExperience(state,session,{finished:false,session,step:session.step,decision:null,result:session.result}));}
     if(session?.knockoutRuntimeStage==='extra_time_end'){
         const resolution=session.knockoutResolution;
         if(resolution.wentToPenalties){
-            if(playerStillOnPitch(session)){session.knockoutRuntimeStage='penalty_shootout';session.step=shootoutDecision(session);return enrichProfessionalExperience(state,session,{finished:false,session,step:session.step,decision:{choices:session.step.choices,minute:120},result:session.result});}
-            session.knockoutRuntimeStage='penalty_shootout_watch';session.step=shootoutWatchingStep(session);return enrichProfessionalExperience(state,session,{finished:false,session,step:session.step,decision:null,result:session.result});
+            if(playerStillOnPitch(session)){session.knockoutRuntimeStage='penalty_shootout';session.step=shootoutDecision(session);return enrichYouthMatchResult(state,session,enrichProfessionalExperience(state,session,{finished:false,session,step:session.step,decision:{choices:session.step.choices,minute:120},result:session.result}));}
+            session.knockoutRuntimeStage='penalty_shootout_watch';session.step=shootoutWatchingStep(session);return enrichYouthMatchResult(state,session,enrichProfessionalExperience(state,session,{finished:false,session,step:session.step,decision:null,result:session.result}));
         }
-        applyResolution(session,resolution);session.knockoutRuntimeStage='resume';session.step=session.knockoutResumeStep;return enrichProfessionalExperience(state,session,{finished:false,session,step:session.step,decision:null,result:session.result});
+        applyResolution(session,resolution);session.knockoutRuntimeStage='resume';session.step=session.knockoutResumeStep;return enrichYouthMatchResult(state,session,enrichProfessionalExperience(state,session,{finished:false,session,step:session.step,decision:null,result:session.result}));
     }
-    if(session?.knockoutRuntimeStage==='penalty_shootout_watch'){session.knockoutRuntimeStage='penalty_result';session.step=shootoutResultStep(session,session.knockoutResolution,null);return enrichProfessionalExperience(state,session,{finished:false,session,step:session.step,decision:null,result:session.result});}
+    if(session?.knockoutRuntimeStage==='penalty_shootout_watch'){session.knockoutRuntimeStage='penalty_result';session.step=shootoutResultStep(session,session.knockoutResolution,null);return enrichYouthMatchResult(state,session,enrichProfessionalExperience(state,session,{finished:false,session,step:session.step,decision:null,result:session.result}));}
     if(session?.knockoutRuntimeStage==='penalty_shootout'){
-        const index=typeof action==='number'?action:action?.choiceIndex;if(!Number.isInteger(Number(index)))return{finished:false,session,step:session.step,decision:{choices:session.step.choices,minute:120},result:session.result};const choice=session.step.choices[Number(index)];if(!choice)return{finished:false,session,step:session.step,decision:{choices:session.step.choices,minute:120},result:session.result};const success=playerKickSuccess(state,choice,session),resolution={...session.knockoutResolution,penaltyScore:{...session.knockoutResolution.penaltyScore}};if(success&&resolution.shootoutWinner==='team'&&resolution.penaltyScore.team<3)resolution.penaltyScore.team=3;session.playerShootoutKick={choice:choice.text,success};session.knockoutResolution=resolution;session.knockoutRuntimeStage='penalty_result';session.step=shootoutResultStep(session,resolution,success);return enrichProfessionalExperience(state,session,{finished:false,session,step:session.step,decision:null,result:session.result});
+        const index=typeof action==='number'?action:action?.choiceIndex;if(!Number.isInteger(Number(index)))return{finished:false,session,step:session.step,decision:{choices:session.step.choices,minute:120},result:session.result};const choice=session.step.choices[Number(index)];if(!choice)return{finished:false,session,step:session.step,decision:{choices:session.step.choices,minute:120},result:session.result};const success=playerKickSuccess(state,choice,session),resolution={...session.knockoutResolution,penaltyScore:{...session.knockoutResolution.penaltyScore}};if(success&&resolution.shootoutWinner==='team'&&resolution.penaltyScore.team<3)resolution.penaltyScore.team=3;session.playerShootoutKick={choice:choice.text,success};session.knockoutResolution=resolution;session.knockoutRuntimeStage='penalty_result';session.step=shootoutResultStep(session,resolution,success);return enrichYouthMatchResult(state,session,enrichProfessionalExperience(state,session,{finished:false,session,step:session.step,decision:null,result:session.result}));
     }
-    if(session?.knockoutRuntimeStage==='penalty_result'){applyResolution(session,session.knockoutResolution);session.knockoutRuntimeStage='resume';session.step=session.knockoutResumeStep;return enrichProfessionalExperience(state,session,{finished:false,session,step:session.step,decision:null,result:session.result});}
+    if(session?.knockoutRuntimeStage==='penalty_result'){applyResolution(session,session.knockoutResolution);session.knockoutRuntimeStage='resume';session.step=session.knockoutResumeStep;return enrichYouthMatchResult(state,session,enrichProfessionalExperience(state,session,{finished:false,session,step:session.step,decision:null,result:session.result}));}
     if(session?.knockoutRuntimeStage==='resume')session.knockoutRuntimeStage='done';
+    const opponentBefore=oppScore(session);
     const runtime=InteractiveMatchRuntime.advanceInteractiveMatch(state,session,action);
-    const knockout=maybeEnterKnockout(runtime.session||session,runtime);
-    const pro=enrichProfessionalExperience(state,knockout.session||session,knockout);
-    return enrichSpecialDecision(state,pro.session||session,pro);
+    const withOpponentGoal=exposeOpponentScoreChange(runtime.session||session,runtime,opponentBefore);
+    const knockout=maybeEnterKnockout(withOpponentGoal.session||session,withOpponentGoal);
+    const flow=enrichFlowExperience(state,knockout.session||session,knockout);
+    const positioned=enrichPositionPlayDecision(state,flow.session||session,flow);
+    const pro=enrichProfessionalExperience(state,positioned.session||session,positioned);
+    const special=enrichSpecialDecision(state,pro.session||session,pro);
+    return enrichYouthMatchResult(state,special.session||session,special);
 }
 export function resolveInteractiveDecision(state,session,choiceIndex){return advanceInteractiveMatch(state,session,{choiceIndex});}
 export function commitInteractiveResult(state,result){return InteractiveMatchRuntime.commitInteractiveResult(state,result);}

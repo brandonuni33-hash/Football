@@ -48,6 +48,13 @@ test('un geste appris persistant peut débloquer le choix même si le focus actu
   assert.match(`${choices[3].text} ${choices[3].gesture}`,/contrôle/i);
 });
 
+test('un penalty reste strictement à trois choix dédiés',()=>{
+  const penalty=[{text:'Frapper fort plein axe'},{text:'Placer dans un coin'},{text:'Piquer doucement au milieu'}];
+  const choices=appendSpecialFourthChoice(penalty,{player:{origin:'FUTSAL'},trainingFocus:'FINITION'},{id:'OCC-014',seed:'penalty',description:'Le ballon est posé sur le point de penalty.'});
+  assert.equal(choices.length,3);
+  assert.equal(choices.some(choice=>choice.specialFourthChoice),false);
+});
+
 test('le système ne transforme jamais cinq choix existants en six',()=>{
   const five=[...base,{text:'Quatre'},{text:'Cinq'}];
   const choices=appendSpecialFourthChoice(five,{player:{origin:'FUTSAL'}},{id:'five',seed:'five',description:'Petit espace.'});

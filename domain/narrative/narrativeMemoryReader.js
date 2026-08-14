@@ -36,12 +36,12 @@ function coachCallbackText(memory) {
     const intent = Number(memory?.relationIntent || 0);
     const opinion = String(memory?.opinion || '').toLowerCase();
     if (intent <= -8 || opinion.includes('fâch') || opinion.includes('déçu')) {
-        return `Ce n’est pas votre premier moment de tension. ${coachName} n’a pas oublié la manière dont tu avais répondu la dernière fois${choice ? ` — « ${choice} »` : ''}.`;
+        return `Ce n’est pas la première tension avec ${coachName}. Il n’a pas oublié ta réponse de la dernière fois${choice ? ` — « ${choice} »` : ''}.`;
     }
     if (intent >= 8 || opinion.includes('fier')) {
-        return `Il y a déjà eu un moment où tu as choisi de faire confiance à ${coachName}${choice ? ` — « ${choice} »` : ''}. Ce souvenir donne un autre poids à cette discussion.`;
+        return `Tu as déjà choisi de faire confiance à ${coachName}${choice ? ` — « ${choice} »` : ''}. Il s’en souvient.`;
     }
-    return `Ce nouvel échange ne part pas de zéro. ${coachName} garde en mémoire votre précédente discussion${choice ? ` et la réponse que tu avais choisie : « ${choice} »` : ''}.`;
+    return `${coachName} se souvient de votre échange précédent${choice ? ` et de ta réponse : « ${choice} »` : ''}.`;
 }
 
 function callbackText(memory) {

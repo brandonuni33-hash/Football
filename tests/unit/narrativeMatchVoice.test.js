@@ -29,7 +29,7 @@ function state(overrides = {}) {
             }
         },
         calendar: { currentSeasonYear: 2026, currentMonth: 8 },
-        career: { seasonHistory: overrides.seasonHistory || [] },
+        career: { seasonHistory: overrides.seasonHistory || [], stage: overrides.careerStage || null },
         careerMemory: [],
         notifications: { signals: [], threads: [], unreadCount: 0 }
     };
@@ -62,28 +62,45 @@ function mindsetBeat(output) {
     return output.primaryScene?.beats?.find(beat => beat.kind === 'player-mindset') || null;
 }
 
-test('le premier but de carrière reçoit une réaction intime sans être confondu avec un but ordinaire', () => {
-    const current = state({ player: { stats: { matchesPlayed: 1, goals: 1, assists: 0, averageRating: 8.1 } } });
+test('le premier but senior reçoit une réaction intime sans être confondu avec un but ordinaire', () => {
+    const current = state({ player: { age: 22, careerStage: 'professional', stats: { matchesPlayed: 1, goals: 1, assists: 0, averageRating: 8.1 } } });
     const output = new NarrativeEngine().processMatchEnd({
         state: current,
-        report: report({ teamGoals: 1, opponentGoals: 0, rating: 8.1, goals: 1 })
+        report: report({ competitionName: 'Ligue 1', teamGoals: 1, opponentGoals: 0, rating: 8.1, goals: 1 })
     });
 
     assert.equal(output.primaryScene.facts.firstCareerGoal, true);
-    assert.equal(output.primaryScene.title, 'Le premier restera à part');
+    assert.equal(output.primaryScene.facts.firstCareerGoalNarrated, true);
+    assert.equal(output.primaryScene.title, 'Un premier but à part');
     assert.match(mindsetBeat(output)?.text || '', /premier/i);
 });
 
-test('un but plus tard dans la saison ne peut pas être raconté comme le premier', () => {
-    const current = state({ player: { stats: { matchesPlayed: 4, goals: 3, assists: 0, averageRating: 7.3 } } });
+test('un premier but U15 reste un fait silencieux et ne devient pas un événement de carrière', () => {
+    const current = state({ player: { age: 15, careerStage: 'youth', squadStatus: 'U15', stats: { matchesPlayed: 1, goals: 1, assists: 0, averageRating: 8.1 } } });
     const output = new NarrativeEngine().processMatchEnd({
         state: current,
-        report: report({ teamGoals: 2, opponentGoals: 0, rating: 7.8, goals: 1 })
+        report: report({ competitionName: 'Championnat National U15', teamGoals: 1, opponentGoals: 0, rating: 8.1, goals: 1, started: false, minutesPlayed: 18 })
+    });
+
+    assert.equal(output.primaryScene.facts.firstCareerGoal, true);
+    assert.equal(output.primaryScene.facts.firstCareerGoalNarrated, false);
+    assert.equal(output.primaryScene.title, 'Match terminé');
+    assert.equal(output.primaryScene.beats.length, 2);
+    assert.doesNotMatch(output.primaryScene.beats.map(beat => beat.text).join(' '), /premier but|premier restera|carrière/i);
+    assert.match(output.primaryScene.beats[0].text, /^Victoire 1-0\.$/);
+    assert.match(output.primaryScene.beats[1].text, /Entré pour 18 minutes, tu signes un but\./);
+});
+
+test('un but plus tard dans la saison ne peut pas être raconté comme le premier', () => {
+    const current = state({ player: { age: 22, careerStage: 'professional', stats: { matchesPlayed: 4, goals: 3, assists: 0, averageRating: 7.3 } } });
+    const output = new NarrativeEngine().processMatchEnd({
+        state: current,
+        report: report({ competitionName: 'Ligue 1', teamGoals: 2, opponentGoals: 0, rating: 7.8, goals: 1 })
     });
 
     assert.equal(output.primaryScene.facts.firstCareerGoal, false);
-    assert.notEqual(output.primaryScene.title, 'Le premier restera à part');
-    assert.doesNotMatch(mindsetBeat(output)?.text || '', /premier but de ta carrière/i);
+    assert.notEqual(output.primaryScene.title, 'Un premier but à part');
+    assert.doesNotMatch(mindsetBeat(output)?.text || '', /premier but/i);
 });
 
 test('un ancien but de carrière empêche toute fausse narration de premier but même après une longue carrière', () => {
@@ -92,71 +109,74 @@ test('un ancien but de carrière empêche toute fausse narration de premier but 
         goals: index === 0 ? 1 : 0
     }));
     const current = state({
-        player: { stats: { matchesPlayed: 1, goals: 1, assists: 0, averageRating: 7.6 } },
+        player: { age: 30, careerStage: 'professional', stats: { matchesPlayed: 1, goals: 1, assists: 0, averageRating: 7.6 } },
         seasonHistory
     });
     const output = new NarrativeEngine().processMatchEnd({
         state: current,
-        report: report({ teamGoals: 1, opponentGoals: 0, rating: 7.6, goals: 1 })
+        report: report({ competitionName: 'Ligue 1', teamGoals: 1, opponentGoals: 0, rating: 7.6, goals: 1 })
     });
 
     assert.equal(output.primaryScene.facts.firstCareerGoal, false);
-    assert.notEqual(output.primaryScene.title, 'Le premier restera à part');
+    assert.notEqual(output.primaryScene.title, 'Un premier but à part');
 });
 
-test('une grosse prestation dans une défaite garde une émotion contradictoire', () => {
-    const current = state({ player: { stats: { matchesPlayed: 5, goals: 2, assists: 1, averageRating: 7.2 } } });
+test('une grosse prestation dans une défaite garde une émotion contradictoire sans paragraphe', () => {
+    const current = state({ player: { age: 24, careerStage: 'professional', stats: { matchesPlayed: 5, goals: 2, assists: 1, averageRating: 7.2 } } });
     const output = new NarrativeEngine().processMatchEnd({
         state: current,
-        report: report({ result: 'loss', teamGoals: 1, opponentGoals: 2, rating: 8.1, goals: 1 })
+        report: report({ competitionName: 'Ligue 1', result: 'loss', teamGoals: 1, opponentGoals: 2, rating: 8.1, goals: 1 })
     });
 
     const text = mindsetBeat(output)?.text || '';
     assert.ok(text.length > 0);
-    assert.match(text, /défaite|résultat|consoler|frustration/i);
+    assert.match(text, /défaite|résultat/i);
+    assert.ok(output.primaryScene.beats.length <= 3);
 });
 
 test('une entrée décisive fait sentir la valeur des minutes données', () => {
-    const current = state({ player: { stats: { matchesPlayed: 6, goals: 2, assists: 2, averageRating: 7.0 } } });
+    const current = state({ player: { age: 23, careerStage: 'professional', stats: { matchesPlayed: 6, goals: 2, assists: 2, averageRating: 7.0 } } });
     const output = new NarrativeEngine().processMatchEnd({
         state: current,
-        report: report({ started: false, minutesPlayed: 24, rating: 7.6, assists: 1 })
+        report: report({ competitionName: 'Ligue 1', started: false, minutesPlayed: 24, rating: 7.6, assists: 1 })
     });
 
     const text = mindsetBeat(output)?.text || '';
     assert.ok(text.length > 0);
-    assert.match(text, /temps|minutes|entrée|ballon|hiérarchie/i);
+    assert.match(text, /temps|utilisé/i);
 });
 
 test('un mauvais match pendant une période de moral bas est traité sans mélodrame', () => {
     const current = state({
-        player: { morale: 26, stats: { matchesPlayed: 7, goals: 1, assists: 1, averageRating: 6.1 } }
+        player: { age: 23, careerStage: 'professional', morale: 26, stats: { matchesPlayed: 7, goals: 1, assists: 1, averageRating: 6.1 } }
     });
     const output = new NarrativeEngine().processMatchEnd({
         state: current,
-        report: report({ result: 'loss', teamGoals: 0, opponentGoals: 2, rating: 4.9 })
+        report: report({ competitionName: 'Ligue 1', result: 'loss', teamGoals: 0, opponentGoals: 2, rating: 4.9 })
     });
 
     const text = mindsetBeat(output)?.text || '';
     assert.ok(text.length > 0);
-    assert.match(text, /prochain|entraînement|confiance|erreurs|suite|vestiaire/i);
+    assert.match(text, /prochaine séance|prochain match/i);
 });
 
 test('un match ordinaire ne force aucune introspection', () => {
-    const current = state();
-    const output = new NarrativeEngine().processMatchEnd({ state: current, report: report() });
+    const current = state({ player: { age: 22, careerStage: 'professional' } });
+    const output = new NarrativeEngine().processMatchEnd({ state: current, report: report({ competitionName: 'Ligue 1' }) });
 
     assert.equal(mindsetBeat(output), null);
     assert.equal(output.primaryScene.beats.filter(beat => beat.kind === 'player-mindset').length, 0);
+    assert.ok(output.primaryScene.beats.length <= 3);
 });
 
 test('rester sur le banc dans une période difficile peut laisser une trace discrète', () => {
     const current = state({
-        player: { morale: 24, stats: { matchesPlayed: 2, goals: 0, assists: 0, averageRating: 6.0 } }
+        player: { age: 22, careerStage: 'professional', morale: 24, stats: { matchesPlayed: 2, goals: 0, assists: 0, averageRating: 6.0 } }
     });
     const output = new NarrativeEngine().processMatchEnd({
         state: current,
         report: report({
+            competitionName: 'Ligue 1',
             playerPlayed: false,
             started: false,
             appearance: 'bench',
@@ -169,5 +189,5 @@ test('rester sur le banc dans une période difficile peut laisser une trace disc
 
     const text = mindsetBeat(output)?.text || '';
     assert.ok(text.length > 0);
-    assert.match(text, /banc|place|coach|rencontre|match/i);
+    assert.match(text, /banc|prochaine occasion/i);
 });

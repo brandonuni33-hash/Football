@@ -106,13 +106,27 @@ export function selectGoalOpportunity({
   return weighted[hashIndex(`${seed}:${index}:${minute}:occasion`, weighted.length)] || null;
 }
 
+function presentedOpportunityChoices(opportunity) {
+  const source = opportunity.choices || [];
+  if (opportunity.id !== 'OCC-014' || source.length < 3) return source.map(item => ({ ...item, opportunityId: opportunity.id }));
+  return [
+    { ...source[0], text:'Frapper fort plein axe', gesture:'Plein axe', opportunityId:opportunity.id, displayTitle:'Plein axe', displaySubtitle:'Assumer la puissance', displayIcon:'◎', displayTone:'attack' },
+    { ...source[1], text:'Placer dans un coin', gesture:'Contre-pied', opportunityId:opportunity.id, displayTitle:'Choisir un coin', displaySubtitle:'Privilégier la précision', displayIcon:'◉', displayTone:'control' },
+    { ...source[2], text:'Piquer doucement au milieu', gesture:'Ballon piqué', opportunityId:opportunity.id, displayTitle:'Piquer au milieu', displaySubtitle:'Prendre le gardien à contretemps', displayIcon:'⌁', displayTone:'technical' }
+  ];
+}
+
 export function buildGoalOpportunityDecision(opportunity, { minute = 0 } = {}) {
   if (!opportunity) return null;
+  const isPenalty = opportunity.id === 'OCC-014' || opportunity.id === 'OCC-040';
   return {
     opportunityId: opportunity.id,
     title: `${minute}' · ${opportunity.title}`,
-    description: opportunity.description,
-    choices: opportunity.choices.map(item => ({ ...item, opportunityId: opportunity.id }))
+    description: opportunity.id === 'OCC-014' ? 'Le ballon est posé. Le gardien bouge sur sa ligne. Tu choisis ta manière de le frapper.' : opportunity.description,
+    choices: presentedOpportunityChoices(opportunity),
+    isSetPiece:Boolean(opportunity.setPiece || opportunity.shootoutOnly),
+    isPenalty,
+    shootoutOnly:Boolean(opportunity.shootoutOnly)
   };
 }
 

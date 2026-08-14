@@ -2,6 +2,7 @@
 // Gestion de la clôture d'une saison.
 import { EventBus } from '../../core/eventBus.js';
 import { EVENTS } from '../../core/events.js';
+import { evaluateClubSeasonObjective, resetClubSeasonPerformance } from './clubSeasonObjectiveSystem.js';
 
 function normalizePrestige(value) {
     const number = Number(value) || 0;
@@ -31,6 +32,21 @@ function firstProRole(player, club) {
     return 'Remplaçant';
 }
 
+function persistSeason(state, season) {
+    state.career.seasonHistory ||= [];
+    const index = state.career.seasonHistory.findIndex(item => item?.seasonLabel === season.seasonLabel);
+    if (index >= 0) state.career.seasonHistory[index] = season;
+    else state.career.seasonHistory.push(season);
+}
+
+function advanceFormativeCoachSeason(state, player) {
+    const coach = state.social?.coachData;
+    if (!coach || coach.hasLeftClub) return;
+    const stillWithFormativeClub = !state.social?.youthClubName || player.club === state.social.youthClubName;
+    if (!stillWithFormativeClub || Number(player.age) > 18) return;
+    coach.seasonsTogether = Math.max(1, Number(coach.seasonsTogether || 1)) + 1;
+}
+
 export class SeasonSystem {
     constructor({ playerLogic, potentialSystem, careerSystem, cupSystem, worldSystem, awardsSystem } = {}) {
         this.playerLogic = playerLogic;
@@ -50,18 +66,26 @@ export class SeasonSystem {
         EventBus.emit(EVENTS.SEASON_COMPLETED, { state, season: seasonLabel, playerId: player.id });
         state.career ||= {};
         state.career.seasonHistory ||= [];
+
+        // Le bilan est capturé AVANT tout reset des statistiques et avant le passage d'âge.
+        const clubObjective = evaluateClubSeasonObjective(state);
         const season = {
             seasonLabel,
             club: player.club,
             overall: player.overall,
             age: player.age,
             clubPrestige: Number(player.clubPrestige || player.youthClubData?.prestige || 40),
-            matches: player.stats?.matchesPlayed || 0,
-            goals: player.stats?.goals || 0,
-            assists: player.stats?.assists || 0,
-            averageRating: player.stats?.averageRating || 0
+            matches: Number(player.stats?.matchesPlayed || 0),
+            goals: Number(player.stats?.goals || 0),
+            assists: Number(player.stats?.assists || 0),
+            averageRating: Number(player.stats?.averageRating || 0),
+            clubObjective
         };
+        persistSeason(state, season);
+        state.career.lastSeasonSummary = season;
+
         const potentialReport = this.potentialSystem?.finalizeSeason?.(player, season);
+        advanceFormativeCoachSeason(state, player);
         this.potentialSystem?.advanceAge?.(player);
         this.careerSystem?.refreshStage?.(player);
         if (Number(player.age) >= 18 && player.isYouthPlayer) {
@@ -82,9 +106,10 @@ export class SeasonSystem {
         const awardsReport = this.awardsSystem?.finalizeSeason?.(state, season, state.career.lastCupHistory || []);
         state.career.lastAwardsReport = awardsReport;
         this.resetSeasonStats(player);
+        resetClubSeasonPerformance(state);
         if (state.social?.coachData && player.club !== state.social.youthClubName) state.social.coachData.hasLeftClub = true;
         EventBus.emit(EVENTS.SEASON_STARTED, { state, season: `${currentYear + 1}/${currentYear + 2}`, playerId: player.id });
-        return { seasonLabel, potentialReport, cupHistory: state.career.lastCupHistory, awardsReport };
+        return { seasonLabel, seasonSummary: season, potentialReport, cupHistory: state.career.lastCupHistory, awardsReport };
     }
 
     resetSeasonStats(player) {
