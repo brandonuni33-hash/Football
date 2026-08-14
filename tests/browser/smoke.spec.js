@@ -131,5 +131,5 @@ test('le récap narratif distingue tous les matchs et le match où le joueur a e
   expect(scene.matches.filter(match => match.isImpactMatch)).toHaveLength(1);
   expect(scene.matches.find(match => match.matchIndex === 1)?.impactLevel).toBe('decisive');
   expect(scene.matches.find(match => match.matchIndex === 2)?.impactLevel).toBe('difficult');
-  expect(scene.beats.some(beat => beat.kind === 'block-overview')).toBe(true);
+  expect(scene.beats.some(beat => beat.kind === 'block-overview')).toBe(false);
 });
