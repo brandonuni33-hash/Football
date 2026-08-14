@@ -4,6 +4,7 @@
 import { EventBus } from '../../core/eventBus.js';
 import { EVENTS } from '../../core/events.js';
 import { finalizeInteractiveBlock } from './interactiveBlockFinalizer.js';
+import { recordClubSeasonResults } from '../career/clubSeasonObjectiveSystem.js';
 
 export class BlockSystem {
     constructor({ trainingManager, matchBlockManager, worldSystem, socialSystem, mediaSystem, eventEngine, coachSystem, careerSystem, transferSystem = null, stateManager, familyLifeSystem = null, consequenceSystem = null, narrativeEngine = null, advanceCalendar } = {}) {
@@ -56,6 +57,11 @@ export class BlockSystem {
             } else {
                 report = this.matchBlockManager.simulateBlock(state, state.trainingFocus, selectedChoice);
             }
+
+            // Ces résultats sont la source canonique de l'objectif collectif de la saison.
+            // On les enregistre avant tout passage de calendrier afin que le dernier bloc
+            // de juillet soit bien inclus dans le bilan qui va être figé.
+            recordClubSeasonResults(state, report);
 
             delete state.interactiveBlockResults;
             delete state.activeMatchSession;
@@ -112,6 +118,7 @@ export class BlockSystem {
                 narrativeJournalEntries: narrativePresentation?.journalEntries || [],
                 revealedConsequences,
                 calendar,
+                seasonSummary: calendar?.seasonSummary || null,
                 event: state.pendingEvent,
                 coachEvent: state.pendingCoachEvent,
                 transferOffer: state.pendingTransferOffer,
