@@ -1,73 +1,8 @@
-import { createSprite2DProfile } from "../avatar-v0/sprite2dProfile.js";
-import { DEFAULT_FEEL_TUNING } from "./football2dModel.js";
-import { createInputController } from "./input.js";
-import { renderFootball2D } from "./renderer.js";
-import { createScenarioState, stepScenario } from "./scenarioModel.js";
-
-const canvas = document.querySelector("#game");
-const ctx = canvas.getContext("2d");
-const profile = createSprite2DProfile("elias", 24);
-const STP_FEEL = Object.freeze({ playerSpeed: 100, ballControl: 100, shotPower: 109 });
-let state = createScenarioState();
-let previousTime = performance.now();
-let tuning = { ...DEFAULT_FEEL_TUNING };
-
-const input = createInputController({
-  joystick: document.querySelector("#joystick"),
-  stick: document.querySelector("#stick"),
-  shoot: document.querySelector("#shoot"),
-  powerFill: document.querySelector("#power-fill"),
-});
-
-const tuningControls = {
-  playerSpeed: { input: document.querySelector("#speed-tuning"), output: document.querySelector("#speed-value") },
-  ballControl: { input: document.querySelector("#control-tuning"), output: document.querySelector("#control-value") },
-  shotPower: { input: document.querySelector("#shot-tuning"), output: document.querySelector("#shot-value") },
-};
-
-function applyStpFeel() {
-  tuningControls.playerSpeed.input.value = String(STP_FEEL.playerSpeed);
-  tuningControls.ballControl.input.value = String(STP_FEEL.ballControl);
-  tuningControls.shotPower.input.value = String(STP_FEEL.shotPower);
-}
-
-function syncTuningFromUI() {
-  tuning = {
-    playerSpeed: Number(tuningControls.playerSpeed.input.value) / 100,
-    ballControl: Number(tuningControls.ballControl.input.value) / 100,
-    shotPower: Number(tuningControls.shotPower.input.value) / 100,
-  };
-  for (const control of Object.values(tuningControls)) control.output.textContent = `${control.input.value}%`;
-}
-
-for (const control of Object.values(tuningControls)) control.input.addEventListener("input", syncTuningFromUI);
-
-document.querySelector("#feel-reset").addEventListener("click", () => {
-  applyStpFeel();
-  syncTuningFromUI();
-});
-
-document.querySelector("#player-name").textContent = `${profile.name} · ${profile.age} ans`;
-
-document.querySelector("#reset").addEventListener("click", () => {
-  const goals = state.goals;
-  state = { ...createScenarioState(), goals };
-  document.querySelector("#goal-flash").hidden = true;
-});
-
-function frame(now) {
-  const controls = input.read();
-  const dt = Math.min(0.05, (now - previousTime) / 1000);
-  previousTime = now;
-
-  if (state.status !== "goal") state = stepScenario(state, controls, dt, tuning);
-
-  document.querySelector("#goal-count").textContent = String(state.goals);
-  document.querySelector("#goal-flash").hidden = state.status !== "goal";
-  renderFootball2D(ctx, state, profile, controls.charge);
-  requestAnimationFrame(frame);
-}
-
-applyStpFeel();
-syncTuningFromUI();
-requestAnimationFrame(frame);
+import{createSprite2DProfile}from"../avatar-v0/sprite2dProfile.js";import{DEFAULT_FEEL_TUNING}from"./football2dModel.js";import{DEFAULT_ATHLETIC_PROFILE}from"./playerAthleticProfile.js";import{createInputController}from"./input.js";import{renderFootball2D}from"./renderer.js";import{createScenarioState,stepScenario}from"./scenarioModel.js";
+const canvas=document.querySelector("#game"),ctx=canvas.getContext("2d"),profile=createSprite2DProfile("elias",24),STP_FEEL=Object.freeze({speed:80,acceleration:80,ballControl:100,shotPower:109});let state=createScenarioState(),previousTime=performance.now(),tuning={...DEFAULT_FEEL_TUNING},athletic={...DEFAULT_ATHLETIC_PROFILE};const protectButton=document.querySelector("#protect"),input=createInputController({joystick:document.querySelector("#joystick"),stick:document.querySelector("#stick"),shoot:document.querySelector("#shoot"),protect:protectButton,powerFill:document.querySelector("#power-fill")});
+const controls={speed:{input:document.querySelector("#speed-tuning"),output:document.querySelector("#speed-value")},acceleration:{input:document.querySelector("#acceleration-tuning"),output:document.querySelector("#acceleration-value")},ballControl:{input:document.querySelector("#control-tuning"),output:document.querySelector("#control-value")},shotPower:{input:document.querySelector("#shot-tuning"),output:document.querySelector("#shot-value")}};
+function applyStpFeel(){controls.speed.input.value=STP_FEEL.speed;controls.acceleration.input.value=STP_FEEL.acceleration;controls.ballControl.input.value=STP_FEEL.ballControl;controls.shotPower.input.value=STP_FEEL.shotPower}
+function sync(){athletic={speed:Number(controls.speed.input.value),acceleration:Number(controls.acceleration.input.value)};tuning={playerSpeed:1,ballControl:Number(controls.ballControl.input.value)/100,shotPower:Number(controls.shotPower.input.value)/100};controls.speed.output.textContent=controls.speed.input.value;controls.acceleration.output.textContent=controls.acceleration.input.value;controls.ballControl.output.textContent=`${controls.ballControl.input.value}%`;controls.shotPower.output.textContent=`${controls.shotPower.input.value}%`}
+for(const c of Object.values(controls))c.input.addEventListener("input",sync);document.querySelector("#feel-reset").addEventListener("click",()=>{applyStpFeel();sync()});document.querySelector("#player-name").textContent=`${profile.name} · ${profile.age} ans`;document.querySelector("#reset").addEventListener("click",()=>{const goals=state.goals;state={...createScenarioState(),goals};document.querySelector("#goal-flash").hidden=true});
+function frame(now){const c=input.read(),dt=Math.min(.05,(now-previousTime)/1000);previousTime=now;if(state.status!=="goal")state=stepScenario(state,c,dt,tuning,athletic);document.querySelector("#goal-count").textContent=String(state.goals);document.querySelector("#goal-flash").hidden=state.status!=="goal";document.querySelector("#dribble-mode").textContent=(state.dribbleMode??"normal").toUpperCase();protectButton.classList.toggle("active",c.protecting);renderFootball2D(ctx,state,profile,c.charge);requestAnimationFrame(frame)}
+applyStpFeel();sync();requestAnimationFrame(frame);
