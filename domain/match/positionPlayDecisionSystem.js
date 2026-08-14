@@ -24,6 +24,7 @@ function previousEvent(session={}){const events=Array.isArray(session.events)?se
 function previousMistake(session={}){const e=previousEvent(session);if(!e)return false;return Boolean(e.timedOut)||/referme|lit ton geste|hésitation|disparaît|ne passe pas|récupère/i.test(`${e.title||''} ${e.text||''}`);}
 function playmakingMomentum(session={}){const e=previousEvent(session);if(!e||previousMistake(session))return false;return /ligne est cassée|ouvre la suite|met en retard|duel tourne pour toi|face au jeu|gagne immédiatement/i.test(`${e.title||''} ${e.text||''}`);}
 function canonicalBool(session={},key){return session?.match?.[key]===true||session?.[key]===true;}
+function protectedSetPiece(decision={}){return ['OCC-014','OCC-040'].includes(String(decision.opportunityId||''))||decision.isPenalty===true||decision.shootout===true;}
 
 // La profondeur tactique apparaît avec la carrière : aucune bibliothèque avancée
 // en U15 ; en formation plus âgée, elle n'apparaît que ponctuellement.
@@ -34,6 +35,7 @@ function youthAllowsAdvancedPositionPlay(state={},session={}){
   return hash(`${session.match?.id||session.id}:${session.currentMoment||0}:youth-tactical-depth`)%100<35;
 }
 function shouldReplace(currentDecision={},session={},position=''){
+  if(protectedSetPiece(currentDecision))return false;
   if(!currentDecision?.isGoalOpportunity)return true;
   const roll=hash(`${session.match?.id||session.id}:${session.currentMoment||0}:${position}:position-play`)%100;
   if(isExclusiveMidfieldPosition(position))return roll<45;
