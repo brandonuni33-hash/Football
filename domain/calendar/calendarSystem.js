@@ -26,10 +26,12 @@ export class CalendarSystem {
         if (calendar.currentMonth > 12) calendar.currentMonth = 1;
 
         let seasonChanged = false;
+        let seasonSummary = null;
         if (calendar.currentMonth === 8) {
             const divisionMovements = this.worldSystem?.finalizeSeason?.(state);
             if (state.career) state.career.lastDivisionMovements = divisionMovements;
-            this.seasonReset?.(state);
+            const closedSeason = this.seasonReset?.(state) || null;
+            seasonSummary = closedSeason?.seasonSummary || null;
             calendar.currentSeasonYear += 1;
             calendar.seasonSchedule = null;
             calendar.seasonMatchCursor = 0;
@@ -41,7 +43,7 @@ export class CalendarSystem {
         calendar.currentPeriod = this.competitionSystem?.getPeriodName?.(calendar.currentMonth) || calendar.currentPeriod;
         this.competitionSystem?.ensureSeasonSchedule?.(state);
 
-        return { month: calendar.currentMonth, year: calendar.currentSeasonYear, period: calendar.currentPeriod, seasonChanged };
+        return { month: calendar.currentMonth, year: calendar.currentSeasonYear, period: calendar.currentPeriod, seasonChanged, seasonSummary };
     }
 
     getPeriodName(month) {
