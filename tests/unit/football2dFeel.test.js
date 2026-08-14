@@ -13,6 +13,14 @@ test("player speed tuning changes travelled distance", () => {
   assert.ok(fast.player.x > slow.player.x);
 });
 
+test("analog joystick magnitude changes movement immediately", () => {
+  const state = createFootball2DState();
+  const partial = stepFootball2D(state, { moveX: 0.4, moveY: 0 }, 1 / 60);
+  const full = stepFootball2D(state, { moveX: 1, moveY: 0 }, 1 / 60);
+  assert.ok(partial.player.x > state.player.x);
+  assert.ok(full.player.x > partial.player.x);
+});
+
 test("shot tuning changes shot velocity", () => {
   assert.ok(shotSpeedFromPower(1, { shotPower: 1.2 }) > shotSpeedFromPower(1, { shotPower: 0.8 }));
 });
