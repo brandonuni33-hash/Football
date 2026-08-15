@@ -16,12 +16,21 @@ function relationRows(state = {}) {
         : (Array.isArray(state.social?.relationships) ? state.social.relationships : []);
     return source.slice(0, 6);
 }
+function relationLabel(relation = {}) {
+    const explicit = relation.statusLabel || relation.relationshipLabel || relation.stateLabel;
+    if (explicit) return String(explicit);
+    const value = Number(relation.score ?? relation.value);
+    if (!Number.isFinite(value)) return '';
+    if (value >= 75) return 'Très proche';
+    if (value >= 55) return 'En confiance';
+    if (value >= 35) return 'À construire';
+    return 'Relation tendue';
+}
 function mediaUnlocked(state = {}) {
-    const player = state.player || {}, media = state.media || {}, stats = player.stats || {};
+    const media = state.media || {}, stats = state.player?.stats || {};
     if (media.proCoverageUnlocked === true) return true;
     const explicit = Number(stats.professionalMatches ?? stats.proMatches);
-    if (Number.isFinite(explicit)) return explicit > 0;
-    return Number(player.age || 0) >= 19 && Number(stats.matchesPlayed || 0) > 0;
+    return Number.isFinite(explicit) && explicit > 0;
 }
 
 export class LifeView {
@@ -40,7 +49,10 @@ export class LifeView {
         }
 
         if (rows.length) {
-            sections.push(`<section class="app-pane" style="margin:0;"><small style="color:#7ccfd0;font-weight:900;letter-spacing:.08em;">VESTIAIRE</small><div style="display:grid;gap:8px;margin-top:10px;">${rows.map(rel => `<div style="display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.07);"><span><strong style="display:block;font-size:.82rem;">${escapeHtml(rel.name || rel.displayName || rel.role || 'Coéquipier')}</strong><small style="color:var(--text-sub);">${escapeHtml(rel.role || rel.type || 'Relation')}</small></span>${rel.score !== undefined || rel.value !== undefined ? `<strong style="font-size:.76rem;">${escapeHtml(rel.score ?? rel.value)}/100</strong>` : ''}</div>`).join('')}</div></section>`);
+            sections.push(`<section class="app-pane" style="margin:0;"><small style="color:#7ccfd0;font-weight:900;letter-spacing:.08em;">VESTIAIRE</small><div style="display:grid;gap:8px;margin-top:10px;">${rows.map(rel => {
+                const label = relationLabel(rel);
+                return `<div style="display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.07);"><span><strong style="display:block;font-size:.82rem;">${escapeHtml(rel.name || rel.displayName || rel.role || 'Coéquipier')}</strong><small style="color:var(--text-sub);">${escapeHtml(rel.role || rel.type || 'Relation')}</small></span>${label ? `<strong style="font-size:.72rem;color:#aebdca;text-align:right;">${escapeHtml(label)}</strong>` : ''}</div>`;
+            }).join('')}</div></section>`);
         }
 
         if (family) {
