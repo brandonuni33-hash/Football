@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import{traceDecision}from'../../domain/match/matchDecisionTrace.js';test('chaque trace de décision porte le matchId',()=>assert.equal(traceDecision('m',{id:'d',minute:70},{choice:'Dribbler'}).matchId,'m'));

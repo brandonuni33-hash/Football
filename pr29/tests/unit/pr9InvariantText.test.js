@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';test('le contrat interdit explicitement deux décisions fixes',()=>{const t=fs.readFileSync(new URL('../../docs/pr9-invariants.md',import.meta.url),'utf8');assert.match(t,/jamais « exactement deux »/);assert.match(t,/un seul `matchId`/);});

@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';test('la review vérifie UI score matchId et sauvegardes',()=>{const t=fs.readFileSync(new URL('../../docs/pr9-review-checklist.md',import.meta.url),'utf8');for(const x of['logique métier','score/but','matchId','sauvegardes'])assert.match(t,new RegExp(x));});

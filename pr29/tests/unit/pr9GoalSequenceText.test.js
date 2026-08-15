@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';test('le contrat interdit au visuel de créer le but',()=>assert.match(fs.readFileSync(new URL('../../docs/pr9-goal-sequence.md',import.meta.url),'utf8'),/aucune API pour ajouter un but/));

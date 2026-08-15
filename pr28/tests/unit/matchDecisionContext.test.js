@@ -1,0 +1,2 @@
+import test from'node:test';import assert from'node:assert/strict';import{decisionContext}from'../../domain/match/matchDecisionContext.js';
+test('une entrée comme remplaçant est urgente',()=>assert.equal(decisionContext({minute:72,started:false}).tempo,'urgent'));test('un derby reste agressif',()=>assert.equal(decisionContext({type:'rival',minute:40}).tempo,'aggressive'));test('une finale serrée est sous forte pression',()=>assert.equal(decisionContext({type:'final',minute:82,score:{team:1,opponent:1}}).highPressure,true));

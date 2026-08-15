@@ -1,0 +1,13 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { startInteractiveMatch, advanceInteractiveMatch } from '../../domain/match/interactiveMatchController.js';
+
+const stateFor=(origin='CENTRE_FORMATION',tech=60)=>({player:{id:'test',club:'FC Test',position:'BU',overall:70,origin,mental:68,morale:70,fitness:90,attributes:{controle:tech,dribble:tech,tir:72,passe:66},stats:{},hidden:{},temporaryEffects:[]},career:{balance:0},social:{},consequences:[],careerMemory:[]});
+
+test('finale: 4 à 6 décisions et pression chronométrée tardive',()=>{const old=Math.random;Math.random=()=>.4;try{const state=stateFor('FUTSAL',88),s=startInteractiveMatch(state,{type:'final',phase:'Finale',opponent:'Rival',home:true,playerSelection:{started:true,minutes:90}},0);assert.ok(s.moments.length>=4&&s.moments.length<=6);advanceInteractiveMatch(state,s,{});advanceInteractiveMatch(state,s,{});let sawTimed=false,sawGesture=false,guard=0;while(!s.finished&&guard++<50){if(s.step?.kind==='decision'){sawTimed||=Boolean(s.step.timedDecision);sawGesture||=s.step.choices.some(c=>c.gesture);advanceInteractiveMatch(state,s,{choiceIndex:0});}else advanceInteractiveMatch(state,s,{});}assert.equal(s.finished,true);assert.equal(s.result.decisions.length,s.moments.length);assert.equal(sawTimed,true);assert.equal(sawGesture,true);}finally{Math.random=old;}});
+
+test('match normal: 1 à 2 décisions',()=>{const old=Math.random;Math.random=()=>.2;try{const s=startInteractiveMatch(stateFor(),{opponent:'B',home:true,importance:'normal',playerSelection:{started:true,minutes:90}},0);assert.ok(s.moments.length>=1&&s.moments.length<=2);}finally{Math.random=old;}});
+
+test('remplaçant: 1 à 3 décisions selon le temps de jeu',()=>{const s=startInteractiveMatch(stateFor(),{opponent:'B',home:true,playerSelection:{started:false,minutes:22}},0);assert.ok(s.moments.length>=1&&s.moments.length<=3);assert.ok(s.moments[0]>=68);});
+
+test('expiration: aucune option n est choisie automatiquement',()=>{const old=Math.random;Math.random=()=>.4;try{const state=stateFor('STREET',82),s=startInteractiveMatch(state,{type:'final',phase:'Finale',opponent:'B',home:true,playerSelection:{started:true,minutes:90}},0);advanceInteractiveMatch(state,s,{});advanceInteractiveMatch(state,s,{});let guard=0;while(!s.step?.timedDecision&&guard++<30){advanceInteractiveMatch(state,s,s.step?.kind==='decision'?{choiceIndex:0}:{});}assert.ok(s.step.timedDecision);const before=s.decisions.length;advanceInteractiveMatch(state,s,{timedOut:true});assert.equal(s.decisions.length,before+1);assert.equal(s.decisions.at(-1).timedOut,true);}finally{Math.random=old;}});

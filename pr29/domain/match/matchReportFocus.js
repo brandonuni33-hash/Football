@@ -1,0 +1,2 @@
+export function reportFocus(result={}){const e=(result.events||[]).find(x=>x.gesture||x.timedOut)||(result.events||[]).at(-1);if(e?.gesture)return{type:'gesture',text:`${e.gesture} à la ${e.minute}e minute`};if(e?.timedOut)return{type:'decision',text:`l’hésitation à la ${e.minute}e minute`};if(result.goals)return{type:'impact',text:`le but qui a pesé sur le score`};if(result.assists)return{type:'impact',text:`la passe qui a ouvert le match`};return{type:'tactical',text:'la façon dont tes choix ont déplacé le rapport de force'};}
+export default reportFocus;

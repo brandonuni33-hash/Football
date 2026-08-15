@@ -1,0 +1,713 @@
+/* =========================================================
+   STREET TO PRO — STYLE.CSS (MISE À JOUR BOUTON ACTION)
+   ========================================================= */
+
+body {
+    background-color: #111827;
+    color: #f3f4f6;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+}
+
+.career-container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 16px;
+}
+
+.career-header h1 {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+.progress-bar {
+    background-color: #374151;
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+
+.progress {
+    background-color: #10b981;
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 10px;
+    background-color: #1f2937;
+    border: 1px solid #374151;
+    color: white;
+    border-radius: 6px;
+    box-sizing: border-box;
+}
+
+.grid-positions,
+.grid-countries,
+.grid-continents {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.chip,
+.chip-continent,
+.chip-country {
+    background-color: #1f2937;
+    border: 1px solid #374151;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.chip.selected,
+.chip-continent.selected,
+.chip-country.selected {
+    background-color: #10b981;
+    border-color: #10b981;
+}
+
+.career-footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 24px;
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-success {
+    padding: 10px 20px;
+    border-radius: 6px;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.btn-primary {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.btn-secondary {
+    background-color: #4b5563;
+    color: white;
+}
+
+.btn-success {
+    background-color: #10b981;
+    color: white;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.card-select {
+    background-color: #1f2937;
+    border: 1px solid #374151;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    cursor: pointer;
+}
+
+.card-select.selected {
+    border-color: #10b981;
+    background-color: #064e3b;
+}
+
+.club-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-align: left;
+}
+
+.club-header-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #374151;
+    padding-bottom: 6px;
+}
+
+.club-header-info h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #f3f4f6;
+}
+
+.contract-details {
+    font-size: 0.85rem;
+    color: #9ca3af;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.contract-details strong {
+    color: #d1d5db;
+}
+
+.prestige-badge {
+    align-self: flex-end;
+    font-size: 0.8rem;
+    color: #34d399;
+    font-weight: bold;
+}
+
+
+/* =========================================================
+   STYLE MODERNE POUR LA GRILLE D'ORIGINE
+   ========================================================= */
+
+.grid-origins-modern {
+    display: grid;
+    grid-template-columns: repeat(
+        auto-fit,
+        minmax(240px, 1fr)
+    );
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.origin-card-modern {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    transition: all 0.2s ease;
+}
+
+.origin-card-modern:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+.origin-card-modern.selected {
+    background: rgba(37, 99, 235, 0.15);
+    border-color: #2563eb;
+    box-shadow:
+        0 0 15px rgba(37, 99, 235, 0.3);
+}
+
+.origin-icon {
+    font-size: 24px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.origin-info h3 {
+    margin: 0 0 4px 0;
+    font-size: 16px;
+    color: #fff;
+}
+
+.trait-tag {
+    display: inline-block;
+    font-size: 11px;
+    background: rgba(250, 204, 21, 0.1);
+    color: #facc15;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+    font-weight: 500;
+}
+
+.origin-info p {
+    margin: 0;
+    font-size: 12px;
+    color: #94a3b8;
+    line-height: 1.4;
+}
+
+
+/* =========================================================
+   CONSEQUENCE SYSTEM
+   ========================================================= */
+
+.choice-consequences {
+    display: none !important;
+}
+
+.consequence-chip {
+    display: none !important;
+}
+
+.choice-main-text {
+    display: block;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.choice-button .consequence-chip,
+.choice-card .consequence-chip,
+.choice-option .consequence-chip,
+.match-choice .consequence-chip {
+    display: none !important;
+}
+
+
+/* =========================================================
+   PANNEAU DES CONSÉQUENCES APRÈS LE CHOIX
+   ========================================================= */
+
+.consequence-result-card {
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+}
+
+.consequence-result-card h3 {
+    margin: 0 0 8px 0;
+}
+
+.consequence-result-card p {
+    line-height: 1.5;
+}
+
+.consequence-result-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 18px;
+    margin-bottom: 18px;
+}
+
+.consequence-result-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 11px 14px;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    line-height: 1.3;
+    background: rgba(255, 255, 255, 0.055);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    animation: consequenceAppear 0.25s ease-out both;
+}
+
+.consequence-result-row span {
+    font-weight: 600;
+}
+
+.consequence-result-row strong {
+    white-space: nowrap;
+    font-weight: 800;
+}
+
+.consequence-result-row.positive {
+    color: #69e6a7;
+    background: rgba(16, 185, 129, 0.09);
+    border-color: rgba(16, 185, 129, 0.22);
+}
+
+.consequence-result-row.negative {
+    color: #ff8792;
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.22);
+}
+
+.consequence-result-row.temporary {
+    border-style: dashed;
+}
+
+.consequence-result-row small {
+    font-size: 0.75rem;
+    opacity: 0.72;
+    font-weight: 500;
+}
+
+.consequence-empty {
+    margin: 12px 0 4px;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.9rem;
+}
+
+
+/* =========================================================
+   ANIMATION DES CONSÉQUENCES
+   ========================================================= */
+
+.consequence-result-row:nth-child(2) {
+    animation-delay: 0.04s;
+}
+
+.consequence-result-row:nth-child(3) {
+    animation-delay: 0.08s;
+}
+
+.consequence-result-row:nth-child(4) {
+    animation-delay: 0.12s;
+}
+
+.consequence-result-row:nth-child(5) {
+    animation-delay: 0.16s;
+}
+
+.consequence-result-row:nth-child(6) {
+    animation-delay: 0.20s;
+}
+
+@keyframes consequenceAppear {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+/* =========================================================
+   BOUTON CONTINUER & EFFETS ACTIFS
+   ========================================================= */
+
+.consequence-continue {
+    width: 100%;
+    margin-top: 8px;
+}
+
+.consequence-result-card button {
+    transition:
+        transform 0.15s ease,
+        opacity 0.15s ease;
+}
+
+.consequence-result-card button:hover {
+    transform: translateY(-1px);
+}
+
+.consequence-result-card button:active {
+    transform: translateY(0);
+}
+
+.active-consequences {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.active-consequence {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.045);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.active-consequence.positive {
+    border-color: rgba(16, 185, 129, 0.2);
+}
+
+.active-consequence.negative {
+    border-color: rgba(239, 68, 68, 0.2);
+}
+
+
+/* =========================================================
+   WALLPAPER / ARRIÈRE-PLAN SMARTPHONE (NATIVE)
+   ========================================================= */
+
+.phone-frame,
+.phone-home-screen {
+    position: relative;
+    min-height: 100vh;
+    overflow: hidden;
+    background-color: #111827;
+}
+
+.phone-home-screen::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('assets/Dashboard.jpg');
+    background-size: cover;
+    background-position: center top;
+    background-repeat: no-repeat;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.phone-home-screen::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        to bottom,
+        rgba(17, 24, 39, 0.35) 0%,
+        rgba(17, 24, 39, 0.75) 50%,
+        rgba(17, 24, 39, 0.95) 100%
+    );
+    z-index: 1;
+    pointer-events: none;
+}
+
+.phone-status-bar,
+.player-widget-enhanced,
+.widget-state-grid,
+.player-card-banner,
+#main-content,
+#dashboard {
+    position: relative;
+    z-index: 2;
+}
+
+.player-widget-enhanced {
+    background: rgba(31, 41, 55, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    padding: 16px;
+    margin-top: 12px;
+}
+
+
+/* =========================================================
+   GRILLE D'APPLICATIONS (RÉALISME & NEUMORPHISME)
+   ========================================================= */
+
+.apps-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    padding: 16px;
+    z-index: 2;
+    position: relative;
+    overflow-y: auto;
+
+    /* Hauteur ajustée pour laisser de la place à la bulle d'action en bas */
+    max-height: calc(100vh - 280px);
+
+    /* Espace pour ne pas que les apps soient cachées derrière la bulle */
+    padding-bottom: 60px;
+}
+
+.app-icon {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.1s ease;
+    padding: 0;
+    width: 100%;
+}
+
+.app-icon:active {
+    transform: scale(0.92);
+}
+
+.app-logo {
+    width: 60px;
+    height: 60px;
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    position: relative;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1.5px solid rgba(255, 255, 255, 0.25);
+    box-shadow:
+        0 8px 16px rgba(0, 0, 0, 0.5),
+        inset 0 1px 1px rgba(255, 255, 255, 0.3),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.3);
+}
+
+.app-logo::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: inherit;
+    filter: blur(8px);
+    z-index: -1;
+    border-radius: inherit;
+}
+
+.app-label {
+    margin-top: 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-align: center;
+    color: #ffffff;
+    text-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.8),
+        -1px -1px 0 rgba(0, 0, 0, 0.2),
+        1px -1px 0 rgba(0, 0, 0, 0.2),
+        -1px 1px 0 rgba(0, 0, 0, 0.2),
+        1px 1px 0 rgba(0, 0, 0, 0.2);
+}
+
+#settings-floating-btn {
+    position: fixed;
+    right: 20px;
+
+    /* Ajusté pour être juste au-dessus de la nouvelle bulle d'action */
+    bottom: calc(140px + env(safe-area-inset-bottom));
+
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    z-index: 10;
+    background: rgba(30, 41, 59, 0.85);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+
+/* =========================================================
+   BULLE D'ACTION FLOTTANTE (STYLE NAVIGATEUR IOS)
+   ========================================================= */
+
+/* Le bouton 'play-block-btn' devient une bulle flottante */
+.btn-play-block {
+    position: fixed;
+
+    /* Centré en bas */
+    bottom: calc(40px + env(safe-area-inset-bottom));
+
+    left: 50%;
+    transform: translateX(-50%);
+
+    /* Dimensions et forme de bulle */
+    width: auto;
+    min-width: 180px;
+    padding: 12px 24px;
+    border-radius: 30px;
+
+    /* Z-index élevé pour être au-dessus des apps et du fond */
+    z-index: 15;
+
+    /* Style visuel */
+    background: rgba(16, 185, 129, 0.9);
+    border: 2px solid rgba(255, 255, 255, 0.4);
+
+    box-shadow:
+        0 10px 25px rgba(0, 0, 0, 0.6),
+        inset 0 1px 2px rgba(255, 255, 255, 0.5);
+
+    /* Texte */
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 1rem;
+    text-align: center;
+    cursor: pointer;
+
+    transition:
+        transform 0.1s ease,
+        background 0.2s ease;
+}
+
+/* Effet au clic */
+.btn-play-block:active {
+    transform: translateX(-50%) scale(0.95);
+    background: rgba(5, 150, 105, 1);
+}
+
+/* État désactivé (fin de carrière) */
+.btn-play-block:disabled {
+    background: rgba(107, 114, 128, 0.9);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: none;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+
+/* =========================================================
+   RESPONSIVE MOBILE & ACCESSIBILITÉ
+   ========================================================= */
+
+@media (max-width: 600px) {
+
+    .career-container {
+        padding: 12px;
+    }
+
+    .consequence-result-card {
+        width: 100%;
+        max-width: none;
+    }
+
+    .consequence-result-row {
+        padding: 10px 12px;
+        font-size: 0.9rem;
+    }
+
+    .consequence-result-row strong {
+        font-size: 0.9rem;
+    }
+
+    .consequence-result-row small {
+        font-size: 0.7rem;
+    }
+
+    .choice-main-text {
+        line-height: 1.4;
+    }
+}
+
+button:focus-visible,
+.chip:focus-visible,
+.chip-continent:focus-visible,
+.chip-country:focus-visible,
+.card-select:focus-visible {
+    outline: 2px solid #60a5fa;
+    outline-offset: 2px;
+}

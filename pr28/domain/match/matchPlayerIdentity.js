@@ -1,0 +1,2 @@
+export function matchPlayerIdentity(player={}){const a=player.attributes||{},origin=String(player.origin?.id||player.origin||'').toUpperCase(),technique=Math.round(((Number(a.controle??a.dribble??50)||50)+(Number(a.dribble??a.controle??50)||50))/2);return{origin,technique,smallSpaceAffinity:origin==='FUTSAL'?1:origin==='STREET'?.85:.45,oneVOneAffinity:origin==='STREET'?1:origin==='FUTSAL'?.9:.5,structuredAffinity:origin==='CENTRE_FORMATION'?.9:.55};}
+export default matchPlayerIdentity;

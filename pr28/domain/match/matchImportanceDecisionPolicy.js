@@ -1,0 +1,2 @@
+export function importanceDecisionPolicy({type='standard',importance='normal'}={}){if(type==='final')return{min:4,max:6,pacing:'reversals',pressureEligible:true};if(type==='rival')return{min:3,max:5,pacing:'aggressive',pressureEligible:true};if(importance==='important'||importance==='exceptional')return{min:2,max:4,pacing:'progressive',pressureEligible:importance==='exceptional'};return{min:1,max:2,pacing:'direct',pressureEligible:false};}
+export default importanceDecisionPolicy;

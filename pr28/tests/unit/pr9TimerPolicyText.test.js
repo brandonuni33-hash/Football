@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';test('la politique interdit le chrono narratif',()=>{const t=fs.readFileSync(new URL('../../docs/pr9-timer-policy.md',import.meta.url),'utf8');assert.match(t,/Non éligible: lecture d'une scène/);assert.match(t,/aucune option n'est choisie/);});

@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';test('le rapport priorise le tournant et évite les doublons',()=>{const t=fs.readFileSync(new URL('../../docs/pr9-reporting.md',import.meta.url),'utf8');assert.match(t,/tournant/);assert.match(t,/plutôt que dupliquer/);});

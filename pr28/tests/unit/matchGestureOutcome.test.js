@@ -1,0 +1,2 @@
+import test from'node:test';import assert from'node:assert/strict';import{gestureSuccessChance}from'../../domain/match/matchGestureOutcome.js';
+test('technique et origine augmentent les chances sans garantir',()=>{const low=gestureSuccessChance({technique:50,origin:'CENTRE_FORMATION',difficulty:.7,pressure:.8}),high=gestureSuccessChance({technique:88,origin:'FUTSAL',difficulty:.7,pressure:.8});assert.ok(high>low);assert.ok(high<1);});

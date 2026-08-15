@@ -1,0 +1,2 @@
+import test from'node:test';import assert from'node:assert/strict';import{writeMatchStory}from'../../domain/match/matchStoryWriter.js';
+test('le rapport raconte un tournant plutôt qu une ligne de stats',()=>{const story=writeMatchStory({matchId:'m',goals:1,rating:8.2,events:[{minute:71,gesture:'Petit pont'}],decisions:[{choice:'Provoquer',gesture:'Petit pont'}]});assert.match(story.text,/71/);assert.match(story.text,/Petit pont/);assert.match(story.text,/Provoquer/);assert.equal(story.text.includes('74 %'),false);});

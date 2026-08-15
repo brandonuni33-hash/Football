@@ -1,0 +1,3 @@
+# PR9 — Expérience cible
+
+Le match jouable n'est plus une séquence fixe à deux choix. Il devient une petite histoire de football dont la longueur et la tension dépendent de l'enjeu. Le joueur lit et avance lui-même; seules certaines décisions réellement urgentes peuvent déclencher quelques secondes de pression. Ses attributs et son origine influencent les solutions qui lui ressemblent, sans transformer les gestes spectaculaires en récompenses automatiques. Chaque choix laisse une trace dans le match, et le rapport final doit raconter ce qui a changé sur le terrain plutôt que réciter une note. Tous les écrans — score, buts, récit et réactions — restent attachés au même match canonique.

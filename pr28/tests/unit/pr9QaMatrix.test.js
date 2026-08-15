@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';test('la matrice QA couvre neuf axes',()=>{const t=fs.readFileSync(new URL('../../docs/pr9-qa-matrix.md',import.meta.url),'utf8');for(const x of['Contrôle','Structure','Chrono','Identité','Conséquences','But','matchId','Rapport','Voix'])assert.match(t,new RegExp(x));});

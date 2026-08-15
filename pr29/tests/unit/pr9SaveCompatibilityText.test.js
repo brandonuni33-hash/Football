@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';test('la migration ne termine pas artificiellement le match',()=>assert.match(fs.readFileSync(new URL('../../docs/pr9-save-compatibility.md',import.meta.url),'utf8'),/ne doit pas inventer un résultat/));

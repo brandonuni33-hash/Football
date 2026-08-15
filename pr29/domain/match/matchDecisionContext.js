@@ -1,0 +1,2 @@
+export function decisionContext({minute=0,score={team:0,opponent:0},type='standard',started=true,minutesPlayed=90}={}){const diff=Number(score.team||0)-Number(score.opponent||0),late=Number(minute)>=75;return{minute:Number(minute),late,trailing:diff<0,leading:diff>0,level:diff===0,urgent:!started||late&&diff<=0,highPressure:type==='final'||type==='rival'||late&&diff===0,tempo:!started?'urgent':type==='rival'?'aggressive':type==='final'?'volatile':Math.abs(diff)>=2?'controlled':'direct',minutesPlayed:Number(minutesPlayed)||90};}
+export default decisionContext;

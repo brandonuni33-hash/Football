@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import{MATCH_DECISION_RANGES as R}from'../../domain/match/matchDecisionCountPolicy.js';test('plages exactes demandées',()=>{assert.deepEqual(R.standard,[1,2]);assert.deepEqual(R.important,[2,4]);assert.deepEqual(R.rival,[3,5]);assert.deepEqual(R.final,[4,6]);assert.deepEqual(R.substitute,[1,3]);});

@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import{choiceRisk}from'../../domain/match/matchChoiceRisk.js';test('la technique réduit le risque mais la pression l augmente',()=>{const skilled=choiceRisk({base:.2,technique:90,mental:70,pressure:.2}),panic=choiceRisk({base:.2,technique:55,mental:45,pressure:1});assert.ok(skilled<panic);});

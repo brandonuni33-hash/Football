@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import{matchEventFact}from'../../domain/match/matchEventFact.js';test('un événement narratif de match porte toujours son matchId',()=>assert.equal(matchEventFact('m',{minute:80,gesture:'Lob'}).matchId,'m'));

@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';test('la phase suivante est correction uniquement',()=>assert.match(fs.readFileSync(new URL('../../docs/pr9-final-review-summary.md',import.meta.url),'utf8'),/corriger, pas à ajouter/));

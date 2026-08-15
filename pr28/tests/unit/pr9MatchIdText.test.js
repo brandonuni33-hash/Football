@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';test('le contrat matchId interdit les faits simulés dans Ton match',()=>assert.match(fs.readFileSync(new URL('../../docs/pr9-match-id.md',import.meta.url),'utf8'),/ne peuvent jamais fournir un fait/));

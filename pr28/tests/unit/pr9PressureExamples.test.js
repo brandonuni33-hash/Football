@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';test('les exemples excluent le chrono ordinaire',()=>assert.match(fs.readFileSync(new URL('../../docs/pr9-pressure-examples.md',import.meta.url),'utf8'),/pas de chrono par défaut/));
