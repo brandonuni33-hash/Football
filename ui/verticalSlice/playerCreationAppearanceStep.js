@@ -12,7 +12,6 @@ export const FACE_OPTIONS = Object.freeze([
 export const APPEARANCE_COPY = Object.freeze({
     eyebrow: 'Ton visage',
     title: 'Choisis ton visage',
-    notice: 'Choisie bien !\navec le temps les visage évolue.',
     continueLabel: 'Continuer'
 });
 
