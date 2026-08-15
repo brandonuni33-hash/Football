@@ -72,6 +72,16 @@ test('une phase offensive fait remonter notre défense et redescendre les attaqu
  assert.ok(near.length>=3);
 });
 
+test('les gardiens regardent toujours le ballon ou sa trajectoire',()=>{
+ const shot={...duel,id:'keeper-facing',type:'SHOT',cameraState:'SHOT',playerInvolved:true,zone:{x:82,y:44,lane:'CENTER'}};
+ const tactical=buildSimulatedMatchTacticalSituation(shot,{seed:'keeper-facing',playerSide:'HOME',playerPosition:'BU'});
+ const target=tactical.ball.trajectory?.to||tactical.ball;
+ for(const keeper of [tactical.home[0],tactical.away[0]]){
+  const expected=Math.atan2(target.y-keeper.y,target.x-keeper.x)*180/Math.PI;
+  assert.ok(Math.abs(keeper.facing-expected)<1e-9);
+ }
+});
+
 test('les coups de pied arrêtés respectent des structures football lisibles',()=>{
  const freeKick=buildSimulatedMatchTacticalSituation({...duel,type:'SET_PIECE',cameraState:'SET_PIECE',setPieceKind:'FREE_KICK_DIRECT',zone:{x:73,y:49,lane:'CENTER'},ballCarrier:{team:'HOME',index:7}},{seed:'fk',playerSide:'HOME'});
  const wall=freeKick.away.filter(p=>p.role==='wall');assert.ok(wall.length>=3&&wall.length<=4);assert.equal(freeKick.ball.x,freeKick.home[7].x);assert.equal(freeKick.ball.y,freeKick.home[7].y);assert.ok(freeKick.ball.trajectory.to.x>=97);
