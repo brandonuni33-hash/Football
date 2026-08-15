@@ -16,9 +16,21 @@ test('chaque situation tactique contient onze joueurs par équipe et un ballon',
 
 test('une situation dangereuse avance réellement le ballon et le bloc du joueur', () => {
     const normal = buildInteractiveMatchTacticalSituation({ cameraState: 'NORMAL', seed: 'same-match' });
-    const danger = buildInteractiveMatchTacticalSituation({ cameraState: 'DANGER', seed: 'same-match' });
+    const danger = buildInteractiveMatchTacticalSituation({ cameraState: 'DANGER', visualFocus: 'danger-zone', seed: 'same-match' });
     assert.ok(danger.ball.x > normal.ball.x);
     assert.ok(danger.home[9].x > normal.home[9].x);
+});
+
+test('un duel place réellement le joueur focal et son adversaire autour du ballon', () => {
+    const duel = buildInteractiveMatchTacticalSituation({
+        cameraState: 'DUEL', visualFocus: 'duel', playerAge: 15, competition: 'U15', seed: 'duel-1'
+    });
+    const player = duel.home[9];
+    const opponent = duel.away[9];
+    const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+    assert.ok(distance(player, duel.ball) < 7, 'le joueur focal doit être au cœur du duel');
+    assert.ok(distance(opponent, duel.ball) < 8, 'l’adversaire direct doit fermer le ballon');
 });
 
 test('les U15 gardent une organisation moins parfaite que les pros sans devenir aléatoires', () => {
