@@ -31,7 +31,8 @@ export function resolveInteractiveMatchPresentation(values = {}) {
     let emotionalIntensity = 0;
     let visualFocus = 'ball';
 
-    if ((/\bbut\s*!?\s*$|\bgoal\s*!?\s*$/.test(headline) || phase === 'goal') && !/occasion de but/.test(headline)) {
+    // GOAL doit provenir d'un fait canonique explicite, jamais d'un simple texte de présentation.
+    if (phase === 'goal' || values.goalConfirmed === true) {
         cameraState = MATCH_CAMERA_STATE.GOAL;
         emotionalIntensity = 3;
         visualFocus = 'scorer';
