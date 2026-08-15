@@ -149,7 +149,7 @@ function keepInOwnHalf(points,attackingRight){const min=attackingRight?3:50.6,ma
 function applyExperience(points,{profile,ball,seed,team,attackingRight,protectedIndexes=new Set(),neutral=false}){
     return points.map((p,index)=>{if(p.role==='goalkeeper'||protectedIndexes.has(index))return{...p};const line=structuralLine(p,attackingRight),factor=neutral?.45:1,xNoise=signedUnit(`${seed}:${team}:${index}:x`)*profile.disorder*factor,yNoise=signedUnit(`${seed}:${team}:${index}:y`)*profile.disorder*1.12*factor,lineNoise=signedUnit(`${seed}:${team}:${line}:line`)*profile.lineDrift*factor,attraction=neutral?0:profile.ballAttraction;return point(p.x+xNoise+lineNoise+(ball.x-p.x)*attraction*.32,p.y+yNoise+(ball.y-p.y)*attraction,p.role,p.facing);});
 }
-function faceBall(points,ball){return points.map(p=>{if(p.role==='goalkeeper')return p;const radians=Math.atan2(ball.y-p.y,ball.x-p.x);return{...p,facing:radians*180/Math.PI};});}
+function faceBall(points,ball){return points.map(p=>{const radians=Math.atan2(ball.y-p.y,ball.x-p.x);return{...p,facing:radians*180/Math.PI};});}
 function trajectoryFor(event,situation,carrier){
     const direction=situation.direction,goalX=direction>0?97.5:2.5,goalY=clamp(50+signedUnit(`${event.id||event.type}:target`)*8,42,58);let target=null,kind=null;
     if(event.type==='SHOT'||event.type==='GOAL'){target=ballPoint(goalX,goalY);kind=event.type;}
