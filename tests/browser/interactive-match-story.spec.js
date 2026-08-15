@@ -45,3 +45,23 @@ test('la présentation du match échappe les textes narratifs', async ({ page })
   const rendered=await page.evaluate(async()=>{const{default:InteractiveMatchFlowController}=await import('/ui/interactiveMatchFlowController.js');const controller=new InteractiveMatchFlowController({ui:{gateway:{}}});controller.show({interactive:true,interactiveStep:{phase:'pre_match',kind:'narration',label:'AVANT-MATCH',progress:5,title:'<img src=x onerror=window.__matchInjected=true>',text:'<script>window.__matchInjected=true</script>',team:'<Street>',opponent:'Rival & City',home:true,score:{home:0,away:0},choices:[],items:[],actionLabel:'Continuer'}});return{injected:Boolean(window.__matchInjected),text:document.querySelector('[data-interactive-match-flow]')?.textContent||'',rogueImage:Boolean(document.querySelector('[data-interactive-match-flow] img')),rogueScript:Boolean(document.querySelector('[data-interactive-match-flow] script'))};});
   expect(rendered.injected).toBe(false);expect(rendered.text).toContain('<img src=x');expect(rendered.text).toContain('<script>');expect(rendered.rogueImage).toBe(false);expect(rendered.rogueScript).toBe(false);
 });
+
+test('les réactions médias restent invisibles tant que la carrière pro n est pas explicitement débloquée', async ({ page }) => {
+  await page.goto('/index.html');
+  const result = await page.evaluate(async () => {
+    const { default: InteractiveMatchFlowController } = await import('/ui/interactiveMatchFlowController.js');
+    const state = { player: { age: 22, stats: { matchesPlayed: 50 } }, media: { proCoverageUnlocked: false } };
+    const ui = { gateway: { state } };
+    const controller = new InteractiveMatchFlowController({ ui });
+    const step = { phase:'reactions',kind:'reactions',label:'APRÈS-MATCH',title:'Réactions',text:'Le match est terminé.',team:'FC',opponent:'Rival',home:true,score:{home:1,away:0},choices:[],items:[{label:'Médias',text:'Les caméras te cherchent.'},{label:'Coach',text:'Le coach te félicite.'}],actionLabel:'Continuer' };
+    controller.show({ interactiveStep: step });
+    const before = document.querySelector('[data-interactive-match-flow]')?.textContent || '';
+    state.media.proCoverageUnlocked = true;
+    controller.show({ interactiveStep: step });
+    const after = document.querySelector('[data-interactive-match-flow]')?.textContent || '';
+    return { before, after };
+  });
+  expect(result.before).not.toContain('Les caméras te cherchent.');
+  expect(result.before).toContain('Le coach te félicite.');
+  expect(result.after).toContain('Les caméras te cherchent.');
+});
