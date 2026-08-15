@@ -10,6 +10,7 @@ test('un match interactif ne déduit morale et fitness qu’une seule fois', asy
     ]);
     const state = {
       player: {
+        id: 'p1',
         age: 20,
         overall: 60,
         potential: 75,
@@ -25,6 +26,10 @@ test('un match interactif ne déduit morale et fitness qu’une seule fois', asy
       cups: {}
     };
     const match = {
+      matchId: 'interactive-finalization',
+      home: true,
+      goalEvents: [],
+      interactive: true,
       rating: 8,
       minutesPlayed: 90,
       goals: 0,
