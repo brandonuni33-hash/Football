@@ -38,15 +38,15 @@ test('Carrière garde les actualités carrière sans dupliquer Coach ni Réseaux
   expect(result.opened).toEqual(['career-news-1']);
 });
 
-test('le Dashboard affiche Carrière et sépare les badges Carrière et Réseaux', async ({ page }) => {
+test('le Dashboard recentre le parcours sur Carrière, Vie et Joueur sans applications secondaires', async ({ page }) => {
   await page.goto('/index.html');
 
   const result = await page.evaluate(async () => {
     const { DashboardView } = await import('/ui/views/dashboardView.js');
     const view = new DashboardView({ ui: {}, gateway: {} });
     const html = view.render({
-      player: { firstName: 'Test', lastName: 'Player', age: 18, position: 'BU', overall: 70, potential: 85, stats: {} },
-      calendar: { currentSeasonYear: 2026 },
+      player: { firstName: 'Test', lastName: 'Player', age: 18, position: 'BU', club: 'Test FC', overall: 70, potential: 85, stats: {} },
+      calendar: { currentSeasonYear: 2026, currentPeriod: 'Reprise' },
       media: {},
       notifications: {
         unreadCount: 3,
@@ -60,19 +60,23 @@ test('le Dashboard affiche Carrière et sépare les badges Carrière et Réseaux
     const root = document.createElement('div');
     root.innerHTML = html;
     document.body.appendChild(root);
-    const careerButton = root.querySelector('[data-app="career"]');
-    const socialButton = root.querySelector('[data-app="social"]');
     return {
-      careerLabel: careerButton?.querySelector('.app-label')?.textContent?.trim(),
-      careerBadge: careerButton?.querySelector('.notification-badge')?.textContent?.trim(),
-      socialBadge: socialButton?.querySelector('.notification-badge')?.textContent?.trim(),
+      hasContinue: Boolean(root.querySelector('#play-block-btn')),
+      lifeLabel: root.querySelector('[data-space-link="life"] strong')?.textContent?.trim(),
+      playerLabel: root.querySelector('[data-space-link="player"] strong')?.textContent?.trim(),
+      hasBank: html.includes('Banque'),
+      hasSocialApp: html.includes('Réseaux'),
+      hasPotential: html.includes('POTENTIEL'),
       journalTitles: [...root.querySelectorAll('.career-journal-item strong')].map(node => node.textContent?.trim())
     };
   });
 
-  expect(result.careerLabel).toBe('Carrière');
-  expect(result.careerBadge).toBe('2');
-  expect(result.socialBadge).toBe('1');
+  expect(result.hasContinue).toBe(true);
+  expect(result.lifeLabel).toBe('Vie');
+  expect(result.playerLabel).toBe('Joueur');
+  expect(result.hasBank).toBe(false);
+  expect(result.hasSocialApp).toBe(false);
+  expect(result.hasPotential).toBe(false);
   expect(result.journalTitles).not.toContain('Réseau');
 });
 
