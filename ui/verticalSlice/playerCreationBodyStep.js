@@ -1,8 +1,8 @@
 import { createPlayerCreationDraft } from './playerCreationDraft.js';
 
 export const BODY_LIMITS = Object.freeze({
-    height: Object.freeze({ min: 145, max: 195, unit: 'cm' }),
-    weight: Object.freeze({ min: 38, max: 90, unit: 'kg' })
+    height: Object.freeze({ min: 145, max: 180, unit: 'cm' }),
+    weight: Object.freeze({ min: 38, max: 70, unit: 'kg' })
 });
 
 export const BODY_COPY = Object.freeze({
@@ -32,6 +32,15 @@ function clamp(value, { min, max }) {
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) return min;
     return Math.min(max, Math.max(min, Math.round(numeric)));
+}
+
+function ratio(value, { min, max }) {
+    return (clamp(value, { min, max }) - min) / (max - min);
+}
+
+function round(value, precision = 3) {
+    const factor = 10 ** precision;
+    return Math.round(value * factor) / factor;
 }
 
 export function updateBodyField(state, field, rawValue) {
@@ -70,6 +79,12 @@ export function bodyViewModel(state) {
     const validation = bodyValidation(state);
     const height = Number(state?.draft?.height);
     const weight = Number(state?.draft?.weight);
+    const heightRatio = ratio(height, BODY_LIMITS.height);
+    const weightRatio = ratio(weight, BODY_LIMITS.weight);
+
+    const torsoWidth = Math.round(52 + (14 * weightRatio));
+    const armWidth = Math.round(15 + (5 * weightRatio));
+    const legWidth = Math.round(21 + (6 * weightRatio));
 
     return Object.freeze({
         step: 'body',
@@ -77,6 +92,14 @@ export function bodyViewModel(state) {
         copy: BODY_COPY,
         height: Object.freeze({ value: height, ...BODY_LIMITS.height }),
         weight: Object.freeze({ value: weight, ...BODY_LIMITS.weight }),
+        silhouette: Object.freeze({
+            heightScale: round(0.90 + (0.16 * heightRatio)),
+            torsoWidth,
+            armWidth,
+            legWidth,
+            armOffset: Math.round(45 - (torsoWidth / 2) - 6),
+            legOffset: Math.round(45 - legWidth)
+        }),
         canContinue: validation.valid,
         errors: validation.errors
     });
