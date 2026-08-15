@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('le hub place Continuer sous Situation puis Vie/Joueur puis le prochain match', async ({ page }) => {
+test('le hub place Continuer sous Situation puis Vie/Joueur sans carte prochain match', async ({ page }) => {
   await page.goto('/index.html');
 
   const result = await page.evaluate(async () => {
@@ -29,15 +29,15 @@ test('le hub place Continuer sous Situation puis Vie/Joueur puis le prochain mat
       situation: indexOf('[data-career-situation]'),
       continueButton: indexOf('#play-block-btn'),
       spaces: indexOf('[data-career-spaces]'),
-      nextChallenge: indexOf('[data-next-challenge]'),
-      nextEyebrow: root.querySelector('[data-next-challenge] span')?.textContent?.trim()
+      nextChallengeExists: Boolean(root.querySelector('[data-next-challenge]')),
+      nextMatchTextExists: /PROCHAIN MATCH/i.test(root.textContent || '')
     };
   });
 
   expect(result.situation).toBeLessThan(result.continueButton);
   expect(result.continueButton).toBeLessThan(result.spaces);
-  expect(result.spaces).toBeLessThan(result.nextChallenge);
-  expect(result.nextEyebrow).toBe('⚽');
+  expect(result.nextChallengeExists).toBe(false);
+  expect(result.nextMatchTextExists).toBe(false);
 });
 
 test('Historique s ouvre réellement au toucher', async ({ page }) => {
