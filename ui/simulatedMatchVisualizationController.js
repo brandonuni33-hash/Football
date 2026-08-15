@@ -110,7 +110,7 @@ export class SimulatedMatchVisualizationController {
     titleFor(event) {
         const titles = {
             KICKOFF: 'Le bloc se met en place', BUILD_UP: 'La construction prend forme', PRESSING: 'Le pressing resserre le jeu',
-            DUEL: 'Le duel se rapproche', COUNTER_ATTACK: 'La transition accélère', CROSS: 'Le jeu s'ouvre sur un côté',
+            DUEL: 'Le duel se rapproche', COUNTER_ATTACK: 'La transition accélère', CROSS: "Le jeu s'ouvre sur un côté",
             SHOT: 'Une fenêtre de frappe', SET_PIECE: 'Coup de pied arrêté', GOAL: 'Le score change', FULL_TIME: 'Coup de sifflet final'
         };
         return titles[event.type] || 'Le match continue';
