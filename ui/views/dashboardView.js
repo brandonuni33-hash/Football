@@ -91,7 +91,7 @@ export class DashboardView {
                         <div class="career-journal-drawer" hidden>
                             <div class="career-journal-header"><strong>Historique de carrière</strong><button class="journal-close" type="button" aria-label="Fermer">×</button></div>
                             <div class="career-journal-list">
-                                ${model.journal.map(entry => `<article class="career-journal-item priority-info"><span class="journal-item-icon">${notificationIcon(entry)}</span><div class="journal-item-copy"><strong>${escapeHtml(entry.title)}</strong><p>${escapeHtml(entry.text)}</p></div></article>`).join('')}
+                                ${model.journal.map(entry => `<article class="career-journal-item priority-info" data-narrative-entry-id="${escapeHtml(entry.id)}"><span class="journal-item-icon">${notificationIcon(entry)}</span><div class="journal-item-copy"><strong>${escapeHtml(entry.title)}</strong><p>${escapeHtml(entry.text)}</p></div></article>`).join('')}
                                 ${model.signals.map(note => `<button class="career-journal-item priority-info" type="button" data-notification-id="${escapeHtml(note.id)}"><span class="journal-item-icon">${notificationIcon(note)}</span><span class="journal-item-copy"><strong>${escapeHtml(note.title || 'Actualité')}</strong><p>${escapeHtml(note.body || note.message || '')}</p></span></button>`).join('') || (!model.journal.length ? '<p class="journal-empty">Aucun moment important enregistré.</p>' : '')}
                             </div>
                         </div>
