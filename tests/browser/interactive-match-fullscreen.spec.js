@@ -26,7 +26,8 @@ test('le match jouable utilise réellement tout l écran mobile', async ({ page 
             ]
         }, 0);
 
-        new InteractiveMatchFlowController().show({ interactiveStep: step });
+        const ui = { gateway: { state: { player: { age: 15 } } } };
+        new InteractiveMatchFlowController({ ui }).show({ interactiveStep: step });
         const overlay = document.querySelector('.interactive-match-overlay');
         const card = document.querySelector('.interactive-match-card');
         const viewport = document.querySelector('.interactive-match-viewport');
@@ -43,7 +44,8 @@ test('le match jouable utilise réellement tout l écran mobile', async ({ page 
             cardHeight: cardRect.height,
             pitchViewportWidth: viewportRect.width,
             pitchViewportHeight: viewportRect.height,
-            actors: document.querySelectorAll('.match-actor').length
+            actors: document.querySelectorAll('.match-actor').length,
+            tacticalLevel: viewport.dataset.tacticalLevel
         };
     });
 
@@ -54,4 +56,5 @@ test('le match jouable utilise réellement tout l écran mobile', async ({ page 
     expect(result.pitchViewportWidth).toBeGreaterThanOrEqual(result.windowWidth - 1);
     expect(result.pitchViewportHeight).toBeGreaterThan(330);
     expect(result.actors).toBe(22);
+    expect(result.tacticalLevel).toBe('U15');
 });
