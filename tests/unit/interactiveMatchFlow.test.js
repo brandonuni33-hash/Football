@@ -11,7 +11,7 @@ function withRandom(values, callback) {
 function state() { return { player:{id:'p1',name:'Alex',age:24,club:'Paris',position:'BU',overall:72,fitness:90,morale:60,mental:65,attributes:{controle:70,dribble:72,tir:73,passe:66,vitesse:76,puissance:68},stats:{relationCoach:70}},social:{coachData:{name:'Coach Rivera'}},career:{balance:0},consequences:[],careerMemory:[] }; }
 function fixture() { return { id:'match-flow',competitionName:'Ligue 1',competitionType:'league',type:'league',opponent:'Lyon',home:true,opponentStrength:70,playerSelection:{selected:true,started:true,minutes:90} }; }
 
-test('le match jouable suit toute la séquence narrative dans le bon ordre', () => withRandom(Array(100).fill(.3), () => {
+test('le match jouable commence directement par une décision puis suit les conséquences', () => withRandom(Array(100).fill(.3), () => {
     const current=state(),session=startInteractiveMatch(current,fixture(),0),phases=[];
     let output={session,step:session.step};
     let guard=0;
@@ -19,8 +19,9 @@ test('le match jouable suit toute la séquence narrative dans le bon ordre', () 
         phases.push(output.step?.phase);
         output=output.step?.kind==='decision'?advanceInteractiveMatch(current,session,{choiceIndex:0}):advanceInteractiveMatch(current,session);
     }
-    assert.ok(phases.includes('pre_match'));
-    assert.ok(phases.includes('kickoff'));
+    assert.ok(!phases.includes('pre_match'));
+    assert.ok(!phases.includes('kickoff'));
+    assert.match(phases[0], /^moment_/);
     assert.ok(phases.some(phase=>String(phase).startsWith('moment_')));
     assert.ok(phases.some(phase=>String(phase).startsWith('consequence_')));
     assert.ok(phases.includes('full_time_sequence'));
@@ -50,8 +51,7 @@ test('le résultat final reste cohérent avec les contributions et les réaction
 
 test('une étape automatique ne choisit jamais une décision à la place du joueur', () => {
     const current=state(),session=startInteractiveMatch(current,fixture(),0);
-    advanceInteractiveMatch(current,session);
-    let output=advanceInteractiveMatch(current,session);
+    let output={step:session.step};
     assert.equal(output.step.kind,'decision');
     const count=session.decisions.length;
     output=advanceInteractiveMatch(current,session);

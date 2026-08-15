@@ -13,12 +13,14 @@ const STATES = new Set(Object.values(MATCH_CAMERA_STATE));
 const clampIntensity = value => Math.max(0, Math.min(3, Math.round(Number(value) || 0)));
 
 export function resolveInteractiveMatchPresentation(values = {}) {
+    const playerControlled = values.playerControlled ?? values.kind === 'decision';
     const explicit = String(values.cameraState || '').toUpperCase();
     if (STATES.has(explicit)) {
         return {
             cameraState: explicit,
             emotionalIntensity: clampIntensity(values.emotionalIntensity),
-            visualFocus: values.visualFocus || 'ball'
+            visualFocus: values.visualFocus || 'ball',
+            playerControlled
         };
     }
 
@@ -63,7 +65,7 @@ export function resolveInteractiveMatchPresentation(values = {}) {
         visualFocus = 'player';
     }
 
-    return { cameraState, emotionalIntensity, visualFocus };
+    return { cameraState, emotionalIntensity, visualFocus, playerControlled };
 }
 
 export default resolveInteractiveMatchPresentation;

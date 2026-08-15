@@ -28,10 +28,10 @@ test('un match ordinaire reste court et sans minuterie forcée', async ({ page }
   expect(result.count).toBeGreaterThanOrEqual(1); expect(result.count).toBeLessThanOrEqual(2);
 });
 
-test('les scènes narratives ne possèdent plus d auto-avancement', async ({ page }) => {
+test('le match entre directement dans la première décision utile', async ({ page }) => {
   await page.goto('/index.html');
-  const result=await page.evaluate(async()=>{const{startInteractiveMatch,advanceInteractiveMatch}=await import('/domain/match/interactiveMatchController.js');const state={player:{club:'FC',position:'BU',overall:60,attributes:{controle:60}}};const s=startInteractiveMatch(state,{opponent:'B',home:true,playerSelection:{started:true,minutes:90}},0);const pre={...s.step};advanceInteractiveMatch(state,s,{});return{preAuto:'autoAdvanceMs'in pre,kickAuto:'autoAdvanceMs'in s.step};});
-  expect(result.preAuto).toBe(false); expect(result.kickAuto).toBe(false);
+  const result=await page.evaluate(async()=>{const{startInteractiveMatch}=await import('/domain/match/interactiveMatchController.js');const state={player:{club:'FC',position:'BU',overall:60,attributes:{controle:60}}};const s=startInteractiveMatch(state,{opponent:'B',home:true,playerSelection:{started:true,minutes:90}},0);return{phase:s.step.phase,kind:s.step.kind,choices:s.step.choices.length};});
+  expect(result.phase).toMatch(/^moment_/); expect(result.kind).toBe('decision'); expect(result.choices).toBeGreaterThan(0);
 });
 
 test('une décision chronométrée peut expirer sans choisir arbitrairement une option', async ({ page }) => {
