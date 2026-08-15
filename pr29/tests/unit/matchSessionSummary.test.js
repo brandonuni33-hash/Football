@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import{matchSessionSummary}from'../../domain/match/matchSessionSummary.js';test('le résumé garde une seule identité de match',()=>assert.equal(matchSessionSummary({id:'m',decisions:[{},{}],events:[{}],flowVersion:3}).matchId,'m'));

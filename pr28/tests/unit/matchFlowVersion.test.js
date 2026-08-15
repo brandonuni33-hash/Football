@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import{INTERACTIVE_MATCH_FLOW_VERSION,INTERACTIVE_MATCH_FLOW_NAME}from'../../domain/match/matchFlowVersion.js';test('la reprise PR9 est le flow v3',()=>{assert.equal(INTERACTIVE_MATCH_FLOW_VERSION,3);assert.match(INTERACTIVE_MATCH_FLOW_NAME,/player-paced/);});

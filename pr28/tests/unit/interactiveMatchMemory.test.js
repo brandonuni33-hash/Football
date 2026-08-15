@@ -1,0 +1,3 @@
+import test from 'node:test';import assert from 'node:assert/strict';import{createMatchMemory,recordMatchChoice,recordPressureMiss,delayedMatchEffect}from'../../domain/match/interactiveMatchMemory.js';
+test('répéter les duels peut créer une conséquence différée',()=>{const m=createMatchMemory();recordMatchChoice(m,{text:'Petit pont',gesture:'Petit pont',impacts:{duelBonus:.2,goalChance:.04}},{});recordMatchChoice(m,{text:'Encore le duel',impacts:{duelBonus:.2}},{});const effect=delayedMatchEffect(m);assert.equal(effect.id,'defender_overloaded');assert.ok(effect.effects.goal>0);});
+test('une expiration reste en mémoire dans le match',()=>{const m=createMatchMemory();recordPressureMiss(m);assert.equal(delayedMatchEffect(m).id,'hesitation_echo');});

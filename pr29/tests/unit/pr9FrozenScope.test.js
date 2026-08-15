@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';test('le scope est gelé avant CI',()=>assert.match(fs.readFileSync(new URL('../../docs/pr9-final-scope-check.md',import.meta.url),'utf8'),/fonctionnel est gelé/));

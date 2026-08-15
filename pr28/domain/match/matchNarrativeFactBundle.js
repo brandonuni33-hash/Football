@@ -1,0 +1,2 @@
+export function matchNarrativeFactBundle(result={}){if(!result.matchId)return null;return{matchId:result.matchId,score:{...(result.score||{})},goals:Number(result.goals)||0,assists:Number(result.assists)||0,rating:Number(result.rating)||0,decisions:(result.decisions||[]).map(d=>({...d,matchId:result.matchId})),events:(result.events||[]).map(e=>({...e,matchId:result.matchId})),result:result.result||null,opponent:result.opponent||null};}
+export default matchNarrativeFactBundle;

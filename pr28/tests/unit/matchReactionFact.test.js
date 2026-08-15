@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import{reactionFact}from'../../domain/match/matchReactionFact.js';test('un geste précis prime sur le commentaire générique',()=>assert.equal(reactionFact({matchId:'m',goals:1,events:[{gesture:'Panenka',minute:80}]}).label,'Panenka'));

@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import{decisionRangeLabel}from'../../domain/match/matchDecisionRangeLabel.js';test('une finale peut afficher sa plage sans promettre un nombre fixe',()=>assert.equal(decisionRangeLabel([4,6]),'4 à 6 décisions possibles'));

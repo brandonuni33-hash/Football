@@ -1,0 +1,4 @@
+const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+export function decisionRange({type='standard',importance='normal',started=true}={}){if(!started)return[1,3];if(type==='final')return[4,6];if(type==='rival')return[3,5];if(importance==='exceptional')return[3,5];if(importance==='important')return[2,4];return[1,2];}
+export function decisionCountForMatch(match={},roll=Math.random()){const started=match?.playerSelection?.started!==false,minutes=Math.max(1,Number(match?.minutes??match?.playerSelection?.minutes??90)||90);if(!started)return clamp(Math.round(minutes/18),1,3);const[min,max]=decisionRange({type:match.type||match.matchType||'standard',importance:match.importance||'normal',started});return min+Math.floor(Math.max(0,Math.min(.999999,roll))*(max-min+1));}
+export default decisionCountForMatch;

@@ -1,0 +1,3 @@
+import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';
+test('aucune narration de match ne réintroduit autoAdvanceMs',()=>{const src=fs.readFileSync(new URL('../../domain/match/interactiveMatchNarrative.js',import.meta.url),'utf8');assert.equal(src.includes('autoAdvanceMs'),false);});
+test('le contrôleur UI ne possède pas de minuterie narrative générique',()=>{const src=fs.readFileSync(new URL('../../ui/interactiveMatchFlowController.js',import.meta.url),'utf8');assert.equal(src.includes('step.autoAdvanceMs'),false);assert.equal(src.includes('timedDecision'),true);});

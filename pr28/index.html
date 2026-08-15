@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Street to Pro - Simulation de carrière football">
+    <meta name="theme-color" content="#070b14">
+    <title>Street to Pro</title>
+    <link rel="stylesheet" href="style.css?v=118">
+    <link rel="stylesheet" href="ui/styles/enhancement.css?v=118">
+    <link rel="stylesheet" href="ui/styles/dashboardImmersive.css?v=118">
+    <link rel="stylesheet" href="ui/styles/careerApp.css?v=118">
+    <link rel="stylesheet" href="ui/styles/interactiveMatch.css?v=118">
+    <script>
+        window.addEventListener('error', (event) => {
+            if (!event?.error && !event?.message) return;
+            console.error('[Street to Pro] erreur de chargement', event.error || event.message);
+        });
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('[Street to Pro] promesse rejetée', event.reason);
+        });
+    </script>
+    <script src="//cdn.jsdelivr.net/npm/eruda"></script>
+    <script>if (typeof eruda !== "undefined") eruda.init();</script>
+</head>
+<body>
+    <div id="app"></div>
+    <script type="module" src="main.js?v=118"></script>
+    <script type="module" src="ui/creationEnhancements.js?v=118"></script>
+</body>
+</html>

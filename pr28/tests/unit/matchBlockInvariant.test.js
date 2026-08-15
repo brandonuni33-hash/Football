@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import{validateBlockMatchStories}from'../../domain/match/matchBlockInvariant.js';test('refuse deux récits interactifs différents dans un bloc',()=>assert.equal(validateBlockMatchStories([{interactive:true,matchId:'a'},{interactive:true,matchId:'b'}]).valid,false));

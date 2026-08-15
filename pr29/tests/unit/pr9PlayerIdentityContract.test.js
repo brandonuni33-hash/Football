@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import{gestureSuccessChance}from'../../domain/match/matchGestureOutcome.js';test('même un futsal très technique n atteint jamais 100 pour cent',()=>assert.ok(gestureSuccessChance({technique:99,origin:'FUTSAL',difficulty:.1,pressure:0})<1));

@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import{MATCH_REPORT_LABELS as L}from'../../domain/match/matchReportLabels.js';test('les quatre appellations restent séparées',()=>assert.equal(new Set(Object.values(L)).size,4));

@@ -1,0 +1,2 @@
+export function celebrationOptions({scored=false,type='standard',minute=0,rivalry=false,discipline=50}={}){if(!scored)return[];const options=['Célébrer avec tes coéquipiers','Lever les bras vers le public'];if((type==='rival'||rivalry)&&Number(minute)>=60)options.push('Célébration provocatrice');if(Number(discipline)>=70)options.push('Rester sobre et reprendre immédiatement');return options;}
+export default celebrationOptions;

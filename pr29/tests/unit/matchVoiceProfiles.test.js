@@ -1,0 +1,1 @@
+import test from'node:test';import assert from'node:assert/strict';import{MATCH_VOICE_PROFILES}from'../../domain/match/matchVoiceProfiles.js';test('sept voix sociales sont définies',()=>assert.equal(Object.keys(MATCH_VOICE_PROFILES).length,7));

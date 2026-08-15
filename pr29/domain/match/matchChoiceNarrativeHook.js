@@ -1,0 +1,2 @@
+export function narrativeHooksForChoice(choice={},event={}){const hooks=[];if(choice.gesture)hooks.push('spectacular-gesture');if(event.timedOut)hooks.push('pressure-hesitation');if(Number(choice.impacts?.duelBonus)>0)hooks.push('repeated-duel');if(Number(choice.impacts?.cardRisk)>0)hooks.push('discipline-risk');if(Number(choice.impacts?.goalChance)>0)hooks.push('attacking-intent');return hooks;}
+export default narrativeHooksForChoice;
