@@ -11,3 +11,5 @@ export { MessagesView } from './messagesView.js';
 export { BankView } from './bankView.js';
 export { StatsView } from './statsView.js';
 export { SettingsView } from './settingsView.js';
+export { LifeView } from './lifeView.js';
+export { PlayerView } from './playerView.js';
