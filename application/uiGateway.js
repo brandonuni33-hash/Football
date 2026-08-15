@@ -1,29 +1,29 @@
 // application/uiGateway.js
 // Contrat unique entre l'interface et l'application.
 
-function interactivePayload(session, extra = {}) {
-    const step = session?.step || null;
-    return { interactive: true, interactiveStep: step, interactiveDecision: step?.kind === 'decision' ? session?.decision || null : null, interactiveEvent: extra.event || null, matchImportance: extra.matchImportance || session?.importance || null, playerSelection: extra.playerSelection || session?.match?.playerSelection || null };
-}
 export class UIGateway {
     constructor({ application, engine } = {}) { if (!application) throw new Error('UIGateway requires a GameApplication.'); this.application = application; this.engine = engine || application.engine; }
     get state() { return this.engine?.state || this.application.state || null; }
     startCareer(selectedData = {}) { const state = this.application.registry?.careerApplication?.create?.(selectedData); if (state) this.engine.state = state; return state; }
     playBlock(choice = null) { return this.application.registry?.blockSystem?.execute?.(this.state, choice) ?? null; }
     playNextBlock(choice = null) {
-        const state = this.state; if (!state?.player) return null; const active = state.activeMatchSession;
-        if (active) { const result = this.advanceInteractiveMatch(choice); if (!result.finished) return interactivePayload(result.session, { event: result.event }); }
-        const next = this.getNextPlayableMatch();
-        if (next) { const fixture = this.withComputedImportance(next); fixture.playerSelection = next.selection || null; fixture.minutes = next.selection?.minutes || 90; const session = this.startInteractiveMatch(fixture, next.matchIndex); return interactivePayload(session, { matchImportance: next.importance || null, playerSelection: next.selection || null }); }
-        return this.completeInteractiveBlock();
+        const state = this.state;
+        if (!state?.player) return null;
+        // Jalon 0.5 : le parcours principal ne lance plus le moteur de contrôle direct.
+        // Une ancienne session inachevée est abandonnée proprement ; les résultats déjà
+        // commités restent dans interactiveBlockResults et seront finalisés idempotemment.
+        if (state.activeMatchSession) delete state.activeMatchSession;
+        return this.application.registry?.blockSystem?.execute?.(state, choice) ?? null;
     }
     advanceCalendar() { return this.application.registry?.calendarSystem?.advance?.(this.state) ?? null; }
     setTrainingFocus(focusKey) { const training=this.application.registry?.trainingSystem;if(!training?.isValidFocus?.(focusKey)||!this.state?.player)return false;this.state.trainingFocus=focusKey;this.application.registry.blockSystem.stateManager.save(this.state);return true; }
-    shouldTriggerMatchDilemma(){if(this.state?.activeMatchSession)return true;return Boolean(!this.state?.player?.isInjured&&this.getNextPlayableMatch());}
-    getMatchDilemma(type='standard',opponent="l'adversaire"){const state=this.state;if(!state?.activeMatchSession){const next=this.getNextPlayableMatch();if(next){const fixture=this.withComputedImportance(next);fixture.playerSelection=next.selection||null;fixture.minutes=next.selection?.minutes||90;this.startInteractiveMatch(fixture,next.matchIndex);}}return state?.activeMatchSession?.decision||this.application.registry?.matchChoiceManager?.getMatchDilemma?.(type,opponent)||null;}
+    shouldTriggerMatchDilemma(){return false;}
+    getMatchDilemma(){return null;}
     resolveEventChoice(i){return this.application.registry?.interactionSystem?.resolveEventChoice?.(this.state,i)??null;} resolveCoachChoice(i){return this.application.registry?.interactionSystem?.resolveCoachChoice?.(this.state,i)??null;} resolveMediaDilemma(i){return this.application.registry?.interactionSystem?.resolveMediaChoice?.(this.state,i)??null;} resolvePositionProposal(a){return this.application.registry?.interactionSystem?.resolvePositionProposal?.(this.state,a)??null;} acceptTransferOffer(){return this.application.registry?.transferSystem?.accept?.(this.state)??null;} rejectTransferOffer(){return this.application.registry?.transferSystem?.reject?.(this.state)??false;} saveCareer(){return Boolean(this.application.registry?.blockSystem?.stateManager?.save?.(this.state));} retireCareer(){return this.application.registry?.careerLifecycleSystem?.retire?.(this.state)??null;} resetCareer(){const result=this.application.registry?.careerLifecycleSystem?.reset?.();this.engine.state=null;return result;} getPeriodName(month){return this.application.registry?.calendarSystem?.getPeriodName?.(month)??'';}
     getScheduledMatches(){try{const plan=this.application.registry?.competitionSystem?.getBlockPlan?.(this.state);return Array.isArray(plan?.scheduledMatches)?plan.scheduledMatches:[];}catch{return[];}}
     getSquadSelectionPlan(){const state=this.state;if(!state?.player)return{key:null,status:'Hors groupe',score:0,entries:[]};const matches=this.getScheduledMatches(),system=this.application.registry?.squadSelectionSystem;return system?.getPlan?.(state,matches)||{key:null,status:'Titulaire',score:50,entries:matches.map((fixture,matchIndex)=>({matchIndex,fixture,appearance:'starter',selected:true,started:true,minutes:90}))};}
+    // Compatibilité uniquement : ces méthodes gardent les anciennes sauvegardes lisibles,
+    // mais aucune route UI de la PR #28 ne les invoque.
     getMatchInteractionPlan(){const state=this.state;if(!state?.player)return{key:null,budget:0,playableCount:0,entries:[]};const matches=this.getScheduledMatches(),key=`${state.calendar?.currentSeasonYear??state.season??'season'}:${state.calendar?.currentMonth??'month'}:${matches.length}`,selectionPlan=this.getSquadSelectionPlan(),cached=state.matchInteractionPlan;if(cached?.key===key&&Array.isArray(cached.entries))return{...cached,entries:cached.entries.map(entry=>({...entry,fixture:matches[entry.matchIndex]||null,selection:selectionPlan.entries.find(item=>Number(item.matchIndex)===Number(entry.matchIndex))||null}))};const planner=this.application.registry?.matchImportanceSystem,planned=planner?.planBlock?.(state,matches)||{key,budget:0,playableCount:0,entries:[]};const entries=(planned.entries||[]).map(entry=>{const selection=selectionPlan.entries.find(item=>Number(item.matchIndex)===Number(entry.matchIndex))||null;return{...entry,playable:Boolean(entry.playable&&selection?.selected),selection};});const serializable={key,budget:planned.budget||0,playableCount:entries.filter(entry=>entry.playable).length,entries:entries.map(({fixture,selection,...entry})=>({...entry,selection:selection?{...selection,fixture:undefined}:null}))};state.matchInteractionPlan=serializable;return{...serializable,entries:entries.map(entry=>({...entry,fixture:matches[entry.matchIndex]||null}))};}
     getNextPlayableMatch(){const plan=this.getMatchInteractionPlan(),completed=new Set((Array.isArray(this.state?.interactiveBlockResults)?this.state.interactiveBlockResults:[]).map(result=>Number(result?.matchIndex)).filter(Number.isFinite));return plan.entries.find(entry=>entry.playable&&entry.fixture&&entry.selection?.selected&&!completed.has(Number(entry.matchIndex)))||null;}
     withComputedImportance(entry){if(!entry?.fixture)return entry?.fixture||null;return{...entry.fixture,importance:entry.importance?.level||entry.fixture.importance,importanceScore:entry.importance?.score??entry.fixture.importanceScore,importanceReasons:entry.importance?.reasons||entry.fixture.importanceReasons||[]};}

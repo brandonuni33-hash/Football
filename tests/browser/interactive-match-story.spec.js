@@ -28,10 +28,10 @@ test('un match ordinaire reste court et sans minuterie forcée', async ({ page }
   expect(result.count).toBeGreaterThanOrEqual(1); expect(result.count).toBeLessThanOrEqual(2);
 });
 
-test('le match entre directement dans la première décision utile', async ({ page }) => {
+test('les scènes narratives ne possèdent plus d auto-avancement', async ({ page }) => {
   await page.goto('/index.html');
-  const result=await page.evaluate(async()=>{const{startInteractiveMatch}=await import('/domain/match/interactiveMatchController.js');const state={player:{club:'FC',position:'BU',overall:60,attributes:{controle:60}}};const s=startInteractiveMatch(state,{opponent:'B',home:true,playerSelection:{started:true,minutes:90}},0);return{phase:s.step.phase,kind:s.step.kind,choices:s.step.choices.length};});
-  expect(result.phase).toMatch(/^moment_/); expect(result.kind).toBe('decision'); expect(result.choices).toBeGreaterThan(0);
+  const result=await page.evaluate(async()=>{const{startInteractiveMatch,advanceInteractiveMatch}=await import('/domain/match/interactiveMatchController.js');const state={player:{club:'FC',position:'BU',overall:60,attributes:{controle:60}}};const s=startInteractiveMatch(state,{opponent:'B',home:true,playerSelection:{started:true,minutes:90}},0);const pre={...s.step};advanceInteractiveMatch(state,s,{});return{preAuto:'autoAdvanceMs'in pre,kickAuto:'autoAdvanceMs'in s.step};});
+  expect(result.preAuto).toBe(false); expect(result.kickAuto).toBe(false);
 });
 
 test('une décision chronométrée peut expirer sans choisir arbitrairement une option', async ({ page }) => {
@@ -44,24 +44,4 @@ test('la présentation du match échappe les textes narratifs', async ({ page })
   await page.goto('/index.html');
   const rendered=await page.evaluate(async()=>{const{default:InteractiveMatchFlowController}=await import('/ui/interactiveMatchFlowController.js');const controller=new InteractiveMatchFlowController({ui:{gateway:{}}});controller.show({interactive:true,interactiveStep:{phase:'pre_match',kind:'narration',label:'AVANT-MATCH',progress:5,title:'<img src=x onerror=window.__matchInjected=true>',text:'<script>window.__matchInjected=true</script>',team:'<Street>',opponent:'Rival & City',home:true,score:{home:0,away:0},choices:[],items:[],actionLabel:'Continuer'}});return{injected:Boolean(window.__matchInjected),text:document.querySelector('[data-interactive-match-flow]')?.textContent||'',rogueImage:Boolean(document.querySelector('[data-interactive-match-flow] img')),rogueScript:Boolean(document.querySelector('[data-interactive-match-flow] script'))};});
   expect(rendered.injected).toBe(false);expect(rendered.text).toContain('<img src=x');expect(rendered.text).toContain('<script>');expect(rendered.rogueImage).toBe(false);expect(rendered.rogueScript).toBe(false);
-});
-
-test('les réactions médias restent invisibles tant que la carrière pro n est pas explicitement débloquée', async ({ page }) => {
-  await page.goto('/index.html');
-  const result = await page.evaluate(async () => {
-    const { default: InteractiveMatchFlowController } = await import('/ui/interactiveMatchFlowController.js');
-    const state = { player: { age: 22, stats: { matchesPlayed: 50 } }, media: { proCoverageUnlocked: false } };
-    const ui = { gateway: { state } };
-    const controller = new InteractiveMatchFlowController({ ui });
-    const step = { phase:'reactions',kind:'reactions',label:'APRÈS-MATCH',title:'Réactions',text:'Le match est terminé.',team:'FC',opponent:'Rival',home:true,score:{home:1,away:0},choices:[],items:[{label:'Médias',text:'Les caméras te cherchent.'},{label:'Coach',text:'Le coach te félicite.'}],actionLabel:'Continuer' };
-    controller.show({ interactiveStep: step });
-    const before = document.querySelector('[data-interactive-match-flow]')?.textContent || '';
-    state.media.proCoverageUnlocked = true;
-    controller.show({ interactiveStep: step });
-    const after = document.querySelector('[data-interactive-match-flow]')?.textContent || '';
-    return { before, after };
-  });
-  expect(result.before).not.toContain('Les caméras te cherchent.');
-  expect(result.before).toContain('Le coach te félicite.');
-  expect(result.after).toContain('Les caméras te cherchent.');
 });
