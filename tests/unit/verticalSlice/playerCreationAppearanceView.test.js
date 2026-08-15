@@ -6,12 +6,13 @@ import {
 } from '../../../ui/verticalSlice/playerCreationAppearanceStep.js';
 import { playerCreationAppearanceTemplate } from '../../../ui/verticalSlice/playerCreationAppearanceView.js';
 
-test('l’écran visage conserve le texte validé et la structure de création', () => {
+test('l’écran visage conserve la structure de création validée', () => {
     const html = playerCreationAppearanceTemplate(createAppearanceStepState());
 
     assert.match(html, /02 \/ 06/);
     assert.match(html, /Choisis ton visage/);
-    assert.match(html, /Choisie bien !<br>avec le temps les visage évolue\./);
+    assert.doesNotMatch(html, /Choisie bien/);
+    assert.doesNotMatch(html, /les visage évolue/);
     assert.match(html, /data-face-id="face-01"/);
     assert.match(html, /data-face-id="face-06"/);
     assert.match(html, /class="stp-continue" disabled/);
