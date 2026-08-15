@@ -20,14 +20,16 @@ test('l’étape gabarit reprend les valeurs de départ validées', () => {
     assert.equal(vm.canContinue, true);
 });
 
-test('taille et poids sont modifiables dans les limites de l’écran', () => {
-    let state = createBodyStepState({ faceId: 'face-03' });
-    state = updateBodyField(state, 'height', 183);
-    state = updateBodyField(state, 'weight', 72);
+test('à 14 ans la taille est limitée à 180 cm et le poids à 70 kg', () => {
+    assert.equal(BODY_LIMITS.height.max, 180);
+    assert.equal(BODY_LIMITS.weight.max, 70);
 
-    assert.equal(state.draft.height, 183);
-    assert.equal(state.draft.weight, 72);
-    assert.equal(state.draft.faceId, 'face-03');
+    let state = createBodyStepState({ faceId: 'face-03' });
+    state = updateBodyField(state, 'height', 180);
+    state = updateBodyField(state, 'weight', 70);
+
+    assert.equal(state.draft.height, 180);
+    assert.equal(state.draft.weight, 70);
     assert.equal(bodyValidation(state).valid, true);
 });
 
@@ -40,6 +42,19 @@ test('les valeurs hors plage sont bornées sans modifier le reste du joueur', ()
     assert.equal(state.draft.weight, BODY_LIMITS.weight.min);
     assert.equal(state.draft.firstname, 'Elias');
     assert.equal(state.draft.faceId, 'face-02');
+});
+
+test('le gabarit visuel grandit et s’élargit avec les sliders', () => {
+    let light = createBodyStepState({ height: 145, weight: 38 });
+    let strong = createBodyStepState({ height: 180, weight: 70 });
+
+    const lightVm = bodyViewModel(light);
+    const strongVm = bodyViewModel(strong);
+
+    assert.ok(strongVm.silhouette.heightScale > lightVm.silhouette.heightScale);
+    assert.ok(strongVm.silhouette.torsoWidth > lightVm.silhouette.torsoWidth);
+    assert.ok(strongVm.silhouette.armWidth > lightVm.silhouette.armWidth);
+    assert.ok(strongVm.silhouette.legWidth > lightVm.silhouette.legWidth);
 });
 
 test('continuer depuis le gabarit mène à poste + pied fort', () => {
