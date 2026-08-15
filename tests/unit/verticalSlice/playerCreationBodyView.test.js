@@ -10,7 +10,8 @@ test('l’écran gabarit donne la priorité à la silhouette et garde le fond ma
     const html = playerCreationBodyTemplate(createBodyStepState());
 
     assert.match(html, /03 \/ 06/);
-    assert.match(html, /Ton corps à 14 ans\./);
+    assert.doesNotMatch(html, /Ton corps à 14 ans\./);
+    assert.match(html, />14 ans</);
     assert.match(html, /name="height"/);
     assert.match(html, /name="weight"/);
     assert.match(html, /stp-creation-material/);
