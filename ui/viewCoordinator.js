@@ -156,10 +156,22 @@ export class ViewCoordinator {
         const notifications = Array.isArray(notificationState) ? notificationState : (notificationState?.signals || []);
         const notification = notifications.find(item => String(item?.id) === String(id));
         if (!notification) return null;
-        const wasUnread = !notification.read;
-        notification.read = true;
-        notification.readAt = new Date().toISOString();
-        if (wasUnread && notificationState && !Array.isArray(notificationState)) notificationState.unreadCount = Math.max(0, Number(notificationState.unreadCount || 0) - 1);
+
+        if (!notification.read) {
+            const notificationSystem = this.gateway.application?.registry?.notificationSystem;
+            let markedRead = false;
+            if (!Array.isArray(notificationState) && typeof notificationSystem?.markRead === 'function') {
+                markedRead = notificationSystem.markRead(this.gateway.state, notification.id);
+            } else {
+                // Compatibilité défensive pour un état legacy ou un gateway de test sans domaine monté.
+                notification.read = true;
+                if (notificationState && !Array.isArray(notificationState)) {
+                    notificationState.unreadCount = Math.max(0, Number(notificationState.unreadCount || 0) - 1);
+                }
+                markedRead = true;
+            }
+            if (markedRead) this.gateway.saveCareer?.();
+        }
 
         const type = String(notification.type || notification.category || '').toLowerCase();
         if (/media|média|social|family|famille|coach|relationship/.test(type)) {
