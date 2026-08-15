@@ -39,3 +39,13 @@ test('un coup de pied arrêté reste distinct du but et de la frappe', () => {
     assert.equal(presentation.cameraState, MATCH_CAMERA_STATE.SET_PIECE);
     assert.equal(presentation.emotionalIntensity, 2);
 });
+
+test('un texte qui contient but ne peut jamais confirmer un but à lui seul', () => {
+    assert.notEqual(
+        resolveInteractiveMatchPresentation({ phase: 'consequence_1', title: 'Pas but !', text: 'Le gardien repousse.' }).cameraState,
+        MATCH_CAMERA_STATE.GOAL
+    );
+    const confirmed = resolveInteractiveMatchPresentation({ phase: 'goal', title: 'But confirmé' });
+    assert.equal(confirmed.cameraState, MATCH_CAMERA_STATE.GOAL);
+    assert.equal(confirmed.emotionalIntensity, 3);
+});
