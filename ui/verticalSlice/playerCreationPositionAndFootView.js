@@ -14,26 +14,33 @@ function escapeHtml(value = '') {
         .replaceAll("'", '&#039;');
 }
 
-const POSITION_COORDS = Object.freeze({
-    GB: [50, 89],
-    DG: [19, 72], DC: [50, 76], DD: [81, 72],
-    MDC: [50, 59],
-    MC: [50, 47],
-    MOC: [50, 35],
-    AG: [19, 19], BU: [50, 14], AD: [81, 19]
-});
+const POSITION_LAYOUT = Object.freeze([
+    Object.freeze({ id: 'GB', left: 50, top: 89 }),
+    Object.freeze({ id: 'DD', left: 17, top: 72 }),
+    Object.freeze({ id: 'DC', left: 39, top: 76 }),
+    Object.freeze({ id: 'DC', left: 61, top: 76 }),
+    Object.freeze({ id: 'DG', left: 83, top: 72 }),
+    Object.freeze({ id: 'MDC', left: 50, top: 59 }),
+    Object.freeze({ id: 'MC', left: 50, top: 47 }),
+    Object.freeze({ id: 'MOC', left: 50, top: 35 }),
+    Object.freeze({ id: 'AD', left: 19, top: 19 }),
+    Object.freeze({ id: 'BU', left: 50, top: 14 }),
+    Object.freeze({ id: 'AG', left: 81, top: 19 })
+]);
 
 export function playerCreationPositionAndFootTemplate(state) {
     const vm = positionAndFootViewModel(state);
     const readyClass = vm.canContinue ? ' ready' : '';
     const disabled = vm.canContinue ? '' : ' disabled';
+    const positionsById = new Map(vm.positions.map(position => [position.id, position]));
 
-    const markers = vm.positions.map(position => {
-        const [left, top] = POSITION_COORDS[position.id];
-        return `<button type="button" class="stp-position-marker${position.selected ? ' selected' : ''}" data-position="${escapeHtml(position.id)}" aria-pressed="${position.selected ? 'true' : 'false'}" style="left:${left}%;top:${top}%"><strong>${escapeHtml(position.id)}</strong><span>${escapeHtml(position.label)}</span></button>`;
+    const markers = POSITION_LAYOUT.map(slot => {
+        const position = positionsById.get(slot.id);
+        return `<button type="button" class="stp-position-marker${position.selected ? ' selected' : ''}" data-position="${escapeHtml(position.id)}" aria-pressed="${position.selected ? 'true' : 'false'}" style="left:${slot.left}%;top:${slot.top}%"><strong>${escapeHtml(position.id)}</strong><span>${escapeHtml(position.label)}</span></button>`;
     }).join('');
 
-    const feet = vm.feet.map(foot => `<button type="button" class="stp-foot-option${foot.selected ? ' selected' : ''}" data-foot="${escapeHtml(foot.id)}" aria-pressed="${foot.selected ? 'true' : 'false'}"><span class="stp-foot-icon" aria-hidden="true">${foot.id === 'RIGHT' ? 'R' : 'L'}</span><strong>${escapeHtml(foot.label)}</strong></button>`).join('');
+    const footOrder = ['LEFT', 'RIGHT'];
+    const feet = footOrder.map(id => vm.feet.find(foot => foot.id === id)).map(foot => `<button type="button" class="stp-foot-option${foot.selected ? ' selected' : ''}" data-foot="${escapeHtml(foot.id)}" aria-pressed="${foot.selected ? 'true' : 'false'}"><span class="stp-foot-icon" aria-hidden="true">${foot.id === 'RIGHT' ? 'R' : 'L'}</span><strong>${escapeHtml(foot.label)}</strong></button>`).join('');
 
     return `
 <section class="stp-creation-position" data-stp-step="positionAndFoot">
