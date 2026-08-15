@@ -4,6 +4,7 @@ import {
   CREATION_SCREENS,
   PREFERRED_FEET,
   VERTICAL_SLICE_START_AGE,
+  VERTICAL_SLICE_BODY_LIMITS,
   createPlayerCreationDraft,
   validatePlayerCreationDraft,
   toCareerCreationIdentity
@@ -26,6 +27,22 @@ test('le joueur commence à 14 ans et grandit en France dans la slice', () => {
   assert.equal(draft.age, VERTICAL_SLICE_START_AGE);
   assert.equal(draft.age, 14);
   assert.equal(draft.raisedInCountry, 'France');
+});
+
+test('le gabarit de création reste borné pour un joueur de 14 ans', () => {
+  assert.deepEqual(VERTICAL_SLICE_BODY_LIMITS.height, { min: 145, max: 180 });
+  assert.deepEqual(VERTICAL_SLICE_BODY_LIMITS.weight, { min: 38, max: 70 });
+
+  const draft = createPlayerCreationDraft({
+    firstname: 'Elias', lastname: 'Morel', faceId: 'face-01',
+    height: 181, weight: 71, position: 'MC', preferredFoot: 'RIGHT',
+    primaryNationality: 'France'
+  });
+  const validation = validatePlayerCreationDraft(draft);
+
+  assert.equal(validation.valid, false);
+  assert.equal(validation.errors.height, 'Taille invalide.');
+  assert.equal(validation.errors.weight, 'Poids invalide.');
 });
 
 test('le pied fort est obligatoire et une seconde nationalité ne peut pas dupliquer la première', () => {
