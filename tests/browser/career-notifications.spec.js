@@ -128,3 +128,53 @@ test('le statut personnel est dans Famille et plus dans Messages', async ({ page
   expect(result.familyHtml).toContain('Camille');
   expect(result.messagesHtml).not.toContain('Statut personnel');
 });
+
+test('ouvrir une notification délègue la lecture au NotificationSystem canonique', async ({ page }) => {
+  await page.goto('/index.html');
+
+  const result = await page.evaluate(async () => {
+    const { ViewCoordinator } = await import('/ui/viewCoordinator.js');
+    const state = {
+      player: { id: 'p1', age: 18 },
+      notifications: {
+        unreadCount: 1,
+        signals: [
+          { id: 'canonical-notification', title: 'Prochain match', body: 'Le groupe se prépare.', category: 'match', read: false }
+        ]
+      }
+    };
+    let markReadCalls = 0;
+    let saveCalls = 0;
+    const notificationSystem = {
+      markRead(receivedState, signalId) {
+        markReadCalls += 1;
+        const signal = receivedState.notifications.signals.find(item => item.id === signalId);
+        if (!signal || signal.read) return false;
+        signal.read = true;
+        receivedState.notifications.unreadCount -= 1;
+        return true;
+      }
+    };
+    const gateway = {
+      state,
+      application: { registry: { notificationSystem } },
+      saveCareer() { saveCalls += 1; return true; }
+    };
+    const ui = {};
+    const coordinator = new ViewCoordinator({ ui, gateway });
+    coordinator.openNotification('canonical-notification');
+    return {
+      markReadCalls,
+      saveCalls,
+      read: state.notifications.signals[0].read,
+      unreadCount: state.notifications.unreadCount,
+      modalCount: document.querySelectorAll('[data-notification-modal]').length
+    };
+  });
+
+  expect(result.markReadCalls).toBe(1);
+  expect(result.saveCalls).toBe(1);
+  expect(result.read).toBe(true);
+  expect(result.unreadCount).toBe(0);
+  expect(result.modalCount).toBe(1);
+});
