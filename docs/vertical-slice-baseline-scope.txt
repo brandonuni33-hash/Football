@@ -1,8 +1,0 @@
-ui/verticalSlice/*
-content/verticalSlice/*
-tests/unit/verticalSlice/*
-docs/vertical-slice-*
-
-NO MATCH ENGINE CHANGES
-NO CAREER HUB CHANGES
-NO MAIN MERGE WITHOUT EXPLICIT ARBITRATION
