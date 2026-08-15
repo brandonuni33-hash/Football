@@ -93,7 +93,8 @@ export function bodyViewModel(state) {
         height: Object.freeze({ value: height, ...BODY_LIMITS.height }),
         weight: Object.freeze({ value: weight, ...BODY_LIMITS.weight }),
         silhouette: Object.freeze({
-            heightScale: round(0.90 + (0.16 * heightRatio)),
+            // Le bas de plage doit se lire un peu plus petit sans caricaturer la différence.
+            heightScale: round(0.87 + (0.19 * heightRatio)),
             torsoWidth,
             armWidth,
             legWidth,
