@@ -4,6 +4,7 @@ import {
     buildPreMatchStep,
     buildKickoffStep,
     buildDecisionStep,
+    buildConsequenceStep,
     buildContinuationStep,
     buildPostMatchReactions
 } from '../../domain/match/interactiveMatchNarrative.js';
@@ -55,6 +56,39 @@ test('une occasion de but peut faire entendre la petite voix sans afficher une �
     assert.ok(step.innerVoice);
     assert.equal(typeof step.innerVoice, 'string');
     assert.doesNotMatch(step.innerVoice, /pensée|petite voix/i);
+});
+
+test('deux familles de gestes produisent des conséquences réellement différentes', () => {
+    const s = session();
+    const shot = buildConsequenceStep(s, {
+        minute: 34,
+        title: 'Tu vas au bout de l’occasion',
+        text: 'Le geste réussit.',
+        choice: 'Rentrer dans la surface pour frapper',
+        gesture: 'Retour intérieur et frappe'
+    }, 0);
+    const control = buildConsequenceStep(s, {
+        minute: 60,
+        title: 'Tu vas au bout de l’occasion',
+        text: 'Le geste réussit.',
+        choice: 'Reproduire le contrôle orienté travaillé à l’entraînement',
+        gesture: 'Contrôle orienté travaillé'
+    }, 1);
+    assert.notEqual(shot.text, control.text);
+    assert.match(shot.text, /angle|frappe/i);
+    assert.match(control.text, /contrôle|première pression|appui/i);
+    assert.doesNotMatch(`${shot.text} ${control.text}`, /tourner les hanches.*demi-mètre|passe\. Ton adversaire doit tourner/i);
+});
+
+test('une conséquence réussie ne célèbre pas un but avant sa confirmation', () => {
+    const step = buildConsequenceStep(session(), {
+        minute: 34,
+        title: 'Tu vas au bout de l’occasion',
+        text: 'Le geste réussit.',
+        choice: 'Frapper',
+        gesture: 'Frappe première intention'
+    }, 0);
+    assert.doesNotMatch(step.innerVoice || '', /ah là là|ouais !!|yes|enfin|wouh|trop content/i);
 });
 
 test('une rencontre U15 sépare une affluence crédible de son contexte', () => {
