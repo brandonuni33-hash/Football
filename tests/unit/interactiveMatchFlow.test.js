@@ -39,8 +39,9 @@ test('le résultat final reste cohérent avec les contributions et les réaction
     }
     const result = session.result;
     assert.ok(result);
-    assert.equal(result.interactiveFlowVersion, 4);
+    assert.equal(result.interactiveFlowVersion, 5);
     assert.equal(result.decisions.length, session.moments.length);
+    assert.equal(result.goalEvents.length, result.teamGoals + result.opponentGoals);
     assert.ok(result.teamGoals >= result.goals + result.assists);
     assert.equal(result.score.home, result.teamGoals);
     assert.equal(result.postMatchReactions.length, 3);

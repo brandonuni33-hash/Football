@@ -54,12 +54,20 @@ lit et ne calcule aucun bonus. `UIGateway` avance la session et
 `ui/interactiveMatchFlowController.js` présente seulement l'étape courante. Le
 résultat n'est validé et ajouté au bloc qu'après la séquence de réactions.
 
+Tous les buts du match jouable, pour les deux équipes et pour la prolongation,
+sont enregistrés une seule fois dans `session.goalEvents`. Chaque événement porte
+un `id` séquentiel lié au `matchId`, la minute, le camp, le buteur, le passeur
+éventuel, la contribution du joueur et la source de l'action. Score, résultat,
+statistiques et présentations sont des projections de cette chronologie. Les tirs
+au but restent dans `penaltyScore` et ne créent jamais de `goalEvents`.
+
 Invariants :
 
 - une seule session active dans `state.activeMatchSession` ;
-- le score affiché provient toujours de cette session ;
-- les buts et passes du joueur sont inclus dans le score de son équipe ;
-- les statistiques sont validées une seule fois à la fin ;
+- le score affiché est dérivé de `goalEvents` ;
+- les buts et passes du joueur sont dérivés du buteur et du passeur canoniques ;
+- chaque présentation référence exactement un `goalEvents[].id` ;
+- les statistiques sont validées une seule fois à la fin, par `matchId` ;
 - les réactions d'après-match décrivent le résultat réellement résolu.
 
 ## Narrative Engine

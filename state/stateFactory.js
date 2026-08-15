@@ -71,6 +71,7 @@ export function createBaseState(overrides = {}) {
         cupHistory: [],
         careerStructure: null,
         notifications: { signals: [], threads: [], unreadCount: 0 },
+        committedInteractiveMatchIds: [],
         ...overrides
     };
 }

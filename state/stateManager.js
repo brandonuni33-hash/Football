@@ -30,6 +30,7 @@ const DEFAULT_STATE = {
     transferInterests: [],
     clubTransferNeeds: {},
     transferMarket: { activity: [], lastCycle: null },
+    committedInteractiveMatchIds: [],
     world: { version: 1, leagues: {}, lastSeasonFinalized: null }
 };
 
@@ -136,10 +137,46 @@ function migrate(raw) {
     normalizeRelationships(state);
     normalizeNotifications(state);
     normalizeTransferMarket(state);
+    state.committedInteractiveMatchIds = Array.isArray(state.committedInteractiveMatchIds) ? [...new Set(state.committedInteractiveMatchIds.map(String))].slice(-200) : [];
     state.calendar ??= cloneDefault().calendar;
     state.calendar.seasonSchedule ??= null;
     state.calendar.seasonMatchCursor = Number.isFinite(Number(state.calendar.seasonMatchCursor)) ? Number(state.calendar.seasonMatchCursor) : 0;
     state.world ??= { version: 1, leagues: {}, lastSeasonFinalized: null };
+    if (Array.isArray(state.interactiveBlockResults)) {
+        const legacyResults = state.interactiveBlockResults.filter(result =>
+            !result
+            || Number(result.interactiveFlowVersion) !== 5
+            || !Array.isArray(result.goalEvents)
+        );
+        if (legacyResults.length) {
+            state.interruptedInteractiveBlock = {
+                reason: 'canonical-goal-events-required',
+                matches: legacyResults.filter(Boolean).map((result, index) => ({
+                    matchIndex: Number.isFinite(Number(result.matchIndex)) ? Number(result.matchIndex) : index,
+                    fixtureId: result.fixture?.id || result.match?.id || null,
+                    matchId: result.matchId || null
+                }))
+            };
+            state.interactiveBlockResults = state.interactiveBlockResults.filter(Boolean).map(result => {
+                if (Number(result.interactiveFlowVersion) === 5 && Array.isArray(result.goalEvents)) return result;
+                const recovered = {
+                    ...result,
+                    interactive: false,
+                    recoveredLegacyInteractive: true
+                };
+                delete recovered.goalEvents;
+                return recovered;
+            });
+        }
+    }
+    if (state.activeMatchSession && (Number(state.activeMatchSession.flowVersion) !== 5 || !Array.isArray(state.activeMatchSession.goalEvents))) {
+        state.interruptedInteractiveMatch = {
+            reason: 'canonical-goal-events-required',
+            matchIndex: Number.isFinite(Number(state.activeMatchSession.matchIndex)) ? Number(state.activeMatchSession.matchIndex) : null,
+            fixtureId: state.activeMatchSession.match?.id || null
+        };
+        state.activeMatchSession = null;
+    }
 
     if (state.player) {
         state.player.stats ??= {};

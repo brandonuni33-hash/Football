@@ -1,24 +1,34 @@
 import { test, expect } from '@playwright/test';
 
-test('les contributions du joueur sont toujours incluses dans le score de son équipe', async ({ page }) => {
+test('score et contributions proviennent de deux événements distincts, même à la même minute', async ({ page }) => {
   await page.goto('/index.html');
 
-  const cases = await page.evaluate(async () => {
-    const { reconcilePlayerContributions } = await import('/domain/match/matchHelpers.js');
-    return [
-      reconcilePlayerContributions(0, 1, 0),
-      reconcilePlayerContributions(1, 1, 1),
-      reconcilePlayerContributions(0, 0, 2),
-      reconcilePlayerContributions(3, 1, 1)
-    ];
+  const result = await page.evaluate(async () => {
+    const {
+      appendGoalEvent, deriveGoalSummary, scoreAfterGoal,
+      GOAL_ACTOR_TYPE, GOAL_TEAM_SIDE, PLAYER_GOAL_CONTRIBUTION
+    } = await import('/domain/match/goalEventResolver.js');
+    const session = { id:'browser-same-minute', home:true, playerId:'p1', goalEvents:[], score:{home:0,away:0} };
+    const player = { actorType:GOAL_ACTOR_TYPE.PLAYER, actorId:'p1', displayName:'Alex' };
+    const teammate = { actorType:GOAL_ACTOR_TYPE.TEAMMATE, actorId:'mate', displayName:'Sam' };
+    const opponent = { actorType:GOAL_ACTOR_TYPE.OPPONENT, actorId:'opp', displayName:'Rival' };
+    const first = appendGoalEvent(session,{minute:90,teamSide:GOAL_TEAM_SIDE.PLAYER,scorer:player,assist:teammate,source:{type:'INTERACTIVE_DECISION'},playerContribution:PLAYER_GOAL_CONTRIBUTION.GOAL});
+    const second = appendGoalEvent(session,{minute:90,teamSide:GOAL_TEAM_SIDE.OPPONENT,scorer:opponent,source:{type:'BACKGROUND_SIMULATION'}});
+    return {
+      ids:session.goalEvents.map(event=>event.id),
+      minutes:session.goalEvents.map(event=>event.minute),
+      scores:session.goalEvents.map(event=>scoreAfterGoal(session.goalEvents,event.id,{home:true})),
+      summary:deriveGoalSummary(session.goalEvents,{home:true,playerId:'p1'}),
+      firstId:first.id,
+      secondId:second.id
+    };
   });
 
-  expect(cases).toEqual([
-    { teamGoals: 1, goals: 1, assists: 0 },
-    { teamGoals: 2, goals: 1, assists: 1 },
-    { teamGoals: 2, goals: 0, assists: 2 },
-    { teamGoals: 3, goals: 1, assists: 1 }
-  ]);
+  expect(result.firstId).not.toBe(result.secondId);
+  expect(new Set(result.ids).size).toBe(2);
+  expect(result.minutes).toEqual([90,90]);
+  expect(result.scores).toEqual([{home:1,away:0},{home:1,away:1}]);
+  expect(result.summary).toEqual({score:{home:1,away:1},teamGoals:1,opponentGoals:1,goals:1,assists:0,result:'draw'});
 });
 
 test('le récapitulatif affiche discrètement buts et passes décisives', async ({ page }) => {

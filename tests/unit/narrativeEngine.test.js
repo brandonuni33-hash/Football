@@ -92,10 +92,10 @@ test('un callback stocké référence une vraie mémoire de carrière', () => {
     assert.equal(current.careerMemory.length, 1);
 });
 
-test('le schéma 11 crée narrativeState sans réutiliser les notifications', () => {
+test('le schéma courant crée narrativeState sans réutiliser les notifications', () => {
     const empty = StateManager.createEmpty();
     const base = createBaseState();
-    assert.equal(SCHEMA_VERSION, 11);
+    assert.equal(SCHEMA_VERSION, 12);
     assert.equal(empty.narrativeState.version, 2);
     assert.deepEqual(empty.narrativeState.processedFactIds, []);
     assert.equal(base.narrativeState.version, 2);

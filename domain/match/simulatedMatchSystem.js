@@ -2,7 +2,7 @@
 // Simulation canonique des matchs non interactifs.
 import { evaluateMatch } from './matchPerformanceEngine.js';
 import { PotentialSystem } from '../player/potentialSystem.js';
-import { applyProgression } from '../player/playerSystem.js';
+import { applyMatchProgression } from '../player/matchProgressionSystem.js';
 import CompetitionSystem from '../competition/competitionSystem.js';
 import EconomyManager from '../economy/economySystem.js';
 import SquadSelectionSystem from './squadSelectionSystem.js';
@@ -27,8 +27,10 @@ function teamGoals(performance) {
     const base = .55 + quality * .85 + n(performance?.goals) * .35;
     return Math.min(5, Math.max(0, Math.floor(Math.random() * (base + 1))));
 }
-function commitPlayerResult(player, row) {
-    if (!row?.playerPlayed) return;
+function commitPlayerResult(player, row, progressionOptions = {}) {
+    if (!row?.playerPlayed) return null;
+    const progression = applyMatchProgression(player, row, progressionOptions);
+    if (progression?.reason === 'duplicate-match') return progression;
     const stats = player.stats || (player.stats = {});
     const previous = n(stats.matchesPlayed);
     stats.matchesPlayed = previous + 1;
@@ -42,7 +44,7 @@ function commitPlayerResult(player, row) {
     if (row.cleanSheet) stats.cleanSheets = n(stats.cleanSheets) + 1;
     stats.averageRating = Number((((n(stats.averageRating) * previous) + n(row.rating)) / (previous + 1)).toFixed(1));
     PotentialSystem.recordMatch(player, { rating: row.rating, goals: row.goals, assists: row.assists, tackles: row.tackles }, 1);
-    applyProgression(player, { rating: row.rating, goals: row.goals, assists: row.assists, type: 'match' });
+    return progression;
 }
 function summarize(results = []) {
     const appearances = results.filter(row => row?.playerPlayed);
@@ -74,6 +76,11 @@ export class SimulatedMatchSystem {
         const selectionEntries = Array.isArray(options.selectionEntries) ? options.selectionEntries : [];
         const role = roleOf(player.position);
         const results = [];
+        const progressionChapterId = options.progressionChapterId ?? state?.career?.progressionChapterId ?? null;
+        const progressionBlockId = [
+            state?.calendar?.currentSeasonYear ?? state?.season ?? 'season',
+            state?.calendar?.currentMonth ?? 'period'
+        ].join(':');
 
         for (const [localIndex, match] of scheduled.entries()) {
             const matchIndex = Number.isFinite(Number(indices[localIndex])) ? Number(indices[localIndex]) : localIndex;
@@ -96,7 +103,10 @@ export class SimulatedMatchSystem {
             );
             const goalsFor = contributions.teamGoals;
             const goalsAgainst = opponentGoals(strength, home);
+            const matchId = match?.id
+                || `sim:${progressionBlockId}:${matchIndex}:${String(match?.opponent || match?.awayClub || match?.homeClub || 'opponent')}`;
             const row = {
+                matchId,
                 matchIndex,
                 fixture: match,
                 competitionId: match?.competitionId || null,
@@ -134,8 +144,13 @@ export class SimulatedMatchSystem {
                 squadStatus: state?.player?.squadStatus || null,
                 interactive: false
             };
+            row.progression = commitPlayerResult(player, row, {
+                matchId,
+                chapterId: progressionChapterId,
+                trainingFocus: options.trainingFocus ?? state?.trainingFocus
+            });
+            if (row.progression?.reason === 'duplicate-match') continue;
             results.push(row);
-            commitPlayerResult(player, row);
         }
         return results;
     }
@@ -170,6 +185,23 @@ export class SimulatedMatchSystem {
         const selectionPlan = SquadSelectionSystem.getPlan(state, scheduled);
         const results = this.simulateMatches(state, scheduled, { selectionEntries: selectionPlan.entries });
         const summary = summarize(results);
+
+        if (scheduled.length > 0 && results.length === 0) {
+            return {
+                results: [],
+                summary: {
+                    ...summary,
+                    squadStatus: selectionPlan.status,
+                    squadStatusScore: selectionPlan.score,
+                    blockPlan: plan,
+                    scheduledMatches: [],
+                    matchResults: [],
+                    finance: null,
+                    european: null,
+                    duplicateOnly: true
+                }
+            };
+        }
 
         if (summary.matchesPlayed) {
             player.morale = clamp(n(player.morale ?? 50) + (summary.rating >= 7 ? 3 : summary.rating < 5.8 ? -2 : 0), 0, 100);

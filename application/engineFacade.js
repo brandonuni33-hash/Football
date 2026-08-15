@@ -36,9 +36,10 @@ export function bindEngineToRegistry(engine, registry) {
             ? manager.advanceInteractiveMatch(engine.state, session, { choiceIndex })
             : manager.resolveInteractiveDecision(engine.state, session, choiceIndex);
         if (result.finished) {
-            manager.commitInteractiveResult(engine.state, result.result);
+            const canonical = manager.commitInteractiveResult(engine.state, result.result) || result.result;
+            Object.assign(result.result, canonical);
             engine.state.interactiveBlockResults ||= [];
-            engine.state.interactiveBlockResults.push(result.result);
+            engine.state.interactiveBlockResults.push(canonical);
             engine.state.activeMatchSession = null;
             registry.blockSystem.stateManager.save(engine.state);
         } else {

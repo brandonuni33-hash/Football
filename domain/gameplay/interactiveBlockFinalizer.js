@@ -6,8 +6,8 @@ import { EconomyManager } from '../economy/economySystem.js';
 import { ConsequenceSystem } from '../decision/consequenceSystem.js';
 import { CompetitionSystem } from '../competition/competitionSystem.js';
 import CupSystem from '../competition/cupSystem.js';
-import { updateHiddenAttributes } from '../match/blockMatchSimulator.js';
-import { canonicalPlayerGoalEvents } from '../match/goalEventResolver.js';
+import { updateHiddenAttributes } from '../player/hiddenAttributeSystem.js';
+import { synchronizeResultWithGoals } from '../match/goalEventResolver.js';
 import { buildInteractiveMatchReport } from '../match/interactiveMatchReport.js';
 import { buildMatchBlockPresentation } from '../match/matchBlockPresentation.js';
 
@@ -22,9 +22,8 @@ export function finalizeInteractiveBlock(state, results = [], trainingFocus = 'T
             fixture: raw.fixture || raw.match || null
         };
         if (result.interactive && result.matchId) {
-            result.goalEvents = Array.isArray(result.goalEvents) && result.goalEvents.length
-                ? result.goalEvents
-                : canonicalPlayerGoalEvents(result, player);
+            if (!Array.isArray(result.goalEvents)) throw new Error(`Résultat interactif sans chronologie canonique : ${result.matchId}.`);
+            Object.assign(result, synchronizeResultWithGoals(result, player.id));
             result.interactiveReport ||= buildInteractiveMatchReport(result);
         }
         return result;
