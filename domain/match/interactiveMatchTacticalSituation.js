@@ -84,16 +84,16 @@ function applyExperienceShape(points, { profile, ball, seed, team }) {
             return point(p.x, y, p.role);
         }
 
-        const roleFactor = p.role === 'focus' ? .5 : 1;
+        const protectedActor = p.role === 'focus' || p.role === 'direct-opponent';
+        const roleFactor = protectedActor ? .5 : 1;
         const line = lineId(index);
         const lineDrift = signedUnit(`${seed}:${team}:${line}:line-x`) * profile.lineStagger;
         const xNoise = signedUnit(`${seed}:${team}:${index}:x`) * profile.disorder * roleFactor;
         const yNoise = signedUnit(`${seed}:${team}:${index}:y`) * profile.disorder * 1.12 * roleFactor;
-        const attraction = profile.ballAttraction * (p.role === 'focus' ? .35 : 1);
+        const attraction = profile.ballAttraction * (protectedActor ? .35 : 1);
 
-        // Les jeunes ont tendance à suivre davantage le ballon, à perdre un peu la largeur
-        // côté faible et à garder des lignes moins synchronisées. On dégrade la structure,
-        // jamais le nombre de joueurs ni la cohérence générale de l'action.
+        // Les jeunes suivent davantage le ballon, perdent plus facilement la largeur côté faible
+        // et synchronisent moins bien leurs lignes. La scène reste footballistique et déterministe.
         const x = p.x + lineDrift + xNoise + (ball.x - p.x) * attraction * .34;
         const y = p.y + yNoise + (ball.y - p.y) * attraction;
         return point(x, y, p.role);
@@ -136,24 +136,58 @@ function stateLayout(state) {
     return { home, away, ball };
 }
 
+function applyActionFocus(layout, { state, visualFocus = 'ball' }) {
+    const home = layout.home.map(p => ({ ...p }));
+    const away = layout.away.map(p => ({ ...p }));
+    const ball = { ...layout.ball };
+    const focusIndex = 9;
+    const opponentIndex = 9;
+
+    if (state === 'DUEL' || visualFocus === 'duel') {
+        home[focusIndex] = point(ball.x - 3.2, ball.y - 1.2, 'focus');
+        away[opponentIndex] = point(ball.x + 3.1, ball.y + 1.4, 'direct-opponent');
+        home[6] = point(ball.x - 12, ball.y + 12);
+        away[6] = point(ball.x + 11, ball.y - 10);
+    } else if (state === 'COUNTER_ATTACK' || visualFocus === 'open-space') {
+        home[focusIndex] = point(ball.x - 2.6, ball.y, 'focus');
+        away[opponentIndex] = point(ball.x + 7, ball.y + 3, 'direct-opponent');
+        home[8] = point(ball.x - 11, ball.y - 19);
+        home[10] = point(ball.x - 8, ball.y + 20);
+    } else if (state === 'DANGER' || visualFocus === 'danger-zone') {
+        home[focusIndex] = point(ball.x - 2.8, ball.y, 'focus');
+        away[opponentIndex] = point(ball.x + 4.5, ball.y + 2, 'direct-opponent');
+        away[1] = point(84, 24);
+        away[2] = point(86, 41);
+        away[3] = point(86, 59);
+        away[4] = point(84, 76);
+    } else if (state === 'SHOT' || visualFocus === 'shot-line') {
+        home[focusIndex] = point(ball.x - 3, ball.y, 'focus');
+        away[opponentIndex] = point(ball.x + 4.8, ball.y - 3, 'direct-opponent');
+        away[0] = point(93, 50, 'goalkeeper');
+    }
+
+    return { home, away, ball };
+}
+
 export function buildInteractiveMatchTacticalSituation({
     cameraState = 'NORMAL',
+    visualFocus = 'ball',
     playerAge = 0,
     competition = '',
     seed = 'match'
 } = {}) {
     const state = String(cameraState || 'NORMAL').toUpperCase();
-    const layout = stateLayout(state);
+    const focusedLayout = applyActionFocus(stateLayout(state), { state, visualFocus });
     const organization = tacticalExperienceProfile({ playerAge, competition });
-    const stableSeed = `${seed}:${state}:${organization.id}`;
-    const home = applyExperienceShape(layout.home, { profile: organization, ball: layout.ball, seed: stableSeed, team: 'home' });
-    const away = applyExperienceShape(layout.away, { profile: organization, ball: layout.ball, seed: stableSeed, team: 'away' });
+    const stableSeed = `${seed}:${state}:${visualFocus}:${organization.id}`;
+    const home = applyExperienceShape(focusedLayout.home, { profile: organization, ball: focusedLayout.ball, seed: stableSeed, team: 'home' });
+    const away = applyExperienceShape(focusedLayout.away, { profile: organization, ball: focusedLayout.ball, seed: stableSeed, team: 'away' });
 
     return {
         state,
         home,
         away,
-        ball: layout.ball,
+        ball: focusedLayout.ball,
         organization: {
             level: organization.id,
             discipline: organization.discipline
