@@ -22,6 +22,10 @@ function focusIcon(kind) {
     return '›';
 }
 
+function nextChallengeEyebrow(kind) {
+    return kind === 'match' || kind === 'fixture' ? 'PROCHAIN MATCH' : 'PROCHAIN ENJEU';
+}
+
 export class DashboardView {
     constructor({ ui, gateway, narrativePresenter = null } = {}) {
         this.ui = ui;
@@ -59,28 +63,28 @@ export class DashboardView {
                         ${model.situation.detail ? `<p style="margin:7px 0 0;color:#9eafbf;font-size:.74rem;line-height:1.45;">${escapeHtml(model.situation.detail)}</p>` : ''}
                     </section>
 
+                    <button id="play-block-btn" class="btn-play-block immersive-advance" ${model.careerEnded ? 'disabled' : ''} type="button" style="width:min(84%,360px);align-self:center;margin:1px auto 0;justify-content:center;">
+                        <span class="advance-symbol">»</span>
+                        <span><strong>${model.careerEnded ? 'CARRIÈRE TERMINÉE' : 'CONTINUER LA CARRIÈRE'}</strong></span>
+                    </button>
+
+                    <nav aria-label="Espaces de carrière" data-career-spaces style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
+                        <button type="button" data-space-link="life" style="padding:13px;border:1px solid rgba(110,221,241,.13);border-radius:15px;background:rgba(7,13,21,.88);color:#dce8f4;text-align:left;"><small style="display:block;color:#6f8397;font-size:.49rem;font-weight:900;letter-spacing:.08em;">QUI COMPTE</small><strong style="display:block;margin-top:4px;font-size:.8rem;">Vie</strong></button>
+                        <button type="button" data-space-link="player" style="padding:13px;border:1px solid rgba(110,221,241,.13);border-radius:15px;background:rgba(7,13,21,.88);color:#dce8f4;text-align:left;"><small style="display:block;color:#6f8397;font-size:.49rem;font-weight:900;letter-spacing:.08em;">TON ÉVOLUTION</small><strong style="display:block;margin-top:4px;font-size:.8rem;">Joueur</strong></button>
+                    </nav>
+
                     <section class="app-pane" data-next-challenge style="margin:0;padding:15px;border-color:rgba(226,190,92,.2);background:linear-gradient(145deg,rgba(35,30,20,.78),rgba(8,13,19,.95));">
                         <div style="display:flex;gap:11px;align-items:flex-start;">
                             <span style="width:34px;height:34px;display:grid;place-items:center;flex:none;border-radius:11px;background:rgba(226,190,92,.09);color:#ddc273;font-weight:900;">${focusIcon(model.nextChallenge.kind)}</span>
                             <div style="min-width:0;flex:1;">
-                                <span style="display:block;color:#b8a36d;font-size:.5rem;font-weight:900;letter-spacing:.1em;">PROCHAIN ENJEU</span>
+                                <span style="display:block;color:#b8a36d;font-size:.5rem;font-weight:900;letter-spacing:.1em;">${nextChallengeEyebrow(model.nextChallenge.kind)}</span>
                                 <strong style="display:block;margin-top:5px;color:#fff9e9;font-size:.9rem;line-height:1.25;">${escapeHtml(model.nextChallenge.title)}</strong>
                                 ${model.nextChallenge.detail ? `<p style="margin:5px 0 0;color:#a9a491;font-size:.68rem;line-height:1.4;">${escapeHtml(model.nextChallenge.detail)}</p>` : ''}
                             </div>
                         </div>
                     </section>
 
-                    <button id="play-block-btn" class="btn-play-block immersive-advance" ${model.careerEnded ? 'disabled' : ''} type="button" style="margin-top:1px;">
-                        <span class="advance-symbol">»</span>
-                        <span><strong>${model.careerEnded ? 'CARRIÈRE TERMINÉE' : 'CONTINUER LA CARRIÈRE'}</strong><small>${escapeHtml(model.nextChallenge.title)}</small></span>
-                    </button>
-
-                    <nav aria-label="Espaces de carrière" style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
-                        <button type="button" data-space-link="life" style="padding:13px;border:1px solid rgba(110,221,241,.13);border-radius:15px;background:rgba(7,13,21,.88);color:#dce8f4;text-align:left;"><small style="display:block;color:#6f8397;font-size:.49rem;font-weight:900;letter-spacing:.08em;">QUI COMPTE</small><strong style="display:block;margin-top:4px;font-size:.8rem;">Vie</strong></button>
-                        <button type="button" data-space-link="player" style="padding:13px;border:1px solid rgba(110,221,241,.13);border-radius:15px;background:rgba(7,13,21,.88);color:#dce8f4;text-align:left;"><small style="display:block;color:#6f8397;font-size:.49rem;font-weight:900;letter-spacing:.08em;">TON ÉVOLUTION</small><strong style="display:block;margin-top:4px;font-size:.8rem;">Joueur</strong></button>
-                    </nav>
-
-                    <section class="dashboard-notification-zone immersive-journal ${journalCount ? 'has-notifications' : 'is-empty'}">
+                    <section class="dashboard-notification-zone immersive-journal ${journalCount ? 'has-notifications' : 'is-empty'}" style="overflow:visible;">
                         <button class="career-journal-bar" type="button" aria-expanded="false" data-journal-toggle>
                             <span class="journal-icon">◫</span>
                             <span class="journal-title">Historique</span>
