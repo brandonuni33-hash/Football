@@ -1,1 +1,0 @@
-No more files should be added before opening the draft PR.
