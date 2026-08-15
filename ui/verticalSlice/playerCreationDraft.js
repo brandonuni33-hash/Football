@@ -5,6 +5,10 @@
 export const VERTICAL_SLICE_START_AGE = 14;
 export const VERTICAL_SLICE_RAISED_IN_COUNTRY = 'France';
 export const PREFERRED_FEET = Object.freeze(['RIGHT', 'LEFT']);
+export const VERTICAL_SLICE_BODY_LIMITS = Object.freeze({
+    height: Object.freeze({ min: 145, max: 180 }),
+    weight: Object.freeze({ min: 38, max: 70 })
+});
 
 // Six écrans validés. Le poste et le pied fort partagent le même écran.
 export const CREATION_SCREENS = Object.freeze([
@@ -41,8 +45,16 @@ export function validatePlayerCreationDraft(draft = {}) {
 
     const height = Number(draft.height);
     const weight = Number(draft.weight);
-    if (!Number.isFinite(height) || height < 135 || height > 205) errors.height = 'Taille invalide.';
-    if (!Number.isFinite(weight) || weight < 30 || weight > 110) errors.weight = 'Poids invalide.';
+    if (
+        !Number.isFinite(height)
+        || height < VERTICAL_SLICE_BODY_LIMITS.height.min
+        || height > VERTICAL_SLICE_BODY_LIMITS.height.max
+    ) errors.height = 'Taille invalide.';
+    if (
+        !Number.isFinite(weight)
+        || weight < VERTICAL_SLICE_BODY_LIMITS.weight.min
+        || weight > VERTICAL_SLICE_BODY_LIMITS.weight.max
+    ) errors.weight = 'Poids invalide.';
 
     if (!draft.position) errors.position = 'Poste requis.';
     if (!PREFERRED_FEET.includes(draft.preferredFoot)) errors.preferredFoot = 'Pied fort requis.';
