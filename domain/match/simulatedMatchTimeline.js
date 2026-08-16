@@ -3,9 +3,10 @@
 // et produit les informations communes au texte, au terrain et au ballon.
 
 export const SIMULATED_MATCH_EVENT = Object.freeze({
-    KICKOFF:'KICKOFF', BUILD_UP:'BUILD_UP', PRESSING:'PRESSING', DUEL:'DUEL',
-    COUNTER_ATTACK:'COUNTER_ATTACK', CROSS:'CROSS', SHOT:'SHOT',
-    SET_PIECE:'SET_PIECE', GOAL:'GOAL', FULL_TIME:'FULL_TIME'
+    KICKOFF:'KICKOFF', BUILD_UP:'BUILD_UP', PASSING_PATTERN:'PASSING_PATTERN',
+    PRESSING:'PRESSING', COUNTER_PRESS:'COUNTER_PRESS', DEFENSIVE_RECOVERY:'DEFENSIVE_RECOVERY',
+    OFFSIDE_TRAP:'OFFSIDE_TRAP', DUEL:'DUEL', COUNTER_ATTACK:'COUNTER_ATTACK', CROSS:'CROSS',
+    SHOT:'SHOT', SET_PIECE:'SET_PIECE', GOAL:'GOAL', FULL_TIME:'FULL_TIME'
 });
 
 const n=value=>Number.isFinite(Number(value))?Number(value):0;
@@ -57,9 +58,10 @@ function attacksRight(side,clock={}){
 }
 function zoneFor(type,side,random,clock){
     const spot=lane(random);
-    const attackingX=type==='PRESSING'?integer(random,32,48):({BUILD_UP:34,DUEL:55,COUNTER_ATTACK:69,CROSS:78,SHOT:82,SET_PIECE:72,GOAL:88})[type]||52;
+    const fixed={BUILD_UP:34,PASSING_PATTERN:54,COUNTER_PRESS:58,DEFENSIVE_RECOVERY:68,OFFSIDE_TRAP:61,DUEL:55,COUNTER_ATTACK:69,CROSS:78,SHOT:82,SET_PIECE:72,GOAL:88};
+    const attackingX=type==='PRESSING'?integer(random,32,48):(fixed[type]||52);
     const x=attacksRight(side,clock)?attackingX:100-attackingX;
-    return{x,y:['SHOT','SET_PIECE','GOAL'].includes(type)?clamp(spot.y,34,66):spot.y,lane:spot.lane,third:x<34?'DEFENSIVE':x>66?'ATTACKING':'MIDDLE'};
+    return{x,y:['SHOT','SET_PIECE','GOAL','OFFSIDE_TRAP'].includes(type)?clamp(spot.y,34,66):spot.y,lane:spot.lane,third:x<34?'DEFENSIVE':x>66?'ATTACKING':'MIDDLE'};
 }
 function pressingTriggerFor(zone,random){
     if(zone.lane==='LEFT'||zone.lane==='RIGHT')return'TOUCHLINE';
@@ -68,9 +70,22 @@ function pressingTriggerFor(zone,random){
     if(roll<.67)return'BACK_PASS';
     return'HEAVY_TOUCH';
 }
-function carrierIndex(type,sideLane){if(type==='CROSS')return sideLane==='LEFT'?8:10;if(type==='BUILD_UP')return 6;if(type==='PRESSING')return 5;if(type==='SET_PIECE')return 7;return 9;}
-function cameraState(type){return({BUILD_UP:'BUILD_UP',COUNTER_ATTACK:'COUNTER_ATTACK',DUEL:'DUEL',PRESSING:'DUEL',CROSS:'DANGER',SHOT:'SHOT',SET_PIECE:'SET_PIECE',GOAL:'GOAL'})[type]||'NORMAL';}
-function visualFocus(type){return({COUNTER_ATTACK:'open-space',DUEL:'duel',PRESSING:'duel',CROSS:'cross-zone',SHOT:'shot-line',SET_PIECE:'set-piece',GOAL:'goal'})[type]||'ball';}
+function passingPatternFor(zone,random){
+    if(zone.lane!=='CENTER'&&random()<.48)return'SWITCH_PLAY';
+    const roll=random();
+    if(roll<.5)return'THIRD_PLAYER';
+    if(roll<.78)return'OVERLAP';
+    return'SWITCH_PLAY';
+}
+function carrierIndex(type,sideLane){
+    if(type==='CROSS')return sideLane==='LEFT'?8:10;
+    if(type==='BUILD_UP'||type==='PASSING_PATTERN'||type==='OFFSIDE_TRAP')return 6;
+    if(type==='PRESSING')return 5;
+    if(type==='SET_PIECE')return 7;
+    return 9;
+}
+function cameraState(type){return({BUILD_UP:'BUILD_UP',PASSING_PATTERN:'BUILD_UP',COUNTER_ATTACK:'COUNTER_ATTACK',DEFENSIVE_RECOVERY:'COUNTER_ATTACK',DUEL:'DUEL',PRESSING:'DUEL',COUNTER_PRESS:'DUEL',OFFSIDE_TRAP:'DANGER',CROSS:'DANGER',SHOT:'SHOT',SET_PIECE:'SET_PIECE',GOAL:'GOAL'})[type]||'NORMAL';}
+function visualFocus(type){return({PASSING_PATTERN:'passing-lanes',COUNTER_ATTACK:'open-space',DEFENSIVE_RECOVERY:'recovery',DUEL:'duel',PRESSING:'duel',COUNTER_PRESS:'counter-press',OFFSIDE_TRAP:'defensive-line',CROSS:'cross-zone',SHOT:'shot-line',SET_PIECE:'set-piece',GOAL:'goal'})[type]||'ball';}
 function labelForSide(side,names){return side===names.player?'Ton équipe':side==='HOME'?names.home:names.away;}
 function setPieceKindFor(row,zone){
     if(n(row.corners)>0||n(row.cornerKicks)>0)return'CORNER';
@@ -83,11 +98,30 @@ function pressingText(event,names){
     if(event.pressTrigger==='BACK_PASS')return`La passe en retrait déclenche la montée de ${pressing}. Le porteur est cadré, les passes intérieures sont fermées et tout le bloc gagne du terrain.`;
     return`Un contrôle moins propre déclenche le pressing de ${pressing}. Le porteur est attaqué immédiatement pendant que les couvertures ferment les solutions proches.`;
 }
+function passingText(event,names){
+    const team=labelForSide(event.possessionSide,names);
+    if(event.passingPattern==='SWITCH_PLAY')return`${team} attire le bloc d'un côté puis renverse vers le côté faible. La largeur est conservée et un soutien accompagne la réception.`;
+    if(event.passingPattern==='OVERLAP')return`${team} crée un triangle côté ballon. Le porteur fixe, un partenaire soutient à l'intérieur et un troisième déborde dans son dos.`;
+    return`${team} combine à trois : passe verticale, remise courte puis appel d'un troisième joueur dans l'espace créé derrière la première pression.`;
+}
 function textFor(event,names){
     const team=labelForSide(event.possessionSide,names);
     if(event.type==='KICKOFF')return`${names.home} et ${names.away} sont chacun dans leur moitié. Le coup d'envoi est donné.`;
-    if(event.type==='BUILD_UP')return`${team} ressort le ballon. Le porteur lève la tête pendant que les lignes cherchent la largeur et une solution vers l'avant.`;
+    if(event.type==='BUILD_UP')return`${team} ressort le ballon avec largeur et profondeur. Des triangles se forment autour du porteur tandis que des joueurs restent en couverture derrière l'action.`;
+    if(event.type==='PASSING_PATTERN')return passingText(event,names);
     if(event.type==='PRESSING')return pressingText(event,names);
+    if(event.type==='COUNTER_PRESS'){
+        const pressing=labelForSide(event.pressingSide||oppositeSide(event.possessionSide),names);
+        return`À la perte du ballon, ${pressing} contre-presse immédiatement. Le joueur le plus proche cadre le porteur, les partenaires ferment l'axe et le bloc resserre l'espace autour du ballon.`;
+    }
+    if(event.type==='DEFENSIVE_RECOVERY'){
+        const recovering=labelForSide(event.recoveringSide||oppositeSide(event.possessionSide),names);
+        return`${recovering} se replie. Le premier défenseur ralentit le porteur pendant que les autres retrouvent l'axe ballon-but, resserrent les lignes et protègent la profondeur.`;
+    }
+    if(event.type==='OFFSIDE_TRAP'){
+        const trap=labelForSide(event.trapSide||oppositeSide(event.possessionSide),names);
+        return`Le porteur est cadré et ${trap} fait monter sa ligne ensemble. Les défenseurs réduisent la profondeur et tentent de laisser l'appel adverse au-delà de l'avant-dernier défenseur.`;
+    }
     if(event.type==='DUEL')return`Le porteur protège son ballon. Un adversaire ferme l'angle pendant qu'une solution proche se présente.`;
     if(event.type==='COUNTER_ATTACK')return`${team} part en transition. Le porteur avance et les soutiens accompagnent pendant que la défense recule.`;
     if(event.type==='CROSS')return`${team} trouve de la largeur. Le porteur prépare son centre pendant que plusieurs joueurs attaquent la surface.`;
@@ -107,15 +141,16 @@ function textFor(event,names){
     return`${own>against?'La victoire est acquise.':own<against?'Le match se termine par une défaite.':'Le score ne bougera plus.'} Les équipes terminent dans les moitiés opposées à celles du coup d'envoi. Résultat final : ${event.score.home}-${event.score.away}.`;
 }
 function contextTypes(row,random,count){
-    const pool=[SIMULATED_MATCH_EVENT.BUILD_UP,SIMULATED_MATCH_EVENT.PRESSING,SIMULATED_MATCH_EVENT.COUNTER_ATTACK];
-    if(n(row.tackles)+n(row.duels)>1)pool.push(SIMULATED_MATCH_EVENT.DUEL,SIMULATED_MATCH_EVENT.PRESSING);
-    if(n(row.shots)+n(row.shotsOnTarget)>0)pool.push(SIMULATED_MATCH_EVENT.SHOT);
-    if(n(row.assists)>0||n(row.successfulPasses)>12)pool.push(SIMULATED_MATCH_EVENT.CROSS);
-    if(random()>.78)pool.push(SIMULATED_MATCH_EVENT.SET_PIECE);
-    const values=[];while(values.length<count)values.push(pool[values.length%pool.length]);
-    const shuffled=shuffle(values,random);
-    if(count>=3&&!shuffled.includes(SIMULATED_MATCH_EVENT.PRESSING))shuffled[0]=SIMULATED_MATCH_EVENT.PRESSING;
-    return shuffled;
+    const possessionCore=random()<.55?SIMULATED_MATCH_EVENT.BUILD_UP:SIMULATED_MATCH_EVENT.PASSING_PATTERN;
+    const defensiveCore=[SIMULATED_MATCH_EVENT.PRESSING,SIMULATED_MATCH_EVENT.PRESSING,SIMULATED_MATCH_EVENT.COUNTER_PRESS,SIMULATED_MATCH_EVENT.DEFENSIVE_RECOVERY,SIMULATED_MATCH_EVENT.OFFSIDE_TRAP][integer(random,0,4)];
+    const extras=[SIMULATED_MATCH_EVENT.COUNTER_ATTACK];
+    if(n(row.tackles)+n(row.duels)>1)extras.push(SIMULATED_MATCH_EVENT.DUEL,SIMULATED_MATCH_EVENT.PRESSING,SIMULATED_MATCH_EVENT.DEFENSIVE_RECOVERY);
+    if(n(row.shots)+n(row.shotsOnTarget)>0)extras.push(SIMULATED_MATCH_EVENT.SHOT,SIMULATED_MATCH_EVENT.OFFSIDE_TRAP);
+    if(n(row.assists)>0||n(row.successfulPasses)>12)extras.push(SIMULATED_MATCH_EVENT.CROSS,SIMULATED_MATCH_EVENT.PASSING_PATTERN);
+    if(random()>.78)extras.push(SIMULATED_MATCH_EVENT.SET_PIECE);
+    const values=[possessionCore,defensiveCore],shuffled=shuffle(extras,random);
+    let cursor=0;while(values.length<count){values.push(shuffled[cursor%shuffled.length]);cursor+=1;}
+    return shuffle(values.slice(0,count),random);
 }
 function assignPlayerContributions(goals,row,random){
     const own=goals.filter(event=>event.possessionSide===playerSide(row)),indexes=shuffle(own.map((_,index)=>index),random);
@@ -141,10 +176,14 @@ export function buildSimulatedMatchTimeline(row={}, {seed=null,player={}}={}){
 
     const count=Math.max(2,Math.min(extraTime?5:4,6-goals.length)),types=contextTypes(row,random,count),windows=extraTime?[[8,22],[26,41],[53,69],[72,87],[96,116]]:[[8,22],[26,41],[53,69],[72,87]];
     types.forEach((type,index)=>{
-        const [min,max]=windows[index]||windows.at(-1),playerOpponent=oppositeSide(names.player),side=type==='PRESSING'?(random()<.7?playerOpponent:names.player):(random()<.56?names.player:playerOpponent);
+        const [min,max]=windows[index]||windows.at(-1),playerOpponent=oppositeSide(names.player),defensivePhase=['PRESSING','COUNTER_PRESS','DEFENSIVE_RECOVERY','OFFSIDE_TRAP'].includes(type);
+        const side=defensivePhase?(random()<.68?playerOpponent:names.player):(random()<.6?names.player:playerOpponent);
         const clock=contextClock(random,min,max,occupied),zone=zoneFor(type,side,random,clock);
-        const draft={id:`${matchId}:visual:context:${index+1}`,type,clock,possessionSide:side,zone,ballCarrier:{team:side,index:carrierIndex(type,zone.lane),role:['BUILD_UP','PRESSING','SET_PIECE'].includes(type)?'midfielder':'attacker'},playerContribution:'NONE'};
-        if(type==='PRESSING'){draft.pressingSide=oppositeSide(side);draft.pressTrigger=pressingTriggerFor(zone,random);}
+        const draft={id:`${matchId}:visual:context:${index+1}`,type,clock,possessionSide:side,zone,ballCarrier:{team:side,index:carrierIndex(type,zone.lane),role:['BUILD_UP','PASSING_PATTERN','PRESSING','OFFSIDE_TRAP','SET_PIECE'].includes(type)?'midfielder':'attacker'},playerContribution:'NONE'};
+        if(type==='PASSING_PATTERN')draft.passingPattern=passingPatternFor(zone,random);
+        if(type==='PRESSING'||type==='COUNTER_PRESS'){draft.pressingSide=oppositeSide(side);draft.pressTrigger=type==='PRESSING'?pressingTriggerFor(zone,random):'TURNOVER';}
+        if(type==='DEFENSIVE_RECOVERY')draft.recoveringSide=oppositeSide(side);
+        if(type==='OFFSIDE_TRAP'){draft.trapSide=oppositeSide(side);draft.ballPressure=true;}
         if(type==='SET_PIECE')draft.setPieceKind=setPieceKindFor(row,zone);
         drafts.push(draft);
     });
@@ -157,7 +196,9 @@ export function buildSimulatedMatchTimeline(row={}, {seed=null,player={}}={}){
         const before={...running};
         if(draft.type==='GOAL'){draft.possessionSide==='HOME'?running.home+=1:running.away+=1;}
         if(draft.type==='FULL_TIME'){running.home=score.home;running.away=score.away;}
-        const playerInvolved=row.playerPlayed!==false&&(draft.playerContribution==='GOAL'||draft.playerContribution==='ASSIST'||(draft.possessionSide===names.player&&['DUEL','SHOT','CROSS'].includes(draft.type))||(draft.type==='PRESSING'&&draft.pressingSide===names.player));
+        const ownPossession=draft.possessionSide===names.player;
+        const ownDefending=(draft.pressingSide||draft.recoveringSide||draft.trapSide)===names.player;
+        const playerInvolved=row.playerPlayed!==false&&(draft.playerContribution==='GOAL'||draft.playerContribution==='ASSIST'||(ownPossession&&['BUILD_UP','PASSING_PATTERN','DUEL','SHOT','CROSS'].includes(draft.type))||(ownDefending&&['PRESSING','COUNTER_PRESS','DEFENSIVE_RECOVERY','OFFSIDE_TRAP'].includes(draft.type)));
         const event={...draft,matchId,sequence,minuteLabel:formatFootballClock(draft.clock),scoreBefore:before,score:{...running},cameraState:cameraState(draft.type),visualFocus:visualFocus(draft.type),playerInvolved,playerSide:names.player};
         event.text=textFor(event,names);return event;
     });
