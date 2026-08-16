@@ -21,7 +21,7 @@ export function playerCreationIdentityTemplate(state) {
     return `
 <section class="stp-creation-identity" data-stp-step="identity">
   <header class="stp-creation-top">
-    <div class="stp-creation-brand"><span><strong>STP</strong> / Création</span><span>01 / 06</span></div>
+    <div class="stp-creation-brand"><span><strong>STP</strong> / Création</span><span>01 / 05</span></div>
     <div class="stp-creation-progress"><i style="width:${vm.progress.ratio * 100}%"></i></div>
   </header>
 
@@ -33,11 +33,11 @@ export function playerCreationIdentityTemplate(state) {
 
   <section class="stp-identity-card">
     <div class="stp-field">
-      <div class="stp-label-row"><label for="stp-firstname">Prénom</label><span>${vm.firstname.count} / ${vm.firstname.maxLength}</span></div>
+      <div class="stp-label-row"><label for="stp-firstname">Prénom</label><span data-count="firstname">${vm.firstname.count} / ${vm.firstname.maxLength}</span></div>
       <input id="stp-firstname" name="firstname" maxlength="${vm.firstname.maxLength}" autocomplete="given-name" value="${escapeHtml(vm.firstname.value)}" placeholder="Ex. Elias" />
     </div>
     <div class="stp-field">
-      <div class="stp-label-row"><label for="stp-lastname">Nom</label><span>${vm.lastname.count} / ${vm.lastname.maxLength}</span></div>
+      <div class="stp-label-row"><label for="stp-lastname">Nom</label><span data-count="lastname">${vm.lastname.count} / ${vm.lastname.maxLength}</span></div>
       <input id="stp-lastname" name="lastname" maxlength="${vm.lastname.maxLength}" autocomplete="family-name" value="${escapeHtml(vm.lastname.value)}" placeholder="Ex. Morel" />
     </div>
   </section>
@@ -61,32 +61,40 @@ export function mountPlayerCreationIdentity(container, initialState, { onChange,
     if (!container) throw new Error('Conteneur identité requis.');
     let state = initialState;
 
-    const render = () => {
-        container.innerHTML = playerCreationIdentityTemplate(state);
-        const firstname = container.querySelector('[name="firstname"]');
-        const lastname = container.querySelector('[name="lastname"]');
-        const continueButton = container.querySelector('.stp-continue');
+    container.innerHTML = playerCreationIdentityTemplate(state);
+    const firstname = container.querySelector('[name="firstname"]');
+    const lastname = container.querySelector('[name="lastname"]');
+    const firstnameCount = container.querySelector('[data-count="firstname"]');
+    const lastnameCount = container.querySelector('[data-count="lastname"]');
+    const previewName = container.querySelector('.stp-identity-name');
+    const continueButton = container.querySelector('.stp-continue');
 
-        const update = (field, value) => {
-            state = updateIdentityField(state, field, value);
-            onChange?.(state);
-            render();
-            const nextInput = container.querySelector(`[name="${field}"]`);
-            nextInput?.focus();
-            if (nextInput) nextInput.setSelectionRange(nextInput.value.length, nextInput.value.length);
-        };
-
-        firstname?.addEventListener('input', event => update('firstname', event.target.value));
-        lastname?.addEventListener('input', event => update('lastname', event.target.value));
-        continueButton?.addEventListener('click', () => {
-            const result = continueFromIdentity(state);
-            if (result.ok) {
-                state = result.state;
-                onContinue?.(result);
-            }
-        });
+    const syncLiveUi = () => {
+        const vm = identityViewModel(state);
+        if (firstnameCount) firstnameCount.textContent = `${vm.firstname.count} / ${vm.firstname.maxLength}`;
+        if (lastnameCount) lastnameCount.textContent = `${vm.lastname.count} / ${vm.lastname.maxLength}`;
+        if (previewName) previewName.textContent = vm.previewName;
+        if (continueButton) {
+            continueButton.disabled = !vm.canContinue;
+            continueButton.classList.toggle('ready', vm.canContinue);
+        }
     };
 
-    render();
-    return Object.freeze({ getState: () => state, rerender: render });
+    const update = (field, value) => {
+        state = updateIdentityField(state, field, value);
+        onChange?.(state);
+        syncLiveUi();
+    };
+
+    firstname?.addEventListener('input', event => update('firstname', event.target.value));
+    lastname?.addEventListener('input', event => update('lastname', event.target.value));
+    continueButton?.addEventListener('click', () => {
+        const result = continueFromIdentity(state);
+        if (result.ok) {
+            state = result.state;
+            onContinue?.(result);
+        }
+    });
+
+    return Object.freeze({ getState: () => state, rerender: syncLiveUi });
 }
