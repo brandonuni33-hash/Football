@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>STP — Control Lab 3v3 V1</title>
+  <link rel="stylesheet" href="./styles-3v3-v1.css" />
+</head>
+<body>
+  <main id="menu" class="menu">
+    <p class="eyebrow">STREET TO PRO · CONTROL LAB</p>
+    <h1>Petit match.<br><em>Vraies décisions.</em></h1>
+    <p class="lead">Une vertical slice 3 contre 3. Tu ne contrôles que ton joueur.</p>
+    <div class="menu-actions">
+      <button id="solo" class="menu-button primary" type="button">JOUER SOLO <span>1 joueur · 5 IA</span></button>
+      <button id="friend" class="menu-button" type="button">JOUER AVEC UN AMI <span>lien privé · 2 joueurs · 4 IA</span></button>
+    </div>
+    <p class="tip">Paysage recommandé pour jouer. Le portrait reste accessible.</p>
+  </main>
+
+  <main id="game-screen" class="game-screen" hidden>
+    <header class="hudbar">
+      <strong>STP · 3V3</strong><span id="network-status">PRÉPARATION</span><button id="quit" type="button">QUITTER</button>
+    </header>
+    <section class="arena">
+      <canvas id="game" width="960" height="540" aria-label="Match de football 3 contre 3"></canvas>
+      <div class="controls">
+        <div id="move-joystick" class="joystick move"><div id="move-stick" class="stick amber"></div></div>
+        <div class="right-cluster">
+          <button id="primary" class="action primary-action" type="button">TIR</button>
+          <button id="secondary" class="action secondary-action" type="button">PASSE</button>
+          <button id="tertiary" class="action tertiary-action" type="button">PROT.</button>
+          <div id="control-joystick" class="joystick control"><div id="control-stick" class="stick"></div></div>
+        </div>
+      </div>
+    </section>
+    <section id="share-panel" class="share" hidden>
+      <label for="share-url">Lien d’invitation privé</label>
+      <div><input id="share-url" readonly /><button id="copy-link" type="button">COPIER</button></div>
+    </section>
+  </main>
+  <script type="module" src="./play-3v3-v1.js"></script>
+</body>
+</html>
