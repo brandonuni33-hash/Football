@@ -5,6 +5,7 @@ import { pressDefensiveBrake, requestCall, startPass, startProtection, startShot
 import { collectAIInputs, executeAIAction } from "./ai.js";
 import { selectRecoveryCandidate } from "./ballRecovery.js";
 import { crossedGoalLine, moveGoalkeepers, resolveGoalkeeperSave } from "./goalkeepers.js";
+import { footworkAccelerationScale, reactToBodyFeint, tickFootwork, updateSupportState } from "./footwork.js";
 
 function tickTimers(player, dt) {
   const wasProtected = player.protectionRemaining > 0;
@@ -19,7 +20,9 @@ function tickTimers(player, dt) {
   player.aiDecisionRemaining = Math.max(0, (player.aiDecisionRemaining ?? 0) - dt);
   player.aiPassCooldown = Math.max(0, (player.aiPassCooldown ?? 0) - dt);
   player.orientedTouchRemaining = Math.max(0, (player.orientedTouchRemaining ?? 0) - dt);
+  player.dribbleTouchRemaining = Math.max(0, (player.dribbleTouchRemaining ?? 0) - dt);
   if (player.protectionRemaining <= 0) player.offBallShieldTargetId = null;
+  tickFootwork(player, dt);
 }
 
 function movePlayer(state, player, input, dt) {
@@ -44,12 +47,14 @@ function movePlayer(state, player, input, dt) {
   const jockeying = (!!input.jockeyHeld || (player.defensiveBrakeRemaining ?? 0) > 0)
     && !player.hasBall && !awaitingProtectedReception;
   player.jockeying = jockeying;
+  updateSupportState(player, move);
   const movementFeel = movementFeelFromLevel(state.gameSpeedLevel);
   let speedScale = jockeying ? RULES.jockeySpeedScale : 1;
   if (player.protectionRemaining > 0) speedScale = Math.min(speedScale, RULES.protectionSpeedScale);
   const targetVx = move.x * movementFeel.maxSpeed * move.magnitude * speedScale;
   const targetVy = move.y * movementFeel.maxSpeed * move.magnitude * speedScale;
-  const acceleration = move.magnitude > 0 ? movementFeel.acceleration : movementFeel.deceleration;
+  const acceleration = (move.magnitude > 0 ? movementFeel.acceleration : movementFeel.deceleration)
+    * footworkAccelerationScale(player, move);
   player.vx = approach(player.vx, targetVx, acceleration * dt);
   player.vy = approach(player.vy, targetVy, acceleration * dt);
   player.x = clamp(player.x + player.vx * dt, fieldBounds.minX, fieldBounds.maxX);
@@ -87,6 +92,7 @@ function movePlayer(state, player, input, dt) {
   } else if (player.hasBall && move.magnitude <= 0.12 && right.magnitude > 0.55) {
     player.controlX = right.x;
     player.controlY = right.y;
+    reactToBodyFeint(state, player, right);
     state.lastEvent = "body_feint";
   }
 }
@@ -105,7 +111,7 @@ function applyHumanActions(state, slot, input) {
   }
 }
 
-function carryBall(state) {
+function carryBall(state, dt) {
   const owner = getOwner(state);
   if (!owner) return;
   const protectedControl = owner.protectionRemaining > 0;
@@ -114,10 +120,41 @@ function carryBall(state) {
   const fy = orientedTouch ? owner.orientedTouchY : protectedControl ? owner.controlY : owner.facingY;
   const touchRatio = orientedTouch ? owner.orientedTouchRemaining / 0.28 : 0;
   const forward = orientedTouch ? 24 + touchRatio * 24 : protectedControl ? RULES.protectionControlDistance : 24;
-  state.ball.x = owner.x + fx * forward;
-  state.ball.y = owner.y + fy * forward;
-  state.ball.vx = owner.vx;
-  state.ball.vy = owner.vy;
+  if (protectedControl || orientedTouch) {
+    state.ball.x = owner.x + fx * forward;
+    state.ball.y = owner.y + fy * forward;
+    state.ball.vx = owner.vx;
+    state.ball.vy = owner.vy;
+    return;
+  }
+  const speed = Math.hypot(owner.vx, owner.vy);
+  const desired = { x: owner.x + fx * forward, y: owner.y + fy * forward };
+  if (speed < 10) {
+    state.ball.x = approach(state.ball.x, desired.x, 290 * dt);
+    state.ball.y = approach(state.ball.y, desired.y, 290 * dt);
+    state.ball.vx = owner.vx;
+    state.ball.vy = owner.vy;
+    return;
+  }
+  const gap = distance(owner, state.ball);
+  if (gap > RULES.controlRadius + 15) {
+    clearPossession(state, BALL_PHASE.FREE);
+    state.ball.lastTouchId = owner.id;
+    state.lastEvent = "heavy_touch";
+    state.eventId += 1;
+    return;
+  }
+  if ((owner.dribbleTouchRemaining ?? 0) <= 0 || gap < 16) {
+    const touchSpeed = 34 + speed * 0.18;
+    state.ball.vx = owner.vx + fx * touchSpeed;
+    state.ball.vy = owner.vy + fy * touchSpeed;
+    owner.dribbleTouchRemaining = 0.16 + (100 - (owner.ballControl ?? 65)) * 0.0008;
+  }
+  state.ball.x += state.ball.vx * dt;
+  state.ball.y += state.ball.vy * dt;
+  const touchFriction = Math.pow(0.985, dt * 60);
+  state.ball.vx *= touchFriction;
+  state.ball.vy *= touchFriction;
 }
 
 function interceptOrReceive(state) {
@@ -147,7 +184,7 @@ function interceptOrReceive(state) {
 }
 
 function stepBall(state, dt) {
-  if (state.ball.ownerId) { carryBall(state); return state; }
+  if (state.ball.ownerId) { carryBall(state, dt); return state; }
   const previousBall = { x: state.ball.x, y: state.ball.y };
   state.ball.x += state.ball.vx * dt;
   state.ball.y += state.ball.vy * dt;

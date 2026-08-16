@@ -26,6 +26,9 @@ function drawPlayer(ctx, player, localId) {
   ctx.strokeStyle = player.id === localId ? "#76d8eb" : "rgba(8,12,14,.85)";
   ctx.lineWidth = player.id === localId ? 5 : 3;
   ctx.beginPath(); ctx.arc(0, 0, 17, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  const lean = player.supportState === "LEANING_LEFT" ? -4 : player.supportState === "LEANING_RIGHT" ? 4 : 0;
+  ctx.fillStyle = player.supportState === "RECOVERING" ? "#e56f68" : "rgba(8,12,14,.9)";
+  ctx.beginPath(); ctx.ellipse(-7 + lean, 19, 5, 2.5, 0, 0, Math.PI * 2); ctx.ellipse(7 + lean, 19, 5, 2.5, 0, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = "#111820"; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(player.facingX * 24, player.facingY * 24); ctx.stroke();
   ctx.fillStyle = "#10161c"; ctx.font = "900 10px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   const number = player.id.includes("human") ? "10" : player.id.endsWith("left") ? "6" : "8";

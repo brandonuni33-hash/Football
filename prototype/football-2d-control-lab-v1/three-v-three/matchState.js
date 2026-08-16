@@ -7,6 +7,8 @@ function player(id, team, role, x, y, humanSlot = null) {
     hasBall: false, protectionRemaining: 0, protectionCooldown: 0,
     receptionRemaining: 0, callRemaining: 0, tackleRemaining: 0, recoveryRemaining: 0,
     defensiveBrakeRemaining: 0,
+    supportState: "BALANCED", supportLockRemaining: 0, feintCooldown: 0,
+    dribbleTouchRemaining: 0,
     jockeying: false, controlX: facingX, controlY: 0,
     receptionIntentX: facingX, receptionIntentY: 0, receptionIntentMagnitude: 0,
     orientedTouchX: facingX, orientedTouchY: 0, orientedTouchRemaining: 0,

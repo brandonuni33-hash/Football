@@ -101,7 +101,7 @@ test("protection avant passe permet un contrôle orienté à la réception", () 
 });
 
 test("FREIN recule sans retourner le joueur", () => {
-  let state = createMatchState();
+  let state = createMatchState({ online: true });
   const player = getPlayer(state, "home-human"); player.x = 500; player.y = 270;
   givePossession(state, "away-human"); const owner = getPlayer(state, "away-human"); owner.x = 650; owner.y = 270;
   state = advance(state, { host: { moveX: -1, jockeyHeld: true } }, 0.2);
@@ -268,7 +268,7 @@ test("le curseur vitesse du jeu couvre une plage 0 à 100 réellement différent
 });
 
 test("deux pressions successives sur le vrai bouton FREIN lancent le tacle", () => {
-  let state = createMatchState();
+  let state = createMatchState({ online: true });
   const defender = getPlayer(state, "home-human");
   const owner = getPlayer(state, "away-human");
   givePossession(state, owner.id);

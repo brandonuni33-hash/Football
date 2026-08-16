@@ -16,12 +16,15 @@ export function givePossession(state, playerId, event = "possession") {
   if (!owner) return false;
   for (const player of state.players) player.hasBall = player.id === playerId;
   state.ball.ownerId = playerId;
+  state.ball.x = owner.x + owner.facingX * 23;
+  state.ball.y = owner.y + owner.facingY * 23;
   state.ball.targetId = null;
   state.ball.phase = BALL_PHASE.CONTROLLED;
   state.ball.lastTouchId = playerId;
   state.ball.vx = 0;
   state.ball.vy = 0;
   owner.defensiveBrakeRemaining = 0;
+  owner.dribbleTouchRemaining = 0;
   owner.jockeying = false;
   owner.offBallShieldTargetId = null;
   state.possession = { team: owner.team, playerId, duel: null };

@@ -1,6 +1,7 @@
 import { BALL_PHASE, RULES, clamp, distance, dot, normalize, passSpeedFromLevel } from "./constants.js";
 import { getPlayer, hasPossession } from "./matchState.js";
 import { clearPossession } from "./possession.js";
+import { SUPPORT_STATE } from "./footwork.js";
 
 export function requestCall(state, playerId) {
   const player = getPlayer(state, playerId);
@@ -105,6 +106,8 @@ export function startTackle(state, playerId) {
   const owner = state.ball.ownerId ? getPlayer(state, state.ball.ownerId) : null;
   if (!player || hasPossession(state, playerId) || player.recoveryRemaining > 0 || player.tackleRemaining > 0) return false;
   player.tackleRemaining = RULES.tackleDuration;
+  player.supportState = SUPPORT_STATE.COMMITTED;
+  player.supportLockRemaining = RULES.tackleDuration;
   const close = owner && owner.team !== player.team && distance(player, owner) <= RULES.tackleRange;
   const facing = normalize(player.facingX, player.facingY);
   const toward = owner ? normalize(owner.x - player.x, owner.y - player.y) : { x: 0, y: 0 };
@@ -118,6 +121,8 @@ export function startTackle(state, playerId) {
     state.lastEvent = "tackle_won";
   } else {
     player.recoveryRemaining = RULES.missedTackleRecovery;
+    player.supportState = SUPPORT_STATE.RECOVERING;
+    player.supportLockRemaining = RULES.missedTackleRecovery;
     state.lastEvent = "tackle_missed";
   }
   state.eventId += 1;

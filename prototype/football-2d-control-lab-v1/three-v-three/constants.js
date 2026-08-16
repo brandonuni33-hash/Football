@@ -17,6 +17,7 @@ export const RULES = Object.freeze({
   receptionWindow: 0.55,
   shotSpeed: 430,
   passAssist: 0.8,
+  passLaneBlockRadius: 29,
   tackleRange: 43,
   tackleArcDot: 0.15,
   tackleDuration: 0.22,
