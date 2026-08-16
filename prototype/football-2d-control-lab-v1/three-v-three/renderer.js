@@ -16,9 +16,29 @@ function pitch(ctx) {
   ctx.strokeRect(FIELD.width - FIELD.inset, FIELD.goalTop, FIELD.goalDepth, FIELD.goalBottom - FIELD.goalTop);
 }
 
-function drawPlayer(ctx, player, localId) {
+function drawPassLock(ctx) {
+  ctx.save();
+  ctx.strokeStyle = "rgba(241,189,72,.95)";
+  ctx.lineWidth = 3;
+  ctx.setLineDash([8, 6]);
+  ctx.beginPath();
+  ctx.arc(0, 0, 30, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = "#f1bd48";
+  ctx.beginPath();
+  ctx.moveTo(0, -36);
+  ctx.lineTo(-5, -44);
+  ctx.lineTo(5, -44);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawPlayer(ctx, player, localId, isPassTarget = false) {
   ctx.save();
   ctx.translate(player.x, player.y);
+  if (isPassTarget) drawPassLock(ctx);
   if (player.callRemaining > 0) { ctx.strokeStyle = "#f1bd48"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, 25, 0, Math.PI * 2); ctx.stroke(); }
   if (player.protectionRemaining > 0) { ctx.fillStyle = "rgba(241,189,72,.18)"; ctx.beginPath(); ctx.arc(0, 0, 31, 0, Math.PI * 2); ctx.fill(); }
   if (player.jockeying) { ctx.strokeStyle = "#80d8e8"; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.arc(0, 0, 28, 0, Math.PI * 2); ctx.stroke(); }
@@ -51,8 +71,9 @@ function drawGoalkeeper(ctx, keeper) {
 export function render(ctx, state, slot = "host") {
   pitch(ctx);
   const localId = controlledPlayerId(slot);
+  const passTargetId = state.ball.phase === BALL_PHASE.PASS ? state.ball.targetId : null;
   for (const keeper of state.goalkeepers ?? []) drawGoalkeeper(ctx, keeper);
-  for (const player of state.players) drawPlayer(ctx, player, localId);
+  for (const player of state.players) drawPlayer(ctx, player, localId, player.id === passTargetId);
   ctx.save();
   ctx.translate(state.ball.x, state.ball.y);
   ctx.fillStyle = "#fff"; ctx.strokeStyle = state.ball.phase === BALL_PHASE.FREE ? "#f1bd48" : "#111"; ctx.lineWidth = 2;
