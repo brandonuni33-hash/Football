@@ -22,13 +22,16 @@ function actorHtml(point,index,team,{playerSide='HOME',focal=null}={}){
     const role=esc(point.role||'outfield'),own=team.toUpperCase()===playerSide,isFocal=Boolean(focal&&focal.team===team.toUpperCase()&&Number(focal.index)===index);
     return `<span class="sim-match-actor ${own?'sim-match-own':'sim-match-opponent'}" data-sim-team="${team}" data-sim-index="${index}" data-role="${role}" data-player-focal="${isFocal?'true':'false'}" style="left:${point.x}%;top:${point.y}%;--facing:${Number(point.facing)||0}deg"></span>`;
 }
-function trailHtml(trajectory){
+function trajectoryHtml(trajectory){
     if(!trajectory?.from||!trajectory?.to)return'';
-    return[.27,.52,.77].map((ratio,index)=>{const x=trajectory.from.x+(trajectory.to.x-trajectory.from.x)*ratio,y=trajectory.from.y+(trajectory.to.y-trajectory.from.y)*ratio;return`<i class="sim-ball-trail" data-trail-index="${index}" style="left:${x}%;top:${y}%;"></i>`;}).join('');
+    return `<svg class="sim-ball-path" data-ball-path="true" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        <line class="sim-ball-path-line" x1="${trajectory.from.x}" y1="${trajectory.from.y}" x2="${trajectory.to.x}" y2="${trajectory.to.y}"></line>
+        <circle class="sim-ball-path-target" cx="${trajectory.to.x}" cy="${trajectory.to.y}" r="1.1"></circle>
+    </svg>`;
 }
 function ballHtml(ball){
     const trajectory=ball.trajectory||null,start=trajectory?.from||ball,target=trajectory?.to||ball,flight=Boolean(trajectory);
-    return `${trailHtml(trajectory)}<span class="sim-match-ball${flight?' sim-match-ball-flight':''}" data-ball-owner="${esc(ball.owner?`${ball.owner.team}:${ball.owner.index}`:'none')}" data-ball-flight="${flight?'true':'false'}" data-ball-target-x="${target.x}" data-ball-target-y="${target.y}" style="left:${start.x}%;top:${start.y}%;--ball-start-x:${start.x}%;--ball-start-y:${start.y}%;--ball-target-x:${target.x}%;--ball-target-y:${target.y}%;"></span>`;
+    return `${trajectoryHtml(trajectory)}<span class="sim-match-ball${flight?' sim-match-ball-flight':''}" data-ball-owner="${esc(ball.owner?`${ball.owner.team}:${ball.owner.index}`:'none')}" data-ball-flight="${flight?'true':'false'}" data-ball-target-x="${target.x}" data-ball-target-y="${target.y}" style="left:${start.x}%;top:${start.y}%;--ball-start-x:${start.x}%;--ball-start-y:${start.y}%;--ball-target-x:${target.x}%;--ball-target-y:${target.y}%;"></span>`;
 }
 function pitchHtml(tactical,playerSide,kits){
     const options={playerSide,focal:tactical.playerFocal},home=tactical.home.map((point,index)=>actorHtml(point,index,'home',options)).join(''),away=tactical.away.map((point,index)=>actorHtml(point,index,'away',options)).join('');
