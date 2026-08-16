@@ -8,8 +8,11 @@ export function recoveryWindow(player, ball) {
   const toBall = normalize(ball.x - player.x, ball.y - player.y);
   const facing = normalize(player.facingX, player.facingY);
   const approach = toBall.magnitude > 0 ? dot(facing, toBall) : 1;
-  const reach = RULES.controlRadius + (control - 50) * 0.09 + (player.receptionRemaining > 0 ? 8 : 0);
-  const maxBallSpeed = 285 + control * 1.65 + (player.receptionRemaining > 0 ? 55 : 0);
+  const recentLoss = (player.recentBallLossRemaining ?? 0) > 0;
+  const baseReach = RULES.controlRadius + (control - 50) * 0.09 + (player.receptionRemaining > 0 ? 8 : 0);
+  const reach = recentLoss ? baseReach * RULES.recentBallLossReachScale : baseReach;
+  const baseMaxBallSpeed = 285 + control * 1.65 + (player.receptionRemaining > 0 ? 55 : 0);
+  const maxBallSpeed = recentLoss ? Math.max(120, baseMaxBallSpeed - RULES.recentBallLossMaxSpeedPenalty) : baseMaxBallSpeed;
   const angleRequired = ball.phase === BALL_PHASE.PASS && ball.targetId === player.id ? -0.35 : -0.05;
   const stable = player.recoveryRemaining <= 0 && player.tackleRemaining <= 0;
   const closeEnough = distance(player, ball) <= reach;
@@ -18,8 +21,9 @@ export function recoveryWindow(player, ball) {
   const score = (reach - distance(player, ball)) * 2.4
     + (maxBallSpeed - ballSpeed) * 0.08
     + approach * 10
-    + balance * 0.04;
-  return { eligible: stable && closeEnough && controllableSpeed && wellOriented, reach, maxBallSpeed, approach, score };
+    + balance * 0.04
+    - (recentLoss ? RULES.recentBallLossScorePenalty : 0);
+  return { eligible: stable && closeEnough && controllableSpeed && wellOriented, reach, maxBallSpeed, approach, score, recentLoss };
 }
 
 export function selectRecoveryCandidate(players, ball) {
