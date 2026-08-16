@@ -85,6 +85,7 @@ function playerCanCarryEvent(event={},position='BU'){
     const family=positionFamily(position);
     if(event.type==='DUEL')return family!=='GOALKEEPER';
     if(event.type==='BUILD_UP'||event.type==='PRESSING')return family==='DEFENCE'||family==='MIDFIELD';
+    if(event.type==='PASSING_PATTERN')return family==='MIDFIELD'||family==='ATTACK';
     if(['COUNTER_ATTACK','CROSS','SHOT'].includes(event.type))return family==='MIDFIELD'||family==='ATTACK';
     return false;
 }
@@ -97,7 +98,7 @@ function periodAttacksRight(team,event={}){const period=String(event.clock?.peri
 function progressFor(p,attackingRight){return attackingRight?p.x:100-p.x;}
 function xForProgress(progress,attackingRight){return attackingRight?progress:100-progress;}
 function structuralLine(p,attackingRight){const progress=progressFor(p,attackingRight);return progress<32?'defence':progress<56?'midfield':'attack';}
-function shiftBlock(points,dx,squeeze=1){return points.map(p=>p.role==='goalkeeper'?{...p}:point(p.x+dx,50+(p.y-50)*squeeze,p.role,p.facing));}
+function lineIndexes(points,attackingRight,line){return points.map((p,index)=>index>0&&structuralLine(p,attackingRight)===line?index:null).filter(Number.isInteger);}
 function setCarrier(points,index,zone,attackingRight){const target=Math.max(1,Math.min(10,Number(index)||9));points[target]=point(zone.x,zone.y,'carrier',attackingRight?0:180);return target;}
 function closestDefenderIndex(points,zone){let best=1,distance=Infinity;for(let index=1;index<points.length;index+=1){const p=points[index],d=Math.hypot(p.x-zone.x,p.y-zone.y);if(d<distance){distance=d;best=index;}}return best;}
 function nearestOutfieldIndexes(points,zone,excluded=new Set()){
@@ -109,11 +110,52 @@ function advanceSupport(owning,zone,direction,carrierIndex){
     const targets=[[5,zone.x-direction*20,clamp(zone.y-18,15,85)],[6,zone.x-direction*17,clamp(zone.y+4,18,82)],[7,zone.x-direction*20,clamp(zone.y+22,15,85)],[8,zone.x-direction*9,clamp(zone.y-20,10,90)],[10,zone.x-direction*7,clamp(zone.y+20,10,90)]];
     for(const[index,x,y]of targets)if(index!==carrierIndex&&owning[index])owning[index]=point(x,y,'support');
 }
+function arrangeCompactDefensiveBlock(defending,zone,direction,{height='MID'}={}){
+    const defRight=direction<0,goalX=direction>0?96:4,offsets=height==='HIGH'?{defence:27,midfield:39,attack:50}:height==='LOW'?{defence:13,midfield:25,attack:38}:{defence:21,midfield:34,attack:47};
+    defending.forEach((p,index)=>{
+        if(index===0)return;
+        const line=structuralLine(p,defRight),targetY=50+(p.y-50)*.64+(zone.y-50)*.22;
+        defending[index]=point(goalX-direction*offsets[line],clamp(targetY,12,88),`block-${line}`);
+    });
+    defending[0]=point(direction>0?94.5:5.5,clamp(50+(zone.y-50)*.14,43,57),'goalkeeper');
+}
 function compactOpenPlay(owning,defending,zone,direction,carrierIndex,intensity=1){
-    const ownRight=direction>0,defRight=!ownRight,zoneProgress=progressFor(zone,ownRight);
+    const ownRight=direction>0,zoneProgress=progressFor(zone,ownRight);
     owning.forEach((p,index)=>{if(index===0||index===carrierIndex)return;const line=structuralLine(p,ownRight);let targetProgress;if(line==='defence')targetProgress=clamp(zoneProgress-39*intensity,33,55);else if(line==='midfield')targetProgress=clamp(zoneProgress-21*intensity,45,72);else targetProgress=clamp(zoneProgress-7*intensity,58,88);owning[index]=point(xForProgress(targetProgress,ownRight),50+(p.y-50)*.9,p.role,p.facing);});
-    const goalX=direction>0?96:4;
-    defending.forEach((p,index)=>{if(index===0)return;const line=structuralLine(p,defRight),offset=line==='defence'?14:line==='midfield'?27:40;defending[index]=point(goalX-direction*offset,50+(p.y-50)*.9,p.role,p.facing);});
+    arrangeCompactDefensiveBlock(defending,zone,direction,{height:'LOW'});
+}
+function arrangePositionalBuildUp(owning,defending,zone,direction,carrierIndex){
+    const sign=zone.y<=50?1:-1,candidates=nearestOutfieldIndexes(owning,zone,new Set([carrierIndex])),supports=candidates.slice(0,3);
+    if(Number.isInteger(supports[0]))owning[supports[0]]=point(zone.x-direction*9,clamp(zone.y-sign*12,10,90),'build-support');
+    if(Number.isInteger(supports[1]))owning[supports[1]]=point(zone.x-direction*9,clamp(zone.y+sign*12,10,90),'build-support');
+    if(Number.isInteger(supports[2]))owning[supports[2]]=point(zone.x+direction*12,clamp(50+(zone.y-50)*.35,18,82),'between-lines');
+    const wide=owning.map((p,index)=>({index,y:p.y})).filter(item=>item.index>0&&item.index!==carrierIndex).sort((a,b)=>a.y-b.y);
+    if(wide[0])owning[wide[0].index]=point(zone.x+direction*3,12,'wide-option');
+    if(wide.at(-1))owning[wide.at(-1).index]=point(zone.x+direction*3,88,'wide-option');
+    arrangeCompactDefensiveBlock(defending,zone,direction,{height:'MID'});
+}
+function arrangePassingPattern(owning,defending,zone,direction,carrierIndex,event={}){
+    const candidates=nearestOutfieldIndexes(owning,zone,new Set([carrierIndex])),a=candidates[0],b=candidates[1],c=candidates[2],pattern=String(event.passingPattern||'THIRD_PLAYER').toUpperCase(),sign=zone.y<=50?1:-1;
+    let pathIndexes=[carrierIndex],targetIndex=a;
+    if(pattern==='SWITCH_PLAY'){
+        if(Number.isInteger(a))owning[a]=point(zone.x+direction*5,clamp(zone.y+sign*10,14,86),'pass-pivot');
+        if(Number.isInteger(b))owning[b]=point(zone.x+direction*15,zone.y<50?86:14,'wide-receiver');
+        if(Number.isInteger(c))owning[c]=point(zone.x+direction*8,clamp(50-sign*12,14,86),'switch-support');
+        pathIndexes=[carrierIndex,a,b].filter(Number.isInteger);targetIndex=a;
+    }else if(pattern==='OVERLAP'){
+        if(Number.isInteger(a))owning[a]=point(zone.x+direction*6,clamp(zone.y-sign*8,10,90),'inside-support');
+        if(Number.isInteger(b))owning[b]=point(zone.x+direction*18,clamp(zone.y+sign*10,8,92),'overlap-runner');
+        if(Number.isInteger(c))owning[c]=point(zone.x-direction*7,clamp(zone.y+sign*13,10,90),'pass-balance');
+        pathIndexes=[carrierIndex,a,b].filter(Number.isInteger);targetIndex=a;
+    }else{
+        if(Number.isInteger(a))owning[a]=point(zone.x+direction*9,clamp(zone.y+sign*4,12,88),'bounce-player');
+        if(Number.isInteger(b))owning[b]=point(zone.x+direction*19,clamp(zone.y-sign*12,10,90),'third-runner');
+        if(Number.isInteger(c))owning[c]=point(zone.x-direction*8,clamp(zone.y+sign*12,10,90),'pass-balance');
+        pathIndexes=[carrierIndex,a,b].filter(Number.isInteger);targetIndex=a;
+    }
+    arrangeCompactDefensiveBlock(defending,zone,direction,{height:'MID'});
+    const drawn=closestDefenderIndex(defending,owning[targetIndex]||zone);if(defending[drawn])defending[drawn]=point((owning[targetIndex]?.x||zone.x)+direction*3,(owning[targetIndex]?.y||zone.y),'drawn-defender');
+    return{pattern,pathIndexes,targetIndex};
 }
 function arrangePressing(owning,defending,zone,direction,carrierIndex,event={}){
     const defRight=direction<0,forceSign=zone.y<38?1:zone.y>62?-1:(signedUnit(`${event.id||'press'}:angle`)>=0?1:-1),defenders=nearestOutfieldIndexes(defending,zone),primaryIndex=defenders[0],coverIndexes=defenders.slice(1,3),reserved=new Set([primaryIndex,...coverIndexes]);
@@ -129,7 +171,37 @@ function arrangePressing(owning,defending,zone,direction,carrierIndex,event={}){
     const outlets=nearestOutfieldIndexes(owning,zone,new Set([carrierIndex])).slice(0,2);
     if(Number.isInteger(outlets[0]))owning[outlets[0]]=point(zone.x-direction*8,clamp(zone.y-forceSign*9,9,91),'escape-option');
     if(Number.isInteger(outlets[1]))owning[outlets[1]]=point(zone.x-direction*12,clamp(zone.y+forceSign*12,9,91),'escape-option');
-    return{primaryIndex,coverIndexes,trigger:String(event.pressTrigger||'TEAM_TRIGGER').toUpperCase()};
+    return{primaryIndex,coverIndexes,trigger:String(event.pressTrigger||'TEAM_TRIGGER').toUpperCase(),counterPress:false};
+}
+function arrangeCounterPress(owning,defending,zone,direction,carrierIndex){
+    const pressers=nearestOutfieldIndexes(defending,zone).slice(0,4),sign=zone.y<=50?1:-1;
+    const positions=[[2.8,0],[6,-8*sign],[7,9*sign],[11,-15*sign]];
+    pressers.forEach((index,offset)=>{if(Number.isInteger(index))defending[index]=point(zone.x+direction*positions[offset][0],clamp(zone.y+positions[offset][1],8,92),offset===0?'counter-presser':'counter-cover');});
+    const defRight=direction<0,line=lineIndexes(defending,defRight,'defence'),lineX=clamp(zone.x+direction*19,22,78);
+    line.forEach(index=>{if(!pressers.includes(index))defending[index]=point(lineX,50+(defending[index].y-50)*.7,'counter-press-line');});
+    defending[0]=point(direction>0?93.5:6.5,clamp(50+(zone.y-50)*.12,43,57),'goalkeeper');
+    const outlets=nearestOutfieldIndexes(owning,zone,new Set([carrierIndex])).slice(0,2);
+    if(Number.isInteger(outlets[0]))owning[outlets[0]]=point(zone.x-direction*9,clamp(zone.y+sign*11,10,90),'turnover-outlet');
+    if(Number.isInteger(outlets[1]))owning[outlets[1]]=point(zone.x+direction*8,zone.y<50?82:18,'weak-side-outlet');
+    return{primaryIndex:pressers[0],coverIndexes:pressers.slice(1),trigger:'TURNOVER',counterPress:true};
+}
+function arrangeDefensiveRecovery(owning,defending,zone,direction,carrierIndex){
+    advanceSupport(owning,zone,direction,carrierIndex);arrangeCompactDefensiveBlock(defending,zone,direction,{height:'LOW'});
+    const delayIndex=closestDefenderIndex(defending,zone),delayX=zone.x+direction*5.5,delayY=50+(zone.y-50)*.6;
+    if(defending[delayIndex])defending[delayIndex]=point(delayX,delayY,'delay-defender');
+    const defRight=direction<0;
+    defending.forEach((p,index)=>{if(index===0||index===delayIndex)return;const line=structuralLine(p,defRight);if(line!=='defence')defending[index]=point(p.x,50+(p.y-50)*.72,`recovery-${line}`);});
+    return{delayIndex,goalSide:direction>0?'RIGHT':'LEFT'};
+}
+function arrangeOffsideTrap(owning,defending,zone,direction,carrierIndex){
+    const defRight=direction<0,ownRight=!defRight,defenders=lineIndexes(defending,defRight,'defence'),lineX=clamp(zone.x+direction*11,24,76),pressers=nearestOutfieldIndexes(defending,zone,new Set(defenders)),pressureIndex=pressers[0];
+    defenders.forEach(index=>defending[index]=point(lineX,50+(defending[index].y-50)*.72,'offside-line'));
+    if(Number.isInteger(pressureIndex))defending[pressureIndex]=point(zone.x+direction*3.2,zone.y,'ball-pressure');
+    const attackers=lineIndexes(owning,ownRight,'attack').filter(index=>index!==carrierIndex),runnerIndex=attackers[0],onsideIndex=attackers[1];
+    if(Number.isInteger(runnerIndex))owning[runnerIndex]=point(lineX+direction*4.5,clamp(zone.y+(zone.y<=50?-12:12),12,88),'offside-runner');
+    if(Number.isInteger(onsideIndex))owning[onsideIndex]=point(lineX-direction*1.5,clamp(zone.y+(zone.y<=50?14:-14),12,88),'onside-runner');
+    defending[0]=point(direction>0?94.5:5.5,50,'goalkeeper');
+    return{lineX,defenderIndexes:defenders,runnerIndex,pressureIndex,armed:true};
 }
 function arrangeFreeKick(owning,defending,zone,direction,carrierIndex,cross){
     const goalX=direction>0?96:4;defending[0]=point(goalX,50,'goalkeeper',direction>0?180:0);
@@ -151,30 +223,40 @@ function arrangePenalty(owning,defending,direction,carrierIndex){
 
 function applySituation(home,away,event){
     const side=event.possessionSide==='AWAY'?'AWAY':'HOME',owning=side==='HOME'?home:away,defending=side==='HOME'?away:home,attackingRight=periodAttacksRight(side,event),direction=attackingRight?1:-1,zone=event.zone||{x:50,y:50};
-    const carrierIndex=setCarrier(owning,event.ballCarrier?.index,zone,attackingRight),defenderIndex=closestDefenderIndex(defending,zone);let pressing=null;
+    const carrierIndex=setCarrier(owning,event.ballCarrier?.index,zone,attackingRight),defenderIndex=closestDefenderIndex(defending,zone);let pressing=null,passing=null,recovery=null,offsideTrap=null;
     if(event.type==='KICKOFF'||event.type==='FULL_TIME'){
         const homeRight=periodAttacksRight('HOME',event),awayRight=periodAttacksRight('AWAY',event),h=neutralHalfShape(home,homeRight,side==='HOME'&&event.type==='KICKOFF'),a=neutralHalfShape(away,awayRight,side==='AWAY'&&event.type==='KICKOFF');h.forEach((p,i)=>home[i]=p);a.forEach((p,i)=>away[i]=p);
-        if(event.type==='FULL_TIME'){const ownerTeam=side==='HOME'?home:away;ownerTeam[carrierIndex]=point(attackingRight?57:43,50,'carrier',attackingRight?0:180);}return{side,carrierIndex,defenderIndex,direction,pressing};
+        if(event.type==='FULL_TIME'){const ownerTeam=side==='HOME'?home:away;ownerTeam[carrierIndex]=point(attackingRight?57:43,50,'carrier',attackingRight?0:180);}return{side,carrierIndex,defenderIndex,direction,pressing,passing,recovery,offsideTrap};
     }
-    if(event.type==='BUILD_UP'){const shifted=shiftBlock(owning,direction*5,.94);shifted.forEach((p,index)=>{if(index!==carrierIndex)owning[index]=p;});defending.forEach((p,index)=>{if(index>0)defending[index]=point(p.x+direction*5,p.y,p.role,p.facing);});}
+    if(event.type==='BUILD_UP')arrangePositionalBuildUp(owning,defending,zone,direction,carrierIndex);
+    if(event.type==='PASSING_PATTERN')passing=arrangePassingPattern(owning,defending,zone,direction,carrierIndex,event);
     if(event.type==='PRESSING')pressing=arrangePressing(owning,defending,zone,direction,carrierIndex,event);
+    if(event.type==='COUNTER_PRESS')pressing=arrangeCounterPress(owning,defending,zone,direction,carrierIndex);
+    if(event.type==='DEFENSIVE_RECOVERY')recovery=arrangeDefensiveRecovery(owning,defending,zone,direction,carrierIndex);
+    if(event.type==='OFFSIDE_TRAP')offsideTrap=arrangeOffsideTrap(owning,defending,zone,direction,carrierIndex);
     if(event.type==='DUEL'){if(progressFor(zone,attackingRight)>62)compactOpenPlay(owning,defending,zone,direction,carrierIndex,.92);defending[defenderIndex]=point(zone.x+direction*3.6,zone.y+(zone.y<50?2.5:-2.5),'direct-opponent');if(owning[6]&&carrierIndex!==6)owning[6]=point(zone.x-direction*9,clamp(zone.y+13,10,90),'support');}
     if(event.type==='COUNTER_ATTACK'){compactOpenPlay(owning,defending,zone,direction,carrierIndex,.82);advanceSupport(owning,zone,direction,carrierIndex);const lineX=zone.x+direction*12;[1,2,3,4].forEach((index,offset)=>{if(defending[index])defending[index]=point(lineX,20+offset*20,'retreating');});}
     if(event.type==='CROSS'){compactOpenPlay(owning,defending,zone,direction,carrierIndex,.96);const boxX=direction>0?86:14;if(owning[9]&&carrierIndex!==9)owning[9]=point(boxX-direction*5,42,'target');if(owning[10]&&carrierIndex!==10)owning[10]=point(boxX-direction*3,61,'target');if(owning[6]&&carrierIndex!==6)owning[6]=point(boxX-direction*13,50,'support');if(defending[2])defending[2]=point(boxX-direction*2,39,'marker');if(defending[3])defending[3]=point(boxX-direction*2,59,'marker');}
     if(event.type==='SHOT'||event.type==='GOAL'){compactOpenPlay(owning,defending,zone,direction,carrierIndex,1);const goalX=direction>0?96:4;defending[0]=point(goalX,50,'goalkeeper',direction>0?180:0);advanceSupport(owning,zone,direction,carrierIndex);if(defending[2])defending[2]=point(zone.x+direction*3,42,'blocker');if(defending[3])defending[3]=point(zone.x+direction*3,58,'blocker');if(defending[5])defending[5]=point(zone.x-direction*7,34,'cover');if(defending[6])defending[6]=point(zone.x-direction*7,66,'cover');}
     if(event.type==='SET_PIECE'){const kind=String(event.setPieceKind||'FREE_KICK_DIRECT').toUpperCase();if(kind==='PENALTY')arrangePenalty(owning,defending,direction,carrierIndex);else if(kind==='CORNER')arrangeCorner(owning,defending,direction,carrierIndex,event);else arrangeFreeKick(owning,defending,zone,direction,carrierIndex,kind==='FREE_KICK_CROSS');}
-    return{side,carrierIndex,defenderIndex,direction,pressing};
+    return{side,carrierIndex,defenderIndex,direction,pressing,passing,recovery,offsideTrap};
 }
 
 function keepInOwnHalf(points,attackingRight){const min=attackingRight?3:50.6,max=attackingRight?49.4:97;return points.map(p=>point(clamp(p.x,min,max),p.y,p.role,p.facing));}
 function applyExperience(points,{profile,ball,seed,team,attackingRight,protectedIndexes=new Set(),neutral=false}){
-    return points.map((p,index)=>{if(p.role==='goalkeeper'||protectedIndexes.has(index))return{...p};const line=structuralLine(p,attackingRight),roleFactor=/^press/.test(String(p.role||''))?.55:1,factor=(neutral?.45:1)*roleFactor,xNoise=signedUnit(`${seed}:${team}:${index}:x`)*profile.disorder*factor,yNoise=signedUnit(`${seed}:${team}:${index}:y`)*profile.disorder*1.12*factor,lineNoise=signedUnit(`${seed}:${team}:${line}:line`)*profile.lineDrift*factor,attraction=neutral?0:profile.ballAttraction;return point(p.x+xNoise+lineNoise+(ball.x-p.x)*attraction*.32,p.y+yNoise+(ball.y-p.y)*attraction,p.role,p.facing);});
+    return points.map((p,index)=>{
+        if(p.role==='goalkeeper'||protectedIndexes.has(index))return{...p};
+        const line=structuralLine(p,attackingRight),role=String(p.role||''),roleFactor=/offside-line/.test(role)?.12:/press|counter|recovery|delay|pass|third|wide|overlap|bounce|between-lines|build-support|escape|turnover/.test(role)?.42:1,factor=(neutral?.45:1)*roleFactor;
+        const xNoise=signedUnit(`${seed}:${team}:${index}:x`)*profile.disorder*factor,yNoise=signedUnit(`${seed}:${team}:${index}:y`)*profile.disorder*1.12*factor,lineNoise=signedUnit(`${seed}:${team}:${line}:line`)*profile.lineDrift*factor,attraction=neutral?0:profile.ballAttraction;
+        return point(p.x+xNoise+lineNoise+(ball.x-p.x)*attraction*.32,p.y+yNoise+(ball.y-p.y)*attraction,p.role,p.facing);
+    });
 }
 function faceBall(points,ball){return points.map(p=>{const radians=Math.atan2(ball.y-p.y,ball.x-p.x);return{...p,facing:radians*180/Math.PI};});}
 function trajectoryFor(event,situation,carrier){
     const direction=situation.direction,goalX=direction>0?97.5:2.5,goalY=clamp(50+signedUnit(`${event.id||event.type}:target`)*8,42,58);let target=null,kind=null;
     if(event.type==='SHOT'||event.type==='GOAL'){target=ballPoint(goalX,goalY);kind=event.type;}
     else if(event.type==='CROSS'){target=ballPoint(direction>0?86:14,clamp(50+signedUnit(`${event.id}:cross`)*16,34,66));kind='CROSS';}
+    else if(event.type==='PASSING_PATTERN'&&situation.passing?.path?.[1]){target=ballPoint(situation.passing.path[1].x,situation.passing.path[1].y);kind=situation.passing.pattern;}
     else if(event.type==='SET_PIECE'){const setPiece=String(event.setPieceKind||'FREE_KICK_DIRECT').toUpperCase();target=(setPiece==='FREE_KICK_DIRECT'||setPiece==='PENALTY')?ballPoint(goalX,goalY):ballPoint(direction>0?86:14,clamp(50+signedUnit(`${event.id}:set-piece`)*15,34,66));kind=setPiece;}
     return target?{kind,from:ballPoint(carrier.x,carrier.y),to:target}:null;
 }
@@ -192,9 +274,11 @@ export function buildSimulatedMatchTacticalSituation(event={}, {playerAge=0,comp
     const neutral=effectiveEvent.type==='KICKOFF'||effectiveEvent.type==='FULL_TIME',rawBall=ballPoint(carrier.x,carrier.y),homeRight=periodAttacksRight('HOME',effectiveEvent),awayRight=periodAttacksRight('AWAY',effectiveEvent);
     let shapedHome=applyExperience(home,{profile,ball:rawBall,seed:stableSeed,team:'home',attackingRight:homeRight,protectedIndexes:homeProtected,neutral}),shapedAway=applyExperience(away,{profile,ball:rawBall,seed:stableSeed,team:'away',attackingRight:awayRight,protectedIndexes:awayProtected,neutral});
     if(neutral){shapedHome=keepInOwnHalf(shapedHome,homeRight);shapedAway=keepInOwnHalf(shapedAway,awayRight);}
-    const shapedOwner=situation.side==='HOME'?shapedHome[situation.carrierIndex]:shapedAway[situation.carrierIndex],owner={team:situation.side,index:situation.carrierIndex},rawTrajectory=trajectoryFor(effectiveEvent,situation,shapedOwner),finalBall=ballAtFeet(shapedOwner,rawTrajectory?.to,situation.direction),trajectory=rawTrajectory?{...rawTrajectory,from:{...finalBall}}:null;
+    const shapedOwning=situation.side==='HOME'?shapedHome:shapedAway,shapedOwner=shapedOwning[situation.carrierIndex],owner={team:situation.side,index:situation.carrierIndex};
+    const passing=situation.passing?{...situation.passing,path:situation.passing.pathIndexes.map(index=>shapedOwning[index]).filter(Boolean).map(p=>ballPoint(p.x,p.y))}:null;
+    const visualSituation={...situation,passing},rawTrajectory=trajectoryFor(effectiveEvent,visualSituation,shapedOwner),finalBall=ballAtFeet(shapedOwner,rawTrajectory?.to,situation.direction),trajectory=rawTrajectory?{...rawTrajectory,from:{...finalBall}}:null;
     shapedHome=faceBall(shapedHome,trajectory?.to||finalBall);shapedAway=faceBall(shapedAway,trajectory?.to||finalBall);
-    const pressing=situation.pressing?{team:situation.side==='HOME'?'AWAY':'HOME',...situation.pressing}:null;
-    return{state:effectiveEvent.cameraState||'NORMAL',eventType:effectiveEvent.type||'NORMAL',home:shapedHome,away:shapedAway,ball:{...finalBall,owner,trajectory},carrier:owner,pressing,playerFocal:{team:playerSide,index:playerSlot,position:normalizePosition(playerPosition)},formations:{home:homeFormation,away:awayFormation,own:ownFormation,opponent:opponentFormation},sides:{homeAttacksRight:homeRight,awayAttacksRight:awayRight},organization:{level:profile.id,discipline:profile.discipline}};
+    const pressing=situation.pressing?{team:situation.side==='HOME'?'AWAY':'HOME',...situation.pressing}:null,recovery=situation.recovery?{team:situation.side==='HOME'?'AWAY':'HOME',...situation.recovery}:null,offsideTrap=situation.offsideTrap?{team:situation.side==='HOME'?'AWAY':'HOME',...situation.offsideTrap}:null;
+    return{state:effectiveEvent.cameraState||'NORMAL',eventType:effectiveEvent.type||'NORMAL',home:shapedHome,away:shapedAway,ball:{...finalBall,owner,trajectory},carrier:owner,pressing,passing,recovery,offsideTrap,playerFocal:{team:playerSide,index:playerSlot,position:normalizePosition(playerPosition)},formations:{home:homeFormation,away:awayFormation,own:ownFormation,opponent:opponentFormation},sides:{homeAttacksRight:homeRight,awayAttacksRight:awayRight},organization:{level:profile.id,discipline:profile.discipline}};
 }
 export default buildSimulatedMatchTacticalSituation;
