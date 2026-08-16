@@ -27,6 +27,14 @@ async function completeCreation(page) {
   await page.locator('[data-country="Afrique"]').click();
 }
 
+async function completeMemories(page) {
+  for (let index = 0; index < 5; index += 1) {
+    await expect(page.locator('[data-stp-step="pastFragments"]')).toBeVisible();
+    await expect(page.locator('[data-memory-answer]').first()).toBeVisible();
+    await page.locator('[data-memory-answer]').first().click();
+  }
+}
+
 test.describe('création joueur moderne mobile', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
@@ -76,11 +84,19 @@ test.describe('création joueur moderne mobile', () => {
     await expect(page.getByRole('button', { name: 'Terminer la création' })).toBeDisabled();
   });
 
-  test('les cinq écrans créent le joueur canonique puis ouvrent Carrière', async ({ page }) => {
+  test('Terminer la création ouvre les cinq souvenirs avant Carrière', async ({ page }) => {
     await bootFresh(page);
     await completeCreation(page);
     await page.getByRole('button', { name: 'Terminer la création' }).click();
+
+    await expect(page.locator('[data-memory-flow="past"]')).toBeVisible();
+    await expect(page.locator('[data-memory-id="memory-salon"]')).toBeVisible();
+    await expect(page.locator('[data-memory-answer]')).toHaveCount(3);
+    await expect(page.locator('[data-space="career"]')).toHaveCount(0);
+
+    await completeMemories(page);
     await expect(page.locator('[data-space="career"]')).toBeVisible();
+
     const player = await page.evaluate(() => {
       const p = window.game.state.player;
       return { firstname:p.firstname, lastname:p.lastname, age:p.age, faceId:p.faceId, height:p.height, weight:p.weight, position:p.position, preferredFoot:p.preferredFoot, primaryNationality:p.primaryNationality, secondaryNationality:p.secondaryNationality, raisedInCountry:p.raisedInCountry, raisedInContinent:p.raisedInContinent, origin:p.origin, youthClub:p.youthClub, heartClub:p.heartClub };
