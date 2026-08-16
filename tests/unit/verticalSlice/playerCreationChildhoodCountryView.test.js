@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import { createChildhoodCountryStepState } from '../../../ui/verticalSlice/playerCreationChildhoodCountryStep.js';
 import { playerCreationChildhoodCountryTemplate } from '../../../ui/verticalSlice/playerCreationChildhoodCountryView.js';
 
-test('l’écran pays d’enfance garde le fond matière et affiche 06 / 06', () => {
+test('l’écran pays d’enfance garde le fond matière et affiche 05 / 05', () => {
     const html = playerCreationChildhoodCountryTemplate(createChildhoodCountryStepState());
-    assert.match(html, /06 \/ 06/);
+    assert.match(html, /05 \/ 05/);
     assert.match(html, /Où as-tu grandi/);
     assert.match(html, /fait partie de ton identité/);
     assert.match(html, /dépendront du continent/);
