@@ -9,7 +9,7 @@ test('l’écran identité conserve les textes et la structure validés', () => 
     assert.match(html, /Ton histoire commence ici/);
     assert.match(html, /Comment<br>tu t’appelles/);
     assert.match(html, /Pas de surnom, pas de statut, pas encore de club/);
-    assert.match(html, /01 \/ 06/);
+    assert.match(html, /01 \/ 05/);
     assert.match(html, /Âge de départ : 14 ans/);
     assert.match(html, /disabled/);
 });
