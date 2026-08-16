@@ -8,13 +8,13 @@ import {
     IDENTITY_LIMITS
 } from '../../../ui/verticalSlice/playerCreationIdentityStep.js';
 
-test('l’identité démarre sur le premier écran des six écrans validés', () => {
+test('l’identité démarre sur le premier écran des cinq écrans', () => {
     const state = createIdentityStepState();
     const vm = identityViewModel(state);
 
     assert.equal(state.step, 'identity');
     assert.equal(vm.progress.current, 1);
-    assert.equal(vm.progress.total, 6);
+    assert.equal(vm.progress.total, 5);
     assert.equal(vm.canContinue, false);
 });
 
@@ -47,7 +47,7 @@ test('continuer est refusé tant que les deux champs ne sont pas remplis', () =>
     assert.equal(result.errors.lastname, 'Nom requis.');
 });
 
-test('une identité complète ouvre uniquement l’étape visage', () => {
+test('une identité complète ouvre l’étape apparence unique', () => {
     let state = createIdentityStepState();
     state = updateIdentityField(state, 'firstname', 'Elias');
     state = updateIdentityField(state, 'lastname', 'Morel');
