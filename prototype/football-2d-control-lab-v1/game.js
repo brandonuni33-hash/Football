@@ -16,7 +16,6 @@ const shootButton = document.querySelector("#shoot");
 const protectButton = document.querySelector("#protect");
 const controlMode = document.querySelector("#control-mode");
 const actionMode = document.querySelector("#action-mode");
-const goalFlash = document.querySelector("#goal-flash");
 
 const input = createControlLabInput({
   moveJoystick: document.querySelector("#move-joystick"),
@@ -33,22 +32,31 @@ let state = createControlLabState();
 let previousTime = performance.now();
 let actionUntil = 0;
 let actionText = "—";
-let goalSince = null;
-
-document.querySelector("#player-name").textContent = `${profile.name} · ${profile.age} ans`;
+let restartAt = 0;
+let lastAction = null;
 
 function resetAction() {
   const goals = state.goals;
   state = { ...createControlLabState(), goals };
-  goalFlash.hidden = true;
-  goalSince = null;
+  restartAt = 0;
+  document.querySelector("#goal-flash").hidden = true;
 }
 
+document.querySelector("#player-name").textContent = `${profile.name} · ${profile.age} ans`;
 document.querySelector("#reset").addEventListener("click", resetAction);
 
-function pulseAction(text, now, duration = 280) {
+function pulseAction(text, now, duration = 420) {
   actionText = text;
   actionUntil = now + duration;
+}
+
+function labelAction(action) {
+  if (action === "feinte") return state.lastFeintResult === "transfert_appui" ? "FEINTE · APPUI BOUGÉ" : "FEINTE · DÉF. RESTE";
+  if (action === "appui") return "APPUI";
+  if (action === "orientation_reception") return "ORIENTATION";
+  if (action === "passe") return "PASSE";
+  if (action === "tir") return "TIR";
+  return null;
 }
 
 function frame(now) {
@@ -56,31 +64,34 @@ function frame(now) {
   const dt = Math.min(0.05, (now - previousTime) / 1000);
   previousTime = now;
 
-  if (state.status !== "goal") {
-    state = stepControlLab(state, controls, dt, tuning, athletic);
-    goalSince = null;
-  } else {
-    if (goalSince === null) goalSince = now;
-    if (now - goalSince >= 900) resetAction();
+  if (!restartAt && state.status !== "goal") state = stepControlLab(state, controls, dt, tuning, athletic);
+
+  if (state.lastControlAction && state.lastControlAction !== lastAction) {
+    const label = labelAction(state.lastControlAction);
+    if (label) pulseAction(label, now);
+    lastAction = state.lastControlAction;
   }
+  if (!state.lastControlAction) lastAction = null;
 
-  if (controls.passPressed) pulseAction("PASSE", now);
-  else if (controls.shootReleased) pulseAction("TIR", now);
-  else if (controls.burstTriggered) pulseAction("POUSSÉE", now, 420);
-
-  if (controls.protecting) {
-    actionText = "PROTECTION";
+  if (controls.burstTriggered) pulseAction("POUSSÉE", now, 500);
+  if (state.protectionActive) {
+    actionText = `PROT. ${state.protectionRemaining.toFixed(1)}s`;
     actionUntil = now + 80;
   }
-
   if (now > actionUntil) actionText = "—";
 
-  controlMode.textContent = (state.controlMode ?? "neutre").toUpperCase();
+  if (!restartAt && state.status === "goal") restartAt = now + 900;
+  if (!restartAt && !state.possession && (state.lastEvent === "tackle" || state.lastEvent === "save")) restartAt = now + 1100;
+  if (restartAt && now >= restartAt) resetAction();
+
+  controlMode.textContent = (state.controlMode ?? "vision").toUpperCase();
   actionMode.textContent = actionText;
-  protectButton.classList.toggle("active", controls.protecting);
+  protectButton.classList.toggle("active", state.protectionActive);
+  protectButton.classList.toggle("unavailable", !state.protectionAvailable && !state.protectionActive);
+  protectButton.textContent = state.protectionCooldown > 0 ? `${Math.ceil(state.protectionCooldown)}s` : "PROT.";
   passButton.classList.toggle("active", controls.passPressed);
   shootButton.classList.toggle("active", controls.charge > 0);
-  goalFlash.hidden = state.status !== "goal";
+  document.querySelector("#goal-flash").hidden = state.status !== "goal";
 
   renderControlLab(ctx, state, profile, controls.charge);
   requestAnimationFrame(frame);
