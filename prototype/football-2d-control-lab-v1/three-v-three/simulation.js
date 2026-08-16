@@ -119,7 +119,7 @@ function carryBall(state, dt) {
   const fx = orientedTouch ? owner.orientedTouchX : protectedControl ? owner.controlX : owner.facingX;
   const fy = orientedTouch ? owner.orientedTouchY : protectedControl ? owner.controlY : owner.facingY;
   const touchRatio = orientedTouch ? owner.orientedTouchRemaining / 0.28 : 0;
-  const forward = orientedTouch ? 24 + touchRatio * 24 : protectedControl ? RULES.protectionControlDistance : 24;
+  const forward = orientedTouch ? 24 + touchRatio * 24 : protectedControl ? RULES.protectionControlDistance : RULES.dribbleControlDistance;
   if (protectedControl || orientedTouch) {
     state.ball.x = owner.x + fx * forward;
     state.ball.y = owner.y + fy * forward;
@@ -137,7 +137,7 @@ function carryBall(state, dt) {
     return;
   }
   const gap = distance(owner, state.ball);
-  if (gap > RULES.controlRadius + 15) {
+  if (gap > RULES.controlRadius + 11) {
     clearPossession(state, BALL_PHASE.FREE);
     state.ball.lastTouchId = owner.id;
     state.lastEvent = "heavy_touch";
@@ -145,13 +145,18 @@ function carryBall(state, dt) {
     return;
   }
   if ((owner.dribbleTouchRemaining ?? 0) <= 0 || gap < 16) {
-    const touchSpeed = 34 + speed * 0.18;
-    state.ball.vx = owner.vx + fx * touchSpeed;
-    state.ball.vy = owner.vy + fy * touchSpeed;
-    owner.dribbleTouchRemaining = 0.16 + (100 - (owner.ballControl ?? 65)) * 0.0008;
+    const freeTouchSpeed = RULES.dribbleTouchBaseSpeed + speed * RULES.dribbleTouchSpeedRatio;
+    const guidedRatio = 1 - RULES.dribbleFreedom;
+    state.ball.vx = owner.vx + fx * freeTouchSpeed * RULES.dribbleFreedom + (desired.x - state.ball.x) * guidedRatio * 2.4;
+    state.ball.vy = owner.vy + fy * freeTouchSpeed * RULES.dribbleFreedom + (desired.y - state.ball.y) * guidedRatio * 2.4;
+    owner.dribbleTouchRemaining = RULES.dribbleTouchInterval + (100 - (owner.ballControl ?? 65)) * 0.0005;
   }
-  state.ball.x += state.ball.vx * dt;
-  state.ball.y += state.ball.vy * dt;
+  const freeX = state.ball.x + state.ball.vx * dt;
+  const freeY = state.ball.y + state.ball.vy * dt;
+  const guidedX = approach(freeX, desired.x, RULES.dribbleGuideSpeed * dt);
+  const guidedY = approach(freeY, desired.y, RULES.dribbleGuideSpeed * dt);
+  state.ball.x = freeX * RULES.dribbleFreedom + guidedX * (1 - RULES.dribbleFreedom);
+  state.ball.y = freeY * RULES.dribbleFreedom + guidedY * (1 - RULES.dribbleFreedom);
   const touchFriction = Math.pow(0.985, dt * 60);
   state.ball.vx *= touchFriction;
   state.ball.vy *= touchFriction;

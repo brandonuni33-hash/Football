@@ -25,4 +25,4 @@ Cette vertical slice utilise uniquement des règles déterministes, un cerveau d
 
 ## Ballon et conséquences physiques
 
-Le ballon conserve sa propre position. En conduite, il avance par petites touches et la distance joueur-ballon varie. Une touche trop longue libère le ballon ; les récupérations passent ensuite par la fenêtre physique commune (distance, vitesse, orientation, équilibre).
+Le ballon conserve sa propre position. En conduite, il suit un compromis 50/50 : sa vitesse et ses petites touches restent libres, tandis qu'un guidage souple le ramène partiellement vers la zone de contrôle devant le pied. Une touche trop longue libère toujours le ballon ; les récupérations passent ensuite par la fenêtre physique commune (distance, vitesse, orientation, équilibre).

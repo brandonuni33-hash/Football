@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { TEAM, distance } from "../../prototype/football-2d-control-lab-v1/three-v-three/constants.js";
+import { RULES, TEAM, distance } from "../../prototype/football-2d-control-lab-v1/three-v-three/constants.js";
 import { assertPossessionInvariant, createMatchState, getPlayer } from "../../prototype/football-2d-control-lab-v1/three-v-three/matchState.js";
 import { givePossession } from "../../prototype/football-2d-control-lab-v1/three-v-three/possession.js";
 import { stepMatch } from "../../prototype/football-2d-control-lab-v1/three-v-three/simulation.js";
@@ -119,7 +119,7 @@ test("la décision de tacle tient compte de l'équilibre et du risque", () => {
   assert.equal(recovering.shouldTackle, false);
 });
 
-test("en conduite le ballon avance par touches au lieu d'être soudé au joueur", () => {
+test("en conduite le ballon suit un compromis 50/50 libre et guidé", () => {
   let state = createMatchState({ online: true });
   const player = getPlayer(state, "home-human");
   givePossession(state, player.id);
@@ -129,8 +129,23 @@ test("en conduite le ballon avance par touches au lieu d'être soudé au joueur"
     gaps.push(Math.round((state.ball.x - player.x) * 100) / 100);
   }
   assert.equal(state.ball.ownerId, player.id);
+  assert.equal(RULES.dribbleFreedom, 0.5);
+  assert.equal(RULES.dribbleControlDistance, 20);
   assert.ok(new Set(gaps).size > 5);
-  assert.ok(Math.max(...gaps) - Math.min(...gaps) > 2);
+  assert.ok(Math.max(...gaps) - Math.min(...gaps) > 1);
+  assert.ok(Math.max(...gaps) < 31, "les touches doivent rester dans une enveloppe contrôlable");
+});
+
+test("le guidage 50/50 conserve le ballon sur un changement d'appui", () => {
+  let state = createMatchState({ online: true });
+  const player = getPlayer(state, "home-human");
+  givePossession(state, player.id);
+  for (let index = 0; index < 30; index += 1) state = stepMatch(state, { host: { moveX: 1 } }, 1 / 60);
+  const ballBeforeTurn = { x: state.ball.x, y: state.ball.y };
+  for (let index = 0; index < 18; index += 1) state = stepMatch(state, { host: { moveX: -1 } }, 1 / 60);
+  assert.equal(state.ball.ownerId, player.id);
+  assert.ok(distance(player, state.ball) < RULES.controlRadius + 6);
+  assert.notDeepEqual({ x: state.ball.x, y: state.ball.y }, ballBeforeTurn);
 });
 
 test("la simulation IA reste déterministe et cohérente sur une séquence longue", () => {
