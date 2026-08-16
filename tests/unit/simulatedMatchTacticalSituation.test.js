@@ -26,11 +26,23 @@ test('le joueur focal dépend du poste et reste sur le slot de la formation',()=
  assert.notEqual(centreBack.carrier.index,centreBack.playerFocal.index);
 });
 
-test('le ballon part du porteur puis vise la cible footballistique',()=>{
+test('un ailier droit reste sur le vrai côté droit après le changement de côté',()=>{
+ const firstEvent={...duel,id:'wing-first',type:'BUILD_UP',clock:{period:'FIRST_HALF',regulationMinute:20},playerInvolved:false,zone:{x:34,y:50,lane:'CENTER'}};
+ const secondEvent={...firstEvent,id:'wing-second',clock:{period:'SECOND_HALF',regulationMinute:60},zone:{x:66,y:50,lane:'CENTER'}};
+ const first=buildSimulatedMatchTacticalSituation(firstEvent,{seed:'wing-side',playerSide:'HOME',playerPosition:'AD',playerAge:25,competition:'Ligue 1'});
+ const second=buildSimulatedMatchTacticalSituation(secondEvent,{seed:'wing-side',playerSide:'HOME',playerPosition:'AD',playerAge:25,competition:'Ligue 1'});
+ const firstPlayer=first.home[first.playerFocal.index],secondPlayer=second.home[second.playerFocal.index];
+ assert.ok(firstPlayer.y>60);
+ assert.ok(secondPlayer.y<40);
+ assert.equal(first.playerFocal.index,second.playerFocal.index);
+});
+
+test('le ballon part du pied du porteur puis vise la cible footballistique',()=>{
  const shot={...duel,type:'SHOT',cameraState:'SHOT',playerInvolved:true,zone:{x:82,y:50,lane:'CENTER'}};
  const first=buildSimulatedMatchTacticalSituation(shot,{seed:'flight',playerSide:'HOME',playerPosition:'BU'});
- const carrier=first.home[first.carrier.index];
- assert.equal(first.ball.x,carrier.x);assert.equal(first.ball.y,carrier.y);
+ const carrier=first.home[first.carrier.index],distance=Math.hypot(first.ball.x-carrier.x,first.ball.y-carrier.y);
+ assert.ok(distance>0&&distance<=2.1);
+ assert.equal(first.ball.trajectory.from.x,first.ball.x);assert.equal(first.ball.trajectory.from.y,first.ball.y);
  assert.equal(first.ball.trajectory.kind,'SHOT');
  assert.ok(first.ball.trajectory.to.x>first.ball.trajectory.from.x);
  assert.ok(first.ball.trajectory.to.x>=97);
@@ -61,12 +73,13 @@ test('les formations restent stables pendant un match mais varient entre les mat
  assert.ok(own.size>=2);assert.ok(opponents.size>=4);
 });
 
-test('une phase offensive fait remonter notre défense et redescendre les attaquants adverses',()=>{
+test('une phase offensive fait remonter notre défense et garde la défense adverse un peu plus haute',()=>{
  const shot={...duel,type:'SHOT',cameraState:'SHOT',playerInvolved:true,zone:{x:82,y:50,lane:'CENTER'}};
  const tactical=buildSimulatedMatchTacticalSituation(shot,{seed:'compact-shot',playerSide:'HOME',playerPosition:'BU',playerAge:25,competition:'Ligue 1'});
- const ownDefence=tactical.home.slice(1,5).map(p=>p.x);
+ const ownDefence=tactical.home.slice(1,5).map(p=>p.x),enemyDefence=tactical.away.slice(1,5).map(p=>p.x);
  assert.ok(ownDefence.every(x=>x>36));
  assert.ok(Math.min(...tactical.away.slice(1).map(p=>p.x))>50);
+ assert.ok(Math.max(...enemyDefence)<=86);
  const carrier=tactical.home[tactical.carrier.index];
  const near=tactical.home.filter((p,index)=>index!==tactical.carrier.index&&index!==0&&Math.hypot(p.x-carrier.x,p.y-carrier.y)<=27);
  assert.ok(near.length>=3);
@@ -84,7 +97,7 @@ test('les gardiens regardent toujours le ballon ou sa trajectoire',()=>{
 
 test('les coups de pied arrêtés respectent des structures football lisibles',()=>{
  const freeKick=buildSimulatedMatchTacticalSituation({...duel,type:'SET_PIECE',cameraState:'SET_PIECE',setPieceKind:'FREE_KICK_DIRECT',zone:{x:73,y:49,lane:'CENTER'},ballCarrier:{team:'HOME',index:7}},{seed:'fk',playerSide:'HOME'});
- const wall=freeKick.away.filter(p=>p.role==='wall');assert.ok(wall.length>=3&&wall.length<=4);assert.equal(freeKick.ball.x,freeKick.home[7].x);assert.equal(freeKick.ball.y,freeKick.home[7].y);assert.ok(freeKick.ball.trajectory.to.x>=97);
+ const wall=freeKick.away.filter(p=>p.role==='wall');assert.ok(wall.length>=3&&wall.length<=4);assert.ok(Math.hypot(freeKick.ball.x-freeKick.home[7].x,freeKick.ball.y-freeKick.home[7].y)<=2.1);assert.ok(freeKick.ball.trajectory.to.x>=97);
  const penalty=buildSimulatedMatchTacticalSituation({...duel,type:'SET_PIECE',cameraState:'SET_PIECE',setPieceKind:'PENALTY',zone:{x:89.5,y:50,lane:'CENTER'},ballCarrier:{team:'HOME',index:9}},{seed:'pen',playerSide:'HOME'});
  assert.ok(penalty.home[9].x>88&&penalty.home[9].x<91);assert.ok(penalty.away[0].x>=96);assert.ok(penalty.home.filter((_,i)=>i!==9).every(p=>p.x<=81));assert.ok(penalty.away.filter((_,i)=>i!==0).every(p=>p.x<=81));assert.equal(penalty.ball.trajectory.kind,'PENALTY');
  const corner=buildSimulatedMatchTacticalSituation({...duel,type:'SET_PIECE',cameraState:'SET_PIECE',setPieceKind:'CORNER',zone:{x:96,y:4,lane:'LEFT'},ballCarrier:{team:'HOME',index:8}},{seed:'corner',playerSide:'HOME'});
