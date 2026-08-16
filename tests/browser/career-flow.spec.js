@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test';
 
 const CURRENT_YEAR = 2026;
-const MAX_INTERACTIVE_TRANSITIONS = 40;
 
 async function boot(page) {
   await page.goto('/index.html');
@@ -114,29 +113,7 @@ async function forceInteractionPlan(page, playableIndexes) {
   }, { year: CURRENT_YEAR, indexes: playableIndexes });
 }
 
-async function finishInteractiveFlow(page) {
-  return page.evaluate(maxTransitions => {
-    const gateway = window.game.gameUI;
-    let result = gateway.playNextBlock();
-    let transitions = 0;
-    let decisions = 0;
-
-    while (result?.interactive) {
-      transitions += 1;
-      if (transitions > maxTransitions) {
-        throw new Error(`Boucle de match interactif anormalement longue (${transitions} transitions).`);
-      }
-
-      const isDecision = result?.interactiveStep?.kind === 'decision';
-      if (isDecision) decisions += 1;
-      result = gateway.playNextBlock(isDecision ? 0 : null);
-    }
-
-    return { decisions, transitions, result };
-  }, MAX_INTERACTIVE_TRANSITIONS);
-}
-
-test('parcours carrière complet : création → match → narration → conséquence → sauvegarde/rechargement', async ({ page }) => {
+test('parcours carrière complet : création → match simulé → narration → conséquence → sauvegarde/rechargement', async ({ page }) => {
   const pageErrors = [];
   page.on('pageerror', error => pageErrors.push(error.message));
 
@@ -145,20 +122,26 @@ test('parcours carrière complet : création → match → narration → conséq
   expect(created.playerId).toBeTruthy();
   expect(created.month).toBe(8);
 
-  const forcedPlan = await forceInteractionPlan(page, [0]);
-  expect(forcedPlan.entries.filter(entry => entry.playable)).toHaveLength(1);
+  const result = await page.evaluate(() => {
+    const gateway = window.game.gameUI;
+    const block = gateway.playNextBlock();
+    return {
+      block,
+      hasActiveSession: Boolean(gateway.state.activeMatchSession),
+      hasInteractiveBuffer: Array.isArray(gateway.state.interactiveBlockResults)
+    };
+  });
 
-  const flow = await finishInteractiveFlow(page);
-  expect(flow.decisions).toBeGreaterThan(0);
-  expect(flow.transitions).toBeGreaterThanOrEqual(flow.decisions);
-
-  const result = flow.result;
-  expect(result?.report).toBeTruthy();
-  expect(result?.narrativeScene).toBeTruthy();
-  expect(result.report.summary?.matchResults?.length || 0).toBeGreaterThanOrEqual(1);
-  expect(result.narrativeScene.type).toBe('match.end');
-  expect(result.narrativeScene.beats?.length || 0).toBeGreaterThanOrEqual(3);
-  expect(result.narrativeScene.facts?.score || null).toMatch(/^\d+-\d+$/);
+  expect(result.block?.interactive).not.toBe(true);
+  expect(result.hasActiveSession).toBe(false);
+  expect(result.hasInteractiveBuffer).toBe(false);
+  expect(result.block?.report).toBeTruthy();
+  expect(result.block?.narrativeScene).toBeTruthy();
+  expect(result.block.report.summary?.matchResults?.length || 0).toBeGreaterThanOrEqual(1);
+  expect(result.block.report.summary?.matchResults?.every(row => row.interactive === false)).toBe(true);
+  expect(result.block.narrativeScene.type).toBe('match.end');
+  expect(result.block.narrativeScene.beats?.length || 0).toBeGreaterThanOrEqual(3);
+  expect(result.block.narrativeScene.facts?.score || null).toMatch(/^\d+-\d+$/);
 
   const consequence = await page.evaluate(() => {
     const gateway = window.game.gameUI;
@@ -217,8 +200,6 @@ test('bloc 100 % simulé : tous les matchs sont joués sans session interactive 
     }
   ];
   const created = await createDeterministicCareer(page, { fixtures });
-  const plan = await forceInteractionPlan(page, []);
-  expect(plan.playableCount).toBe(0);
 
   const result = await page.evaluate(() => {
     const gateway = window.game.gameUI;
@@ -247,45 +228,49 @@ test('bloc 100 % simulé : tous les matchs sont joués sans session interactive 
   expect(result.before).toBe(created.matchesPlayed);
 });
 
-test('bloc mixte : un match interactif et un match simulé sont fusionnés dans le même rapport', async ({ page }) => {
+test('un ancien plan interactif ne peut pas réactiver le gameplay contrôlable', async ({ page }) => {
   await boot(page);
   const fixtures = [
     {
-      id: 'ci-mixed-1', month: 8, type: 'league', competitionId: 'CI_LEAGUE',
+      id: 'ci-legacy-playable-1', month: 8, type: 'league', competitionId: 'CI_LEAGUE',
       competitionType: 'league', competitionName: 'Championnat CI', phase: 'final', round: 'Finale',
       opponent: 'Rival CI', opponentStrength: 60, home: true, isDerby: true
     },
     {
-      id: 'ci-mixed-2', month: 8, type: 'league', competitionId: 'CI_LEAGUE',
+      id: 'ci-legacy-playable-2', month: 8, type: 'league', competitionId: 'CI_LEAGUE',
       competitionType: 'league', competitionName: 'Championnat CI', opponent: 'Club Simulation',
       opponentStrength: 54, home: false
     }
   ];
   const created = await createDeterministicCareer(page, { fixtures });
-  const plan = await forceInteractionPlan(page, [0]);
-  expect(plan.entries.filter(entry => entry.playable)).toHaveLength(1);
+  const legacyPlan = await forceInteractionPlan(page, [0]);
+  expect(legacyPlan.entries.filter(entry => entry.playable)).toHaveLength(1);
 
-  const flow = await finishInteractiveFlow(page);
-  expect(flow.decisions).toBeGreaterThan(0);
-  expect(flow.transitions).toBeGreaterThanOrEqual(flow.decisions);
+  const flow = await page.evaluate(() => {
+    const gateway = window.game.gameUI;
+    const result = gateway.playNextBlock();
+    const rows = result?.report?.summary?.matchResults || [];
+    return {
+      interactive: result?.interactive === true,
+      rows,
+      narrativeType: result?.narrativeScene?.type || null,
+      matchesPlayed: Number(gateway.state.player.stats?.matchesPlayed || 0),
+      month: gateway.state.calendar?.currentMonth,
+      hasInteractiveBuffer: Array.isArray(gateway.state.interactiveBlockResults),
+      hasActiveSession: Boolean(gateway.state.activeMatchSession)
+    };
+  });
 
-  const rows = flow.result?.report?.summary?.matchResults || [];
-  expect(rows).toHaveLength(2);
-  expect(rows.filter(row => row.interactive)).toHaveLength(1);
-  expect(rows.filter(row => row.interactive === false)).toHaveLength(1);
-  expect(rows.map(row => row.matchIndex)).toEqual([0, 1]);
-  expect(flow.result?.narrativeScene?.type).toBe('match.end');
-
-  const stateAfter = await page.evaluate(() => ({
-    matchesPlayed: Number(window.game.gameUI.state.player.stats?.matchesPlayed || 0),
-    month: window.game.gameUI.state.calendar?.currentMonth,
-    hasInteractiveBuffer: Array.isArray(window.game.gameUI.state.interactiveBlockResults),
-    hasActiveSession: Boolean(window.game.gameUI.state.activeMatchSession)
-  }));
-  expect(stateAfter.matchesPlayed - created.matchesPlayed).toBe(2);
-  expect(stateAfter.month).not.toBe(8);
-  expect(stateAfter.hasInteractiveBuffer).toBe(false);
-  expect(stateAfter.hasActiveSession).toBe(false);
+  expect(flow.interactive).toBe(false);
+  expect(flow.rows).toHaveLength(2);
+  expect(flow.rows.filter(row => row.interactive)).toHaveLength(0);
+  expect(flow.rows.filter(row => row.interactive === false)).toHaveLength(2);
+  expect(flow.rows.map(row => row.matchIndex)).toEqual([0, 1]);
+  expect(flow.narrativeType).toBe('match.end');
+  expect(flow.matchesPlayed - created.matchesPlayed).toBe(2);
+  expect(flow.month).not.toBe(8);
+  expect(flow.hasInteractiveBuffer).toBe(false);
+  expect(flow.hasActiveSession).toBe(false);
 });
 
 test('ancienne sauvegarde : StateManager migre les attributs, notifications et mémoires vers le schéma actuel', async ({ page }) => {
