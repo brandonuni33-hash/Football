@@ -28,8 +28,9 @@ async function completeCreation(page) {
 }
 
 async function completeMemories(page) {
-  for (let index = 0; index < 4; index += 1) {
+  for (let index = 0; index < 5; index += 1) {
     await expect(page.locator('[data-stp-step="pastFragments"]')).toBeVisible();
+    await expect(page.locator('[data-memory-answer]').first()).toBeVisible();
     await page.locator('[data-memory-answer]').first().click();
   }
 }
@@ -83,14 +84,14 @@ test.describe('création joueur moderne mobile', () => {
     await expect(page.getByRole('button', { name: 'Terminer la création' })).toBeDisabled();
   });
 
-  test('Terminer la création ouvre les quatre souvenirs avant Carrière', async ({ page }) => {
+  test('Terminer la création ouvre les cinq souvenirs avant Carrière', async ({ page }) => {
     await bootFresh(page);
     await completeCreation(page);
     await page.getByRole('button', { name: 'Terminer la création' }).click();
 
     await expect(page.locator('[data-memory-flow="past"]')).toBeVisible();
-    await expect(page.locator('[data-memory-id="decisive-penalty"]')).toBeVisible();
-    await expect(page.locator('[data-memory-answer]')).toHaveCount(4);
+    await expect(page.locator('[data-memory-id="memory-salon"]')).toBeVisible();
+    await expect(page.locator('[data-memory-answer]')).toHaveCount(3);
     await expect(page.locator('[data-space="career"]')).toHaveCount(0);
 
     await completeMemories(page);
