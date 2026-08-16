@@ -1,131 +1,20 @@
 // ui/views/dashboardView.js
-// Vue canonique du dashboard. Présentation uniquement : aucun effet métier ici.
-
-const COUNTRY_FLAGS = {
-    France: '🇫🇷', Espagne: '🇪🇸', Spain: '🇪🇸', Allemagne: '🇩🇪', Germany: '🇩🇪',
-    Angleterre: '🇬🇧', England: '🇬🇧', Italie: '🇮🇹', Italy: '🇮🇹', Portugal: '🇵🇹',
-    Brésil: '🇧🇷', Brazil: '🇧🇷', Argentine: '🇦🇷', Argentina: '🇦🇷', Belgique: '🇧🇪',
-    PaysBas: '🇳🇱', 'Pays-Bas': '🇳🇱', Netherlands: '🇳🇱', Maroc: '🇲🇦', Morocco: '🇲🇦',
-    Sénégal: '🇸🇳', Senegal: '🇸🇳', 'Côte d’Ivoire': '🇨🇮', Cameroun: '🇨🇲', Cameroon: '🇨🇲',
-    Nigeria: '🇳🇬', 'États-Unis': '🇺🇸', USA: '🇺🇸', Canada: '🇨🇦', Japon: '🇯🇵', Japan: '🇯🇵',
-    'Corée du Sud': '🇰🇷', Korea: '🇰🇷'
-};
-
-const DEFENSIVE_POSITIONS = new Set(['DD', 'DG', 'DC', 'RB', 'LB', 'CB']);
-const GOALKEEPER_POSITIONS = new Set(['GK', 'GB', 'G']);
-
-const firstValue = (...values) => values.find(value => value !== undefined && value !== null && String(value).trim() !== '');
-
-function stat(source, keys) {
-    for (const key of keys) {
-        const number = Number(source?.[key]);
-        if (Number.isFinite(number)) return number;
-    }
-    return 0;
-}
-
-function flag(player) {
-    const direct = player?.countryFlag || player?.nationalityFlag || player?.flag;
-    if (direct && String(direct).length <= 4) return direct;
-
-    const code = player?.countryCode || player?.nationalityCode || player?.nationCode;
-    if (typeof code === 'string' && /^[A-Za-z]{2}$/.test(code)) {
-        return [...code.toUpperCase()].map(char => String.fromCodePoint(127397 + char.charCodeAt(0))).join('');
-    }
-
-    const name = player?.country?.name || player?.country || player?.nationality || player?.nation;
-    return typeof name === 'string' ? (COUNTRY_FLAGS[name] || '') : '';
-}
-
-function potentialStars(value) {
-    const number = Number(value);
-    if (!Number.isFinite(number)) return '☆☆☆☆☆';
-    const count = Math.max(1, Math.min(5, Math.ceil(number / 20)));
-    return '★'.repeat(count) + '☆'.repeat(5 - count);
-}
-
-function rating(stats) {
-    const number = stat(stats, ['averageRating', 'average_rating', 'ratingAverage', 'avgRating', 'rating']);
-    return number > 0 ? number.toFixed(1) : '—';
-}
-
-function careerStats(player) {
-    const stats = player?.stats || {};
-    const position = String(player?.position || player?.positionId || '').toUpperCase();
-    const matches = stat(stats, ['matches', 'matchesPlayed', 'appearances', 'games']);
-    const assists = stat(stats, ['assists', 'passesDecisives']);
-    const goals = stat(stats, ['goals', 'buts']);
-    const tackles = stat(stats, ['tackles', 'tacles']);
-    const cleanSheets = stat(stats, ['cleanSheets', 'clean_sheets', 'cleanSheet', 'cleanSheetsCount']);
-
-    if (GOALKEEPER_POSITIONS.has(position)) return [['MATCHS', matches], ['CLEAN SHEETS', cleanSheets], ['NOTE', rating(stats)]];
-    if (DEFENSIVE_POSITIONS.has(position)) return [['MATCHS', matches], ['TACLES', tackles], ['PASSES D.', assists], ['NOTE', rating(stats)]];
-    return [['MATCHS', matches], ['BUTS', goals], ['PASSES D.', assists], ['NOTE', rating(stats)]];
-}
-
-function notificationIcon(note) {
-    const category = String(note?.category || '').toLowerCase();
-    if (category.includes('famille') || category.includes('family')) return '⌂';
-    if (category.includes('mercato') || category.includes('transfer') || category.includes('scout')) return '⇄';
-    if (category.includes('media') || category.includes('média')) return '◫';
-    if (category.includes('match')) return '⚽';
-    if (category.includes('coach')) return '◉';
-    return '•';
-}
-
-function notificationPriority(note) {
-    const category = String(note?.category || '').toLowerCase();
-    return ['famille', 'family', 'mercato', 'transfer', 'coach', 'match', 'medical', 'event']
-        .some(value => category.includes(value)) ? 'important' : 'info';
-}
-
-function isSocialNotification(note) {
-    const category = String(note?.category || note?.type || '').toLowerCase();
-    return category.includes('media') || category.includes('média') || category.includes('social') || category.includes('réseau');
-}
-
-function moraleLabel(value) {
-    const number = Number(value);
-    if (!Number.isFinite(number)) return 'STABLE';
-    if (number >= 75) return 'ÉLEVÉ';
-    if (number >= 55) return 'BON';
-    if (number >= 35) return 'FRAGILE';
-    return 'BAS';
-}
-
-function formatMoney(value) {
-    const number = Number(value);
-    if (!Number.isFinite(number)) return '—';
-    if (Math.abs(number) >= 1_000_000) return `${(number / 1_000_000).toFixed(number >= 10_000_000 ? 0 : 1)} M€`;
-    if (Math.abs(number) >= 1_000) return `${Math.round(number / 1_000)} k€`;
-    return `${Math.round(number)} €`;
-}
-
-function overallValue(player) {
-    const number = Number(firstValue(player?.overall, player?.general, player?.rating));
-    return Number.isFinite(number) ? Math.max(0, Math.min(100, Math.round(number))) : 0;
-}
-
-function appIconSvg(id) {
-    const icons = {
-        career: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5 15 7l-1.2 4.1H10.2L9 7l3-3.5ZM3.8 10.2l4.1-.2 2.3 3-1.4 3.8-4 1.4M20.2 10.2l-4.1-.2-2.3 3 1.4 3.8 4 1.4M8.8 16.8 12 14.5l3.2 2.3-1.2 3.7h-4Z"/></svg>',
-        transfers: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h13"/><path d="m14 4 3 3-3 3"/><path d="M20 17H7"/><path d="m10 14-3 3 3 3"/></svg>',
-        social: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.7a5.5 5.5 0 0 0-7.8 0L12 5.8l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.5a5.5 5.5 0 0 0 0-7.8Z"/></svg>',
-        family: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M2.8 20c.5-4 2.5-6 5.2-6s4.7 2 5.2 6"/><path d="M14.2 15c.8-.8 1.7-1.2 2.8-1.2 2.3 0 3.8 1.7 4.2 5"/></svg>',
-        stats: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>',
-        training: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 4-7 16h14L12 4Z"/><path d="M8 14h8"/><path d="M10 10h4"/></svg>',
-        bank: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h16"/><path d="M5.5 9v8M9.8 9v8M14.2 9v8M18.5 9v8"/><path d="M3 19h18M12 3 3 7h18l-9-4Z"/></svg>',
-        settings: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1A8 8 0 0 0 14.8 6L14.5 3h-5l-.3 3a8 8 0 0 0-1.7 1.1l-2.4-1-2 3.4 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1A8 8 0 0 0 9.2 18l.3 3h5l.3-3a8 8 0 0 0 1.7-1.1l2.4 1 2-3.4-2-1.5c.1-.3.1-.7.1-1Z"/></svg>'
-    };
-    return icons[id] || '';
-}
+// Accueil Carrière : montrer uniquement où j'en suis, ce qui arrive et ce qui mérite une décision.
+import { buildCareerHubModel } from '../career/careerHubPresenter.js';
 
 const escapeHtml = value => String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
+    .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+
+function notificationIcon(note) {
+    const category = String(note?.category || note?.type || '').toLowerCase();
+    if (category.includes('match')) return '⚽';
+    if (category.includes('coach')) return '◉';
+    if (category.includes('transfer') || category.includes('mercato')) return '⇄';
+    if (category.includes('family') || category.includes('famille')) return '⌂';
+    if (category.includes('medical') || category.includes('bless')) return '+';
+    return '•';
+}
 
 export class DashboardView {
     constructor({ ui, gateway, narrativePresenter = null } = {}) {
@@ -135,171 +24,74 @@ export class DashboardView {
     }
 
     render(state) {
-        const player = state?.player || {};
-        const calendar = state?.calendar || {};
-        const media = state?.media || {};
-        const allSignals = (state?.notifications?.signals || []).filter(note => !note?.archived);
-        const careerSignals = allSignals.filter(note => !isSocialNotification(note));
-        const notifications = careerSignals.filter(note => !note?.read).slice(-8).reverse();
-        const narrativeEntries = (this.narrativePresenter?.getJournal?.(state) || []).slice(0, 8);
-        const journalCount = Math.min(99, notifications.length + narrativeEntries.length);
-        const latestSignal = notifications[0] || careerSignals.at(-1) || null;
-        const coachSignal = [...allSignals].reverse().find(note => String(note?.category || '').toLowerCase().includes('coach')) || null;
-        const playerName = `${player.firstname || player.firstName || ''} ${player.lastname || player.lastName || ''}`.trim() || 'Joueur';
-        const playerFlag = flag(player);
-        const rawStats = player?.stats || {};
-        const goals = stat(rawStats, ['goals', 'buts']);
-        const assists = stat(rawStats, ['assists', 'passesDecisives']);
-        const overall = overallValue(player);
-        const fitness = firstValue(player.fitness, player.form, player.condition, '—');
-        const morale = firstValue(player.morale, player.moral, '—');
-        const balance = firstValue(state?.economy?.balance, state?.finances?.balance, player?.money, state?.money);
-        const currentPeriod = firstValue(calendar.currentPeriod, calendar.periodLabel, calendar.currentMonth ? `Mois ${calendar.currentMonth}` : null, 'Pré-saison');
-        const avatarInitials = playerName.split(/\s+/).slice(0, 2).map(part => part[0] || '').join('').toUpperCase();
-        const seasonYear = calendar.currentSeasonYear || '—';
-        const position = player.position || player.positionId || 'JOUEUR';
+        const journalEntries = this.narrativePresenter?.getJournal?.(state) || [];
+        const model = buildCareerHubModel(state, journalEntries);
+        const journalCount = Math.min(99, model.unreadCount + model.journal.length);
+        const fitness = model.player.fitness === null ? null : String(model.player.fitness);
 
         return `
-            <div class="phone-frame immersive-dashboard">
+            <div class="phone-frame immersive-dashboard" data-space="career">
                 <div class="phone-status-bar immersive-status-bar">
-                    <span>${escapeHtml(currentPeriod)}</span>
+                    <span>${escapeHtml(model.period)}</span>
                     <span class="immersive-brand">STREET <b>TO PRO</b></span>
-                    <span>● ${escapeHtml(formatMoney(balance))}</span>
+                    <button type="button" data-space-link="settings" aria-label="Réglages" style="justify-self:end;border:0;background:transparent;color:#9cafc1;font-size:1rem;">⚙</button>
                 </div>
 
-                <main class="phone-home-screen immersive-home">
-                    <section class="immersive-player-card" aria-label="Profil joueur">
-                        <div class="immersive-player-glow"></div>
-                        <div class="immersive-overall-ring" style="--overall:${overall}" aria-label="Général ${overall} sur 100">
-                            <div class="immersive-overall-core">
-                                <strong>${overall}</strong>
-                                <small>/100</small>
-                                <span>GÉN</span>
-                            </div>
+                <main class="phone-home-screen immersive-home" style="gap:13px;">
+                    <header style="padding:5px 2px 1px;display:flex;justify-content:space-between;gap:12px;align-items:flex-end;">
+                        <div style="min-width:0;">
+                            <span style="display:block;color:#7ccfd0;font-size:.56rem;font-weight:900;letter-spacing:.11em;">CARRIÈRE</span>
+                            <h1 style="margin:5px 0 0;color:#f8fbff;font-size:1.34rem;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(model.player.name)}</h1>
+                            <p style="margin:6px 0 0;color:#93a6ba;font-size:.68rem;">${model.player.age} ans · ${escapeHtml(model.player.position)} · ${escapeHtml(model.player.club)}</p>
                         </div>
-                        <div class="immersive-player-avatar" aria-hidden="true">${escapeHtml(avatarInitials || 'ST')}</div>
-                        <div class="immersive-player-copy">
-                            <div class="immersive-player-name">${playerFlag ? `<span class="immersive-name-flag">${playerFlag}</span>` : ''}<span>${escapeHtml(playerName)}</span></div>
-                            <div class="immersive-player-role"><span class="immersive-age-inline">${player.age ?? '—'} ANS</span><span class="immersive-role-separator">·</span><span>${escapeHtml(position)}</span></div>
-                            <div class="immersive-club-row"><span>◈</span><strong>${escapeHtml(player.club || 'Sans club')}</strong></div>
-                            <div class="immersive-season-row">SAISON ${escapeHtml(seasonYear)} · <b>${player.careerEnded ? 'CARRIÈRE TERMINÉE' : 'EN ACTIVITÉ'}</b></div>
-                            <div class="immersive-potential-row"><span>POTENTIEL</span><strong>${potentialStars(player.potential)}</strong></div>
-                        </div>
-                        <div class="immersive-energy"><span>⚡</span><strong>${escapeHtml(fitness)}</strong></div>
+                        ${fitness ? `<div style="flex:none;text-align:right;"><small style="display:block;color:#718499;font-size:.48rem;font-weight:900;letter-spacing:.08em;">FORME</small><strong style="display:block;margin-top:3px;color:#dce8f4;font-size:.78rem;">${escapeHtml(fitness)}</strong></div>` : ''}
+                    </header>
 
-                        <div class="immersive-stat-strip">
-                            <div><strong>${goals}</strong><span>BUTS</span></div>
-                            <div><strong>${assists}</strong><span>PASSES D.</span></div>
-                            <div><strong>${escapeHtml(rating(rawStats))}</strong><span>NOTE MOY.</span></div>
-                            <div class="immersive-morale"><strong>●</strong><span>MORAL ${escapeHtml(moraleLabel(morale))}</span></div>
-                        </div>
+                    <section class="app-pane" data-career-situation style="margin:0;border-color:rgba(110,221,241,.15);background:linear-gradient(145deg,rgba(14,24,37,.94),rgba(6,11,18,.93));">
+                        <span style="display:block;color:#718da2;font-size:.52rem;font-weight:900;letter-spacing:.1em;">${escapeHtml(model.situation.eyebrow)}</span>
+                        <strong style="display:block;margin-top:7px;color:#f8fbff;font-size:1rem;line-height:1.25;">${escapeHtml(model.situation.title)}</strong>
+                        ${model.situation.detail ? `<p style="margin:7px 0 0;color:#9eafbf;font-size:.74rem;line-height:1.45;">${escapeHtml(model.situation.detail)}</p>` : ''}
                     </section>
 
-                    <section class="immersive-alert-card ${latestSignal ? '' : 'is-quiet'}">
-                        <div class="immersive-alert-icon">${latestSignal ? notificationIcon(latestSignal) : '◌'}</div>
-                        <div class="immersive-alert-copy">
-                            <strong>${escapeHtml(latestSignal?.title || 'La carrière suit son cours')}</strong>
-                            <span>${escapeHtml(latestSignal?.body || latestSignal?.message || 'Aucune alerte prioritaire pour le moment.')}</span>
-                        </div>
-                        ${notifications.length ? `<span class="immersive-unread-dot">${notifications.length}</span>` : '<span class="immersive-status-dot"></span>'}
-                    </section>
-
-                    <button class="immersive-message-card" type="button" data-app="messages">
-                        <span class="immersive-message-avatar">CM</span>
-                        <span class="immersive-message-copy">
-                            <span class="immersive-message-head"><strong>Coach</strong><small>${coachSignal ? 'Nouveau' : 'Staff'}</small></span>
-                            <span>${escapeHtml(coachSignal?.body || coachSignal?.message || coachSignal?.title || 'Reste concentré. La prochaine échéance approche.')}</span>
-                        </span>
-                        <span class="immersive-message-chevron">›</span>
+                    <button id="play-block-btn" class="btn-play-block immersive-advance" ${model.careerEnded ? 'disabled' : ''} type="button" style="width:min(84%,360px);align-self:center;margin:1px auto 0;justify-content:center;">
+                        <span class="advance-symbol">»</span>
+                        <span><strong>${model.careerEnded ? 'CARRIÈRE TERMINÉE' : 'CONTINUER LA CARRIÈRE'}</strong></span>
                     </button>
 
-                    <section class="dashboard-notification-zone immersive-journal ${journalCount ? 'has-notifications' : 'is-empty'}">
+                    <nav aria-label="Espaces de carrière" data-career-spaces style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
+                        <button type="button" data-space-link="life" style="padding:13px;border:1px solid rgba(110,221,241,.13);border-radius:15px;background:rgba(7,13,21,.88);color:#dce8f4;text-align:left;"><small style="display:block;color:#6f8397;font-size:.49rem;font-weight:900;letter-spacing:.08em;">QUI COMPTE</small><strong style="display:block;margin-top:4px;font-size:.8rem;">Vie</strong></button>
+                        <button type="button" data-space-link="player" style="padding:13px;border:1px solid rgba(110,221,241,.13);border-radius:15px;background:rgba(7,13,21,.88);color:#dce8f4;text-align:left;"><small style="display:block;color:#6f8397;font-size:.49rem;font-weight:900;letter-spacing:.08em;">TON ÉVOLUTION</small><strong style="display:block;margin-top:4px;font-size:.8rem;">Joueur</strong></button>
+                    </nav>
+
+                    <section class="dashboard-notification-zone immersive-journal ${journalCount ? 'has-notifications' : 'is-empty'}" style="overflow:visible;">
                         <button class="career-journal-bar" type="button" aria-expanded="false" data-journal-toggle>
                             <span class="journal-icon">◫</span>
-                            <span class="journal-title">Journal de carrière</span>
+                            <span class="journal-title">Historique</span>
                             <span class="journal-count">${journalCount}</span>
-                            <span class="journal-preview">${escapeHtml(narrativeEntries[0]?.title || notifications[0]?.title || 'Voir les dernières nouvelles')}</span>
+                            <span class="journal-preview">${escapeHtml(model.journal[0]?.title || model.signals[0]?.title || 'Les moments qui comptent')}</span>
                             <span class="journal-chevron">›</span>
                         </button>
                         <div class="career-journal-drawer" hidden>
-                            <div class="career-journal-header"><strong>Journal de carrière</strong><button class="journal-close" type="button" aria-label="Fermer">×</button></div>
+                            <div class="career-journal-header"><strong>Historique de carrière</strong><button class="journal-close" type="button" aria-label="Fermer">×</button></div>
                             <div class="career-journal-list">
-                                ${narrativeEntries.map(entry => `
-                                    <article class="career-journal-item priority-${['important', 'major', 'exceptional'].includes(entry.importance) ? 'important' : 'info'}" data-narrative-entry-id="${escapeHtml(entry.id)}">
-                                        <span class="journal-item-icon">${notificationIcon(entry)}</span>
-                                        <div class="journal-item-copy"><strong>${escapeHtml(entry.title)}</strong><p>${escapeHtml(entry.text)}</p></div>
-                                    </article>
-                                `).join('')}
-                                ${notifications.map(note => `
-                                    <article class="career-journal-item priority-${notificationPriority(note)}" data-notification-id="${escapeHtml(note.id)}">
-                                        <span class="journal-item-icon">${notificationIcon(note)}</span>
-                                        <div class="journal-item-copy"><strong>${escapeHtml(note.title || 'Notification')}</strong><p>${escapeHtml(note.body || note.message || '')}</p></div>
-                                    </article>
-                                `).join('') || (!narrativeEntries.length ? '<p class="journal-empty">Aucune actualité récente.</p>' : '')}
+                                ${model.journal.map(entry => `<article class="career-journal-item priority-info" data-narrative-entry-id="${escapeHtml(entry.id)}"><span class="journal-item-icon">${notificationIcon(entry)}</span><div class="journal-item-copy"><strong>${escapeHtml(entry.title)}</strong><p>${escapeHtml(entry.text)}</p></div></article>`).join('')}
+                                ${model.signals.map(note => `<button class="career-journal-item priority-info" type="button" data-notification-id="${escapeHtml(note.id)}"><span class="journal-item-icon">${notificationIcon(note)}</span><span class="journal-item-copy"><strong>${escapeHtml(note.title || 'Actualité')}</strong><p>${escapeHtml(note.body || note.message || '')}</p></span></button>`).join('') || (!model.journal.length ? '<p class="journal-empty">Aucun moment important enregistré.</p>' : '')}
                             </div>
                         </div>
-                    </section>
-
-                    <div class="immersive-apps-heading"><span>TA VIE</span></div>
-                    <div class="apps-grid immersive-app-grid">${this.renderApps(state)}</div>
-
-                    <button id="play-block-btn" class="btn-play-block immersive-advance" ${player.careerEnded ? 'disabled' : ''} type="button">
-                        <span class="advance-symbol">»</span>
-                        <span><strong>${player.careerEnded ? 'CARRIÈRE TERMINÉE' : 'AVANCER'}</strong><small>${escapeHtml(currentPeriod)}</small></span>
-                    </button>
-
-                    <section class="immersive-pulse" aria-label="Tendances de carrière">
-                        <div><span>FORME</span><strong>${escapeHtml(fitness)}</strong></div>
-                        <div><span>MORAL</span><strong>${escapeHtml(moraleLabel(morale))}</strong></div>
-                        <div><span>PRESSE</span><strong>${media?.reputation > 60 ? 'POSITIVE' : media?.reputation < 35 ? 'SOUS PRESSION' : 'NEUTRE'}</strong></div>
                     </section>
                 </main>
             </div>
         `;
     }
 
-    renderApps(state) {
-        const media = state?.media || {};
-        const allSignals = (state?.notifications?.signals || []).filter(note => !note?.archived && !note?.read);
-        const unreadCareer = allSignals.filter(note => !isSocialNotification(note)).length;
-        const unreadSocial = allSignals.filter(note => isSocialNotification(note)).length;
-        const apps = [
-            ['career', 'Carrière', 'cyan'],
-            ['transfers', 'Mercato', 'cyan'],
-            ['social', 'Réseaux', 'pink'],
-            ['family', 'Famille', 'violet'],
-            ['stats', 'Stats', 'blue'],
-            ['training', 'Entraînement', 'orange'],
-            ['bank', 'Banque', 'gold'],
-            ['settings', 'Réglages', 'slate']
-        ];
-        return apps.map(([id, label, tone]) => {
-            const socialBadge = Math.max(unreadSocial, media.recentDilemma ? 1 : 0);
-            const badge = id === 'social' ? Math.min(9, socialBadge)
-                : id === 'transfers' && state?.pendingTransferOffer ? 1
-                : id === 'career' && unreadCareer ? Math.min(9, unreadCareer)
-                : 0;
-            return `
-                <button class="app-icon immersive-app" data-app="${id}" type="button">
-                    <div class="app-logo immersive-app-logo tone-${tone}"><span class="immersive-app-glyph">${appIconSvg(id)}</span></div>
-                    <span class="app-label">${label}</span>
-                    ${badge ? `<span class="notification-badge">${badge}</span>` : ''}
-                </button>
-            `;
-        }).join('');
-    }
-
     bind(root) {
         root?.querySelector('#play-block-btn')?.addEventListener('click', () => {
-            const state = this.gateway.state;
-            if (!state) return;
-            // Le domaine interactif décide désormais de toute la séquence :
-            // avant-match, narration, décisions, coup de sifflet et réactions.
+            if (!this.gateway.state) return;
             this.ui?.handleBlockResult?.(this.gateway.playNextBlock(null));
         });
 
-        root?.querySelectorAll('[data-app]')?.forEach(button => button.addEventListener('click', () => {
-            this.ui.activeApp = button.dataset.app;
+        root?.querySelectorAll('[data-space-link]').forEach(button => button.addEventListener('click', () => {
+            this.ui.activeApp = button.dataset.spaceLink;
             this.ui.renderActiveApp?.();
         }));
 
@@ -312,10 +104,7 @@ export class DashboardView {
             toggle?.setAttribute('aria-expanded', String(open));
         };
         toggle?.addEventListener('click', () => setOpen(!zone.classList.contains('is-open')));
-        zone?.querySelector('.journal-close')?.addEventListener('click', event => {
-            event.stopPropagation();
-            setOpen(false);
-        });
+        zone?.querySelector('.journal-close')?.addEventListener('click', event => { event.stopPropagation(); setOpen(false); });
         zone?.querySelectorAll('[data-notification-id]').forEach(card => card.addEventListener('click', () => this.ui?.openNotification?.(card.dataset.notificationId)));
     }
 }

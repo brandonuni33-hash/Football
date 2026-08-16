@@ -38,15 +38,15 @@ test('Carrière garde les actualités carrière sans dupliquer Coach ni Réseaux
   expect(result.opened).toEqual(['career-news-1']);
 });
 
-test('le Dashboard affiche Carrière et sépare les badges Carrière et Réseaux', async ({ page }) => {
+test('le Dashboard recentre le parcours sur Carrière, Vie et Joueur sans applications secondaires', async ({ page }) => {
   await page.goto('/index.html');
 
   const result = await page.evaluate(async () => {
     const { DashboardView } = await import('/ui/views/dashboardView.js');
     const view = new DashboardView({ ui: {}, gateway: {} });
     const html = view.render({
-      player: { firstName: 'Test', lastName: 'Player', age: 18, position: 'BU', overall: 70, potential: 85, stats: {} },
-      calendar: { currentSeasonYear: 2026 },
+      player: { firstName: 'Test', lastName: 'Player', age: 18, position: 'BU', club: 'Test FC', overall: 70, potential: 85, stats: {} },
+      calendar: { currentSeasonYear: 2026, currentPeriod: 'Reprise' },
       media: {},
       notifications: {
         unreadCount: 3,
@@ -60,19 +60,23 @@ test('le Dashboard affiche Carrière et sépare les badges Carrière et Réseaux
     const root = document.createElement('div');
     root.innerHTML = html;
     document.body.appendChild(root);
-    const careerButton = root.querySelector('[data-app="career"]');
-    const socialButton = root.querySelector('[data-app="social"]');
     return {
-      careerLabel: careerButton?.querySelector('.app-label')?.textContent?.trim(),
-      careerBadge: careerButton?.querySelector('.notification-badge')?.textContent?.trim(),
-      socialBadge: socialButton?.querySelector('.notification-badge')?.textContent?.trim(),
+      hasContinue: Boolean(root.querySelector('#play-block-btn')),
+      lifeLabel: root.querySelector('[data-space-link="life"] strong')?.textContent?.trim(),
+      playerLabel: root.querySelector('[data-space-link="player"] strong')?.textContent?.trim(),
+      hasBank: html.includes('Banque'),
+      hasSocialApp: html.includes('Réseaux'),
+      hasPotential: html.includes('POTENTIEL'),
       journalTitles: [...root.querySelectorAll('.career-journal-item strong')].map(node => node.textContent?.trim())
     };
   });
 
-  expect(result.careerLabel).toBe('Carrière');
-  expect(result.careerBadge).toBe('2');
-  expect(result.socialBadge).toBe('1');
+  expect(result.hasContinue).toBe(true);
+  expect(result.lifeLabel).toBe('Vie');
+  expect(result.playerLabel).toBe('Joueur');
+  expect(result.hasBank).toBe(false);
+  expect(result.hasSocialApp).toBe(false);
+  expect(result.hasPotential).toBe(false);
   expect(result.journalTitles).not.toContain('Réseau');
 });
 
@@ -123,4 +127,54 @@ test('le statut personnel est dans Famille et plus dans Messages', async ({ page
   expect(result.familyHtml).toContain('Statut personnel');
   expect(result.familyHtml).toContain('Camille');
   expect(result.messagesHtml).not.toContain('Statut personnel');
+});
+
+test('ouvrir une notification délègue la lecture au NotificationSystem canonique', async ({ page }) => {
+  await page.goto('/index.html');
+
+  const result = await page.evaluate(async () => {
+    const { ViewCoordinator } = await import('/ui/viewCoordinator.js');
+    const state = {
+      player: { id: 'p1', age: 18 },
+      notifications: {
+        unreadCount: 1,
+        signals: [
+          { id: 'canonical-notification', title: 'Prochain match', body: 'Le groupe se prépare.', category: 'match', read: false }
+        ]
+      }
+    };
+    let markReadCalls = 0;
+    let saveCalls = 0;
+    const notificationSystem = {
+      markRead(receivedState, signalId) {
+        markReadCalls += 1;
+        const signal = receivedState.notifications.signals.find(item => item.id === signalId);
+        if (!signal || signal.read) return false;
+        signal.read = true;
+        receivedState.notifications.unreadCount -= 1;
+        return true;
+      }
+    };
+    const gateway = {
+      state,
+      application: { registry: { notificationSystem } },
+      saveCareer() { saveCalls += 1; return true; }
+    };
+    const ui = {};
+    const coordinator = new ViewCoordinator({ ui, gateway });
+    coordinator.openNotification('canonical-notification');
+    return {
+      markReadCalls,
+      saveCalls,
+      read: state.notifications.signals[0].read,
+      unreadCount: state.notifications.unreadCount,
+      modalCount: document.querySelectorAll('[data-notification-modal]').length
+    };
+  });
+
+  expect(result.markReadCalls).toBe(1);
+  expect(result.saveCalls).toBe(1);
+  expect(result.read).toBe(true);
+  expect(result.unreadCount).toBe(0);
+  expect(result.modalCount).toBe(1);
 });
