@@ -10,7 +10,7 @@ import { playerCreationNationalitiesTemplate } from '../../../ui/verticalSlice/p
 test('l’écran nationalités garde une principale obligatoire et une seconde optionnelle', () => {
     const html = playerCreationNationalitiesTemplate(createNationalitiesStepState());
 
-    assert.match(html, /05 \/ 06/);
+    assert.match(html, /04 \/ 05/);
     assert.match(html, /Tes nationalités/);
     assert.match(html, /Nationalité principale/);
     assert.match(html, /Seconde nationalité/);
