@@ -1,6 +1,5 @@
 // main.js
 // Point d'entrée web minimal : le bootstrap applicatif vit dans application/.
-import { GameEngine } from './application/gameEngine.js';
 
 function showFatalError(error) {
     console.error('Erreur critique lors du chargement du jeu :', error);
@@ -22,7 +21,7 @@ async function tryMountSouvenirTest() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('souvenir') !== '1') return false;
 
-    const { mountSouvenirExperience } = await import('./ui/souvenirExperience.js?v=1');
+    const { mountSouvenirExperience } = await import('./ui/souvenirExperience.js?v=2');
     mountSouvenirExperience();
     console.log('🧠 Test Souvenir 1 monté depuis le vrai jeu.');
     return true;
@@ -33,6 +32,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         if (await tryMountSouvenirTest()) return;
 
+        const { GameEngine } = await import('./application/gameEngine.js');
         window.game = new GameEngine();
         if (window.game.ui && typeof window.game.ui.init === 'function') window.game.ui.init();
         else throw new Error("L'interface utilisateur n'a pas pu être initialisée.");
