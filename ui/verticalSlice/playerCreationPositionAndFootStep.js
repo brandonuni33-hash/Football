@@ -30,8 +30,8 @@ export function createPositionAndFootStepState(input = {}) {
         ...(input?.draft ? input : {}),
         draft: draftFrom(input),
         step: 'positionAndFoot',
-        screenIndex: 4,
-        screenCount: 6
+        screenIndex: 3,
+        screenCount: 5
     });
 }
 
@@ -67,7 +67,7 @@ export function positionAndFootViewModel(state) {
 
     return Object.freeze({
         step: 'positionAndFoot',
-        progress: Object.freeze({ current: 4, total: 6, ratio: 4 / 6 }),
+        progress: Object.freeze({ current: 3, total: 5, ratio: 3 / 5 }),
         copy: POSITION_AND_FOOT_COPY,
         selectedPosition,
         preferredFoot,
@@ -88,6 +88,6 @@ export function continueFromPositionAndFoot(state) {
     return Object.freeze({
         ok: true,
         nextStep: 'nationalities',
-        state: Object.freeze({ ...state, step: 'nationalities', screenIndex: 5 })
+        state: Object.freeze({ ...state, step: 'nationalities', screenIndex: 4 })
     });
 }
