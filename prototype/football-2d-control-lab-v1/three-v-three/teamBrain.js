@@ -4,6 +4,7 @@ import { teamDirection } from "./possession.js";
 
 export const ATTACK_ROLE = Object.freeze({ SUPPORT: "support", DEPTH: "depth" });
 export const DEFEND_ROLE = Object.freeze({ PRESSURE: "press", COVER: "cover", BALANCE: "balance" });
+export const WIDTH_LANES = Object.freeze([105, FIELD.height / 2, FIELD.height - 105]);
 
 function goalX(team) { return team === TEAM.HOME ? FIELD.width - FIELD.inset : FIELD.inset; }
 function ownGoalX(team) { return team === TEAM.HOME ? FIELD.inset : FIELD.width - FIELD.inset; }
@@ -39,52 +40,62 @@ function attackAssignments(state, team, owner) {
   return new Map(ranked.map(({ entry }, index) => [entry.id, index === 0 ? ATTACK_ROLE.SUPPORT : ATTACK_ROLE.DEPTH]));
 }
 
-function attackTarget(state, player, role, owner) {
+function attackLaneAssignments(state, team, owner) {
+  const ownerLane = WIDTH_LANES.reduce((best, lane) => Math.abs(owner.y - lane) < Math.abs(owner.y - best) ? lane : best, WIDTH_LANES[0]);
+  const openLanes = WIDTH_LANES.filter((lane) => lane !== ownerLane).sort((a, b) => a - b);
+  const offBall = state.players.filter((entry) => entry.team === team && entry.id !== owner.id).sort((a, b) => a.y - b.y);
+  return new Map(offBall.map((player, index) => [player.id, openLanes[index]]));
+}
+
+function attackTarget(state, player, role, owner, laneY) {
   const direction = teamDirection(player.team);
-  const upperLane = owner.y >= FIELD.height / 2;
   if (role === ATTACK_ROLE.SUPPORT) {
     return {
-      x: clamp(owner.x - direction * 92, FIELD.inset + 55, FIELD.width - FIELD.inset - 55),
-      y: clamp(owner.y + (upperLane ? -82 : 82), 92, FIELD.height - 92),
+      x: clamp(owner.x - direction * 98, FIELD.inset + 55, FIELD.width - FIELD.inset - 55),
+      y: laneY,
     };
   }
   return {
     x: clamp(owner.x + direction * 145, FIELD.inset + 65, FIELD.width - FIELD.inset - 65),
-    y: clamp(owner.y + (upperLane ? 112 : -112), 78, FIELD.height - 78),
+    y: laneY,
   };
 }
 
-function pressureSuitability(player, owner) {
-  const recovering = (player.recoveryRemaining ?? 0) > 0 ? 180 : 0;
-  const committed = player.supportState === "COMMITTED" ? 90 : 0;
-  const goalSideBonus = Math.abs(player.x - ownGoalX(player.team)) < Math.abs(owner.x - ownGoalX(player.team)) ? -18 : 12;
-  return distance(player, owner) + recovering + committed + goalSideBonus;
+function oneToOneMatchups(state, team) {
+  const defenders = state.players.filter((entry) => entry.team === team).sort((a, b) => a.y - b.y);
+  const attackers = state.players.filter((entry) => entry.team !== team).sort((a, b) => a.y - b.y);
+  return new Map(defenders.map((defender, index) => [defender.id, attackers[index]?.id ?? null]));
 }
 
-function defenseAssignments(state, team, owner) {
-  const ranked = state.players
-    .filter((entry) => entry.team === team)
-    .map((entry) => ({ entry, score: pressureSuitability(entry, owner) }))
-    .sort((a, b) => a.score - b.score);
-  return new Map(ranked.map(({ entry }, index) => [entry.id, index === 0 ? DEFEND_ROLE.PRESSURE : index === 1 ? DEFEND_ROLE.COVER : DEFEND_ROLE.BALANCE]));
+function defenseAssignments(state, team, owner, matchups) {
+  const defenders = state.players.filter((entry) => entry.team === team);
+  let pressure = defenders.find((entry) => matchups.get(entry.id) === owner.id);
+  if (!pressure || pressure.recoveryRemaining > 0) {
+    pressure = defenders.filter((entry) => entry.recoveryRemaining <= 0).sort((a, b) => distance(a, owner) - distance(b, owner))[0] ?? pressure;
+  }
+  const remaining = defenders.filter((entry) => entry.id !== pressure?.id).sort((a, b) => {
+    const threatA = state.players.find((entry) => entry.id === matchups.get(a.id));
+    const threatB = state.players.find((entry) => entry.id === matchups.get(b.id));
+    return Math.abs((threatA?.x ?? owner.x) - ownGoalX(team)) - Math.abs((threatB?.x ?? owner.x) - ownGoalX(team));
+  });
+  return new Map(defenders.map((entry) => [entry.id,
+    entry.id === pressure?.id ? DEFEND_ROLE.PRESSURE : entry.id === remaining[0]?.id ? DEFEND_ROLE.COVER : DEFEND_ROLE.BALANCE]));
 }
 
-function defensiveTarget(state, player, role, owner) {
+function defensiveTarget(state, player, role, owner, matchedAttacker) {
   const ownGoal = { x: ownGoalX(player.team), y: FIELD.height / 2 };
   const toGoal = normalize(ownGoal.x - owner.x, ownGoal.y - owner.y);
   if (role === DEFEND_ROLE.PRESSURE) {
     const inside = owner.y < FIELD.height / 2 ? 1 : -1;
     return { x: owner.x + toGoal.x * 38, y: owner.y + toGoal.y * 38 + inside * 10 };
   }
-  if (role === DEFEND_ROLE.COVER) {
-    return { x: owner.x + toGoal.x * 118, y: owner.y + toGoal.y * 118 };
-  }
-  const otherThreat = state.players
-    .filter((entry) => entry.team === owner.team && entry.id !== owner.id)
-    .sort((a, b) => Math.abs(a.x - ownGoal.x) - Math.abs(b.x - ownGoal.x))[0];
-  return otherThreat
-    ? { x: (otherThreat.x + ownGoal.x) / 2, y: (otherThreat.y + ownGoal.y) / 2 }
-    : { x: (owner.x + ownGoal.x) / 2, y: FIELD.height / 2 };
+  const threat = matchedAttacker ?? owner;
+  const goalSide = normalize(ownGoal.x - threat.x, ownGoal.y - threat.y);
+  const depth = role === DEFEND_ROLE.COVER ? 54 : 68;
+  return {
+    x: clamp(threat.x + goalSide.x * depth, FIELD.inset + 46, FIELD.width - FIELD.inset - 46),
+    y: clamp(threat.y + goalSide.y * depth * 0.28, 78, FIELD.height - 78),
+  };
 }
 
 export function buildTeamPlan(state, team) {
@@ -92,18 +103,21 @@ export function buildTeamPlan(state, team) {
   if (!owner) return { team, phase: "loose", assignments: new Map(), targets: new Map() };
   if (owner.team === team) {
     const assignments = attackAssignments(state, team, owner);
+    const lanes = attackLaneAssignments(state, team, owner);
     const targets = new Map([...assignments].map(([id, role]) => {
       const player = state.players.find((entry) => entry.id === id);
-      return [id, attackTarget(state, player, role, owner)];
+      return [id, attackTarget(state, player, role, owner, lanes.get(id))];
     }));
-    return { team, phase: "attack", ownerId: owner.id, assignments, targets };
+    return { team, phase: "attack", ownerId: owner.id, assignments, targets, lanes, matchups: new Map() };
   }
-  const assignments = defenseAssignments(state, team, owner);
+  const matchups = oneToOneMatchups(state, team);
+  const assignments = defenseAssignments(state, team, owner, matchups);
   const targets = new Map([...assignments].map(([id, role]) => {
     const player = state.players.find((entry) => entry.id === id);
-    return [id, defensiveTarget(state, player, role, owner)];
+    const matchedAttacker = state.players.find((entry) => entry.id === matchups.get(id));
+    return [id, defensiveTarget(state, player, role, owner, matchedAttacker)];
   }));
-  return { team, phase: "defend", ownerId: owner.id, assignments, targets };
+  return { team, phase: "defend", ownerId: owner.id, assignments, targets, matchups, lanes: new Map() };
 }
 
 export function tacticalRole(state, player) {

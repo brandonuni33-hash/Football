@@ -4,7 +4,7 @@ import { RULES, TEAM, distance } from "../../prototype/football-2d-control-lab-v
 import { assertPossessionInvariant, createMatchState, getPlayer } from "../../prototype/football-2d-control-lab-v1/three-v-three/matchState.js";
 import { givePossession } from "../../prototype/football-2d-control-lab-v1/three-v-three/possession.js";
 import { stepMatch } from "../../prototype/football-2d-control-lab-v1/three-v-three/simulation.js";
-import { ATTACK_ROLE, DEFEND_ROLE, buildTeamPlan, evaluatePassingLane } from "../../prototype/football-2d-control-lab-v1/three-v-three/teamBrain.js";
+import { ATTACK_ROLE, DEFEND_ROLE, WIDTH_LANES, buildTeamPlan, evaluatePassingLane } from "../../prototype/football-2d-control-lab-v1/three-v-three/teamBrain.js";
 import { chooseCarrierIntent, evaluateCarrierOptions, evaluateTackle } from "../../prototype/football-2d-control-lab-v1/three-v-three/utilityAI.js";
 import { SUPPORT_STATE, footworkAccelerationScale, reactToBodyFeint } from "../../prototype/football-2d-control-lab-v1/three-v-three/footwork.js";
 
@@ -24,6 +24,29 @@ test("le cerveau d'équipe crée un soutien et une profondeur distincts", () => 
   assert.ok(distance(targets[0], targets[1]) > 150);
   assert.ok(targets.some((target) => target.x < owner.x));
   assert.ok(targets.some((target) => target.x > owner.x));
+});
+
+test("les trois attaquants occupent trois couloirs de largeur distincts", () => {
+  const state = createMatchState({ online: true });
+  const owner = getPlayer(state, "home-human");
+  owner.x = 470; owner.y = 270;
+  givePossession(state, owner.id);
+  const plan = buildTeamPlan(state, TEAM.HOME);
+  assert.deepEqual([...plan.lanes.values()].sort((a, b) => a - b), [WIDTH_LANES[0], WIDTH_LANES[2]]);
+  assert.ok(Math.abs([...plan.targets.values()][0].y - [...plan.targets.values()][1].y) > 250);
+});
+
+test("chaque défenseur conserve un adversaire distinct dans le 3 contre 3", () => {
+  const state = createMatchState({ online: true });
+  givePossession(state, "home-human");
+  const plan = buildTeamPlan(state, TEAM.AWAY);
+  assert.equal(plan.matchups.size, 3);
+  assert.equal(new Set(plan.matchups.values()).size, 3);
+  for (const [defenderId, attackerId] of plan.matchups) {
+    const target = plan.targets.get(defenderId);
+    const attacker = getPlayer(state, attackerId);
+    assert.ok(Math.abs(target.y - attacker.y) < 30, `${defenderId} doit rester dans le duel avec ${attackerId}`);
+  }
 });
 
 test("les rôles offensifs s'échangent quand les positions relatives changent", () => {

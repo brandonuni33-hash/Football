@@ -5,8 +5,8 @@ Cette vertical slice utilise uniquement des règles déterministes, un cerveau d
 ## Pipeline
 
 1. `teamBrain.js` construit un plan partagé par équipe.
-   - attaque : un soutien et une solution de profondeur pour former un triangle ;
-   - défense : pression, couverture et équilibre ;
+   - attaque : le porteur, un soutien et une solution de profondeur occupent trois couloirs de largeur distincts ;
+   - défense : chaque défenseur reçoit un adversaire unique, puis assume pression, couverture ou équilibre ;
    - ballon libre : un récupérateur par équipe, les autres gardent une structure.
 2. `utilityAI.js` note les options du porteur et le risque du tacle.
    - chaque décision conserve ses scores et sa raison dans `player.aiUtility` et `player.aiChoice` ;
@@ -22,6 +22,8 @@ Cette vertical slice utilise uniquement des règles déterministes, un cerveau d
 - `RULES.passLaneBlockRadius` règle la sévérité d'une ligne de passe coupée.
 - Les scores d'utilité sont volontairement lisibles dans `utilityAI.js` pour permettre l'équilibrage sans comportement caché.
 - Le 2 contre 1 reste une dérivation rare de la couverture près d'une ligne, jamais une poursuite générale à trois.
+- Une répulsion locale empêche deux partenaires IA de se superposer, sans casser leur cible tactique.
+- Le socle défensif est un ensemble de trois duels individuels. La couverture peut aider ponctuellement, mais elle ne détruit pas les deux autres marquages.
 
 ## Ballon et conséquences physiques
 

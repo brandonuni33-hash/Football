@@ -10,6 +10,20 @@ function moveToward(player, target, scale = 0.72) {
   return { moveX: direction.x * scale, moveY: direction.y * scale };
 }
 
+function preserveTeamSpacing(state, player, intent) {
+  let pushX = 0;
+  let pushY = 0;
+  for (const teammate of state.players.filter((entry) => entry.team === player.team && entry.id !== player.id)) {
+    const gap = distance(player, teammate);
+    if (gap >= 92 || gap < 0.001) continue;
+    const away = normalize(player.x - teammate.x, player.y - teammate.y);
+    const weight = (92 - gap) / 92;
+    pushX += away.x * weight * 0.72;
+    pushY += away.y * weight * 0.72;
+  }
+  return { ...intent, moveX: clamp((intent.moveX ?? 0) + pushX, -1, 1), moveY: clamp((intent.moveY ?? 0) + pushY, -1, 1) };
+}
+
 function fallbackShape(player) {
   const lane = player.id.endsWith("left") ? 155 : player.id.endsWith("right") ? 385 : FIELD.height / 2;
   const x = player.team === "home" ? 285 : FIELD.width - 285;
@@ -108,6 +122,8 @@ export function collectAIInputs(state) {
     ownerId: plan.ownerId ?? null,
     assignments: Object.fromEntries(plan.assignments),
     targets: Object.fromEntries(plan.targets),
+    matchups: Object.fromEntries(plan.matchups ?? []),
+    lanes: Object.fromEntries(plan.lanes ?? []),
   }]));
   for (const player of state.players) {
     if (player.humanSlot) continue;
@@ -116,11 +132,12 @@ export function collectAIInputs(state) {
       const ideal = state.ball.ownerId === null
         ? looseBallIntent(state, player)
         : plan.phase === "attack" ? attackIntent(state, player, plan) : defendIntent(state, player, plan);
+      const spaced = preserveTeamSpacing(state, player, ideal);
       const phase = state.tick * 0.071 + player.id.length * 1.37;
       player.aiInput = {
-        ...ideal,
-        moveX: clamp((ideal.moveX ?? 0) + Math.sin(phase) * error * 0.16, -1, 1),
-        moveY: clamp((ideal.moveY ?? 0) + Math.cos(phase * 1.17) * error * 0.16, -1, 1),
+        ...spaced,
+        moveX: clamp((spaced.moveX ?? 0) + Math.sin(phase) * error * 0.16, -1, 1),
+        moveY: clamp((spaced.moveY ?? 0) + Math.cos(phase * 1.17) * error * 0.16, -1, 1),
       };
       player.aiDecisionRemaining = reactionInterval;
     }
