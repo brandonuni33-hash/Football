@@ -125,8 +125,8 @@ test('le repli défensif ralentit le porteur puis reforme un bloc côté but',()
  const tactical=buildSimulatedMatchTacticalSituation(event,{seed:'recovery',playerSide:'AWAY',playerAge:25,competition:'Ligue 1'});
  assert.equal(tactical.recovery.team,'AWAY');
  const carrier=tactical.home[tactical.carrier.index],delay=tactical.away[tactical.recovery.delayIndex];assert.ok(delay.x>carrier.x);assert.ok(Math.hypot(delay.x-carrier.x,delay.y-carrier.y)<9);
- const recovering=tactical.away.slice(1).filter(p=>String(p.role).startsWith('recovery-'));assert.ok(recovering.length>=2);
- const width=Math.max(...tactical.away.slice(1).map(p=>p.y))-Math.min(...tactical.away.slice(1).map(p=>p.y));assert.ok(width<75);
+ const compactRoles=tactical.away.slice(1).filter(p=>/^block-|^recovery-/.test(String(p.role)));assert.ok(compactRoles.length>=7);
+ const outfield=tactical.away.slice(1),length=Math.max(...outfield.map(p=>p.x))-Math.min(...outfield.map(p=>p.x)),width=Math.max(...outfield.map(p=>p.y))-Math.min(...outfield.map(p=>p.y));assert.ok(length<32);assert.ok(width<75);
 });
 
 test('le piège du hors-jeu ne monte que sous pression avec une ligne coordonnée',()=>{
