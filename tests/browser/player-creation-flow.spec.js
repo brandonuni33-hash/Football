@@ -7,8 +7,8 @@ async function bootFresh(page) {
 }
 
 async function completeIdentity(page) {
-  await page.getByLabel('Prénom').fill('Elias');
-  await page.getByLabel('Nom').fill('Morel');
+  await page.getByLabel('Prénom', { exact: true }).fill('Elias');
+  await page.getByLabel('Nom', { exact: true }).fill('Morel');
   await page.getByRole('button', { name: 'Continuer' }).click();
 }
 
@@ -34,7 +34,7 @@ test.describe('création joueur moderne mobile', () => {
     await bootFresh(page);
     await expect(page.locator('[data-creation-flow="modern"]')).toBeVisible();
     await expect(page.getByText('01 / 06')).toBeVisible();
-    await expect(page.getByText('Comment', { exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Comment tu t’appelles ?' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Continuer' })).toBeDisabled();
     await expect(page.locator('[data-stp-step="identity"]')).not.toContainText(/origine|club de cœur|club formateur/i);
   });
@@ -44,8 +44,8 @@ test.describe('création joueur moderne mobile', () => {
     await completeIdentity(page);
     await expect(page.getByText('02 / 06')).toBeVisible();
     await page.getByRole('button', { name: 'Revenir à l’étape précédente' }).click();
-    await expect(page.getByLabel('Prénom')).toHaveValue('Elias');
-    await expect(page.getByLabel('Nom')).toHaveValue('Morel');
+    await expect(page.getByLabel('Prénom', { exact: true })).toHaveValue('Elias');
+    await expect(page.getByLabel('Nom', { exact: true })).toHaveValue('Morel');
   });
 
   test('les six écrans créent le joueur canonique puis ouvrent Carrière', async ({ page }) => {
