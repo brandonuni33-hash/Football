@@ -9,6 +9,7 @@ import { recoveryWindow, selectRecoveryCandidate } from "../../prototype/footbal
 import { collectAIInputs, defensiveRole, executeAIAction, looseBallRole } from "../../prototype/football-2d-control-lab-v1/three-v-three/ai.js";
 import { stepMatch } from "../../prototype/football-2d-control-lab-v1/three-v-three/simulation.js";
 import { crossedGoalLine, resolveGoalkeeperSave } from "../../prototype/football-2d-control-lab-v1/three-v-three/goalkeepers.js";
+import { DEFEND_ROLE, buildTeamPlan } from "../../prototype/football-2d-control-lab-v1/three-v-three/teamBrain.js";
 
 function advance(state, inputs, seconds) {
   for (let i = 0; i < Math.ceil(seconds * 60); i += 1) state = stepMatch(state, inputs, 1 / 60);
@@ -339,6 +340,31 @@ test("à distance intermédiaire le défenseur temporise au lieu de foncer", () 
   assert.equal(intent.jockeyHeld, true);
   assert.equal(intent.tacklePressed, undefined);
   assert.ok(Math.hypot(intent.moveX, intent.moveY) <= 0.41);
+});
+
+test("l'IA n'utilise jamais FREIN dans le dos du porteur", () => {
+  const state = createMatchState({ aiLevel: 80 });
+  const owner = getPlayer(state, "home-human");
+  const defender = getPlayer(state, "away-human");
+  givePossession(state, owner.id);
+  owner.x = 500; owner.y = 270;
+  defender.x = 450; defender.y = 270;
+  const intent = collectAIInputs(state)[defender.id];
+  assert.equal(defensiveRole(state, defender), "press");
+  assert.notEqual(intent.jockeyHeld, true);
+  assert.ok(intent.moveX > 0, "le défenseur doit dépasser le porteur pour retrouver une position frontale");
+});
+
+test("couverture et replacement n'activent pas FREIN près du ballon", () => {
+  const state = createMatchState({ aiLevel: 80 });
+  const owner = getPlayer(state, "home-human");
+  givePossession(state, owner.id);
+  owner.x = 500; owner.y = 270;
+  const plan = buildTeamPlan(state, TEAM.AWAY);
+  const coverId = [...plan.assignments].find(([, role]) => role === DEFEND_ROLE.COVER)[0];
+  const cover = getPlayer(state, coverId);
+  const intent = collectAIInputs(state)[cover.id];
+  assert.notEqual(intent.jockeyHeld, true);
 });
 
 test("le 2 contre 1 ne s'active que dans une zone de piège rare", () => {

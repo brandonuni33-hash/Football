@@ -24,6 +24,7 @@ Cette vertical slice utilise uniquement des règles déterministes, un cerveau d
 - Le 2 contre 1 reste une dérivation rare de la couverture près d'une ligne, jamais une poursuite générale à trois.
 - Une répulsion locale empêche deux partenaires IA de se superposer, sans casser leur cible tactique.
 - Le socle défensif est un ensemble de trois duels individuels. La couverture peut aider ponctuellement, mais elle ne détruit pas les deux autres marquages.
+- `FREIN` n'est autorisé que dans un duel frontal : défenseur côté but, à distance de contention et dans l'axe du porteur. Une poursuite dans le dos, une couverture ou un replacement utilisent une course défensive normale.
 
 ## Ballon et conséquences physiques
 

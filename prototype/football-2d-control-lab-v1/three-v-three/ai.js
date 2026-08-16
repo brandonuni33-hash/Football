@@ -68,6 +68,14 @@ function isRareTrap(state, player) {
   return (owner.y < 92 || owner.y > FIELD.height - 92) && Math.abs(owner.x - ownGoalX) <= 260;
 }
 
+export function canUseDefensiveBrake(state, player, owner = getOwner(state)) {
+  if (!owner || owner.team === player.team || player.hasBall) return false;
+  const gap = distance(player, owner);
+  const goalSideDepth = (player.x - owner.x) * teamDirection(owner.team);
+  const lateralGap = Math.abs(player.y - owner.y);
+  return gap <= 155 && goalSideDepth >= 6 && lateralGap <= Math.min(96, gap * 0.82 + 16);
+}
+
 function carrierIntent(state, player) {
   const choice = chooseCarrierIntent(state, player);
   if (choice.type === "pass") return { passPressed: true, targetId: choice.targetId };
@@ -86,8 +94,10 @@ function attackIntent(state, player, plan) {
 
 function pressureIntent(state, player, owner, target) {
   const gap = distance(player, owner);
+  const canContain = canUseDefensiveBrake(state, player, owner);
   let intent;
   if (gap > 155) intent = moveToward(player, target, 0.52);
+  else if (!canContain) intent = moveToward(player, target, 0.58);
   else if (gap > 42) intent = { ...moveToward(player, target, 0.34), jockeyHeld: true };
   else intent = { moveX: 0, moveY: 0, jockeyHeld: true };
   const aggression = 0.44 + (player.id.length % 5) * 0.08;
@@ -105,9 +115,10 @@ function defendIntent(state, player, plan) {
   if (role === DEFEND_ROLE.PRESSURE) return pressureIntent(state, player, owner, target);
   if (role === DEFEND_ROLE.COVER && isRareTrap(state, player)) {
     const insideY = owner.y < FIELD.height / 2 ? owner.y + 34 : owner.y - 34;
-    return { ...moveToward(player, { x: owner.x - teamDirection(owner.team) * 25, y: insideY }, 0.58), jockeyHeld: true };
+    const trapIntent = moveToward(player, { x: owner.x + teamDirection(owner.team) * 25, y: insideY }, 0.58);
+    return canUseDefensiveBrake(state, player, owner) ? { ...trapIntent, jockeyHeld: true } : trapIntent;
   }
-  return { ...moveToward(player, target, role === DEFEND_ROLE.COVER ? 0.5 : 0.44), jockeyHeld: distance(player, owner) < 135 };
+  return moveToward(player, target, role === DEFEND_ROLE.COVER ? 0.5 : 0.44);
 }
 
 export function collectAIInputs(state) {
