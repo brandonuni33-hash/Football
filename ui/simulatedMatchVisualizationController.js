@@ -22,6 +22,11 @@ function actorHtml(point,index,team,{playerSide='HOME',focal=null}={}){
     const role=esc(point.role||'outfield'),own=team.toUpperCase()===playerSide,isFocal=Boolean(focal&&focal.team===team.toUpperCase()&&Number(focal.index)===index);
     return `<span class="sim-match-actor ${own?'sim-match-own':'sim-match-opponent'}" data-sim-team="${team}" data-sim-index="${index}" data-role="${role}" data-player-focal="${isFocal?'true':'false'}" style="left:${point.x}%;top:${point.y}%;--facing:${Number(point.facing)||0}deg"></span>`;
 }
+function passingPlanHtml(passing){
+    const path=Array.isArray(passing?.path)?passing.path:[];if(path.length<2)return'';
+    const lines=[];for(let index=0;index<path.length-1;index+=1){const from=path[index],to=path[index+1];lines.push(`<line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}"></line>`);}
+    return `<svg class="sim-passing-plan" data-passing-plan="${esc(passing.pattern||'')}" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${lines.join('')}</svg>`;
+}
 function trajectoryHtml(trajectory){
     if(!trajectory?.from||!trajectory?.to)return'';
     return `<svg class="sim-ball-path" data-ball-path="true" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
@@ -35,11 +40,11 @@ function ballHtml(ball){
 }
 function pitchHtml(tactical,playerSide,kits){
     const options={playerSide,focal:tactical.playerFocal},home=tactical.home.map((point,index)=>actorHtml(point,index,'home',options)).join(''),away=tactical.away.map((point,index)=>actorHtml(point,index,'away',options)).join('');
-    return `<div class="sim-match-pitch" data-simulated-pitch data-own-formation="${esc(tactical.formations.own)}" data-opponent-formation="${esc(tactical.formations.opponent)}" data-player-position="${esc(tactical.playerFocal?.position||'')}" data-opponent-kit="${esc(kits.id)}" style="--own-kit:${kits.own};--opponent-kit:${kits.opponent};--own-goalkeeper-kit:${kits.ownGoalkeeper};--opponent-goalkeeper-kit:${kits.opponentGoalkeeper};">
+    return `<div class="sim-match-pitch" data-simulated-pitch data-own-formation="${esc(tactical.formations.own)}" data-opponent-formation="${esc(tactical.formations.opponent)}" data-player-position="${esc(tactical.playerFocal?.position||'')}" data-opponent-kit="${esc(kits.id)}" data-passing-pattern="${esc(tactical.passing?.pattern||'')}" data-counter-press="${tactical.pressing?.counterPress?'true':'false'}" data-recovery="${tactical.recovery?'true':'false'}" data-offside-trap="${tactical.offsideTrap?'true':'false'}" style="--own-kit:${kits.own};--opponent-kit:${kits.opponent};--own-goalkeeper-kit:${kits.ownGoalkeeper};--opponent-goalkeeper-kit:${kits.opponentGoalkeeper};">
         <i class="sim-pitch-halfway"></i><i class="sim-pitch-circle"></i>
         <i class="sim-pitch-box sim-pitch-box-left"></i><i class="sim-pitch-box sim-pitch-box-right"></i>
         <i class="sim-pitch-goal sim-pitch-goal-left"></i><i class="sim-pitch-goal sim-pitch-goal-right"></i>
-        ${home}${away}${ballHtml(tactical.ball)}
+        ${passingPlanHtml(tactical.passing)}${home}${away}${ballHtml(tactical.ball)}
     </div>`;
 }
 
@@ -84,7 +89,7 @@ export class SimulatedMatchVisualizationController{
         const minute=this.overlay.querySelector('[data-sim-minute]'),score=this.overlay.querySelector('[data-sim-score]'),label=this.overlay.querySelector('[data-sim-label]'),title=this.overlay.querySelector('[data-sim-title]'),progress=this.overlay.querySelector('[data-sim-progress]'),button=this.overlay.querySelector('[data-sim-continue]');
         if(minute)minute.textContent=event.minuteLabel;if(score)score.textContent=scoreText(event.score);if(label)label.textContent=event.type==='GOAL'?'BUT':event.type==='FULL_TIME'?'FIN DU MATCH':'MATCH EN COURS';if(title)title.textContent=this.titleFor(event);if(progress)progress.style.width=`${Math.round(((this.index+1)/this.timeline.events.length)*100)}%`;if(button)button.textContent=this.index===this.timeline.events.length-1?'Terminer':'Continuer';this.revealProgressively(event.text||'');
     }
-    titleFor(event){const titles={KICKOFF:"Coup d'envoi",BUILD_UP:'La construction prend forme',PRESSING:'Le pressing resserre le jeu',DUEL:'Le duel se rapproche',COUNTER_ATTACK:'La transition accélère',CROSS:"Le jeu s'ouvre sur un côté",SHOT:'Une fenêtre de frappe',SET_PIECE:'Coup de pied arrêté',GOAL:'Le score change',FULL_TIME:'Coup de sifflet final'};return titles[event.type]||'Le match continue';}
+    titleFor(event){const titles={KICKOFF:"Coup d'envoi",BUILD_UP:'La construction prend forme',PASSING_PATTERN:'Le circuit de passe se dessine',PRESSING:'Le pressing se déclenche',COUNTER_PRESS:'Réaction immédiate à la perte',DEFENSIVE_RECOVERY:'Le bloc se replie',OFFSIDE_TRAP:'La ligne remonte',DUEL:'Le duel se rapproche',COUNTER_ATTACK:'La transition accélère',CROSS:"Le jeu s'ouvre sur un côté",SHOT:'Une fenêtre de frappe',SET_PIECE:'Coup de pied arrêté',GOAL:'Le score change',FULL_TIME:'Coup de sifflet final'};return titles[event.type]||'Le match continue';}
     revealProgressively(text){this.clearTextTimer();const node=this.overlay?.querySelector('[data-sim-text]');if(!node)return;const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches===true,parts=String(text).split(/(\s+)/).filter(Boolean);if(reduced||parts.length<=2){node.textContent=text;node.dataset.textComplete='true';this.textComplete=true;return;}node.textContent='';node.dataset.textComplete='false';this.textComplete=false;let cursor=0;this.textTimer=window.setInterval(()=>{node.textContent+=parts[cursor++]||'';if(cursor>=parts.length){this.clearTextTimer();node.dataset.textComplete='true';this.textComplete=true;}},28);}
     revealImmediately(){if(this.textComplete)return false;const event=this.timeline?.events?.[this.index],node=this.overlay?.querySelector('[data-sim-text]');if(!event||!node)return false;this.clearTextTimer();node.textContent=event.text||'';node.dataset.textComplete='true';this.textComplete=true;return true;}
     advance(){if(!this.textComplete){this.revealImmediately();return;}if(!this.timeline||this.index>=this.timeline.events.length-1){const callback=this.onComplete;this.clear();callback?.();return;}this.index+=1;this.renderCurrent();}
