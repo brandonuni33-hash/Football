@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { ACTION_LABELS, BALL_PHASE, RULES, TEAM, distance, passSpeedFromLevel } from "../../prototype/football-2d-control-lab-v1/three-v-three/constants.js";
 import { actionLabels, assertPossessionInvariant, createMatchState, getPlayer } from "../../prototype/football-2d-control-lab-v1/three-v-three/matchState.js";
 import { clearPossession, givePossession } from "../../prototype/football-2d-control-lab-v1/three-v-three/possession.js";
-import { requestCall, startPass, startProtection, startShot, startTackle } from "../../prototype/football-2d-control-lab-v1/three-v-three/actions.js";
+import { pressDefensiveBrake, requestCall, startPass, startProtection, startShot, startTackle } from "../../prototype/football-2d-control-lab-v1/three-v-three/actions.js";
 import { consumeInputActions, mergeInputFrames } from "../../prototype/football-2d-control-lab-v1/three-v-three/inputBuffer.js";
 import { recoveryWindow, selectRecoveryCandidate } from "../../prototype/football-2d-control-lab-v1/three-v-three/ballRecovery.js";
 import { collectAIInputs, defensiveRole, executeAIAction, looseBallRole } from "../../prototype/football-2d-control-lab-v1/three-v-three/ai.js";
@@ -19,8 +19,33 @@ test("avec ballon les boutons sont TIR PASSE PROT", () => {
   assert.deepEqual(actionLabels(state, "home-human"), ACTION_LABELS.attack);
 });
 
-test("sans ballon les boutons sont TACLE APPEL FREIN", () => {
+test("sans ballon les boutons sont FREIN APPEL PROT", () => {
   assert.deepEqual(actionLabels(createMatchState(), "home-human"), ACTION_LABELS.defend);
+});
+
+test("le premier appui FREIN engage la posture sans tenter de récupérer", () => {
+  const state = createMatchState();
+  const player = getPlayer(state, "home-human");
+  assert.equal(pressDefensiveBrake(state, player.id), true);
+  assert.equal(player.defensiveBrakeRemaining, RULES.defensiveBrakeDuration);
+  assert.equal(player.jockeying, true);
+  assert.equal(state.ball.ownerId, "home-left");
+  assert.equal(state.lastEvent, "defensive_brake");
+});
+
+test("le deuxième appui FREIN déclenche l'intervention au bon moment", () => {
+  const state = createMatchState();
+  const defender = getPlayer(state, "home-human");
+  const owner = getPlayer(state, "away-human");
+  givePossession(state, owner.id);
+  owner.x = defender.x + 30; owner.y = defender.y;
+  defender.facingX = 1; defender.facingY = 0;
+  pressDefensiveBrake(state, defender.id);
+  assert.ok(defender.defensiveBrakeRemaining > 0);
+  pressDefensiveBrake(state, defender.id);
+  assert.equal(defender.defensiveBrakeRemaining, 0);
+  assert.equal(state.ball.ownerId, null);
+  assert.equal(state.lastEvent, "tackle_won");
 });
 
 test("APPEL crée une demande temporaire sans forcer la passe", () => {

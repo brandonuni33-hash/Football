@@ -26,19 +26,17 @@ export function createInput(elements) {
   const move = bindStick(elements.moveRoot, elements.moveKnob);
   const control = bindStick(elements.controlRoot, elements.controlKnob);
   const queued = { primary: false, secondary: false, tertiary: false };
-  let tertiaryHeld = false;
-  const press = (key) => (event) => { event.preventDefault(); queued[key] = true; if (key === "tertiary") tertiaryHeld = true; };
+  const press = (key) => (event) => { event.preventDefault(); queued[key] = true; };
   elements.primary.addEventListener("pointerdown", press("primary"));
   elements.secondary.addEventListener("pointerdown", press("secondary"));
   elements.tertiary.addEventListener("pointerdown", press("tertiary"));
-  for (const eventName of ["pointerup", "pointercancel", "pointerleave"]) elements.tertiary.addEventListener(eventName, () => { tertiaryHeld = false; });
 
   return {
     read() {
       const input = {
         moveX: move.x, moveY: move.y, controlX: control.x, controlY: control.y,
         primaryPressed: queued.primary, secondaryPressed: queued.secondary, tertiaryPressed: queued.tertiary,
-        jockeyHeld: tertiaryHeld, x: control.x, y: control.y,
+        jockeyHeld: false, x: control.x, y: control.y,
       };
       queued.primary = queued.secondary = queued.tertiary = false;
       return input;

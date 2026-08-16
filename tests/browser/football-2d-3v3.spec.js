@@ -6,9 +6,9 @@ test("la page 3v3 ouvre le même moteur en solo avec contrôles contextuels", as
   await page.getByRole("button", { name: /JOUER SOLO/ }).click();
   await expect(page.locator("#game")).toBeVisible();
   await expect(page.locator("#network-status")).toHaveText("SOLO · IA");
-  await expect(page.locator("#primary")).toHaveText("TACLE");
+  await expect(page.locator("#primary")).toHaveText("FREIN");
   await expect(page.locator("#secondary")).toHaveText("APPEL");
-  await expect(page.locator("#tertiary")).toHaveText("FREIN");
+  await expect(page.locator("#tertiary")).toHaveText("PROT.");
 });
 
 test("la page ami crée une invitation sans imposer le paysage", async ({ page }) => {

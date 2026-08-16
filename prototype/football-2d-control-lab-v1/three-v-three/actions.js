@@ -103,3 +103,17 @@ export function startTackle(state, playerId) {
   state.eventId += 1;
   return true;
 }
+
+export function pressDefensiveBrake(state, playerId) {
+  const player = getPlayer(state, playerId);
+  if (!player || hasPossession(state, playerId) || player.recoveryRemaining > 0) return false;
+  if ((player.defensiveBrakeRemaining ?? 0) > 0) {
+    player.defensiveBrakeRemaining = 0;
+    return startTackle(state, playerId);
+  }
+  player.defensiveBrakeRemaining = RULES.defensiveBrakeDuration;
+  player.jockeying = true;
+  state.lastEvent = "defensive_brake";
+  state.eventId += 1;
+  return true;
+}

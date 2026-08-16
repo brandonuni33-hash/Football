@@ -1,7 +1,7 @@
 import { BALL_PHASE, FIELD, RULES, TEAM, approach, clamp, distance, normalize } from "./constants.js";
 import { actionLabels, assertPossessionInvariant, fieldBounds, getHumanPlayer, getOwner, getPlayer, resetAfterGoal } from "./matchState.js";
 import { clearPossession, givePossession, teamDirection } from "./possession.js";
-import { requestCall, startPass, startProtection, startShot, startTackle } from "./actions.js";
+import { pressDefensiveBrake, requestCall, startPass, startProtection, startShot, startTackle } from "./actions.js";
 import { collectAIInputs, executeAIAction } from "./ai.js";
 import { selectRecoveryCandidate } from "./ballRecovery.js";
 
@@ -14,6 +14,7 @@ function tickTimers(player, dt) {
   player.callRemaining = Math.max(0, player.callRemaining - dt);
   player.tackleRemaining = Math.max(0, player.tackleRemaining - dt);
   player.recoveryRemaining = Math.max(0, player.recoveryRemaining - dt);
+  player.defensiveBrakeRemaining = Math.max(0, (player.defensiveBrakeRemaining ?? 0) - dt);
   player.aiDecisionRemaining = Math.max(0, (player.aiDecisionRemaining ?? 0) - dt);
 }
 
@@ -22,7 +23,8 @@ function movePlayer(state, player, input, dt) {
   if (player.recoveryRemaining > 0) input = {};
   const move = normalize(input.moveX, input.moveY);
   const awaitingProtectedReception = state.ball.phase === BALL_PHASE.PASS && state.ball.targetId === player.id && player.protectionRemaining > 0;
-  const jockeying = !!input.jockeyHeld && !player.hasBall && !awaitingProtectedReception;
+  const jockeying = (!!input.jockeyHeld || (player.defensiveBrakeRemaining ?? 0) > 0)
+    && !player.hasBall && !awaitingProtectedReception;
   player.jockeying = jockeying;
   let speedScale = jockeying ? RULES.jockeySpeedScale : 1;
   if (player.protectionRemaining > 0) speedScale = Math.min(speedScale, RULES.protectionSpeedScale);
@@ -70,7 +72,7 @@ function applyHumanActions(state, slot, input) {
   if (input.tertiaryPressed) startProtection(state, player.id);
   if (input.primaryPressed) {
     if (player.hasBall) startShot(state, player.id, input, input.power ?? 0.72);
-    else startTackle(state, player.id);
+    else pressDefensiveBrake(state, player.id);
   }
 }
 

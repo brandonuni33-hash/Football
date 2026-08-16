@@ -21,6 +21,7 @@ export const RULES = Object.freeze({
   tackleDuration: 0.22,
   tackleRecovery: 0.42,
   missedTackleRecovery: 0.9,
+  defensiveBrakeDuration: 2.6,
   jockeySpeedScale: 0.48,
   callDuration: 1.3,
   scoreToWin: 3,
@@ -28,7 +29,7 @@ export const RULES = Object.freeze({
 
 export const ACTION_LABELS = Object.freeze({
   attack: Object.freeze({ primary: "TIR", secondary: "PASSE", tertiary: "PROT." }),
-  defend: Object.freeze({ primary: "TACLE", secondary: "APPEL", tertiary: "FREIN" }),
+  defend: Object.freeze({ primary: "FREIN", secondary: "APPEL", tertiary: "PROT." }),
 });
 
 export function clamp(value, min, max) { return Math.min(max, Math.max(min, value)); }

@@ -48,6 +48,7 @@ function updateLabels() {
   elements.secondary.textContent = labels.secondary;
   elements.tertiary.textContent = labels.tertiary;
   elements.tertiary.classList.toggle("protecting", getHumanPlayer(state, slot)?.protectionRemaining > 0);
+  elements.primary.classList.toggle("braking", (getHumanPlayer(state, slot)?.defensiveBrakeRemaining ?? 0) > 0);
 }
 function showGame() { menu.hidden = true; game.hidden = false; running = true; previous = performance.now(); requestAnimationFrame(frame); }
 
