@@ -1,0 +1,1 @@
+Trigger GitHub Pages rebuild for the isolated souvenir prototype.
