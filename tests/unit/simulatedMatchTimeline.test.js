@@ -32,10 +32,16 @@ test('le porteur déclaré appartient toujours à l équipe en possession',()=>{
 });
 
 test('après la mi-temps les zones offensives sont réellement inversées',()=>{
- const baseX={BUILD_UP:34,PRESSING:47,DUEL:55,COUNTER_ATTACK:69,CROSS:78,SHOT:82,SET_PIECE:72,GOAL:88};
+ const baseX={BUILD_UP:34,DUEL:55,COUNTER_ATTACK:69,CROSS:78,SHOT:82,SET_PIECE:72,GOAL:88};
  for(let seedIndex=0;seedIndex<12;seedIndex+=1){
   const timeline=buildSimulatedMatchTimeline({...row,matchId:`side-${seedIndex}`},{seed:`side-${seedIndex}`});
   for(const event of timeline.events){
+   if(event.type==='PRESSING'){
+    const homeRight=event.clock.period!=='SECOND_HALF'&&event.clock.period!=='EXTRA_SECOND';
+    const sideRight=event.possessionSide==='HOME'?homeRight:!homeRight;
+    assert.ok(sideRight?event.zone.x>=32&&event.zone.x<=48:event.zone.x>=52&&event.zone.x<=68);
+    continue;
+   }
    if(!(event.type in baseX))continue;
    const homeRight=event.clock.period!=='SECOND_HALF'&&event.clock.period!=='EXTRA_SECOND';
    const sideRight=event.possessionSide==='HOME'?homeRight:!homeRight;
@@ -43,6 +49,22 @@ test('après la mi-temps les zones offensives sont réellement inversées',()=>{
    assert.ok(Math.abs(event.zone.x-expected)<0.001,`${event.type} ${event.clock.period} ${event.possessionSide}: ${event.zone.x} != ${expected}`);
   }
  }
+});
+
+test('le pressing possède toujours un déclencheur et identifie l équipe qui presse',()=>{
+ const triggers=new Set(),perspectives=new Set();
+ for(let i=0;i<30;i+=1){
+  const timeline=buildSimulatedMatchTimeline({...row,matchId:`press-${i}`,score:{home:1,away:0}},{seed:`press-${i}`});
+  const presses=timeline.events.filter(event=>event.type==='PRESSING');
+  assert.ok(presses.length>=1);
+  for(const event of presses){
+   assert.ok(['TOUCHLINE','BACK_TO_GOAL','BACK_PASS','HEAVY_TOUCH'].includes(event.pressTrigger));
+   assert.notEqual(event.pressingSide,event.possessionSide);
+   assert.match(event.text,/press|ligne|bloc|couvr|axe/i);
+   triggers.add(event.pressTrigger);perspectives.add(event.pressingSide===timeline.playerSide?'PLAYER_PRESSES':'OPPONENT_PRESSES');
+  }
+ }
+ assert.ok(triggers.size>=3);assert.ok(perspectives.has('PLAYER_PRESSES'));
 });
 
 test('les coups de pied arrêtés synthétiques n inventent jamais un penalty',()=>{
