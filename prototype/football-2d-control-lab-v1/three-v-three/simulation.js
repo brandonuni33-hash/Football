@@ -3,6 +3,7 @@ import { actionLabels, assertPossessionInvariant, fieldBounds, getHumanPlayer, g
 import { clearPossession, givePossession, teamDirection } from "./possession.js";
 import { requestCall, startPass, startProtection, startShot, startTackle } from "./actions.js";
 import { collectAIInputs, executeAIAction } from "./ai.js";
+import { selectRecoveryCandidate } from "./ballRecovery.js";
 
 function tickTimers(player, dt) {
   const wasProtected = player.protectionRemaining > 0;
@@ -13,6 +14,7 @@ function tickTimers(player, dt) {
   player.callRemaining = Math.max(0, player.callRemaining - dt);
   player.tackleRemaining = Math.max(0, player.tackleRemaining - dt);
   player.recoveryRemaining = Math.max(0, player.recoveryRemaining - dt);
+  player.aiDecisionRemaining = Math.max(0, (player.aiDecisionRemaining ?? 0) - dt);
 }
 
 function movePlayer(state, player, input, dt) {
@@ -48,6 +50,9 @@ function movePlayer(state, player, input, dt) {
     player.controlY = right.y;
     player.facingX = right.x;
     player.facingY = right.y;
+  } else if (player.protectionRemaining > 0) {
+    player.controlX = player.facingX;
+    player.controlY = player.facingY;
   } else if (player.hasBall && move.magnitude <= 0.12 && right.magnitude > 0.55) {
     player.controlX = right.x;
     player.controlY = right.y;
@@ -84,11 +89,11 @@ function carryBall(state) {
 
 function interceptOrReceive(state) {
   if (state.ball.ownerId) return;
-  const speed = Math.hypot(state.ball.vx, state.ball.vy);
-  const candidates = state.players.filter((player) => player.recoveryRemaining <= 0 && distance(player, state.ball) <= RULES.controlRadius + (player.receptionRemaining > 0 ? 9 : 0));
-  candidates.sort((a, b) => distance(a, state.ball) - distance(b, state.ball));
-  const receiver = candidates[0];
-  if (!receiver || speed > 460) return;
+  const candidates = state.ball.phase === BALL_PHASE.PASS
+    ? state.players.filter((player) => player.id !== state.ball.lastTouchId)
+    : state.players;
+  const receiver = selectRecoveryCandidate(candidates, state.ball);
+  if (!receiver) return;
   const intended = state.ball.targetId === receiver.id;
   givePossession(state, receiver.id, intended ? "reception" : "interception");
   if (receiver.protectionRemaining > 0) {
@@ -132,8 +137,11 @@ function stepBall(state, dt) {
 
 function resolveLooseChallenges(state) {
   if (state.ball.ownerId) return;
-  const nearby = state.players.filter((player) => distance(player, state.ball) < RULES.controlRadius && player.recoveryRemaining <= 0);
-  if (nearby.length === 1) givePossession(state, nearby[0].id, "loose_ball_won");
+  const candidates = state.ball.phase === BALL_PHASE.PASS
+    ? state.players.filter((player) => player.id !== state.ball.lastTouchId)
+    : state.players;
+  const winner = selectRecoveryCandidate(candidates, state.ball);
+  if (winner) givePossession(state, winner.id, "loose_ball_won");
 }
 
 export function stepMatch(state, inputs = {}, dt = RULES.fixedStep) {

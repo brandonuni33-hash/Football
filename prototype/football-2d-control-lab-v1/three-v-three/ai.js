@@ -1,4 +1,4 @@
-import { RULES, TEAM, distance, normalize } from "./constants.js";
+import { RULES, TEAM, clamp, distance, normalize } from "./constants.js";
 import { getOwner } from "./matchState.js";
 import { startPass, startShot } from "./actions.js";
 import { teamDirection } from "./possession.js";
@@ -52,9 +52,22 @@ function opponentIntent(state, player) {
 
 export function collectAIInputs(state) {
   const result = {};
+  const level = clamp(state.aiLevel ?? 50, 0, 100);
+  const reactionInterval = 0.48 - level * 0.0038;
+  const error = (100 - level) / 100;
   for (const player of state.players) {
     if (player.humanSlot) continue;
-    result[player.id] = player.team === state.possession.team ? teammateIntent(state, player) : opponentIntent(state, player);
+    if ((player.aiDecisionRemaining ?? 0) <= 0) {
+      const ideal = player.team === state.possession.team ? teammateIntent(state, player) : opponentIntent(state, player);
+      const phase = state.tick * 0.071 + player.id.length * 1.37;
+      player.aiInput = {
+        ...ideal,
+        moveX: clamp((ideal.moveX ?? 0) + Math.sin(phase) * error * 0.24, -1, 1),
+        moveY: clamp((ideal.moveY ?? 0) + Math.cos(phase * 1.17) * error * 0.24, -1, 1),
+      };
+      player.aiDecisionRemaining = reactionInterval;
+    }
+    result[player.id] = player.aiInput ?? {};
   }
   return result;
 }

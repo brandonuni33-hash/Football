@@ -5,6 +5,8 @@ import { actionLabels, assertPossessionInvariant, createMatchState, getPlayer } 
 import { clearPossession, givePossession } from "../../prototype/football-2d-control-lab-v1/three-v-three/possession.js";
 import { requestCall, startPass, startProtection, startShot, startTackle } from "../../prototype/football-2d-control-lab-v1/three-v-three/actions.js";
 import { consumeInputActions, mergeInputFrames } from "../../prototype/football-2d-control-lab-v1/three-v-three/inputBuffer.js";
+import { recoveryWindow, selectRecoveryCandidate } from "../../prototype/football-2d-control-lab-v1/three-v-three/ballRecovery.js";
+import { collectAIInputs } from "../../prototype/football-2d-control-lab-v1/three-v-three/ai.js";
 import { stepMatch } from "../../prototype/football-2d-control-lab-v1/three-v-three/simulation.js";
 
 function advance(state, inputs, seconds) {
@@ -137,4 +139,47 @@ test("un appui bref reste mémorisé jusqu'au prochain pas physique", () => {
   assert.equal(buffered.moveX, 1);
   buffered = consumeInputActions(buffered);
   assert.equal(buffered.primaryPressed, false);
+});
+
+test("le niveau IA 0 à 100 modifie son délai de décision", () => {
+  const slow = createMatchState({ aiLevel: 0 });
+  const sharp = createMatchState({ aiLevel: 100 });
+  collectAIInputs(slow);
+  collectAIInputs(sharp);
+  assert.equal(slow.aiLevel, 0);
+  assert.equal(sharp.aiLevel, 100);
+  assert.ok(getPlayer(slow, "home-left").aiDecisionRemaining > getPlayer(sharp, "home-left").aiDecisionRemaining);
+});
+
+test("sous protection le ballon suit le corps en reculant vers ses buts", () => {
+  let state = createMatchState();
+  const player = getPlayer(state, "home-human");
+  givePossession(state, player.id);
+  startProtection(state, player.id);
+  state = stepMatch(state, { host: { moveX: -1, controlX: 0, controlY: 0 } }, 0.1);
+  assert.ok(player.facingX < -0.9);
+  assert.ok(state.ball.x < player.x, "le ballon doit rester devant le corps et non dans son dos");
+});
+
+test("la récupération dépend de la distance vitesse orientation et état", () => {
+  const state = createMatchState();
+  clearPossession(state);
+  const player = getPlayer(state, "home-human");
+  state.ball.x = player.x + 20; state.ball.y = player.y; state.ball.vx = 120; state.ball.vy = 0;
+  assert.equal(recoveryWindow(player, state.ball).eligible, true);
+  state.ball.vx = 700;
+  assert.equal(recoveryWindow(player, state.ball).eligible, false, "un ballon trop rapide ne doit pas être aspiré");
+  state.ball.vx = 120; player.facingX = -1;
+  assert.equal(recoveryWindow(player, state.ball).eligible, false, "un joueur dos au ballon ne le récupère pas magnétiquement");
+  player.facingX = 1; player.recoveryRemaining = 0.5;
+  assert.equal(recoveryWindow(player, state.ball).eligible, false, "un joueur déséquilibré ne récupère pas immédiatement");
+});
+
+test("si deux joueurs sont proches la meilleure fenêtre remporte le ballon", () => {
+  const state = createMatchState(); clearPossession(state);
+  const home = getPlayer(state, "home-human"); const away = getPlayer(state, "away-human");
+  state.ball.x = 480; state.ball.y = 270; state.ball.vx = 40; state.ball.vy = 0;
+  home.x = 460; home.y = 270; home.facingX = 1; home.ballControl = 80;
+  away.x = 506; away.y = 270; away.facingX = -1; away.ballControl = 60;
+  assert.equal(selectRecoveryCandidate([home, away], state.ball).id, home.id);
 });
