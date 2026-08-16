@@ -7,6 +7,11 @@
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
+  <div class="orientation-gate" aria-hidden="true">
+    <strong>TOURNE TON TÉLÉPHONE</strong>
+    <span>Le gameplay STP se joue en mode paysage.</span>
+  </div>
+
   <main class="shell">
     <header class="topbar">
       <div>
@@ -32,16 +37,18 @@
           </div>
         </div>
 
-        <div class="action-cluster" aria-label="Actions">
-          <button id="pass" class="action pass" type="button">PASSE</button>
-          <button id="protect" class="action protect" type="button">PROT.</button>
-          <button id="shoot" class="action shoot" type="button"><span>TIR</span><i id="power-fill"></i></button>
-        </div>
+        <div class="right-hand-zone">
+          <div class="action-arc" aria-label="Actions">
+            <button id="pass" class="action pass" type="button">PASSE</button>
+            <button id="protect" class="action protect" type="button">PROT.</button>
+            <button id="shoot" class="action shoot" type="button"><span>TIR</span><i id="power-fill"></i></button>
+          </div>
 
-        <div class="stick-zone control-zone">
-          <span class="control-caption">BALLON / VISION</span>
-          <div id="control-joystick" class="joystick joystick-control">
-            <div id="control-stick" class="stick"></div>
+          <div class="stick-zone control-zone">
+            <span class="control-caption">BALLON / VISION</span>
+            <div id="control-joystick" class="joystick joystick-control">
+              <div id="control-stick" class="stick"></div>
+            </div>
           </div>
         </div>
       </div>
