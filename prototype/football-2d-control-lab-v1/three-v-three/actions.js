@@ -59,9 +59,6 @@ export function startPass(state, passerId, targetId = null, intent = {}) {
   const target = targetId ? getPlayer(state, targetId) : selectPassTarget(state, passerId, intent);
   if (!passer || !target || target.team !== passer.team || distance(passer, target) > 470) return false;
 
-  // The stick/facing chooses the receiver. Once selected, the receiver is locked:
-  // the ball starts on a true physical trajectory toward that player, without
-  // blending the final pass vector back toward the raw stick direction.
   const direction = normalize(target.x - passer.x, target.y - passer.y);
   if (direction.magnitude <= 0.001) return false;
 
@@ -130,10 +127,15 @@ export function pressDefensiveBrake(state, playerId) {
   const player = getPlayer(state, playerId);
   if (!player || hasPossession(state, playerId) || player.recoveryRemaining > 0) return false;
   if ((player.defensiveBrakeRemaining ?? 0) > 0) {
-    player.defensiveBrakeRemaining = 0;
-    return startTackle(state, playerId);
+    player.deepBrakeRemaining = RULES.defensiveBrakeDeepDuration;
+    player.defensiveBrakeRemaining = Math.max(player.defensiveBrakeRemaining, RULES.defensiveBrakeDeepDuration);
+    player.jockeying = true;
+    state.lastEvent = "defensive_brake_deep";
+    state.eventId += 1;
+    return true;
   }
   player.defensiveBrakeRemaining = RULES.defensiveBrakeDuration;
+  player.deepBrakeRemaining = 0;
   player.jockeying = true;
   state.lastEvent = "defensive_brake";
   state.eventId += 1;
