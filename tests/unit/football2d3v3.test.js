@@ -6,7 +6,7 @@ import { clearPossession, givePossession } from "../../prototype/football-2d-con
 import { requestCall, startPass, startProtection, startShot, startTackle } from "../../prototype/football-2d-control-lab-v1/three-v-three/actions.js";
 import { consumeInputActions, mergeInputFrames } from "../../prototype/football-2d-control-lab-v1/three-v-three/inputBuffer.js";
 import { recoveryWindow, selectRecoveryCandidate } from "../../prototype/football-2d-control-lab-v1/three-v-three/ballRecovery.js";
-import { collectAIInputs } from "../../prototype/football-2d-control-lab-v1/three-v-three/ai.js";
+import { collectAIInputs, defensiveRole, executeAIAction } from "../../prototype/football-2d-control-lab-v1/three-v-three/ai.js";
 import { stepMatch } from "../../prototype/football-2d-control-lab-v1/three-v-three/simulation.js";
 
 function advance(state, inputs, seconds) {
@@ -182,4 +182,47 @@ test("si deux joueurs sont proches la meilleure fenêtre remporte le ballon", ()
   home.x = 460; home.y = 270; home.facingX = 1; home.ballControl = 80;
   away.x = 506; away.y = 270; away.facingX = -1; away.ballControl = 60;
   assert.equal(selectRecoveryCandidate([home, away], state.ball).id, home.id);
+});
+
+test("le rythme de jeu garde joueurs et passes sous les nouvelles limites", () => {
+  assert.equal(RULES.maxSpeed, 154);
+  assert.equal(RULES.passSpeed, 270);
+  assert.ok(RULES.acceleration <= 720);
+});
+
+test("le milieu adverse participe au pressing au lieu de rester immobile", () => {
+  let state = createMatchState({ aiLevel: 50 });
+  const middle = getPlayer(state, "away-human");
+  const before = { x: middle.x, y: middle.y };
+  state = advance(state, {}, 0.5);
+  assert.ok(Math.hypot(middle.x - before.x, middle.y - before.y) > 4);
+});
+
+test("le pressing normal produit un seul duel principal", () => {
+  const state = createMatchState({ aiLevel: 70 });
+  const defenders = state.players.filter((player) => player.team === TEAM.AWAY);
+  assert.equal(defenders.filter((player) => defensiveRole(state, player) === "press").length, 1);
+  assert.equal(defenders.filter((player) => defensiveRole(state, player) === "trap").length, 0);
+});
+
+test("le 2 contre 1 ne s'active que dans une zone de piège rare", () => {
+  const state = createMatchState({ aiLevel: 70 });
+  const owner = getPlayer(state, "home-left");
+  owner.x = 720; owner.y = 60;
+  const defenders = state.players.filter((player) => player.team === TEAM.AWAY);
+  assert.equal(defenders.filter((player) => ["press", "trap"].includes(defensiveRole(state, player))).length, 2);
+});
+
+test("une IA proche exécute réellement son tacle et peut gagner le ballon", () => {
+  const state = createMatchState({ aiLevel: 80 });
+  const owner = getPlayer(state, "home-human");
+  const defender = getPlayer(state, "away-human");
+  givePossession(state, owner.id);
+  owner.x = 500; owner.y = 270;
+  defender.x = 532; defender.y = 270; defender.facingX = -1; defender.facingY = 0;
+  const intent = collectAIInputs(state)[defender.id];
+  assert.equal(intent.tacklePressed, true);
+  executeAIAction(state, defender, intent);
+  assert.equal(state.ball.ownerId, null);
+  assert.equal(state.lastEvent, "tackle_won");
 });
