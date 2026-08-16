@@ -1,97 +1,93 @@
+import salonVisual from './memoryVisuals/salon.js';
+import courVisual from './memoryVisuals/cour.js';
+import cityVisual from './memoryVisuals/city.js';
+import chambreVisual from './memoryVisuals/chambre.js';
+import porteVisual from './memoryVisuals/porte.js';
+
+const MEMORY_VISUALS = Object.freeze({ salon: salonVisual, cour: courVisual, city: cityVisual, chambre: chambreVisual, porte: porteVisual });
+
 function escapeHtml(value = '') {
-    return String(value)
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
+    return String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
 }
 
-const VISUAL_COPY = Object.freeze({
-    penalty: Object.freeze({ kicker: 'TIREUR', keeper: 'GB', cue: 'POINT DE PENALTY' }),
-    celebration: Object.freeze({ kicker: 'TON POTE', keeper: '', cue: 'BUT QUALIFICATIF' }),
-    'locker-room-judgment': Object.freeze({ kicker: 'VESTIAIRE', keeper: '', cue: 'APRÈS L’ENTRAÎNEMENT' }),
-    'locker-room-praise': Object.freeze({ kicker: 'VESTIAIRE', keeper: '', cue: 'APRÈS TON MATCH' })
-});
-
-function visualTemplate(fragment) {
-    const copy = VISUAL_COPY[fragment.visualKey] || VISUAL_COPY.penalty;
-    return `
-      <div class="stp-memory-image visual-${escapeHtml(fragment.visualKey)}" aria-hidden="true">
-        <div class="stp-memory-haze"></div>
-        <div class="stp-memory-scene">
-          <span class="stp-memory-cue">${escapeHtml(copy.cue)}</span>
-          <i class="stp-memory-ground"></i>
-          <i class="stp-memory-subject">${escapeHtml(copy.kicker)}</i>
-          ${copy.keeper ? `<i class="stp-memory-keeper">${escapeHtml(copy.keeper)}</i>` : ''}
-          <i class="stp-memory-ball"></i>
-        </div>
-        <div class="stp-memory-vignette"></div>
-        <div class="stp-memory-grain"></div>
-      </div>`;
+function answersTemplate(fragment) {
+    return fragment.answers.map(answer => `<button type="button" class="stp-memory-answer" data-memory-answer="${escapeHtml(answer.id)}"><span>${escapeHtml(answer.text)}</span></button>`).join('');
 }
 
 export function pastFragmentTemplate(fragment, index, total) {
-    const answers = fragment.answers.map(answer => `
-      <button type="button" class="stp-memory-answer" data-memory-answer="${escapeHtml(answer.id)}">
-        <span>${escapeHtml(answer.text)}</span>
-      </button>`).join('');
-
-    return `
-<section class="stp-memory-screen" data-stp-step="pastFragments" data-memory-id="${escapeHtml(fragment.id)}">
-  ${visualTemplate(fragment)}
-  <div class="stp-memory-content">
-    <div class="stp-memory-meta"><span>${escapeHtml(fragment.memoryLabel)}</span><span>${index + 1} / ${total}</span></div>
-    <p class="stp-memory-prompt">${escapeHtml(fragment.prompt)}</p>
-    <h1>${escapeHtml(fragment.question)}</h1>
-    <div class="stp-memory-answers" aria-label="Réponses au souvenir">${answers}</div>
-  </div>
-</section>`;
+    return `<section class="stp-memory-screen visual-${escapeHtml(fragment.visualKey)}" data-stp-step="pastFragments" data-memory-id="${escapeHtml(fragment.id)}">
+      <div class="stp-memory-layer is-active" style="background-image:url('${MEMORY_VISUALS[fragment.visualKey] || salonVisual}')"></div>
+      <div class="stp-memory-warmth"></div><div class="stp-memory-haze haze-a"></div><div class="stp-memory-haze haze-b"></div><div class="stp-memory-dust dust-a"></div><div class="stp-memory-dust dust-b"></div><div class="stp-memory-vignette"></div><div class="stp-memory-grain"></div>
+      <div class="stp-memory-content is-visible"><div class="stp-memory-meta">${escapeHtml(fragment.memoryLabel)} <span>${index + 1} / ${total}</span></div><h1>${escapeHtml(fragment.question)}</h1><div class="stp-memory-answers is-visible">${answersTemplate(fragment)}</div></div>
+    </section>`;
 }
 
 export const PAST_FRAGMENTS_CSS = `
-html:has(.stp-memory-screen),body:has(.stp-memory-screen){background:#050403;overflow:hidden}.stp-memory-screen{position:relative;width:100%;min-height:100%;height:100dvh;overflow:hidden;background:#080604;color:#f4efe6;font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.stp-memory-image{position:absolute;inset:0;background:#1a140d;overflow:hidden;filter:saturate(.62) contrast(1.04) sepia(.18)}.stp-memory-image:before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,216,158,.14),rgba(74,45,21,.22) 44%,rgba(5,4,3,.9) 82%,#050403 100%)}.stp-memory-haze{position:absolute;inset:-10%;background:radial-gradient(circle at 22% 28%,rgba(255,223,170,.2),transparent 24%),radial-gradient(circle at 72% 38%,rgba(255,255,255,.08),transparent 28%),linear-gradient(115deg,transparent 30%,rgba(255,255,255,.035),transparent 58%);filter:blur(12px);opacity:.9}.stp-memory-vignette{position:absolute;inset:0;box-shadow:inset 0 0 110px rgba(0,0,0,.7);background:linear-gradient(180deg,rgba(0,0,0,.06),transparent 40%,rgba(0,0,0,.58) 78%,rgba(0,0,0,.92))}.stp-memory-grain{position:absolute;inset:0;opacity:.13;mix-blend-mode:soft-light;background-image:radial-gradient(circle at 20% 30%,#fff 0 .7px,transparent .8px),radial-gradient(circle at 70% 60%,#fff 0 .6px,transparent .7px);background-size:6px 7px,5px 6px}.stp-memory-scene{position:absolute;inset:10% 8% 30%;border:1px solid rgba(255,255,255,.04);border-radius:28px;overflow:hidden}.stp-memory-cue{position:absolute;left:18px;top:18px;font-size:10px;letter-spacing:.16em;font-weight:900;color:rgba(245,226,192,.5)}.stp-memory-ground{position:absolute;left:-10%;right:-10%;bottom:12%;height:38%;background:linear-gradient(180deg,rgba(68,74,53,.08),rgba(52,58,42,.24));transform:perspective(300px) rotateX(54deg);border-top:1px solid rgba(255,255,255,.07)}.stp-memory-subject,.stp-memory-keeper{position:absolute;font-style:normal;font-size:9px;font-weight:900;letter-spacing:.1em;color:rgba(255,245,226,.33);display:grid;place-items:center;width:64px;height:132px;border-radius:40% 40% 14px 14px;background:linear-gradient(180deg,rgba(20,18,16,.83),rgba(8,7,6,.92));box-shadow:0 16px 30px rgba(0,0,0,.3)}.stp-memory-subject{left:23%;bottom:16%}.stp-memory-keeper{right:14%;bottom:19%;height:116px;width:72px}.stp-memory-ball{position:absolute;width:17px;height:17px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#eee9df,#c8c0b2 60%,#6f695f 100%);left:46%;bottom:18%;box-shadow:0 5px 10px rgba(0,0,0,.35)}.visual-celebration .stp-memory-subject{left:45%;bottom:16%;transform:rotate(-7deg)}.visual-celebration .stp-memory-subject:before,.visual-celebration .stp-memory-subject:after{content:"";position:absolute;width:55px;height:105px;border-radius:36% 36% 14px 14px;background:rgba(10,9,8,.75);bottom:0}.visual-celebration .stp-memory-subject:before{left:-72px;transform:rotate(-10deg)}.visual-celebration .stp-memory-subject:after{right:-72px;transform:rotate(10deg)}.visual-locker-room-judgment .stp-memory-scene,.visual-locker-room-praise .stp-memory-scene{background:linear-gradient(180deg,rgba(36,31,25,.35),rgba(11,9,8,.68));border-radius:12px}.visual-locker-room-judgment .stp-memory-ground,.visual-locker-room-praise .stp-memory-ground{height:22%;transform:none;background:rgba(45,34,26,.28)}.visual-locker-room-judgment .stp-memory-subject,.visual-locker-room-praise .stp-memory-subject{left:50%;transform:translateX(-50%);bottom:18%;height:126px}.visual-locker-room-judgment .stp-memory-subject:before,.visual-locker-room-judgment .stp-memory-subject:after,.visual-locker-room-praise .stp-memory-subject:before,.visual-locker-room-praise .stp-memory-subject:after{content:"";position:absolute;width:54px;height:112px;bottom:0;border-radius:38% 38% 12px 12px;background:rgba(8,7,6,.65)}.visual-locker-room-judgment .stp-memory-subject:before,.visual-locker-room-praise .stp-memory-subject:before{left:-82px}.visual-locker-room-judgment .stp-memory-subject:after,.visual-locker-room-praise .stp-memory-subject:after{right:-82px}.visual-locker-room-judgment .stp-memory-ball,.visual-locker-room-praise .stp-memory-ball{display:none}.stp-memory-content{position:absolute;z-index:5;left:0;right:0;bottom:0;padding:0 22px calc(22px + env(safe-area-inset-bottom,0));background:linear-gradient(180deg,transparent,#080604 15%,#080604 100%)}.stp-memory-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;color:#c49b64;font-size:10px;font-weight:900;letter-spacing:.14em;text-transform:uppercase}.stp-memory-prompt{margin:0 0 8px;color:rgba(230,219,201,.58);font-size:12px}.stp-memory-content h1{margin:0;max-width:365px;font-size:27px;line-height:1.08;letter-spacing:-.035em}.stp-memory-answers{display:grid;gap:9px;margin-top:17px}.stp-memory-answer{appearance:none;width:100%;min-height:50px;border-radius:15px;border:1px solid rgba(240,222,191,.11);background:rgba(19,15,11,.8);color:#eee7dc;text-align:left;padding:12px 14px;font:inherit;font-size:13px;line-height:1.3;backdrop-filter:blur(8px);transition:border-color .18s ease,background .18s ease,transform .12s ease,opacity .2s ease}.stp-memory-answer:active{transform:scale(.987)}.stp-memory-answer.selected{border-color:rgba(210,159,88,.75);background:rgba(54,38,20,.9)}.stp-memory-screen{animation:stp-memory-in .55s ease both}.stp-memory-screen.is-leaving{animation:stp-memory-out .32s ease both}.stp-memory-prompt,.stp-memory-content h1,.stp-memory-answers{opacity:0;transform:translateY(8px);animation:stp-memory-copy .42s ease forwards}.stp-memory-prompt{animation-delay:.22s}.stp-memory-content h1{animation-delay:.35s}.stp-memory-answers{animation-delay:.5s}@keyframes stp-memory-in{from{opacity:0}to{opacity:1}}@keyframes stp-memory-out{to{opacity:0;transform:scale(1.01)}}@keyframes stp-memory-copy{to{opacity:1;transform:none}}@media(prefers-reduced-motion:reduce){.stp-memory-screen,.stp-memory-screen.is-leaving,.stp-memory-prompt,.stp-memory-content h1,.stp-memory-answers{animation:none;opacity:1;transform:none}.stp-memory-answer{transition:none}}
+html:has(.stp-memory-stage),body:has(.stp-memory-stage){background:#050403;overflow:hidden}.stp-memory-stage{position:relative;width:100%;height:100dvh;overflow:hidden;background:#050403;color:#f5f0e7;font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;isolation:isolate}.stp-memory-screen{position:absolute;inset:0;overflow:hidden;background:#090704}.stp-memory-layer{position:absolute;inset:-1.5%;background-position:center;background-size:cover;opacity:0;transform:scale(1.016);filter:saturate(.72) contrast(1.03) brightness(.82) sepia(.08);transition:opacity 1.08s cubic-bezier(.22,.61,.36,1),transform 9s ease-out;will-change:opacity,transform}.stp-memory-layer.is-active{opacity:1;transform:scale(1.038)}.stp-memory-warmth{position:absolute;inset:0;background:linear-gradient(180deg,rgba(181,125,69,.08),rgba(69,42,24,.12) 50%,rgba(5,4,3,.28));pointer-events:none}.stp-memory-vignette{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.1),transparent 42%,rgba(0,0,0,.42) 72%,rgba(0,0,0,.9)),radial-gradient(circle at 50% 40%,transparent 25%,rgba(0,0,0,.08) 60%,rgba(0,0,0,.48));pointer-events:none}.stp-memory-haze{position:absolute;inset:-18%;pointer-events:none;filter:blur(24px);opacity:.34;mix-blend-mode:screen}.haze-a{background:radial-gradient(ellipse at 18% 42%,rgba(240,214,170,.23),transparent 34%);animation:stp-haze-a 12s ease-in-out infinite alternate}.haze-b{background:radial-gradient(ellipse at 82% 32%,rgba(225,208,182,.13),transparent 30%);animation:stp-haze-b 15s ease-in-out infinite alternate}.stp-memory-dust{position:absolute;inset:-8%;pointer-events:none;opacity:.17;background-image:radial-gradient(circle,rgba(255,241,215,.8) 0 1px,transparent 1.2px);background-size:73px 89px;filter:blur(.25px)}.dust-a{animation:stp-dust 18s linear infinite}.dust-b{background-size:101px 117px;opacity:.1;animation:stp-dust 25s linear infinite reverse}.stp-memory-grain{position:absolute;inset:0;pointer-events:none;opacity:.07;mix-blend-mode:soft-light;background-image:radial-gradient(circle at 20% 30%,#fff 0 .55px,transparent .7px),radial-gradient(circle at 70% 60%,#fff 0 .5px,transparent .65px);background-size:5px 6px,7px 5px}.stp-memory-content{position:absolute;z-index:5;left:0;right:0;bottom:0;padding:0 20px calc(24px + env(safe-area-inset-bottom,0px));opacity:0;transform:translateY(8px);transition:opacity .55s ease,transform .55s ease;pointer-events:none}.stp-memory-content.is-visible{opacity:1;transform:none}.stp-memory-meta{display:flex;justify-content:space-between;margin-bottom:11px;color:rgba(229,199,158,.68);font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}.stp-memory-content h1{margin:0;max-width:365px;font-size:clamp(21px,5.6vw,26px);line-height:1.1;letter-spacing:-.03em;text-shadow:0 2px 15px rgba(0,0,0,.92)}.stp-memory-answers{display:grid;gap:7px;margin-top:16px;opacity:0;transform:translateY(7px);transition:opacity .5s ease,transform .5s ease;pointer-events:none}.stp-memory-answers.is-visible{opacity:1;transform:none;pointer-events:auto}.stp-memory-answer{appearance:none;width:100%;min-height:45px;padding:10px 12px;border:.5px solid rgba(255,255,255,.17);border-radius:11px;background:rgba(5,5,5,.58);backdrop-filter:blur(8px);color:#eee8df;text-align:left;font:inherit;font-size:13px;line-height:1.28;touch-action:manipulation;transition:transform .12s ease,background .16s ease,border-color .16s ease}.stp-memory-answer:active{transform:scale(.988)}.stp-memory-answer.selected{border-color:rgba(232,205,166,.5);background:rgba(43,32,23,.8)}@keyframes stp-haze-a{to{transform:translate3d(5%,2%,0) scale(1.08)}}@keyframes stp-haze-b{to{transform:translate3d(-4%,4%,0) scale(1.1)}}@keyframes stp-dust{to{transform:translate3d(18px,-42px,0)}}@media(prefers-reduced-motion:reduce){.stp-memory-layer,.stp-memory-content,.stp-memory-answers{transition:none;transform:none}.stp-memory-layer.is-active{transform:none}.stp-memory-haze,.stp-memory-dust{animation:none}}
 `;
+
+function preloadVisuals() {
+    if (typeof Image === 'undefined') return;
+    Object.values(MEMORY_VISUALS).forEach(src => { const image = new Image(); image.src = src; });
+}
+
+function layerMarkup(name) { return `<div class="stp-memory-layer" data-memory-layer="${name}"></div>`; }
 
 export function mountPastFragments(container, fragments, { onAnswer, onComplete } = {}) {
     if (!container) throw new Error('Conteneur souvenirs requis.');
     if (!Array.isArray(fragments) || fragments.length === 0) throw new Error('Souvenirs requis.');
-
-    let index = 0;
+    preloadVisuals();
+    let index = 0, activeLayer = 'a', locked = false;
     const answers = [];
-    let locked = false;
+    const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    const render = () => {
-        locked = false;
-        const fragment = fragments[index];
-        container.innerHTML = pastFragmentTemplate(fragment, index, fragments.length);
-        container.querySelectorAll('[data-memory-answer]').forEach(button => button.addEventListener('click', () => {
-            if (locked) return;
-            locked = true;
-            button.classList.add('selected');
-            const answerId = button.dataset.memoryAnswer;
-            answers.push(Object.freeze({ fragmentId: fragment.id, answerId }));
-            onAnswer?.({ fragment, answerId, index });
+    container.innerHTML = `<section class="stp-memory-stage" data-stp-step="pastFragments"><div class="stp-memory-screen" data-memory-id=""></div></section>`;
+    const screen = container.querySelector('.stp-memory-screen');
+    screen.innerHTML = `${layerMarkup('a')}${layerMarkup('b')}<div class="stp-memory-warmth"></div><div class="stp-memory-haze haze-a"></div><div class="stp-memory-haze haze-b"></div><div class="stp-memory-dust dust-a"></div><div class="stp-memory-dust dust-b"></div><div class="stp-memory-vignette"></div><div class="stp-memory-grain"></div><div class="stp-memory-content"><div class="stp-memory-meta"></div><h1></h1><div class="stp-memory-answers"></div></div>`;
+    const layers = { a: screen.querySelector('[data-memory-layer="a"]'), b: screen.querySelector('[data-memory-layer="b"]') };
+    const content = screen.querySelector('.stp-memory-content');
+    const meta = screen.querySelector('.stp-memory-meta');
+    const title = screen.querySelector('h1');
+    const answerRoot = screen.querySelector('.stp-memory-answers');
 
-            const screen = container.querySelector('.stp-memory-screen');
-            const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-            const advance = () => {
-                index += 1;
-                if (index >= fragments.length) {
-                    onComplete?.(Object.freeze([...answers]));
-                    return;
-                }
-                render();
-            };
-            if (reduced) return advance();
-            screen?.classList.add('is-leaving');
-            setTimeout(advance, 300);
-        }));
+    const bindAnswers = fragment => answerRoot.querySelectorAll('[data-memory-answer]').forEach(button => button.addEventListener('click', () => choose(fragment, button)));
+    const fillCopy = fragment => {
+        screen.dataset.memoryId = fragment.id;
+        screen.className = `stp-memory-screen visual-${fragment.visualKey}`;
+        meta.innerHTML = `${escapeHtml(fragment.memoryLabel)} <span>${index + 1} / ${fragments.length}</span>`;
+        title.textContent = fragment.question;
+        answerRoot.innerHTML = answersTemplate(fragment);
+        bindAnswers(fragment);
     };
-
-    render();
-    return Object.freeze({
-        getIndex: () => index,
-        getAnswers: () => Object.freeze([...answers])
-    });
+    const reveal = () => {
+        content.classList.remove('is-visible'); answerRoot.classList.remove('is-visible');
+        if (reduced) { content.classList.add('is-visible'); answerRoot.classList.add('is-visible'); return; }
+        setTimeout(() => content.classList.add('is-visible'), 620);
+        setTimeout(() => answerRoot.classList.add('is-visible'), 1380);
+    };
+    const setVisual = (layer, fragment) => { layer.style.backgroundImage = `url('${MEMORY_VISUALS[fragment.visualKey] || salonVisual}')`; };
+    const showFirst = () => {
+        const fragment = fragments[0]; setVisual(layers.a, fragment); fillCopy(fragment);
+        requestAnimationFrame(() => layers.a.classList.add('is-active'));
+        if (reduced) { content.classList.add('is-visible'); answerRoot.classList.add('is-visible'); }
+        else { setTimeout(() => content.classList.add('is-visible'), 900); setTimeout(() => answerRoot.classList.add('is-visible'), 1700); }
+    };
+    function choose(fragment, button) {
+        if (locked) return; locked = true; button.classList.add('selected');
+        const answerId = button.dataset.memoryAnswer;
+        answers.push(Object.freeze({ fragmentId: fragment.id, answerId })); onAnswer?.({ fragment, answerId, index });
+        content.classList.remove('is-visible'); answerRoot.classList.remove('is-visible');
+        if (index >= fragments.length - 1) {
+            setTimeout(() => onComplete?.(Object.freeze([...answers])), reduced ? 0 : 520); return;
+        }
+        const nextIndex = index + 1, nextFragment = fragments[nextIndex], nextLayer = activeLayer === 'a' ? 'b' : 'a';
+        setVisual(layers[nextLayer], nextFragment);
+        const advance = () => {
+            layers[nextLayer].classList.add('is-active'); layers[activeLayer].classList.remove('is-active');
+            index = nextIndex; activeLayer = nextLayer; fillCopy(nextFragment); reveal(); locked = false;
+        };
+        if (reduced) advance(); else setTimeout(advance, 260);
+    }
+    showFirst();
+    return Object.freeze({ getIndex: () => index, getAnswers: () => Object.freeze([...answers]) });
 }
