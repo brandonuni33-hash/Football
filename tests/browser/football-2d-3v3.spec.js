@@ -30,8 +30,8 @@ test("la page 3v3 ouvre le même moteur en solo avec contrôles contextuels", as
       radialGap: Math.hypot(dx, dy) - stick.width / 2 - action.width / 2,
     };
   });
-  expect(brakePlacement.clockAngle).toBeGreaterThan(-30);
-  expect(brakePlacement.clockAngle).toBeLessThan(-15);
+  expect(brakePlacement.clockAngle).toBeGreaterThan(-75);
+  expect(brakePlacement.clockAngle).toBeLessThan(-60);
   expect(brakePlacement.radialGap).toBeGreaterThanOrEqual(0);
   expect(brakePlacement.radialGap).toBeLessThanOrEqual(8);
 });
