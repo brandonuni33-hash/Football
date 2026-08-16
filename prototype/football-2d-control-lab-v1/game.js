@@ -1,8 +1,8 @@
 import { createSprite2DProfile } from "../avatar-v0/sprite2dProfile.js";
 import { DEFAULT_FEEL_TUNING } from "../football-2d-v0/football2dModel.js";
-import { createControlLabInput } from "./input.js";
-import { createControlLabState, stepControlLab } from "./controlLabModel.js";
-import { renderControlLab } from "./renderer.js";
+import { createControlLabInput } from "./input.js?v=20260816-2030";
+import { createControlLabState, stepControlLab } from "./controlLabModel.js?v=20260816-2030";
+import { renderControlLab } from "./renderer.js?v=20260816-2030";
 
 const canvas = document.querySelector("#game");
 const ctx = canvas.getContext("2d");
