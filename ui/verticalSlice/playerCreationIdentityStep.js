@@ -23,7 +23,7 @@ export function createIdentityStepState(seed = {}) {
         draft,
         step: 'identity',
         screenIndex: 1,
-        screenCount: 6
+        screenCount: 5
     });
 }
 
@@ -65,7 +65,7 @@ export function identityViewModel(state) {
 
     return Object.freeze({
         step: 'identity',
-        progress: Object.freeze({ current: 1, total: 6, ratio: 1 / 6 }),
+        progress: Object.freeze({ current: 1, total: 5, ratio: 1 / 5 }),
         copy: IDENTITY_COPY,
         firstname: Object.freeze({
             value: firstname,
