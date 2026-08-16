@@ -57,7 +57,16 @@ export function startPass(state, passerId, targetId = null, intent = {}) {
   const passer = getPlayer(state, passerId);
   const target = targetId ? getPlayer(state, targetId) : selectPassTarget(state, passerId, intent);
   if (!passer || !target || target.team !== passer.team || distance(passer, target) > 470) return false;
-  const direction = normalize(target.x - passer.x, target.y - passer.y);
+  const targetDirection = normalize(target.x - passer.x, target.y - passer.y);
+  const rawIntent = normalize(intent.x, intent.y);
+  const intendedDirection = rawIntent.magnitude > 0.15
+    ? rawIntent
+    : normalize(passer.facingX, passer.facingY);
+  const assistance = targetId ? 0.9 : RULES.passAssist;
+  const direction = normalize(
+    targetDirection.x * assistance + intendedDirection.x * (1 - assistance),
+    targetDirection.y * assistance + intendedDirection.y * (1 - assistance),
+  );
   clearPossession(state, BALL_PHASE.PASS);
   state.ball.x = passer.x + direction.x * 24;
   state.ball.y = passer.y + direction.y * 24;

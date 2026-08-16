@@ -255,6 +255,22 @@ test("le curseur 0 à 100 modifie réellement la vitesse des passes", () => {
   assert.ok(Math.hypot(fast.ball.vx, fast.ball.vy) > Math.hypot(slow.ball.vx, slow.ball.vy) * 2);
 });
 
+test("la passe humaine est fortement assistée sans supprimer l'intention", () => {
+  const state = createMatchState({ passSpeedLevel: 50 });
+  const passer = getPlayer(state, "home-human");
+  const target = getPlayer(state, "home-left");
+  const other = getPlayer(state, "home-right");
+  passer.x = 400; passer.y = 270; passer.facingX = 0; passer.facingY = -1;
+  target.x = 500; target.y = 270;
+  other.x = 70; other.y = 470;
+  givePossession(state, passer.id);
+  startPass(state, passer.id, null, { x: 0, y: -1 });
+  assert.equal(state.ball.targetId, target.id);
+  assert.ok(state.ball.vx > 0, "l'assistance doit rapprocher la passe du partenaire");
+  assert.ok(state.ball.vy < 0, "l'intention du stick doit encore influencer la trajectoire");
+  assert.ok(Math.abs(state.ball.vy) < state.ball.vx * 0.35, "l'assistance doit rester majoritaire");
+});
+
 test("le milieu adverse participe au pressing au lieu de rester immobile", () => {
   let state = createMatchState({ aiLevel: 50 });
   const middle = getPlayer(state, "away-human");
@@ -268,6 +284,20 @@ test("le pressing normal produit un seul duel principal", () => {
   const defenders = state.players.filter((player) => player.team === TEAM.AWAY);
   assert.equal(defenders.filter((player) => defensiveRole(state, player) === "press").length, 1);
   assert.equal(defenders.filter((player) => defensiveRole(state, player) === "trap").length, 0);
+});
+
+test("à distance intermédiaire le défenseur temporise au lieu de foncer", () => {
+  const state = createMatchState({ aiLevel: 80 });
+  const owner = getPlayer(state, "home-human");
+  const defender = getPlayer(state, "away-human");
+  givePossession(state, owner.id);
+  owner.x = 500; owner.y = 270;
+  defender.x = 600; defender.y = 270;
+  const intent = collectAIInputs(state)[defender.id];
+  assert.equal(defensiveRole(state, defender), "press");
+  assert.equal(intent.jockeyHeld, true);
+  assert.equal(intent.tacklePressed, undefined);
+  assert.ok(Math.hypot(intent.moveX, intent.moveY) <= 0.41);
 });
 
 test("le 2 contre 1 ne s'active que dans une zone de piège rare", () => {

@@ -20,6 +20,20 @@ test("la page 3v3 ouvre le même moteur en solo avec contrôles contextuels", as
   expect(placement.centerDelta).toBeLessThan(3);
   expect(placement.gap).toBeGreaterThanOrEqual(0);
   expect(placement.gap).toBeLessThanOrEqual(6);
+  const brakePlacement = await page.evaluate(() => {
+    const action = document.querySelector("#secondary").getBoundingClientRect();
+    const stick = document.querySelector("#control-joystick").getBoundingClientRect();
+    const dx = action.left + action.width / 2 - (stick.left + stick.width / 2);
+    const dy = action.top + action.height / 2 - (stick.top + stick.height / 2);
+    return {
+      clockAngle: Math.atan2(dx, -dy) * 180 / Math.PI,
+      radialGap: Math.hypot(dx, dy) - stick.width / 2 - action.width / 2,
+    };
+  });
+  expect(brakePlacement.clockAngle).toBeGreaterThan(-30);
+  expect(brakePlacement.clockAngle).toBeLessThan(-15);
+  expect(brakePlacement.radialGap).toBeGreaterThanOrEqual(0);
+  expect(brakePlacement.radialGap).toBeLessThanOrEqual(8);
 });
 
 test("la page ami crée une invitation sans imposer le paysage", async ({ page }) => {

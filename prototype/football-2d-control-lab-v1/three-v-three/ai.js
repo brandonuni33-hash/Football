@@ -92,8 +92,19 @@ function opponentIntent(state, player) {
   const role = defensiveRole(state, player);
   if (role === "press") {
     const gap = distance(player, owner);
-    const intent = gap > RULES.tackleRange * 0.82 ? moveToward(player, owner, 0.68) : { moveX: 0, moveY: 0, jockeyHeld: true };
-    if (distance(player, owner) < RULES.tackleRange * 0.92 && player.recoveryRemaining <= 0) intent.tacklePressed = true;
+    let intent;
+    if (gap > 150) {
+      intent = moveToward(player, owner, 0.5);
+    } else if (gap > 52) {
+      const containment = {
+        x: owner.x + teamDirection(owner.team) * 54,
+        y: owner.y,
+      };
+      intent = { ...moveToward(player, containment, 0.38), jockeyHeld: true };
+    } else {
+      intent = { moveX: 0, moveY: 0, jockeyHeld: true };
+    }
+    if (gap < 37 && player.recoveryRemaining <= 0) intent.tacklePressed = true;
     return intent;
   }
   if (role === "trap") {
