@@ -10,11 +10,10 @@ import {
   toCareerCreationIdentity
 } from '../../../ui/verticalSlice/playerCreationDraft.js';
 
-test('la création garde six écrans et regroupe poste + pied fort', () => {
+test('la création garde cinq écrans et regroupe tête + corps sur Apparence', () => {
   assert.deepEqual(CREATION_SCREENS, [
     'identity',
     'appearance',
-    'body',
     'positionAndFoot',
     'nationalities',
     'childhoodCountry'
