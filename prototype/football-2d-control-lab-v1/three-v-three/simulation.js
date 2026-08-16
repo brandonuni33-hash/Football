@@ -17,6 +17,8 @@ function tickTimers(player, dt) {
   player.tackleRemaining = Math.max(0, player.tackleRemaining - dt);
   player.recoveryRemaining = Math.max(0, player.recoveryRemaining - dt);
   player.defensiveBrakeRemaining = Math.max(0, (player.defensiveBrakeRemaining ?? 0) - dt);
+  player.deepBrakeRemaining = Math.max(0, (player.deepBrakeRemaining ?? 0) - dt);
+  player.recentBallLossRemaining = Math.max(0, (player.recentBallLossRemaining ?? 0) - dt);
   player.aiDecisionRemaining = Math.max(0, (player.aiDecisionRemaining ?? 0) - dt);
   player.aiPassCooldown = Math.max(0, (player.aiPassCooldown ?? 0) - dt);
   player.orientedTouchRemaining = Math.max(0, (player.orientedTouchRemaining ?? 0) - dt);
@@ -43,13 +45,16 @@ function movePlayer(state, player, input, dt) {
       player.facingY = 0;
     }
   }
-  const awaitingProtectedReception = state.ball.phase === BALL_PHASE.PASS && state.ball.targetId === player.id && player.protectionRemaining > 0;
+  const awaitingPass = state.ball.phase === BALL_PHASE.PASS && state.ball.targetId === player.id;
+  const awaitingProtectedReception = awaitingPass && player.protectionRemaining > 0;
   const jockeying = (!!input.jockeyHeld || (player.defensiveBrakeRemaining ?? 0) > 0)
     && !player.hasBall && !awaitingProtectedReception;
   player.jockeying = jockeying;
   updateSupportState(player, move);
   const movementFeel = movementFeelFromLevel(state.gameSpeedLevel);
-  let speedScale = jockeying ? RULES.jockeySpeedScale : 1;
+  let speedScale = jockeying
+    ? ((player.deepBrakeRemaining ?? 0) > 0 ? RULES.deepJockeySpeedScale : RULES.jockeySpeedScale)
+    : 1;
   if (player.humanSlot && !input.rapidHeld) speedScale = Math.min(speedScale, RULES.normalPaceScale);
   if (player.protectionRemaining > 0) speedScale = Math.min(speedScale, RULES.protectionSpeedScale);
   const targetVx = move.x * movementFeel.maxSpeed * move.magnitude * speedScale;
@@ -79,10 +84,16 @@ function movePlayer(state, player, input, dt) {
     player.receptionIntentX = right.x;
     player.receptionIntentY = right.y;
     player.receptionIntentMagnitude = right.magnitude;
-  } else if (player.receptionRemaining <= 0) {
+  } else if (player.receptionRemaining <= 0 && !awaitingPass) {
     player.receptionIntentMagnitude = 0;
   }
-  if (player.protectionRemaining > 0 && right.magnitude > 0.08) {
+
+  if (awaitingPass && right.magnitude > 0.08) {
+    player.controlX = right.x;
+    player.controlY = right.y;
+    player.facingX = right.x;
+    player.facingY = right.y;
+  } else if (player.protectionRemaining > 0 && right.magnitude > 0.08) {
     player.controlX = right.x;
     player.controlY = right.y;
     player.facingX = right.x;
