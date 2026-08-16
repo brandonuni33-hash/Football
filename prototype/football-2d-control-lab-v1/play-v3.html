@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>STP — Control Lab V1 · Protection V3</title>
+  <link rel="stylesheet" href="./styles-play-v3.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div><p class="eyebrow">STREET TO PRO · CONTROL LAB V1</p><h1>Lire, protéger, orienter</h1></div>
+      <div class="hud"><strong id="player-name">Elias Morel · 24 ans</strong><span>Stick droit : <b id="control-mode">VISION</b></span><span>Action : <b id="action-mode">—</b></span></div>
+    </header>
+
+    <section class="game-wrap">
+      <canvas id="game" width="960" height="540" aria-label="STP Control Lab V1"></canvas>
+      <div class="touch-layer" aria-label="Contrôles tactiles">
+        <div class="stick-zone move-zone">
+          <span class="control-caption">DÉPLACEMENT</span>
+          <div id="move-joystick" class="joystick joystick-move"><div id="move-stick" class="stick"></div></div>
+        </div>
+        <div class="right-hand-zone">
+          <div class="action-arc" aria-label="Actions">
+            <button id="protect" class="action protect" type="button">PROT.</button>
+            <button id="pass" class="action pass" type="button">PASSE</button>
+            <button id="shoot" class="action shoot" type="button"><span>TIR</span><i id="power-fill"></i></button>
+          </div>
+          <div class="stick-zone control-zone">
+            <span class="control-caption">LECTURE / CONTRÔLE</span>
+            <div id="control-joystick" class="joystick joystick-control"><div id="control-stick" class="stick"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="control-notes">
+      <div><strong>Protection engagée</strong><span>Un appui déclenche 3 s complètes. Pendant ce temps : arrêt ou déplacement lent seulement.</span></div>
+      <div><strong>Stick droit actif</strong><span>Pendant la protection, il reste disponible pour lire le duel et choisir l’orientation du contrôle.</span></div>
+      <div><strong>Réception sous pression</strong><span>Tu peux activer PROT. avant l’arrivée de la passe puis choisir ton premier contrôle au stick droit.</span></div>
+      <div><strong>Cooldown court</strong><span>Après les 3 s : 2 s de cooldown. La protection n’est jamais une invulnérabilité.</span></div>
+    </section>
+
+    <div class="footer-actions"><button id="reset" type="button">Recommencer l’action</button><span>Calibration baseline conservée : vitesse 80 · accélération 80 · contrôle 100 · tir 109</span></div>
+  </main>
+  <script type="module" src="./game-play-v3.js"></script>
+</body>
+</html>
