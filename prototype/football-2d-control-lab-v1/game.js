@@ -16,6 +16,7 @@ const shootButton = document.querySelector("#shoot");
 const protectButton = document.querySelector("#protect");
 const controlMode = document.querySelector("#control-mode");
 const actionMode = document.querySelector("#action-mode");
+const goalFlash = document.querySelector("#goal-flash");
 
 const input = createControlLabInput({
   moveJoystick: document.querySelector("#move-joystick"),
@@ -32,14 +33,18 @@ let state = createControlLabState();
 let previousTime = performance.now();
 let actionUntil = 0;
 let actionText = "—";
+let goalSince = null;
 
 document.querySelector("#player-name").textContent = `${profile.name} · ${profile.age} ans`;
 
-document.querySelector("#reset").addEventListener("click", () => {
+function resetAction() {
   const goals = state.goals;
   state = { ...createControlLabState(), goals };
-  document.querySelector("#goal-flash").hidden = true;
-});
+  goalFlash.hidden = true;
+  goalSince = null;
+}
+
+document.querySelector("#reset").addEventListener("click", resetAction);
 
 function pulseAction(text, now, duration = 280) {
   actionText = text;
@@ -51,7 +56,13 @@ function frame(now) {
   const dt = Math.min(0.05, (now - previousTime) / 1000);
   previousTime = now;
 
-  if (state.status !== "goal") state = stepControlLab(state, controls, dt, tuning, athletic);
+  if (state.status !== "goal") {
+    state = stepControlLab(state, controls, dt, tuning, athletic);
+    goalSince = null;
+  } else {
+    if (goalSince === null) goalSince = now;
+    if (now - goalSince >= 900) resetAction();
+  }
 
   if (controls.passPressed) pulseAction("PASSE", now);
   else if (controls.shootReleased) pulseAction("TIR", now);
@@ -69,7 +80,7 @@ function frame(now) {
   protectButton.classList.toggle("active", controls.protecting);
   passButton.classList.toggle("active", controls.passPressed);
   shootButton.classList.toggle("active", controls.charge > 0);
-  document.querySelector("#goal-flash").hidden = state.status !== "goal";
+  goalFlash.hidden = state.status !== "goal";
 
   renderControlLab(ctx, state, profile, controls.charge);
   requestAnimationFrame(frame);
