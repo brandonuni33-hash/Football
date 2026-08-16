@@ -4,6 +4,7 @@ import {
     setSecondaryNationality,
     continueFromNationalities
 } from './playerCreationNationalitiesStep.js';
+import { flagForCountry } from '../../domain/world/countryCatalog.js';
 
 function escapeHtml(value = '') {
     return String(value)
@@ -16,7 +17,7 @@ function escapeHtml(value = '') {
 
 function optionsHtml(options, selected, { includeEmpty = false } = {}) {
     const empty = includeEmpty ? '<option value="">Aucune</option>' : '<option value="">Choisir</option>';
-    return empty + options.map(country => `<option value="${escapeHtml(country)}"${country === selected ? ' selected' : ''}>${escapeHtml(country)}</option>`).join('');
+    return empty + options.map(country => `<option value="${escapeHtml(country)}"${country === selected ? ' selected' : ''}>${flagForCountry(country)} ${escapeHtml(country)}</option>`).join('');
 }
 
 export function playerCreationNationalitiesTemplate(state) {

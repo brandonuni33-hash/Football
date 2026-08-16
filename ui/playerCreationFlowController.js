@@ -39,11 +39,16 @@ function installStyles() {
     style.textContent = `${PLAYER_CREATION_IDENTITY_CSS}\n${PLAYER_CREATION_APPEARANCE_CSS}\n${PLAYER_CREATION_BODY_CSS}\n${PLAYER_CREATION_POSITION_AND_FOOT_CSS}\n${PLAYER_CREATION_NATIONALITIES_CSS}\n${PLAYER_CREATION_CHILDHOOD_COUNTRY_CSS}
       html:has(.stp-player-creation-flow),body:has(.stp-player-creation-flow){background:#050505;overflow:hidden}
       .stp-player-creation-flow{box-sizing:border-box;width:100%;max-width:430px;height:100vh;height:100dvh;margin:0 auto;overflow:hidden;background:#050505;position:relative;padding-top:env(safe-area-inset-top,0)}
-      .stp-player-creation-screen{height:100%;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+      .stp-player-creation-screen{height:100%;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;scroll-behavior:smooth}
       .stp-player-creation-screen::-webkit-scrollbar{display:none}
-      .stp-player-creation-back{position:absolute;z-index:20;left:14px;bottom:calc(20px + env(safe-area-inset-bottom,0px));width:44px;height:44px;border-radius:14px;border:1px solid rgba(255,255,255,.11);background:rgba(8,8,8,.92);color:#f4f1e9;font:700 21px/1 system-ui;display:grid;place-items:center;box-shadow:0 8px 20px rgba(0,0,0,.35)}
-      .stp-player-creation-flow.has-back .stp-creation-footer{padding-left:76px}
+      .stp-player-creation-screen>section{animation:stp-creation-enter .22s cubic-bezier(.2,.72,.25,1) both;padding-bottom:calc(82px + env(safe-area-inset-bottom,0px))}
+      .stp-player-creation-back{position:absolute;z-index:20;left:14px;top:calc(12px + env(safe-area-inset-top,0px));width:40px;height:40px;border-radius:13px;border:1px solid rgba(255,255,255,.11);background:rgba(8,8,8,.82);backdrop-filter:blur(12px);color:#f4f1e9;font:700 21px/1 system-ui;display:grid;place-items:center;box-shadow:0 8px 20px rgba(0,0,0,.28)}
+      .stp-player-creation-flow.has-back .stp-creation-brand{padding-left:44px}
+      .stp-player-creation-flow .stp-creation-footer{position:sticky;bottom:0;z-index:12;margin-top:auto;padding:12px 22px calc(14px + env(safe-area-inset-bottom,0px));background:linear-gradient(180deg,transparent 0,#070707 24%,#070707 100%);backdrop-filter:blur(8px)}
+      .stp-player-creation-flow .stp-continue{transition:transform .14s ease,background .18s ease,color .18s ease}.stp-player-creation-flow .stp-continue:active:not(:disabled){transform:scale(.985)}
       .stp-player-creation-flow.is-submitting{pointer-events:none;opacity:.82}
+      @keyframes stp-creation-enter{from{opacity:.55;transform:translateX(14px)}to{opacity:1;transform:none}}
+      @media (prefers-reduced-motion:reduce){.stp-player-creation-screen>section{animation:none}.stp-player-creation-flow .stp-continue{transition:none}}
       @media (max-height:760px){.stp-creation-hero{padding-top:24px}.stp-body-stage{min-height:390px}.stp-position-pitch{height:350px}}
     `;
     document.head.appendChild(style);

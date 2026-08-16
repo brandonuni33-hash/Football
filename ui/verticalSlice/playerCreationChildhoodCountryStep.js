@@ -1,19 +1,20 @@
 import { createPlayerCreationDraft } from './playerCreationDraft.js';
+import { countryMetadata } from '../../domain/world/countryCatalog.js';
 
 export const CHILDHOOD_COUNTRIES = Object.freeze([
-    Object.freeze({ id: 'France', label: 'France', flag: '🇫🇷', available: true, note: 'Vertical slice disponible' }),
-    Object.freeze({ id: 'Angleterre', label: 'Angleterre', flag: '🇬🇧', available: false, note: 'Prévu pour la version complète' }),
-    Object.freeze({ id: 'Espagne', label: 'Espagne', flag: '🇪🇸', available: false, note: 'Prévu pour la version complète' }),
-    Object.freeze({ id: 'Portugal', label: 'Portugal', flag: '🇵🇹', available: false, note: 'Prévu pour la version complète' }),
-    Object.freeze({ id: 'Belgique', label: 'Belgique', flag: '🇧🇪', available: false, note: 'Prévu pour la version complète' }),
-    Object.freeze({ id: 'Brésil', label: 'Brésil', flag: '🇧🇷', available: false, note: 'Prévu pour la version complète' })
+    Object.freeze({ ...countryMetadata('France'), available: true, note: 'Disponible au lancement' }),
+    Object.freeze({ ...countryMetadata('Angleterre'), available: false, note: 'Prévu pour la version complète' }),
+    Object.freeze({ ...countryMetadata('Espagne'), available: false, note: 'Prévu pour la version complète' }),
+    Object.freeze({ ...countryMetadata('Portugal'), available: false, note: 'Prévu pour la version complète' }),
+    Object.freeze({ ...countryMetadata('Belgique'), available: false, note: 'Prévu pour la version complète' }),
+    Object.freeze({ ...countryMetadata('Brésil'), available: false, note: 'Prévu pour la version complète' })
 ]);
 
 export const CHILDHOOD_COUNTRY_COPY = Object.freeze({
     eyebrow: 'Ton environnement',
     title: 'Où as-tu grandi ?',
-    description: 'Ce pays détermine le décor, les habitudes et les premières portes de ton histoire.',
-    info: 'Ton pays d’enfance n’est pas forcément ta nationalité. Il définit surtout le monde dans lequel ton prologue commence.',
+    description: 'Ton pays d’enfance fait partie de ton identité et peut influencer certaines rencontres de ton histoire.',
+    info: 'Les décors et l’ambiance de ton prologue dépendront du continent dans lequel tu as grandi.',
     continueLabel: 'Terminer la création'
 });
 

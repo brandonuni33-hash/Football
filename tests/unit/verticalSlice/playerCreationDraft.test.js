@@ -71,4 +71,5 @@ test('la création ne choisit ni origine ni club', () => {
   assert.equal(identity.youthClub, null);
   assert.equal(identity.heartClub, null);
   assert.equal(identity.secondaryNationality, 'Mali');
+  assert.equal(identity.raisedInContinent, 'Europe');
 });

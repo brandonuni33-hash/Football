@@ -1,6 +1,7 @@
 // ui/verticalSlice/playerCreationDraft.js
 // Contrat de saisie isolé pour la création du joueur de la vertical slice.
 // Cette couche ne choisit ni origine football, ni club, ni potentiel caché.
+import { continentForCountry } from '../../domain/world/countryCatalog.js';
 
 export const VERTICAL_SLICE_START_AGE = 14;
 export const VERTICAL_SLICE_RAISED_IN_COUNTRY = 'France';
@@ -91,6 +92,7 @@ export function toCareerCreationIdentity(draft = {}) {
         primaryNationality: draft.primaryNationality,
         secondaryNationality: draft.secondaryNationality || null,
         raisedInCountry: draft.raisedInCountry,
+        raisedInContinent: continentForCountry(draft.raisedInCountry),
 
         // Ces faits appartiennent au prologue et au monde, pas à l'écran de création.
         origin: null,

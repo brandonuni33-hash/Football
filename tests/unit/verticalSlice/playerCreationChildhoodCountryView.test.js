@@ -7,6 +7,8 @@ test('l’écran pays d’enfance garde le fond matière et affiche 06 / 06', ()
     const html = playerCreationChildhoodCountryTemplate(createChildhoodCountryStepState());
     assert.match(html, /06 \/ 06/);
     assert.match(html, /Où as-tu grandi/);
+    assert.match(html, /fait partie de ton identité/);
+    assert.match(html, /dépendront du continent/);
     assert.match(html, /stp-creation-material/);
     assert.match(html, /data-country="France"/);
     assert.match(html, /class="stp-childhood-country selected" data-country="France"/);

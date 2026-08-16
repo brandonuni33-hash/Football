@@ -75,6 +75,7 @@ export class CareerApplication {
             primaryNationality: selectedData.primaryNationality,
             secondaryNationality: selectedData.secondaryNationality,
             raisedInCountry: selectedData.raisedInCountry,
+            raisedInContinent: selectedData.raisedInContinent,
             age: 14
         });
 

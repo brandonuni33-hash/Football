@@ -55,13 +55,14 @@ test('le draft moderne devient le joueur réellement sauvegardé par Street to P
         primaryNationality: state.player.primaryNationality,
         secondaryNationality: state.player.secondaryNationality,
         raisedInCountry: state.player.raisedInCountry,
+        raisedInContinent: state.player.raisedInContinent,
         origin: state.player.origin,
         youthClub: state.player.youthClub,
         heartClub: state.player.heartClub
     }, {
         firstname: 'Elias', lastname: 'Morel', age: 14, faceId: 'face-04',
         height: 171, weight: 58, position: 'MC', preferredFoot: 'LEFT',
-        primaryNationality: 'France', secondaryNationality: 'Algérie', raisedInCountry: 'France',
+        primaryNationality: 'France', secondaryNationality: 'Algérie', raisedInCountry: 'France', raisedInContinent: 'Europe',
         origin: null, youthClub: null, heartClub: null
     });
 });

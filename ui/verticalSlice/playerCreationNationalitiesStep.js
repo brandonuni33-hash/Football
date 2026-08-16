@@ -1,10 +1,7 @@
 import { createPlayerCreationDraft } from './playerCreationDraft.js';
+import { COUNTRY_NAMES } from '../../domain/world/countryCatalog.js';
 
-export const NATIONALITY_OPTIONS = Object.freeze([
-    'France', 'Algérie', 'Maroc', 'Mali', 'Sénégal', 'Côte d’Ivoire', 'Cameroun',
-    'Portugal', 'Espagne', 'Italie', 'Belgique', 'Angleterre', 'Pays-Bas', 'Allemagne',
-    'Brésil', 'Argentine', 'Uruguay', 'Japon'
-]);
+export const NATIONALITY_OPTIONS = COUNTRY_NAMES;
 
 export const NATIONALITIES_COPY = Object.freeze({
     eyebrow: 'Nationalités',

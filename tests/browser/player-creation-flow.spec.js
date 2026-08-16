@@ -64,6 +64,7 @@ test.describe('création joueur moderne mobile', () => {
         primaryNationality: p.primaryNationality,
         secondaryNationality: p.secondaryNationality,
         raisedInCountry: p.raisedInCountry,
+        raisedInContinent: p.raisedInContinent,
         origin: p.origin, youthClub: p.youthClub, heartClub: p.heartClub
       };
     });
@@ -73,7 +74,7 @@ test.describe('création joueur moderne mobile', () => {
       faceId: 'face-02', height: 172, weight: 59,
       position: 'BU', preferredFoot: 'LEFT',
       primaryNationality: 'France', secondaryNationality: 'Algérie',
-      raisedInCountry: 'France', origin: null, youthClub: null, heartClub: null
+      raisedInCountry: 'France', raisedInContinent: 'Europe', origin: null, youthClub: null, heartClub: null
     });
   });
 

@@ -17,6 +17,8 @@ test('l’écran nationalités garde une principale obligatoire et une seconde o
     assert.match(html, /Optionnelle/);
     assert.match(html, /name="primaryNationality"/);
     assert.match(html, /name="secondaryNationality"/);
+    assert.match(html, /🇫🇷 France/);
+    assert.match(html, /🇩🇿 Algérie/);
     assert.match(html, /class="stp-continue" disabled/);
 });
 
@@ -25,7 +27,7 @@ test('les nationalités sélectionnées apparaissent et activent Continuer', () 
     state = setSecondaryNationality(state, 'Mali');
     const html = playerCreationNationalitiesTemplate(state);
 
-    assert.match(html, /value="France" selected>France<\/option>/);
-    assert.match(html, /value="Mali" selected>Mali<\/option>/);
+    assert.match(html, /value="France" selected>🇫🇷 France<\/option>/);
+    assert.match(html, /value="Mali" selected>🇲🇱 Mali<\/option>/);
     assert.match(html, /class="stp-continue ready"/);
 });
