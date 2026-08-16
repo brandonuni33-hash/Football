@@ -28,8 +28,8 @@ export function createChildhoodCountryStepState(input = {}) {
         ...(input?.draft ? input : {}),
         draft: draftFrom(input),
         step: 'childhoodCountry',
-        screenIndex: 6,
-        screenCount: 6
+        screenIndex: 5,
+        screenCount: 5
     });
 }
 
@@ -63,7 +63,7 @@ export function childhoodCountryViewModel(state) {
 
     return Object.freeze({
         step: 'childhoodCountry',
-        progress: Object.freeze({ current: 6, total: 6, ratio: 1 }),
+        progress: Object.freeze({ current: 5, total: 5, ratio: 1 }),
         copy: CHILDHOOD_COUNTRY_COPY,
         selectedCountry,
         countries: CHILDHOOD_COUNTRIES.map(country => Object.freeze({
@@ -82,6 +82,6 @@ export function finishPlayerCreation(state) {
     return Object.freeze({
         ok: true,
         nextStep: 'pastFragments',
-        state: Object.freeze({ ...state, step: 'pastFragments', screenIndex: 7 })
+        state: Object.freeze({ ...state, step: 'pastFragments', screenIndex: 6 })
     });
 }
