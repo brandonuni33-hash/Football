@@ -50,6 +50,7 @@ function movePlayer(state, player, input, dt) {
   updateSupportState(player, move);
   const movementFeel = movementFeelFromLevel(state.gameSpeedLevel);
   let speedScale = jockeying ? RULES.jockeySpeedScale : 1;
+  if (player.humanSlot && !input.rapidHeld) speedScale = Math.min(speedScale, RULES.normalPaceScale);
   if (player.protectionRemaining > 0) speedScale = Math.min(speedScale, RULES.protectionSpeedScale);
   const targetVx = move.x * movementFeel.maxSpeed * move.magnitude * speedScale;
   const targetVy = move.y * movementFeel.maxSpeed * move.magnitude * speedScale;

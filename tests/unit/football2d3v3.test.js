@@ -268,6 +268,29 @@ test("le curseur vitesse du jeu couvre une plage 0 à 100 réellement différent
   assert.ok(getPlayer(fast, "home-human").x > getPlayer(slow, "home-human").x + 12);
 });
 
+test("le stick gauche reste en allure normale et RAPIDE libère la course", () => {
+  const normal = createMatchState({ online: true, gameSpeedLevel: 50 });
+  const rapid = createMatchState({ online: true, gameSpeedLevel: 50 });
+  const normalPlayer = getPlayer(normal, "home-human");
+  const rapidPlayer = getPlayer(rapid, "home-human");
+  advance(normal, { host: { moveX: 1 } }, 0.6);
+  advance(rapid, { host: { moveX: 1, rapidHeld: true } }, 0.6);
+  assert.equal(RULES.normalPaceScale, 0.76);
+  assert.ok(rapidPlayer.x > normalPlayer.x + 12);
+});
+
+test("FREIN libère le joueur rapidement s'il ne déclenche pas le tacle", () => {
+  let state = createMatchState({ online: true });
+  const defender = getPlayer(state, "home-human");
+  const owner = getPlayer(state, "away-human");
+  givePossession(state, owner.id);
+  pressDefensiveBrake(state, defender.id);
+  assert.equal(defender.defensiveBrakeRemaining, 1.2);
+  state = advance(state, {}, 1.25);
+  assert.equal(defender.defensiveBrakeRemaining, 0);
+  assert.equal(defender.jockeying, false);
+});
+
 test("deux pressions successives sur le vrai bouton FREIN lancent le tacle", () => {
   let state = createMatchState({ online: true });
   const defender = getPlayer(state, "home-human");

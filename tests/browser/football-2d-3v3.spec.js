@@ -9,6 +9,7 @@ test("la page 3v3 ouvre le même moteur en solo avec contrôles contextuels", as
   await expect(page.locator("#primary")).toHaveText("APPEL");
   await expect(page.locator("#secondary")).toHaveText("FREIN");
   await expect(page.locator("#tertiary")).toHaveText("PROT.");
+  await expect(page.locator("#rapid")).toHaveText("RAPIDE");
   const placement = await page.evaluate(() => {
     const action = document.querySelector("#primary").getBoundingClientRect();
     const stick = document.querySelector("#control-joystick").getBoundingClientRect();
@@ -34,6 +35,15 @@ test("la page 3v3 ouvre le même moteur en solo avec contrôles contextuels", as
   expect(brakePlacement.clockAngle).toBeLessThan(-47);
   expect(brakePlacement.radialGap).toBeGreaterThanOrEqual(0);
   expect(brakePlacement.radialGap).toBeLessThanOrEqual(8);
+  const rapidPlacement = await page.evaluate(() => {
+    const action = document.querySelector("#rapid").getBoundingClientRect();
+    const stick = document.querySelector("#control-joystick").getBoundingClientRect();
+    const dx = action.left + action.width / 2 - (stick.left + stick.width / 2);
+    const dy = action.top + action.height / 2 - (stick.top + stick.height / 2);
+    return { clockAngle: Math.atan2(dx, -dy) * 180 / Math.PI };
+  });
+  expect(rapidPlacement.clockAngle).toBeGreaterThan(62);
+  expect(rapidPlacement.clockAngle).toBeLessThan(73);
 });
 
 test("la page ami crée une invitation sans imposer le paysage", async ({ page }) => {

@@ -26,6 +26,7 @@ const elements = {
   moveRoot: document.querySelector("#move-joystick"), moveKnob: document.querySelector("#move-stick"),
   controlRoot: document.querySelector("#control-joystick"), controlKnob: document.querySelector("#control-stick"),
   primary: document.querySelector("#primary"), secondary: document.querySelector("#secondary"), tertiary: document.querySelector("#tertiary"),
+  rapid: document.querySelector("#rapid"),
 };
 const input = createInput(elements);
 let state = createMatchState();

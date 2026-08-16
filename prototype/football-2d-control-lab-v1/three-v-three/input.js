@@ -30,13 +30,30 @@ export function createInput(elements) {
   elements.primary.addEventListener("pointerdown", press("primary"));
   elements.secondary.addEventListener("pointerdown", press("secondary"));
   elements.tertiary.addEventListener("pointerdown", press("tertiary"));
+  const rapid = { held: false, pointer: null };
+  const releaseRapid = (event) => {
+    if (event.pointerId !== rapid.pointer) return;
+    rapid.held = false;
+    rapid.pointer = null;
+    elements.rapid.classList.remove("active");
+  };
+  elements.rapid.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    rapid.pointer = event.pointerId;
+    rapid.held = true;
+    elements.rapid.classList.add("active");
+    elements.rapid.setPointerCapture?.(event.pointerId);
+  });
+  elements.rapid.addEventListener("pointerup", releaseRapid);
+  elements.rapid.addEventListener("pointercancel", releaseRapid);
+  elements.rapid.addEventListener("lostpointercapture", releaseRapid);
 
   return {
     read() {
       const input = {
         moveX: move.x, moveY: move.y, controlX: control.x, controlY: control.y,
         primaryPressed: queued.primary, secondaryPressed: queued.secondary, tertiaryPressed: queued.tertiary,
-        jockeyHeld: false, x: control.x, y: control.y,
+        rapidHeld: rapid.held, jockeyHeld: false, x: control.x, y: control.y,
       };
       queued.primary = queued.secondary = queued.tertiary = false;
       return input;
