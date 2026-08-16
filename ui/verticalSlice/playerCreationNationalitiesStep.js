@@ -22,8 +22,8 @@ export function createNationalitiesStepState(input = {}) {
         ...(input?.draft ? input : {}),
         draft: draftFrom(input),
         step: 'nationalities',
-        screenIndex: 5,
-        screenCount: 6
+        screenIndex: 4,
+        screenCount: 5
     });
 }
 
@@ -70,7 +70,7 @@ export function nationalitiesViewModel(state) {
     const validation = nationalitiesValidation(state);
     return Object.freeze({
         step: 'nationalities',
-        progress: Object.freeze({ current: 5, total: 6, ratio: 5 / 6 }),
+        progress: Object.freeze({ current: 4, total: 5, ratio: 4 / 5 }),
         copy: NATIONALITIES_COPY,
         options: NATIONALITY_OPTIONS,
         primaryNationality: state?.draft?.primaryNationality ?? '',
@@ -87,6 +87,6 @@ export function continueFromNationalities(state) {
     return Object.freeze({
         ok: true,
         nextStep: 'childhoodCountry',
-        state: Object.freeze({ ...state, step: 'childhoodCountry', screenIndex: 6 })
+        state: Object.freeze({ ...state, step: 'childhoodCountry', screenIndex: 5 })
     });
 }
