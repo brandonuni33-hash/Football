@@ -18,9 +18,21 @@ function showFatalError(error) {
     }
 }
 
+async function tryMountSouvenirTest() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('souvenir') !== '1') return false;
+
+    const { mountSouvenirExperience } = await import('./ui/souvenirExperience.js?v=1');
+    mountSouvenirExperience();
+    console.log('🧠 Test Souvenir 1 monté depuis le vrai jeu.');
+    return true;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('⚡ Démarrage de Street to Pro...');
     try {
+        if (await tryMountSouvenirTest()) return;
+
         window.game = new GameEngine();
         if (window.game.ui && typeof window.game.ui.init === 'function') window.game.ui.init();
         else throw new Error("L'interface utilisateur n'a pas pu être initialisée.");
