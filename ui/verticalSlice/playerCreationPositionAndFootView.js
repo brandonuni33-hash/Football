@@ -47,7 +47,7 @@ export function playerCreationPositionAndFootTemplate(state) {
   <div class="stp-creation-material" aria-hidden="true"><i></i><b></b><em></em></div>
 
   <header class="stp-creation-top">
-    <div class="stp-creation-brand"><span><strong>STP</strong> / Création</span><span>04 / 06</span></div>
+    <div class="stp-creation-brand"><span><strong>STP</strong> / Création</span><span>${String(vm.progress.current).padStart(2, '0')} / ${String(vm.progress.total).padStart(2, '0')}</span></div>
     <div class="stp-creation-progress"><i style="width:${vm.progress.ratio * 100}%"></i></div>
   </header>
 
