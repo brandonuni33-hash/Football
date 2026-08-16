@@ -1,23 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createChildhoodCountryStepState } from '../../../ui/verticalSlice/playerCreationChildhoodCountryStep.js';
+import { createChildhoodCountryStepState, setChildhoodCountry } from '../../../ui/verticalSlice/playerCreationChildhoodCountryStep.js';
 import { playerCreationChildhoodCountryTemplate } from '../../../ui/verticalSlice/playerCreationChildhoodCountryView.js';
 
-test('l’écran pays d’enfance garde le fond matière et affiche 05 / 05', () => {
+test('l’écran environnement affiche uniquement Europe et Afrique sur 05 / 05', () => {
     const html = playerCreationChildhoodCountryTemplate(createChildhoodCountryStepState());
     assert.match(html, /05 \/ 05/);
     assert.match(html, /Où as-tu grandi/);
-    assert.match(html, /fait partie de ton identité/);
-    assert.match(html, /dépendront du continent/);
-    assert.match(html, /stp-creation-material/);
-    assert.match(html, /data-country="France"/);
-    assert.match(html, /class="stp-childhood-country selected" data-country="France"/);
+    assert.match(html, /continent qui a façonné ton enfance/);
+    assert.match(html, /data-country="Europe"/);
+    assert.match(html, /data-country="Afrique"/);
+    assert.doesNotMatch(html, /France|Angleterre|Brésil/);
     assert.match(html, /Terminer la création/);
 });
 
-test('les pays hors vertical slice restent visibles mais verrouillés', () => {
-    const html = playerCreationChildhoodCountryTemplate(createChildhoodCountryStepState());
-    assert.match(html, /data-country="Angleterre" disabled/);
-    assert.match(html, /data-country="Brésil" disabled/);
-    assert.match(html, /Prévu pour la version complète/);
+test('le continent choisi est visuellement sélectionné', () => {
+    const state = setChildhoodCountry(createChildhoodCountryStepState(), 'Afrique');
+    const html = playerCreationChildhoodCountryTemplate(state);
+    assert.match(html, /class="stp-childhood-country selected" data-country="Afrique"/);
 });
