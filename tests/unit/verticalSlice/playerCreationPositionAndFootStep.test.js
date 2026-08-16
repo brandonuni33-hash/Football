@@ -12,7 +12,8 @@ import {
 test('l’étape poste expose dix positions et démarre sans choix', () => {
     const state = createPositionAndFootStepState();
     assert.equal(POSITION_OPTIONS.length, 10);
-    assert.equal(state.screenIndex, 4);
+    assert.equal(state.screenIndex, 3);
+    assert.equal(state.screenCount, 5);
     assert.equal(positionAndFootValidation(state).valid, false);
 });
 
@@ -42,5 +43,5 @@ test('continuer mène aux nationalités uniquement quand les deux choix sont fai
     const result = continueFromPositionAndFoot(selected);
     assert.equal(result.ok, true);
     assert.equal(result.nextStep, 'nationalities');
-    assert.equal(result.state.screenIndex, 5);
+    assert.equal(result.state.screenIndex, 4);
 });
