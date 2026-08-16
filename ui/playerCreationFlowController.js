@@ -50,7 +50,12 @@ function installStyles() {
 }
 
 function stateFor(step, draft) {
-    return STATE_FACTORIES[step]({ draft });
+    // L'étape Identité reçoit directement le seed, tandis que les cinq autres
+    // fabriques acceptent l'enveloppe { draft }. Garder cette différence ici
+    // évite de perdre prénom/nom lors d'un retour depuis l'Apparence.
+    return step === 'identity'
+        ? createIdentityStepState(draft)
+        : STATE_FACTORIES[step]({ draft });
 }
 
 export class PlayerCreationFlowController {
