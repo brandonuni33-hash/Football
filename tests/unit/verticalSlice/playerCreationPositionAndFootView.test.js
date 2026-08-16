@@ -9,7 +9,7 @@ import { playerCreationPositionAndFootTemplate } from '../../../ui/verticalSlice
 
 test('l’écran poste garde le fond matière et la disposition terrain', () => {
     const html = playerCreationPositionAndFootTemplate(createPositionAndFootStepState());
-    assert.match(html, /04 \/ 06/);
+    assert.match(html, /03 \/ 05/);
     assert.match(html, /Où tu te sens le mieux/);
     assert.match(html, /stp-position-pitch/);
     assert.match(html, /data-position="GB"/);
