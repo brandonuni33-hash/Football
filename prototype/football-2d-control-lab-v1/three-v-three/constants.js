@@ -23,7 +23,10 @@ export const RULES = Object.freeze({
   tackleRecovery: 0.42,
   missedTackleRecovery: 0.9,
   defensiveBrakeDuration: 2.6,
-  jockeySpeedScale: 0.48,
+  jockeySpeedScale: 0.52,
+  goalkeeperRadius: 19,
+  goalkeeperSaveRadius: 27,
+  goalkeeperSpeed: 92,
   callDuration: 1.3,
   scoreToWin: 3,
 });

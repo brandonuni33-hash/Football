@@ -8,6 +8,7 @@ import { consumeInputActions, mergeInputFrames } from "../../prototype/football-
 import { recoveryWindow, selectRecoveryCandidate } from "../../prototype/football-2d-control-lab-v1/three-v-three/ballRecovery.js";
 import { collectAIInputs, defensiveRole, executeAIAction, looseBallRole } from "../../prototype/football-2d-control-lab-v1/three-v-three/ai.js";
 import { stepMatch } from "../../prototype/football-2d-control-lab-v1/three-v-three/simulation.js";
+import { crossedGoalLine, resolveGoalkeeperSave } from "../../prototype/football-2d-control-lab-v1/three-v-three/goalkeepers.js";
 
 function advance(state, inputs, seconds) {
   for (let i = 0; i < Math.ceil(seconds * 60); i += 1) state = stepMatch(state, inputs, 1 / 60);
@@ -144,6 +145,46 @@ test("le 3v3 contient exactement six joueurs dont un seul humain en solo", () =>
   assert.equal(state.players.filter((player) => player.humanSlot).length, 1);
   assert.equal(state.players.filter((player) => player.team === TEAM.HOME).length, 3);
   assert.equal(state.players.filter((player) => player.team === TEAM.AWAY).length, 3);
+  assert.equal(state.goalkeepers.length, 2);
+  assert.equal(state.goalkeepers.filter((keeper) => keeper.team === TEAM.HOME).length, 1);
+  assert.equal(state.goalkeepers.filter((keeper) => keeper.team === TEAM.AWAY).length, 1);
+});
+
+test("FREIN est légèrement plus rapide tout en restant une posture contenue", () => {
+  assert.equal(RULES.jockeySpeedScale, 0.52);
+  assert.ok(RULES.jockeySpeedScale > 0.48);
+  assert.ok(RULES.jockeySpeedScale < 0.6);
+});
+
+test("le franchissement de la ligne entre les poteaux vaut but même sur un tir rapide", () => {
+  assert.equal(crossedGoalLine({ x: 80, y: 250 }, { x: 10, y: 250 }), TEAM.HOME);
+  assert.equal(crossedGoalLine({ x: 920, y: 300 }, { x: 990, y: 300 }), TEAM.AWAY);
+  assert.equal(crossedGoalLine({ x: 80, y: 180 }, { x: 10, y: 180 }), null);
+});
+
+test("un gardien placé sur la trajectoire peut arrêter le tir avant la ligne", () => {
+  const state = createMatchState();
+  clearPossession(state, BALL_PHASE.SHOT);
+  state.ball.x = 48; state.ball.y = 270; state.ball.vx = -340; state.ball.vy = 0;
+  const save = resolveGoalkeeperSave(state, { x: 70, y: 270 });
+  assert.equal(save?.id, "home-goalkeeper");
+  assert.equal(state.ball.phase, BALL_PHASE.FREE);
+  assert.ok(state.ball.vx > 0);
+  assert.equal(state.lastEvent, "goalkeeper_save");
+});
+
+test("un ballon qui atteint la ligne après avoir dépassé le gardien augmente le score", () => {
+  let state = createMatchState();
+  clearPossession(state, BALL_PHASE.SHOT);
+  state.ball.x = FIELD.width - FIELD.inset - 4;
+  state.ball.y = FIELD.goalTop + 12;
+  state.ball.vx = 430;
+  state.ball.vy = 0;
+  state = stepMatch(state, {}, 1 / 60);
+  assert.equal(state.score.home, 1);
+  assert.equal(state.score.away, 0);
+  assert.equal(state.lastEvent, "restart");
+  assert.equal(state.goalkeepers.length, 2);
 });
 
 test("TIR utilise l'orientation du joueur quand le stick droit est au repos", () => {

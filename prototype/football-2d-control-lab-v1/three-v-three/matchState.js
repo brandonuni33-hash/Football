@@ -19,6 +19,10 @@ function player(id, team, role, x, y, humanSlot = null) {
   };
 }
 
+function goalkeeper(id, team, x) {
+  return { id, team, role: "goalkeeper", x, y: FIELD.height / 2, vx: 0, vy: 0, facingX: team === TEAM.HOME ? 1 : -1, facingY: 0 };
+}
+
 export function createMatchState({ online = false, aiLevel = 50, passSpeedLevel = 40, gameSpeedLevel = 50 } = {}) {
   const players = [
     player("home-human", TEAM.HOME, "human", 250, 270, "host"),
@@ -37,6 +41,10 @@ export function createMatchState({ online = false, aiLevel = 50, passSpeedLevel 
     status: "playing",
     score: { home: 0, away: 0 },
     players,
+    goalkeepers: [
+      goalkeeper("home-goalkeeper", TEAM.HOME, FIELD.inset + 25),
+      goalkeeper("away-goalkeeper", TEAM.AWAY, FIELD.width - FIELD.inset - 25),
+    ],
     possession: { team: TEAM.HOME, playerId: owner.id, duel: null },
     ball: { x: owner.x + 23, y: owner.y, vx: 0, vy: 0, phase: BALL_PHASE.CONTROLLED, ownerId: owner.id, targetId: null, lastTouchId: owner.id },
     lastEvent: "kickoff",
@@ -50,6 +58,7 @@ export function createMatchState({ online = false, aiLevel = 50, passSpeedLevel 
 export function controlledPlayerId(slot = "host") { return slot === "guest" ? "away-human" : "home-human"; }
 
 export function getPlayer(state, id) { return state.players.find((entry) => entry.id === id) ?? null; }
+export function getGoalkeeper(state, team) { return state.goalkeepers?.find((entry) => entry.team === team) ?? null; }
 export function getOwner(state) { return state.ball.ownerId ? getPlayer(state, state.ball.ownerId) : null; }
 export function getHumanPlayer(state, slot) { return getPlayer(state, controlledPlayerId(slot)); }
 export function hasPossession(state, playerId) { return state.ball.ownerId === playerId; }

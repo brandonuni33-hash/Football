@@ -4,6 +4,7 @@ import { clearPossession, givePossession, teamDirection } from "./possession.js"
 import { pressDefensiveBrake, requestCall, startPass, startProtection, startShot, startTackle } from "./actions.js";
 import { collectAIInputs, executeAIAction } from "./ai.js";
 import { selectRecoveryCandidate } from "./ballRecovery.js";
+import { crossedGoalLine, moveGoalkeepers, resolveGoalkeeperSave } from "./goalkeepers.js";
 
 function tickTimers(player, dt) {
   const wasProtected = player.protectionRemaining > 0;
@@ -147,16 +148,17 @@ function interceptOrReceive(state) {
 
 function stepBall(state, dt) {
   if (state.ball.ownerId) { carryBall(state); return state; }
+  const previousBall = { x: state.ball.x, y: state.ball.y };
   state.ball.x += state.ball.vx * dt;
   state.ball.y += state.ball.vy * dt;
   const friction = Math.pow(state.ball.phase === BALL_PHASE.SHOT ? 0.995 : 0.989, dt * 60);
   state.ball.vx *= friction;
   state.ball.vy *= friction;
 
-  const goalHome = state.ball.x <= FIELD.inset && state.ball.y >= FIELD.goalTop && state.ball.y <= FIELD.goalBottom;
-  const goalAway = state.ball.x >= FIELD.width - FIELD.inset && state.ball.y >= FIELD.goalTop && state.ball.y <= FIELD.goalBottom;
-  if (goalHome || goalAway) {
-    const scoringTeam = goalAway ? TEAM.HOME : TEAM.AWAY;
+  if (resolveGoalkeeperSave(state, previousBall)) return state;
+  const crossedLineFor = crossedGoalLine(previousBall, state.ball);
+  if (crossedLineFor) {
+    const scoringTeam = crossedLineFor === TEAM.AWAY ? TEAM.HOME : TEAM.AWAY;
     state.score[scoringTeam] += 1;
     state.lastEvent = "goal";
     state.eventId += 1;
@@ -199,6 +201,7 @@ export function stepMatch(state, inputs = {}, dt = RULES.fixedStep) {
     movePlayer(state, player, input, time);
     if (!player.humanSlot) executeAIAction(state, player, input);
   }
+  moveGoalkeepers(state, time);
   const next = stepBall(state, time);
   resolveLooseChallenges(next);
   if (!assertPossessionInvariant(next)) throw new Error("invalid-possession-invariant");

@@ -4,3 +4,4 @@
 :root{--control-layout-v2:1}.right-cluster{--action-size:clamp(42px,7vw,52px)}.action{width:var(--action-size)}.primary-action{right:calc(var(--stick)/2 - var(--action-size)/2);bottom:calc(var(--stick) + 3px)}.primary-action.braking{background:#0a0f14e8;border-color:var(--amber);color:#fff}.secondary-action.braking{background:#81d8e83d;border-color:var(--ice);color:#c9f6ff}
 :root{--brake-position-1115:1}.secondary-action{right:calc(var(--stick)/2 - var(--action-size)/2 + clamp(24px,4vw,31px));bottom:calc(var(--stick)/2 - var(--action-size)/2 + clamp(57px,9vw,75px))}
 :root{--brake-position-0945:1}.secondary-action{right:calc(var(--stick)/2 - var(--action-size)/2 + clamp(57px,9vw,75px));bottom:calc(var(--stick)/2 - var(--action-size)/2 + clamp(24px,4vw,31px))}
+:root{--brake-position-1015:1}.secondary-action{right:calc(var(--stick)/2 - var(--action-size)/2 + clamp(50px,7.8vw,65px));bottom:calc(var(--stick)/2 - var(--action-size)/2 + clamp(39px,6.2vw,51px))}

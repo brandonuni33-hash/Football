@@ -33,9 +33,22 @@ function drawPlayer(ctx, player, localId) {
   ctx.restore();
 }
 
+function drawGoalkeeper(ctx, keeper) {
+  ctx.save();
+  ctx.translate(keeper.x, keeper.y);
+  ctx.fillStyle = keeper.team === TEAM.HOME ? "#6cd1b0" : "#d76a73";
+  ctx.strokeStyle = "#071016";
+  ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.arc(0, 0, 19, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,.9)"; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(-8, -7); ctx.lineTo(8, 7); ctx.moveTo(8, -7); ctx.lineTo(-8, 7); ctx.stroke();
+  ctx.restore();
+}
+
 export function render(ctx, state, slot = "host") {
   pitch(ctx);
   const localId = controlledPlayerId(slot);
+  for (const keeper of state.goalkeepers ?? []) drawGoalkeeper(ctx, keeper);
   for (const player of state.players) drawPlayer(ctx, player, localId);
   ctx.save();
   ctx.translate(state.ball.x, state.ball.y);
