@@ -1,4 +1,4 @@
-import { BALL_PHASE, FIELD, RULES, TEAM, approach, clamp, distance, normalize } from "./constants.js";
+import { BALL_PHASE, FIELD, RULES, TEAM, approach, clamp, distance, movementFeelFromLevel, normalize } from "./constants.js";
 import { actionLabels, assertPossessionInvariant, fieldBounds, getHumanPlayer, getOwner, getPlayer, resetAfterGoal } from "./matchState.js";
 import { clearPossession, givePossession, teamDirection } from "./possession.js";
 import { pressDefensiveBrake, requestCall, startPass, startProtection, startShot, startTackle } from "./actions.js";
@@ -43,11 +43,12 @@ function movePlayer(state, player, input, dt) {
   const jockeying = (!!input.jockeyHeld || (player.defensiveBrakeRemaining ?? 0) > 0)
     && !player.hasBall && !awaitingProtectedReception;
   player.jockeying = jockeying;
+  const movementFeel = movementFeelFromLevel(state.gameSpeedLevel);
   let speedScale = jockeying ? RULES.jockeySpeedScale : 1;
   if (player.protectionRemaining > 0) speedScale = Math.min(speedScale, RULES.protectionSpeedScale);
-  const targetVx = move.x * RULES.maxSpeed * move.magnitude * speedScale;
-  const targetVy = move.y * RULES.maxSpeed * move.magnitude * speedScale;
-  const acceleration = move.magnitude > 0 ? RULES.acceleration : RULES.deceleration;
+  const targetVx = move.x * movementFeel.maxSpeed * move.magnitude * speedScale;
+  const targetVy = move.y * movementFeel.maxSpeed * move.magnitude * speedScale;
+  const acceleration = move.magnitude > 0 ? movementFeel.acceleration : movementFeel.deceleration;
   player.vx = approach(player.vx, targetVx, acceleration * dt);
   player.vy = approach(player.vy, targetVy, acceleration * dt);
   player.x = clamp(player.x + player.vx * dt, fieldBounds.minX, fieldBounds.maxX);

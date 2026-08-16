@@ -19,7 +19,7 @@ function player(id, team, role, x, y, humanSlot = null) {
   };
 }
 
-export function createMatchState({ online = false, aiLevel = 50, passSpeedLevel = 40 } = {}) {
+export function createMatchState({ online = false, aiLevel = 50, passSpeedLevel = 40, gameSpeedLevel = 50 } = {}) {
   const players = [
     player("home-human", TEAM.HOME, "human", 250, 270, "host"),
     player("home-left", TEAM.HOME, "support", 155, 155),
@@ -43,6 +43,7 @@ export function createMatchState({ online = false, aiLevel = 50, passSpeedLevel 
     eventId: 0,
     aiLevel: Math.min(100, Math.max(0, Number(aiLevel) || 0)),
     passSpeedLevel: Math.min(100, Math.max(0, Number(passSpeedLevel) || 0)),
+    gameSpeedLevel: Math.min(100, Math.max(0, Number(gameSpeedLevel) || 0)),
   };
 }
 
@@ -61,7 +62,7 @@ export function assertPossessionInvariant(state) {
 }
 
 export function resetAfterGoal(state, scoringTeam) {
-  const fresh = createMatchState({ online: getPlayer(state, "away-human")?.humanSlot === "guest", aiLevel: state.aiLevel, passSpeedLevel: state.passSpeedLevel });
+  const fresh = createMatchState({ online: getPlayer(state, "away-human")?.humanSlot === "guest", aiLevel: state.aiLevel, passSpeedLevel: state.passSpeedLevel, gameSpeedLevel: state.gameSpeedLevel });
   const conceding = scoringTeam === TEAM.HOME ? TEAM.AWAY : TEAM.HOME;
   const ownerId = conceding === TEAM.HOME ? "home-left" : "away-left";
   for (const entry of fresh.players) entry.hasBall = entry.id === ownerId;

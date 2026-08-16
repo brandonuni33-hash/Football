@@ -9,6 +9,17 @@ test("la page 3v3 ouvre le même moteur en solo avec contrôles contextuels", as
   await expect(page.locator("#primary")).toHaveText("APPEL");
   await expect(page.locator("#secondary")).toHaveText("FREIN");
   await expect(page.locator("#tertiary")).toHaveText("PROT.");
+  const placement = await page.evaluate(() => {
+    const action = document.querySelector("#primary").getBoundingClientRect();
+    const stick = document.querySelector("#control-joystick").getBoundingClientRect();
+    return {
+      centerDelta: Math.abs((action.left + action.width / 2) - (stick.left + stick.width / 2)),
+      gap: stick.top - action.bottom,
+    };
+  });
+  expect(placement.centerDelta).toBeLessThan(3);
+  expect(placement.gap).toBeGreaterThanOrEqual(0);
+  expect(placement.gap).toBeLessThanOrEqual(6);
 });
 
 test("la page ami crée une invitation sans imposer le paysage", async ({ page }) => {

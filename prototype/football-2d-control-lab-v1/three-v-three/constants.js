@@ -7,8 +7,8 @@ export const RULES = Object.freeze({
   fixedStep: 1 / 60,
   playerRadius: 17,
   controlRadius: 29,
-  maxSpeed: 132,
-  acceleration: 590,
+  maxSpeed: 143,
+  acceleration: 615,
   deceleration: 900,
   protectionDuration: 3,
   protectionCooldown: 2,
@@ -46,4 +46,12 @@ export function approach(value, target, amount) {
 }
 export function passSpeedFromLevel(level = 40) {
   return 170 + clamp(Number(level) || 0, 0, 100) * 1.9;
+}
+export function movementFeelFromLevel(level = 50) {
+  const value = clamp(Number(level) || 0, 0, 100) / 100;
+  return {
+    maxSpeed: 105 + value * 76,
+    acceleration: 430 + value * 370,
+    deceleration: 720 + value * 360,
+  };
 }

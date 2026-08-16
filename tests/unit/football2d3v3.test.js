@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ACTION_LABELS, BALL_PHASE, FIELD, RULES, TEAM, distance, passSpeedFromLevel } from "../../prototype/football-2d-control-lab-v1/three-v-three/constants.js";
+import { ACTION_LABELS, BALL_PHASE, FIELD, RULES, TEAM, distance, movementFeelFromLevel, passSpeedFromLevel } from "../../prototype/football-2d-control-lab-v1/three-v-three/constants.js";
 import { actionLabels, assertPossessionInvariant, createMatchState, getPlayer } from "../../prototype/football-2d-control-lab-v1/three-v-three/matchState.js";
 import { clearPossession, givePossession } from "../../prototype/football-2d-control-lab-v1/three-v-three/possession.js";
 import { pressDefensiveBrake, requestCall, startPass, startProtection, startShot, startTackle } from "../../prototype/football-2d-control-lab-v1/three-v-three/actions.js";
@@ -210,10 +210,35 @@ test("si deux joueurs sont proches la meilleure fenêtre remporte le ballon", ()
 });
 
 test("le rythme de jeu garde joueurs et passes sous les nouvelles limites", () => {
-  assert.equal(RULES.maxSpeed, 132);
+  assert.equal(RULES.maxSpeed, 143);
   assert.equal(passSpeedFromLevel(0), 170);
   assert.equal(passSpeedFromLevel(100), 360);
   assert.ok(RULES.acceleration <= 650);
+});
+
+test("le curseur vitesse du jeu couvre une plage 0 à 100 réellement différente", () => {
+  assert.ok(movementFeelFromLevel(100).maxSpeed > movementFeelFromLevel(0).maxSpeed * 1.7);
+  assert.ok(movementFeelFromLevel(100).acceleration > movementFeelFromLevel(0).acceleration);
+  const slow = createMatchState({ gameSpeedLevel: 0 });
+  const fast = createMatchState({ gameSpeedLevel: 100 });
+  advance(slow, { host: { moveX: 1 } }, 0.5);
+  advance(fast, { host: { moveX: 1 } }, 0.5);
+  assert.ok(getPlayer(fast, "home-human").x > getPlayer(slow, "home-human").x + 12);
+});
+
+test("deux pressions successives sur le vrai bouton FREIN lancent le tacle", () => {
+  let state = createMatchState();
+  const defender = getPlayer(state, "home-human");
+  const owner = getPlayer(state, "away-human");
+  givePossession(state, owner.id);
+  owner.x = defender.x + 30; owner.y = defender.y;
+  defender.facingX = 1; defender.facingY = 0;
+  state = stepMatch(state, { host: { secondaryPressed: true } }, 1 / 60);
+  assert.ok(defender.defensiveBrakeRemaining > 0);
+  assert.equal(state.ball.ownerId, owner.id);
+  state = stepMatch(state, { host: { secondaryPressed: true } }, 1 / 60);
+  assert.equal(state.ball.ownerId, null);
+  assert.equal(state.lastEvent, "tackle_won");
 });
 
 test("le terrain de la vertical slice est légèrement élargi", () => {
