@@ -6,8 +6,8 @@ test("la page 3v3 ouvre le même moteur en solo avec contrôles contextuels", as
   await page.getByRole("button", { name: /JOUER SOLO/ }).click();
   await expect(page.locator("#game")).toBeVisible();
   await expect(page.locator("#network-status")).toHaveText("SOLO · IA");
-  await expect(page.locator("#primary")).toHaveText("FREIN");
-  await expect(page.locator("#secondary")).toHaveText("APPEL");
+  await expect(page.locator("#primary")).toHaveText("APPEL");
+  await expect(page.locator("#secondary")).toHaveText("FREIN");
   await expect(page.locator("#tertiary")).toHaveText("PROT.");
 });
 

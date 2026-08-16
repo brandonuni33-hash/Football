@@ -16,12 +16,29 @@ function tickTimers(player, dt) {
   player.recoveryRemaining = Math.max(0, player.recoveryRemaining - dt);
   player.defensiveBrakeRemaining = Math.max(0, (player.defensiveBrakeRemaining ?? 0) - dt);
   player.aiDecisionRemaining = Math.max(0, (player.aiDecisionRemaining ?? 0) - dt);
+  player.aiPassCooldown = Math.max(0, (player.aiPassCooldown ?? 0) - dt);
+  player.orientedTouchRemaining = Math.max(0, (player.orientedTouchRemaining ?? 0) - dt);
+  if (player.protectionRemaining <= 0) player.offBallShieldTargetId = null;
 }
 
 function movePlayer(state, player, input, dt) {
   tickTimers(player, dt);
   if (player.recoveryRemaining > 0) input = {};
-  const move = normalize(input.moveX, input.moveY);
+  let move = normalize(input.moveX, input.moveY);
+  const offBallShielding = player.protectionRemaining > 0 && !player.hasBall && !!player.offBallShieldTargetId;
+  if (offBallShielding && state.possession.team !== player.team) {
+    player.protectionRemaining = 0;
+    player.offBallShieldTargetId = null;
+  } else if (offBallShielding) {
+    const marker = getPlayer(state, player.offBallShieldTargetId);
+    if (marker) {
+      const desired = { x: marker.x - teamDirection(player.team) * 29, y: marker.y };
+      const attach = normalize(desired.x - player.x, desired.y - player.y);
+      move = attach.magnitude > 0.08 ? { ...attach, magnitude: Math.min(attach.magnitude, 0.55) } : { x: 0, y: 0, magnitude: 0 };
+      player.facingX = -teamDirection(player.team);
+      player.facingY = 0;
+    }
+  }
   const awaitingProtectedReception = state.ball.phase === BALL_PHASE.PASS && state.ball.targetId === player.id && player.protectionRemaining > 0;
   const jockeying = (!!input.jockeyHeld || (player.defensiveBrakeRemaining ?? 0) > 0)
     && !player.hasBall && !awaitingProtectedReception;
@@ -37,7 +54,10 @@ function movePlayer(state, player, input, dt) {
   player.y = clamp(player.y + player.vy * dt, fieldBounds.minY, fieldBounds.maxY);
 
   const owner = getOwner(state);
-  if (jockeying && owner) {
+  if (offBallShielding && state.possession.team === player.team) {
+    player.facingX = -teamDirection(player.team);
+    player.facingY = 0;
+  } else if (jockeying && owner) {
     const face = normalize(owner.x - player.x, owner.y - player.y);
     player.facingX = face.x;
     player.facingY = face.y;
@@ -47,6 +67,13 @@ function movePlayer(state, player, input, dt) {
   }
 
   const right = normalize(input.controlX, input.controlY);
+  if (right.magnitude > 0.08) {
+    player.receptionIntentX = right.x;
+    player.receptionIntentY = right.y;
+    player.receptionIntentMagnitude = right.magnitude;
+  } else if (player.receptionRemaining <= 0) {
+    player.receptionIntentMagnitude = 0;
+  }
   if (player.protectionRemaining > 0 && right.magnitude > 0.08) {
     player.controlX = right.x;
     player.controlY = right.y;
@@ -67,12 +94,12 @@ function applyHumanActions(state, slot, input) {
   if (!player) return;
   if (input.secondaryPressed) {
     if (player.hasBall) startPass(state, player.id, null, input);
-    else requestCall(state, player.id);
+    else pressDefensiveBrake(state, player.id);
   }
   if (input.tertiaryPressed) startProtection(state, player.id);
   if (input.primaryPressed) {
     if (player.hasBall) startShot(state, player.id, input, input.power ?? 0.72);
-    else pressDefensiveBrake(state, player.id);
+    else requestCall(state, player.id);
   }
 }
 
@@ -80,9 +107,11 @@ function carryBall(state) {
   const owner = getOwner(state);
   if (!owner) return;
   const protectedControl = owner.protectionRemaining > 0;
-  const fx = protectedControl ? owner.controlX : owner.facingX;
-  const fy = protectedControl ? owner.controlY : owner.facingY;
-  const forward = protectedControl ? RULES.protectionControlDistance : 24;
+  const orientedTouch = (owner.orientedTouchRemaining ?? 0) > 0;
+  const fx = orientedTouch ? owner.orientedTouchX : protectedControl ? owner.controlX : owner.facingX;
+  const fy = orientedTouch ? owner.orientedTouchY : protectedControl ? owner.controlY : owner.facingY;
+  const touchRatio = orientedTouch ? owner.orientedTouchRemaining / 0.28 : 0;
+  const forward = orientedTouch ? 24 + touchRatio * 24 : protectedControl ? RULES.protectionControlDistance : 24;
   state.ball.x = owner.x + fx * forward;
   state.ball.y = owner.y + fy * forward;
   state.ball.vx = owner.vx;
@@ -91,13 +120,23 @@ function carryBall(state) {
 
 function interceptOrReceive(state) {
   if (state.ball.ownerId) return;
-  const candidates = state.ball.phase === BALL_PHASE.PASS
+  const candidates = state.ball.phase === BALL_PHASE.PASS || state.ball.phase === BALL_PHASE.SHOT
     ? state.players.filter((player) => player.id !== state.ball.lastTouchId)
     : state.players;
   const receiver = selectRecoveryCandidate(candidates, state.ball);
   if (!receiver) return;
   const intended = state.ball.targetId === receiver.id;
   givePossession(state, receiver.id, intended ? "reception" : "interception");
+  if (intended && (receiver.receptionIntentMagnitude ?? 0) > 0.08) {
+    receiver.facingX = receiver.receptionIntentX;
+    receiver.facingY = receiver.receptionIntentY;
+    receiver.orientedTouchX = receiver.receptionIntentX;
+    receiver.orientedTouchY = receiver.receptionIntentY;
+    receiver.orientedTouchRemaining = 0.28;
+    state.ball.x = receiver.x + receiver.orientedTouchX * 48;
+    state.ball.y = receiver.y + receiver.orientedTouchY * 48;
+    state.lastEvent = "oriented_reception";
+  }
   if (receiver.protectionRemaining > 0) {
     receiver.facingX = receiver.controlX;
     receiver.facingY = receiver.controlY;
@@ -139,7 +178,7 @@ function stepBall(state, dt) {
 
 function resolveLooseChallenges(state) {
   if (state.ball.ownerId) return;
-  const candidates = state.ball.phase === BALL_PHASE.PASS
+  const candidates = state.ball.phase === BALL_PHASE.PASS || state.ball.phase === BALL_PHASE.SHOT
     ? state.players.filter((player) => player.id !== state.ball.lastTouchId)
     : state.players;
   const winner = selectRecoveryCandidate(candidates, state.ball);

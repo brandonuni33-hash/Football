@@ -23,6 +23,7 @@ export function givePossession(state, playerId, event = "possession") {
   state.ball.vy = 0;
   owner.defensiveBrakeRemaining = 0;
   owner.jockeying = false;
+  owner.offBallShieldTargetId = null;
   state.possession = { team: owner.team, playerId, duel: null };
   state.lastEvent = event;
   state.eventId += 1;

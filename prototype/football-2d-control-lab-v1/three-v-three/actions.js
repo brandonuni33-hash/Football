@@ -15,7 +15,17 @@ export function startProtection(state, playerId) {
   const player = getPlayer(state, playerId);
   if (!player || player.protectionRemaining > 0 || player.protectionCooldown > 0) return false;
   const awaitingPass = state.ball.phase === BALL_PHASE.PASS && state.ball.targetId === playerId;
-  if (!hasPossession(state, playerId) && !awaitingPass) return false;
+  const teamHasPossession = state.possession.team === player.team;
+  if (!hasPossession(state, playerId) && !awaitingPass && !teamHasPossession) return false;
+  if (!hasPossession(state, playerId) && !awaitingPass) {
+    const marker = state.players
+      .filter((entry) => entry.team !== player.team)
+      .map((entry) => ({ entry, gap: distance(entry, player) }))
+      .filter(({ gap }) => gap <= 90)
+      .sort((a, b) => a.gap - b.gap)[0]?.entry;
+    if (!marker) return false;
+    player.offBallShieldTargetId = marker.id;
+  }
   player.protectionRemaining = RULES.protectionDuration;
   state.lastEvent = "protection";
   state.eventId += 1;
@@ -56,6 +66,7 @@ export function startPass(state, passerId, targetId = null, intent = {}) {
   state.ball.vy = direction.y * passSpeed;
   state.ball.targetId = target.id;
   state.ball.lastTouchId = passer.id;
+  passer.aiPassCooldown = 0.8;
   target.receptionRemaining = RULES.receptionWindow;
   state.lastEvent = "pass";
   state.eventId += 1;

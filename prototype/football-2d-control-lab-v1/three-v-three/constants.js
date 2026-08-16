@@ -1,4 +1,4 @@
-export const FIELD = Object.freeze({ width: 960, height: 540, inset: 34, goalDepth: 24, goalTop: 205, goalBottom: 335 });
+export const FIELD = Object.freeze({ width: 1000, height: 540, inset: 34, goalDepth: 24, goalTop: 205, goalBottom: 335 });
 
 export const TEAM = Object.freeze({ HOME: "home", AWAY: "away" });
 export const BALL_PHASE = Object.freeze({ CONTROLLED: "controlled", FREE: "free", PASS: "pass", SHOT: "shot" });
@@ -7,15 +7,15 @@ export const RULES = Object.freeze({
   fixedStep: 1 / 60,
   playerRadius: 17,
   controlRadius: 29,
-  maxSpeed: 142,
-  acceleration: 650,
-  deceleration: 960,
+  maxSpeed: 132,
+  acceleration: 590,
+  deceleration: 900,
   protectionDuration: 3,
   protectionCooldown: 2,
   protectionSpeedScale: 0.33,
   protectionControlDistance: 23,
   receptionWindow: 0.55,
-  shotSpeed: 450,
+  shotSpeed: 430,
   tackleRange: 43,
   tackleArcDot: 0.15,
   tackleDuration: 0.22,
@@ -29,7 +29,7 @@ export const RULES = Object.freeze({
 
 export const ACTION_LABELS = Object.freeze({
   attack: Object.freeze({ primary: "TIR", secondary: "PASSE", tertiary: "PROT." }),
-  defend: Object.freeze({ primary: "FREIN", secondary: "APPEL", tertiary: "PROT." }),
+  defend: Object.freeze({ primary: "APPEL", secondary: "FREIN", tertiary: "PROT." }),
 });
 
 export function clamp(value, min, max) { return Math.min(max, Math.max(min, value)); }

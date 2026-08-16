@@ -8,9 +8,13 @@ function player(id, team, role, x, y, humanSlot = null) {
     receptionRemaining: 0, callRemaining: 0, tackleRemaining: 0, recoveryRemaining: 0,
     defensiveBrakeRemaining: 0,
     jockeying: false, controlX: facingX, controlY: 0,
+    receptionIntentX: facingX, receptionIntentY: 0, receptionIntentMagnitude: 0,
+    orientedTouchX: facingX, orientedTouchY: 0, orientedTouchRemaining: 0,
+    offBallShieldTargetId: null,
     ballControl: humanSlot ? 74 : 66,
     balance: humanSlot ? 72 : 65,
     aiDecisionRemaining: 0,
+    aiPassCooldown: 0,
     aiInput: {},
   };
 }
@@ -20,9 +24,9 @@ export function createMatchState({ online = false, aiLevel = 50, passSpeedLevel 
     player("home-human", TEAM.HOME, "human", 250, 270, "host"),
     player("home-left", TEAM.HOME, "support", 155, 155),
     player("home-right", TEAM.HOME, "support", 155, 385),
-    player("away-human", TEAM.AWAY, online ? "human" : "anchor", 710, 270, online ? "guest" : null),
-    player("away-left", TEAM.AWAY, "cover", 805, 155),
-    player("away-right", TEAM.AWAY, "cover", 805, 385),
+    player("away-human", TEAM.AWAY, online ? "human" : "anchor", 750, 270, online ? "guest" : null),
+    player("away-left", TEAM.AWAY, "cover", 845, 155),
+    player("away-right", TEAM.AWAY, "cover", 845, 385),
   ];
   const owner = players.find((entry) => entry.id === "home-left");
   owner.hasBall = true;

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ACTION_LABELS, BALL_PHASE, RULES, TEAM, distance, passSpeedFromLevel } from "../../prototype/football-2d-control-lab-v1/three-v-three/constants.js";
+import { ACTION_LABELS, BALL_PHASE, FIELD, RULES, TEAM, distance, passSpeedFromLevel } from "../../prototype/football-2d-control-lab-v1/three-v-three/constants.js";
 import { actionLabels, assertPossessionInvariant, createMatchState, getPlayer } from "../../prototype/football-2d-control-lab-v1/three-v-three/matchState.js";
 import { clearPossession, givePossession } from "../../prototype/football-2d-control-lab-v1/three-v-three/possession.js";
 import { pressDefensiveBrake, requestCall, startPass, startProtection, startShot, startTackle } from "../../prototype/football-2d-control-lab-v1/three-v-three/actions.js";
@@ -19,7 +19,7 @@ test("avec ballon les boutons sont TIR PASSE PROT", () => {
   assert.deepEqual(actionLabels(state, "home-human"), ACTION_LABELS.attack);
 });
 
-test("sans ballon les boutons sont FREIN APPEL PROT", () => {
+test("sans ballon les boutons sont APPEL FREIN PROT", () => {
   assert.deepEqual(actionLabels(createMatchState(), "home-human"), ACTION_LABELS.defend);
 });
 
@@ -210,10 +210,14 @@ test("si deux joueurs sont proches la meilleure fenêtre remporte le ballon", ()
 });
 
 test("le rythme de jeu garde joueurs et passes sous les nouvelles limites", () => {
-  assert.equal(RULES.maxSpeed, 142);
+  assert.equal(RULES.maxSpeed, 132);
   assert.equal(passSpeedFromLevel(0), 170);
   assert.equal(passSpeedFromLevel(100), 360);
   assert.ok(RULES.acceleration <= 650);
+});
+
+test("le terrain de la vertical slice est légèrement élargi", () => {
+  assert.equal(FIELD.width, 1000);
 });
 
 test("le curseur 0 à 100 modifie réellement la vitesse des passes", () => {
@@ -294,4 +298,66 @@ test("les partenaires IA anticipent sans tous s'entasser sur le ballon libre", (
   assert.equal(direct.length, 1);
   assert.equal(support.length, 2);
   assert.notDeepEqual(inputs[support[0].id], inputs[direct[0].id]);
+});
+
+test("le tir reste libéré et ne revient pas immédiatement au tireur", () => {
+  let state = createMatchState();
+  const player = getPlayer(state, "home-human");
+  givePossession(state, player.id);
+  startShot(state, player.id, { x: 1, y: 0 }, 0.8);
+  const startX = state.ball.x;
+  state = advance(state, {}, 0.18);
+  assert.equal(state.ball.ownerId, null);
+  assert.equal(state.ball.phase, BALL_PHASE.SHOT);
+  assert.ok(state.ball.x > startX + 45);
+});
+
+test("APPEL est le premier bouton sans ballon", () => {
+  let state = createMatchState();
+  state = stepMatch(state, { host: { primaryPressed: true } }, 1 / 60);
+  assert.ok(getPlayer(state, "home-human").callRemaining > 0);
+  assert.equal(state.ball.targetId, "home-human", "l'IA peut répondre immédiatement à l'appel");
+});
+
+test("une IA porteuse cherche spontanément une passe vers le joueur humain", () => {
+  const state = createMatchState({ aiLevel: 80 });
+  const passer = getPlayer(state, "home-left");
+  const intent = collectAIInputs(state)[passer.id];
+  assert.equal(intent.passPressed, true);
+  assert.equal(intent.targetId, "home-human");
+  executeAIAction(state, passer, intent);
+  assert.equal(state.ball.phase, BALL_PHASE.PASS);
+  assert.equal(state.ball.targetId, "home-human");
+});
+
+test("toute réception peut être orientée avec le stick droit", () => {
+  let state = createMatchState();
+  startPass(state, "home-left", "home-human");
+  const receiver = getPlayer(state, "home-human");
+  state = stepMatch(state, { host: { controlX: 0, controlY: -1 } }, 1 / 60);
+  state.ball.x = receiver.x; state.ball.y = receiver.y; state.ball.vx = 70; state.ball.vy = 0;
+  state = stepMatch(state, { host: { controlX: 0, controlY: -1 } }, 1 / 60);
+  assert.equal(state.ball.ownerId, receiver.id);
+  assert.ok(receiver.orientedTouchRemaining > 0);
+  assert.ok(receiver.facingY < -0.9);
+  assert.ok(state.ball.y < receiver.y - 35);
+  assert.equal(state.lastEvent, "oriented_reception");
+});
+
+test("PROT hors ballon accroche un défenseur seulement si notre équipe possède", () => {
+  let state = createMatchState();
+  const player = getPlayer(state, "home-human");
+  const marker = getPlayer(state, "away-human");
+  marker.x = player.x + 45; marker.y = player.y;
+  assert.equal(startProtection(state, player.id), true);
+  assert.equal(player.offBallShieldTargetId, marker.id);
+  state = stepMatch(state, { host: {} }, 0.1);
+  assert.equal(player.facingX, -1);
+
+  state = createMatchState();
+  givePossession(state, "away-human");
+  const defender = getPlayer(state, "home-human");
+  getPlayer(state, "away-human").x = defender.x + 40;
+  assert.equal(startProtection(state, defender.id), false);
+  assert.equal(defender.protectionRemaining, 0);
 });

@@ -1,4 +1,4 @@
-import { RULES, TEAM, clamp, distance, normalize } from "./constants.js";
+import { FIELD, RULES, TEAM, clamp, distance, normalize } from "./constants.js";
 import { getOwner } from "./matchState.js";
 import { startPass, startShot, startTackle } from "./actions.js";
 import { teamDirection } from "./possession.js";
@@ -6,7 +6,7 @@ import { teamDirection } from "./possession.js";
 function homePosition(player) {
   const lane = player.id.endsWith("left") ? 155 : player.id.endsWith("right") ? 385 : 270;
   if (player.team === TEAM.HOME) return { x: player.role === "support" ? 285 : 690, y: lane };
-  return { x: player.role === "cover" ? 675 : 710, y: lane };
+  return { x: player.role === "cover" ? FIELD.width - 285 : FIELD.width - 250, y: lane };
 }
 
 function moveToward(player, target, scale = 0.72) {
@@ -48,7 +48,7 @@ export function defensiveRole(state, player) {
   const rank = defensiveAssignments(state, player.team).get(player.id) ?? 2;
   const rareTrap = !!owner
     && (owner.y < 92 || owner.y > 448)
-    && Math.abs(owner.x - (player.team === TEAM.HOME ? 55 : 905)) < 245;
+    && Math.abs(owner.x - (player.team === TEAM.HOME ? 55 : FIELD.width - 55)) < 245;
   if (rank === 0) return "press";
   if (rank === 1 && rareTrap) return "trap";
   if (rank === 1) return "cover";
@@ -59,10 +59,21 @@ function teammateIntent(state, player) {
   const owner = getOwner(state);
   if (!owner) return looseBallIntent(state, player);
   if (player.hasBall) {
-    const goalX = player.team === TEAM.HOME ? 930 : 30;
+    const goalX = player.team === TEAM.HOME ? FIELD.width - 30 : 30;
     if (Math.abs(goalX - player.x) < 210) return { moveX: teamDirection(player.team) * 0.65, moveY: 0, shootPressed: true };
     const caller = state.players.find((entry) => entry.team === player.team && entry.callRemaining > 0);
     if (caller && distance(player, caller) < 420) return { passPressed: true, targetId: caller.id };
+    const teammates = state.players.filter((entry) => entry.team === player.team && entry.id !== player.id);
+    const nearestPressure = Math.min(...state.players.filter((entry) => entry.team !== player.team).map((entry) => distance(entry, player)));
+    const option = teammates.map((entry) => {
+      const forwardGain = (entry.x - player.x) * teamDirection(player.team);
+      const nearestMarker = Math.min(...state.players.filter((other) => other.team !== player.team).map((other) => distance(other, entry)));
+      const score = forwardGain * 0.8 + nearestMarker * 0.45 - distance(player, entry) * 0.12;
+      return { entry, score, forwardGain };
+    }).sort((a, b) => b.score - a.score)[0];
+    if ((player.aiPassCooldown ?? 0) <= 0 && option && (nearestPressure < 118 || option.forwardGain > 72) && option.score > 18) {
+      return { passPressed: true, targetId: option.entry.id };
+    }
     return { moveX: teamDirection(player.team) * 0.66, moveY: Math.sin(state.elapsed * 0.9 + player.y) * 0.2 };
   }
   if (owner?.team === player.team) {
@@ -90,14 +101,14 @@ function opponentIntent(state, player) {
     return moveToward(player, { x: owner.x - teamDirection(owner.team) * 24, y: insideY }, 0.6);
   }
   if (role === "cover") {
-    const goalX = player.team === TEAM.HOME ? 55 : 905;
+    const goalX = player.team === TEAM.HOME ? 55 : FIELD.width - 55;
     const towardGoal = normalize(goalX - owner.x, 270 - owner.y);
     const side = player.y < owner.y ? -1 : 1;
     return moveToward(player, { x: owner.x + towardGoal.x * 112, y: owner.y + towardGoal.y * 112 + side * 68 }, 0.53);
   }
   const attackers = state.players.filter((entry) => entry.team === owner.team && entry.id !== owner.id);
   const danger = attackers.sort((a, b) => Math.abs(a.y - player.y) - Math.abs(b.y - player.y))[0];
-  const goalX = player.team === TEAM.HOME ? 55 : 905;
+  const goalX = player.team === TEAM.HOME ? 55 : FIELD.width - 55;
   const screenTarget = danger
     ? { x: (danger.x + goalX) / 2, y: (danger.y + 270) / 2 }
     : { x: (owner.x + goalX) / 2, y: 270 };
