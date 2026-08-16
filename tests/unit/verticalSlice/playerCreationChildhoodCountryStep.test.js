@@ -8,10 +8,10 @@ import {
     finishPlayerCreation
 } from '../../../ui/verticalSlice/playerCreationChildhoodCountryStep.js';
 
-test('l’étape pays d’enfance est le sixième et dernier écran de création', () => {
+test('l’étape pays d’enfance est le cinquième et dernier écran de création', () => {
     const state = createChildhoodCountryStepState();
-    assert.equal(state.screenIndex, 6);
-    assert.equal(state.screenCount, 6);
+    assert.equal(state.screenIndex, 5);
+    assert.equal(state.screenCount, 5);
     assert.equal(state.step, 'childhoodCountry');
 });
 
