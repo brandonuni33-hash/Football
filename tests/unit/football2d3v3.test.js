@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { ACTION_LABELS, BALL_PHASE, RULES, TEAM } from "../../prototype/football-2d-control-lab-v1/three-v-three/constants.js";
 import { actionLabels, assertPossessionInvariant, createMatchState, getPlayer } from "../../prototype/football-2d-control-lab-v1/three-v-three/matchState.js";
 import { clearPossession, givePossession } from "../../prototype/football-2d-control-lab-v1/three-v-three/possession.js";
-import { requestCall, startPass, startProtection, startTackle } from "../../prototype/football-2d-control-lab-v1/three-v-three/actions.js";
+import { requestCall, startPass, startProtection, startShot, startTackle } from "../../prototype/football-2d-control-lab-v1/three-v-three/actions.js";
+import { consumeInputActions, mergeInputFrames } from "../../prototype/football-2d-control-lab-v1/three-v-three/inputBuffer.js";
 import { stepMatch } from "../../prototype/football-2d-control-lab-v1/three-v-three/simulation.js";
 
 function advance(state, inputs, seconds) {
@@ -116,4 +117,24 @@ test("le 3v3 contient exactement six joueurs dont un seul humain en solo", () =>
   assert.equal(state.players.filter((player) => player.humanSlot).length, 1);
   assert.equal(state.players.filter((player) => player.team === TEAM.HOME).length, 3);
   assert.equal(state.players.filter((player) => player.team === TEAM.AWAY).length, 3);
+});
+
+test("TIR utilise l'orientation du joueur quand le stick droit est au repos", () => {
+  const state = createMatchState();
+  const player = getPlayer(state, "home-human");
+  player.facingX = 1; player.facingY = 0;
+  givePossession(state, player.id);
+  assert.equal(startShot(state, player.id, { x: 0, y: 0 }, 0.75), true);
+  assert.equal(state.ball.phase, BALL_PHASE.SHOT);
+  assert.ok(state.ball.vx > 300);
+  assert.equal(state.ball.vy, 0);
+});
+
+test("un appui bref reste mémorisé jusqu'au prochain pas physique", () => {
+  let buffered = mergeInputFrames({}, { primaryPressed: true, moveX: 0 });
+  buffered = mergeInputFrames(buffered, { primaryPressed: false, moveX: 1 });
+  assert.equal(buffered.primaryPressed, true);
+  assert.equal(buffered.moveX, 1);
+  buffered = consumeInputActions(buffered);
+  assert.equal(buffered.primaryPressed, false);
 });

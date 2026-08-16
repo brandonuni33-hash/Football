@@ -2,6 +2,7 @@ import { RULES } from "./three-v-three/constants.js";
 import { actionLabels, createMatchState, controlledPlayerId, getHumanPlayer } from "./three-v-three/matchState.js";
 import { stepMatch } from "./three-v-three/simulation.js";
 import { createInput } from "./three-v-three/input.js";
+import { consumeInputActions, mergeInputFrames } from "./three-v-three/inputBuffer.js";
 import { render } from "./three-v-three/renderer.js";
 import { createGuestTransport, createHostTransport, createRoomCode, invitationUrl, reconcileLocalPlayer, roomFromLocation } from "./three-v-three/network.js";
 
@@ -23,6 +24,7 @@ let slot = "host";
 let mode = "solo";
 let transport = null;
 let guestInput = {};
+let pendingLocalInput = {};
 let running = false;
 let accumulator = 0;
 let previous = performance.now();
@@ -48,7 +50,7 @@ async function hostFriend() {
   try {
     transport = await createHostTransport(room, {
       onReady: () => setStatus(`${room} · CONNECTÉ · 2/2`, "ready"),
-      onInput: (next) => { guestInput = next; },
+      onInput: (next) => { guestInput = mergeInputFrames(guestInput, next); },
       onDisconnect: () => setStatus("AMI DÉCONNECTÉ", "error"),
       onError: () => setStatus("CONNEXION IMPOSSIBLE", "error"),
     });
@@ -70,7 +72,8 @@ async function joinFriend(room) {
 function frame(now) {
   if (!running) return;
   const elapsed = Math.min(0.1, (now - previous) / 1000); previous = now; accumulator += elapsed;
-  const localInput = input.read();
+  pendingLocalInput = mergeInputFrames(pendingLocalInput, input.read());
+  let localInput = pendingLocalInput;
   if (mode === "online-guest") {
     transport?.sendInput(localInput);
     const predicted = clone(state);
@@ -78,9 +81,13 @@ function frame(now) {
     const current = state.players.find((player) => player.id === controlledPlayerId(slot));
     const prediction = predicted.players.find((player) => player.id === controlledPlayerId(slot));
     if (current && prediction) Object.assign(current, prediction);
+    pendingLocalInput = consumeInputActions(pendingLocalInput);
   } else {
     while (accumulator >= RULES.fixedStep) {
       state = stepMatch(state, { host: localInput, guest: mode === "online-host" ? guestInput : undefined }, RULES.fixedStep);
+      pendingLocalInput = consumeInputActions(pendingLocalInput);
+      guestInput = consumeInputActions(guestInput);
+      localInput = pendingLocalInput;
       accumulator -= RULES.fixedStep;
     }
     if (mode === "online-host" && now - lastSnapshotAt >= 50) { transport?.sendSnapshot(clone(state)); lastSnapshotAt = now; }

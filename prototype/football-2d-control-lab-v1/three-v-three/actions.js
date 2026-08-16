@@ -29,7 +29,10 @@ function passCandidates(state, passer) {
 export function selectPassTarget(state, passerId, intent = {}) {
   const passer = getPlayer(state, passerId);
   if (!passer) return null;
-  const direction = normalize(intent.x ?? passer.facingX, intent.y ?? passer.facingY);
+  const requestedDirection = normalize(intent.x, intent.y);
+  const direction = requestedDirection.magnitude > 0.15
+    ? requestedDirection
+    : normalize(passer.facingX, passer.facingY);
   return passCandidates(state, passer).map((candidate) => {
     const to = normalize(candidate.x - passer.x, candidate.y - passer.y);
     const directional = direction.magnitude > 0.15 ? dot(direction, to) : 0.5;
@@ -61,7 +64,10 @@ export function startPass(state, passerId, targetId = null, intent = {}) {
 export function startShot(state, playerId, intent = {}, power = 1) {
   if (!hasPossession(state, playerId)) return false;
   const player = getPlayer(state, playerId);
-  const direction = normalize(intent.x ?? player.facingX, intent.y ?? player.facingY);
+  const requestedDirection = normalize(intent.x, intent.y);
+  const direction = requestedDirection.magnitude > 0.15
+    ? requestedDirection
+    : normalize(player.facingX, player.facingY);
   clearPossession(state, BALL_PHASE.SHOT);
   state.ball.x = player.x + direction.x * 24;
   state.ball.y = player.y + direction.y * 24;
