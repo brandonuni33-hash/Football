@@ -16,6 +16,9 @@ const shareUrl = document.querySelector("#share-url");
 const aiLevelInput = document.querySelector("#ai-level");
 const aiLevelValue = document.querySelector("#ai-level-value");
 const hudAILevel = document.querySelector("#hud-ai-level");
+const passSpeedInput = document.querySelector("#pass-speed-level");
+const passSpeedValue = document.querySelector("#pass-speed-value");
+const hudPassSpeed = document.querySelector("#hud-pass-speed");
 const elements = {
   moveRoot: document.querySelector("#move-joystick"), moveKnob: document.querySelector("#move-stick"),
   controlRoot: document.querySelector("#control-joystick"), controlKnob: document.querySelector("#control-stick"),
@@ -35,10 +38,12 @@ let lastSnapshotAt = 0;
 
 function clone(value) { return structuredClone(value); }
 function selectedAILevel() { return Number(aiLevelInput.value); }
+function selectedPassSpeed() { return Number(passSpeedInput.value); }
 function setStatus(text, kind = "") { status.textContent = text; status.dataset.kind = kind; }
 function updateLabels() {
   const labels = actionLabels(state, controlledPlayerId(slot));
   hudAILevel.textContent = String(state.aiLevel ?? selectedAILevel());
+  hudPassSpeed.textContent = String(state.passSpeedLevel ?? selectedPassSpeed());
   elements.primary.textContent = labels.primary;
   elements.secondary.textContent = labels.secondary;
   elements.tertiary.textContent = labels.tertiary;
@@ -47,7 +52,7 @@ function updateLabels() {
 function showGame() { menu.hidden = true; game.hidden = false; running = true; previous = performance.now(); requestAnimationFrame(frame); }
 
 async function hostFriend() {
-  mode = "online-host"; slot = "host"; state = createMatchState({ online: true, aiLevel: selectedAILevel() });
+  mode = "online-host"; slot = "host"; state = createMatchState({ online: true, aiLevel: selectedAILevel(), passSpeedLevel: selectedPassSpeed() });
   const room = createRoomCode();
   const url = invitationUrl(location, room);
   shareUrl.value = url; sharePanel.hidden = false; setStatus(`${room} · EN ATTENTE · 1/2`);
@@ -101,7 +106,8 @@ function frame(now) {
 }
 
 aiLevelInput.addEventListener("input", () => { aiLevelValue.textContent = aiLevelInput.value; hudAILevel.textContent = aiLevelInput.value; });
-document.querySelector("#solo").addEventListener("click", () => { mode = "solo"; slot = "host"; state = createMatchState({ aiLevel: selectedAILevel() }); setStatus("SOLO · IA", "ready"); showGame(); });
+passSpeedInput.addEventListener("input", () => { passSpeedValue.textContent = passSpeedInput.value; hudPassSpeed.textContent = passSpeedInput.value; });
+document.querySelector("#solo").addEventListener("click", () => { mode = "solo"; slot = "host"; state = createMatchState({ aiLevel: selectedAILevel(), passSpeedLevel: selectedPassSpeed() }); setStatus("SOLO · IA", "ready"); showGame(); });
 document.querySelector("#friend").addEventListener("click", hostFriend);
 document.querySelector("#copy-link").addEventListener("click", async () => { await navigator.clipboard?.writeText(shareUrl.value); setStatus("LIEN COPIÉ · EN ATTENTE 1/2"); });
 document.querySelector("#quit").addEventListener("click", () => { running = false; transport?.close(); transport = null; game.hidden = true; menu.hidden = false; sharePanel.hidden = true; history.replaceState({}, "", location.pathname); });

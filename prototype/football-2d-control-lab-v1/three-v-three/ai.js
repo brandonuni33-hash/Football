@@ -14,6 +14,27 @@ function moveToward(player, target, scale = 0.72) {
   return { moveX: direction.x * scale, moveY: direction.y * scale };
 }
 
+export function looseBallRole(state, player) {
+  if (state.ball.ownerId !== null) return "shape";
+  const teammates = state.players.filter((entry) => entry.team === player.team && !entry.humanSlot);
+  const ranked = teammates
+    .map((entry) => ({ entry, d: distance(entry, state.ball) }))
+    .sort((a, b) => a.d - b.d);
+  return ranked[0]?.entry.id === player.id ? "recover" : "support";
+}
+
+function looseBallIntent(state, player) {
+  const role = looseBallRole(state, player);
+  if (role === "recover") return moveToward(player, state.ball, 0.7);
+  const direction = teamDirection(player.team);
+  const lane = homePosition(player).y;
+  const target = {
+    x: state.ball.x - direction * 85,
+    y: lane * 0.72 + state.ball.y * 0.28,
+  };
+  return moveToward(player, target, 0.46);
+}
+
 function defensiveAssignments(state, team) {
   const owner = getOwner(state);
   const defenders = state.players.filter((entry) => entry.team === team && !entry.humanSlot);
@@ -36,6 +57,7 @@ export function defensiveRole(state, player) {
 
 function teammateIntent(state, player) {
   const owner = getOwner(state);
+  if (!owner) return looseBallIntent(state, player);
   if (player.hasBall) {
     const goalX = player.team === TEAM.HOME ? 930 : 30;
     if (Math.abs(goalX - player.x) < 210) return { moveX: teamDirection(player.team) * 0.65, moveY: 0, shootPressed: true };
@@ -53,6 +75,7 @@ function teammateIntent(state, player) {
 
 function opponentIntent(state, player) {
   const owner = getOwner(state);
+  if (!owner) return looseBallIntent(state, player);
   if (player.hasBall) return teammateIntent(state, player);
   if (!owner || owner.team === player.team) return teammateIntent(state, player);
   const role = defensiveRole(state, player);

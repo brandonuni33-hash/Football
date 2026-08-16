@@ -7,16 +7,15 @@ export const RULES = Object.freeze({
   fixedStep: 1 / 60,
   playerRadius: 17,
   controlRadius: 29,
-  maxSpeed: 154,
-  acceleration: 720,
-  deceleration: 1050,
+  maxSpeed: 142,
+  acceleration: 650,
+  deceleration: 960,
   protectionDuration: 3,
   protectionCooldown: 2,
   protectionSpeedScale: 0.33,
   protectionControlDistance: 23,
   receptionWindow: 0.55,
-  passSpeed: 270,
-  shotSpeed: 470,
+  shotSpeed: 450,
   tackleRange: 43,
   tackleArcDot: 0.15,
   tackleDuration: 0.22,
@@ -43,4 +42,7 @@ export function distance(a, b) { return length(a.x - b.x, a.y - b.y); }
 export function approach(value, target, amount) {
   if (value < target) return Math.min(target, value + amount);
   return Math.max(target, value - amount);
+}
+export function passSpeedFromLevel(level = 40) {
+  return 170 + clamp(Number(level) || 0, 0, 100) * 1.9;
 }

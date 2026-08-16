@@ -17,6 +17,11 @@
       <input id="ai-level" type="range" min="0" max="100" value="50" step="1" />
       <p>0 : lente et hésitante · 100 : lecture rapide et déplacements plus précis</p>
     </section>
+    <section class="ai-setting pace-setting">
+      <div><label for="pass-speed-level">VITESSE DES PASSES</label><output id="pass-speed-value">40</output></div>
+      <input id="pass-speed-level" type="range" min="0" max="100" value="40" step="1" />
+      <p>Teste plusieurs valeurs et garde celle qui correspond au meilleur rythme.</p>
+    </section>
     <div class="menu-actions">
       <button id="solo" class="menu-button primary" type="button">JOUER SOLO <span>1 joueur · 5 IA</span></button>
       <button id="friend" class="menu-button" type="button">JOUER AVEC UN AMI <span>lien privé · 2 joueurs · 4 IA</span></button>
@@ -26,7 +31,7 @@
 
   <main id="game-screen" class="game-screen" hidden>
     <header class="hudbar">
-      <strong>STP · 3V3 · IA <b id="hud-ai-level">50</b></strong><span id="network-status">PRÉPARATION</span><button id="quit" type="button">QUITTER</button>
+      <strong>STP · IA <b id="hud-ai-level">50</b> · PASSE <b id="hud-pass-speed">40</b></strong><span id="network-status">PRÉPARATION</span><button id="quit" type="button">QUITTER</button>
     </header>
     <section class="arena">
       <canvas id="game" width="960" height="540" aria-label="Match de football 3 contre 3"></canvas>

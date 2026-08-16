@@ -2,7 +2,10 @@ import { BALL_PHASE, TEAM } from "./constants.js";
 import { getPlayer } from "./matchState.js";
 
 export function clearPossession(state, phase = BALL_PHASE.FREE) {
-  for (const player of state.players) player.hasBall = false;
+  for (const player of state.players) {
+    player.hasBall = false;
+    if (!player.humanSlot) player.aiDecisionRemaining = Math.min(player.aiDecisionRemaining ?? 0, 0.1);
+  }
   state.ball.ownerId = null;
   state.ball.phase = phase;
   state.possession = { team: null, playerId: null, duel: null };

@@ -1,12 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ACTION_LABELS, BALL_PHASE, RULES, TEAM } from "../../prototype/football-2d-control-lab-v1/three-v-three/constants.js";
+import { ACTION_LABELS, BALL_PHASE, RULES, TEAM, distance, passSpeedFromLevel } from "../../prototype/football-2d-control-lab-v1/three-v-three/constants.js";
 import { actionLabels, assertPossessionInvariant, createMatchState, getPlayer } from "../../prototype/football-2d-control-lab-v1/three-v-three/matchState.js";
 import { clearPossession, givePossession } from "../../prototype/football-2d-control-lab-v1/three-v-three/possession.js";
 import { requestCall, startPass, startProtection, startShot, startTackle } from "../../prototype/football-2d-control-lab-v1/three-v-three/actions.js";
 import { consumeInputActions, mergeInputFrames } from "../../prototype/football-2d-control-lab-v1/three-v-three/inputBuffer.js";
 import { recoveryWindow, selectRecoveryCandidate } from "../../prototype/football-2d-control-lab-v1/three-v-three/ballRecovery.js";
-import { collectAIInputs, defensiveRole, executeAIAction } from "../../prototype/football-2d-control-lab-v1/three-v-three/ai.js";
+import { collectAIInputs, defensiveRole, executeAIAction, looseBallRole } from "../../prototype/football-2d-control-lab-v1/three-v-three/ai.js";
 import { stepMatch } from "../../prototype/football-2d-control-lab-v1/three-v-three/simulation.js";
 
 function advance(state, inputs, seconds) {
@@ -185,9 +185,20 @@ test("si deux joueurs sont proches la meilleure fenêtre remporte le ballon", ()
 });
 
 test("le rythme de jeu garde joueurs et passes sous les nouvelles limites", () => {
-  assert.equal(RULES.maxSpeed, 154);
-  assert.equal(RULES.passSpeed, 270);
-  assert.ok(RULES.acceleration <= 720);
+  assert.equal(RULES.maxSpeed, 142);
+  assert.equal(passSpeedFromLevel(0), 170);
+  assert.equal(passSpeedFromLevel(100), 360);
+  assert.ok(RULES.acceleration <= 650);
+});
+
+test("le curseur 0 à 100 modifie réellement la vitesse des passes", () => {
+  const slow = createMatchState({ passSpeedLevel: 0 });
+  const fast = createMatchState({ passSpeedLevel: 100 });
+  startPass(slow, "home-left", "home-human");
+  startPass(fast, "home-left", "home-human");
+  assert.equal(slow.passSpeedLevel, 0);
+  assert.equal(fast.passSpeedLevel, 100);
+  assert.ok(Math.hypot(fast.ball.vx, fast.ball.vy) > Math.hypot(slow.ball.vx, slow.ball.vy) * 2);
 });
 
 test("le milieu adverse participe au pressing au lieu de rester immobile", () => {
@@ -225,4 +236,37 @@ test("une IA proche exécute réellement son tacle et peut gagner le ballon", ()
   executeAIAction(state, defender, intent);
   assert.equal(state.ball.ownerId, null);
   assert.equal(state.lastEvent, "tackle_won");
+});
+
+test("sur ballon libre une seule IA par équipe attaque directement le ballon", () => {
+  const state = createMatchState({ aiLevel: 60 });
+  clearPossession(state);
+  state.ball.x = 480; state.ball.y = 270;
+  for (const team of [TEAM.HOME, TEAM.AWAY]) {
+    const aiPlayers = state.players.filter((player) => player.team === team && !player.humanSlot);
+    assert.equal(aiPlayers.filter((player) => looseBallRole(state, player) === "recover").length, 1);
+  }
+});
+
+test("le joueur IA désigné se rapproche réellement du ballon libre", () => {
+  let state = createMatchState({ aiLevel: 80 });
+  clearPossession(state);
+  state.ball.x = 480; state.ball.y = 270; state.ball.vx = 0; state.ball.vy = 0;
+  const chaser = state.players.find((player) => player.team === TEAM.AWAY && looseBallRole(state, player) === "recover");
+  const before = distance(chaser, state.ball);
+  state = advance(state, {}, 0.5);
+  assert.ok(distance(chaser, state.ball) < before - 4);
+});
+
+test("les partenaires IA anticipent sans tous s'entasser sur le ballon libre", () => {
+  const state = createMatchState({ aiLevel: 60 });
+  clearPossession(state);
+  state.ball.x = 480; state.ball.y = 270;
+  const inputs = collectAIInputs(state);
+  const away = state.players.filter((player) => player.team === TEAM.AWAY);
+  const direct = away.filter((player) => looseBallRole(state, player) === "recover");
+  const support = away.filter((player) => looseBallRole(state, player) === "support");
+  assert.equal(direct.length, 1);
+  assert.equal(support.length, 2);
+  assert.notDeepEqual(inputs[support[0].id], inputs[direct[0].id]);
 });

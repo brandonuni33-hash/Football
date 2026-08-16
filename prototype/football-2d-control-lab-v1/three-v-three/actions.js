@@ -1,4 +1,4 @@
-import { BALL_PHASE, RULES, clamp, distance, dot, normalize } from "./constants.js";
+import { BALL_PHASE, RULES, clamp, distance, dot, normalize, passSpeedFromLevel } from "./constants.js";
 import { getPlayer, hasPossession } from "./matchState.js";
 import { clearPossession } from "./possession.js";
 
@@ -51,8 +51,9 @@ export function startPass(state, passerId, targetId = null, intent = {}) {
   clearPossession(state, BALL_PHASE.PASS);
   state.ball.x = passer.x + direction.x * 24;
   state.ball.y = passer.y + direction.y * 24;
-  state.ball.vx = direction.x * RULES.passSpeed;
-  state.ball.vy = direction.y * RULES.passSpeed;
+  const passSpeed = passSpeedFromLevel(state.passSpeedLevel);
+  state.ball.vx = direction.x * passSpeed;
+  state.ball.vy = direction.y * passSpeed;
   state.ball.targetId = target.id;
   state.ball.lastTouchId = passer.id;
   target.receptionRemaining = RULES.receptionWindow;
