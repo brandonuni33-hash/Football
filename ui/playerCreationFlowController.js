@@ -1,22 +1,19 @@
 import { createIdentityStepState } from './verticalSlice/playerCreationIdentityStep.js';
 import { createAppearanceStepState } from './verticalSlice/playerCreationAppearanceStep.js';
-import { createBodyStepState } from './verticalSlice/playerCreationBodyStep.js';
 import { createPositionAndFootStepState } from './verticalSlice/playerCreationPositionAndFootStep.js';
 import { createNationalitiesStepState } from './verticalSlice/playerCreationNationalitiesStep.js';
 import { createChildhoodCountryStepState } from './verticalSlice/playerCreationChildhoodCountryStep.js';
 import { toCareerCreationIdentity } from './verticalSlice/playerCreationDraft.js';
 import { mountPlayerCreationIdentity, PLAYER_CREATION_IDENTITY_CSS } from './verticalSlice/playerCreationIdentityView.js';
 import { mountPlayerCreationAppearance, PLAYER_CREATION_APPEARANCE_CSS } from './verticalSlice/playerCreationAppearanceView.js';
-import { mountPlayerCreationBody, PLAYER_CREATION_BODY_CSS } from './verticalSlice/playerCreationBodyView.js';
 import { mountPlayerCreationPositionAndFoot, PLAYER_CREATION_POSITION_AND_FOOT_CSS } from './verticalSlice/playerCreationPositionAndFootView.js';
 import { mountPlayerCreationNationalities, PLAYER_CREATION_NATIONALITIES_CSS } from './verticalSlice/playerCreationNationalitiesView.js';
 import { mountPlayerCreationChildhoodCountry, PLAYER_CREATION_CHILDHOOD_COUNTRY_CSS } from './verticalSlice/playerCreationChildhoodCountryView.js';
 
-const STEPS = ['identity', 'appearance', 'body', 'positionAndFoot', 'nationalities', 'childhoodCountry'];
+const STEPS = ['identity', 'appearance', 'positionAndFoot', 'nationalities', 'childhoodCountry'];
 const MOUNTS = {
     identity: mountPlayerCreationIdentity,
     appearance: mountPlayerCreationAppearance,
-    body: mountPlayerCreationBody,
     positionAndFoot: mountPlayerCreationPositionAndFoot,
     nationalities: mountPlayerCreationNationalities,
     childhoodCountry: mountPlayerCreationChildhoodCountry
@@ -24,7 +21,6 @@ const MOUNTS = {
 const STATE_FACTORIES = {
     identity: createIdentityStepState,
     appearance: createAppearanceStepState,
-    body: createBodyStepState,
     positionAndFoot: createPositionAndFootStepState,
     nationalities: createNationalitiesStepState,
     childhoodCountry: createChildhoodCountryStepState
@@ -36,7 +32,7 @@ function installStyles() {
     stylesInstalled = true;
     const style = document.createElement('style');
     style.id = 'stp-player-creation-flow-styles';
-    style.textContent = `${PLAYER_CREATION_IDENTITY_CSS}\n${PLAYER_CREATION_APPEARANCE_CSS}\n${PLAYER_CREATION_BODY_CSS}\n${PLAYER_CREATION_POSITION_AND_FOOT_CSS}\n${PLAYER_CREATION_NATIONALITIES_CSS}\n${PLAYER_CREATION_CHILDHOOD_COUNTRY_CSS}
+    style.textContent = `${PLAYER_CREATION_IDENTITY_CSS}\n${PLAYER_CREATION_APPEARANCE_CSS}\n${PLAYER_CREATION_POSITION_AND_FOOT_CSS}\n${PLAYER_CREATION_NATIONALITIES_CSS}\n${PLAYER_CREATION_CHILDHOOD_COUNTRY_CSS}
       html:has(.stp-player-creation-flow),body:has(.stp-player-creation-flow){background:#050505;overflow:hidden}
       .stp-player-creation-flow{box-sizing:border-box;width:100%;max-width:430px;height:100vh;height:100dvh;margin:0 auto;overflow:hidden;background:#050505;position:relative;padding-top:env(safe-area-inset-top,0)}
       .stp-player-creation-screen{height:100%;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;scroll-behavior:smooth}
@@ -49,15 +45,15 @@ function installStyles() {
       .stp-player-creation-flow.is-submitting{pointer-events:none;opacity:.82}
       @keyframes stp-creation-enter{from{opacity:.55;transform:translateX(14px)}to{opacity:1;transform:none}}
       @media (prefers-reduced-motion:reduce){.stp-player-creation-screen>section{animation:none}.stp-player-creation-flow .stp-continue{transition:none}}
-      @media (max-height:760px){.stp-creation-hero{padding-top:24px}.stp-body-stage{min-height:390px}.stp-position-pitch{height:350px}}
+      @media (max-height:760px){.stp-creation-hero{padding-top:24px}.stp-body-stage{min-height:260px}.stp-position-pitch{height:350px}}
     `;
     document.head.appendChild(style);
 }
 
 function stateFor(step, draft) {
-    // L'étape Identité reçoit directement le seed, tandis que les cinq autres
+    // L'étape Identité reçoit directement le seed, tandis que les autres
     // fabriques acceptent l'enveloppe { draft }. Garder cette différence ici
-    // évite de perdre prénom/nom lors d'un retour depuis l'Apparence.
+    // évite de perdre les choix lors d'un retour dans le parcours.
     return step === 'identity'
         ? createIdentityStepState(draft)
         : STATE_FACTORIES[step]({ draft });
