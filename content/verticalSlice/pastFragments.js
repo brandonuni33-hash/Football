@@ -1,64 +1,55 @@
 // content/verticalSlice/pastFragments.js
-// Fragments de passé validés pour la vertical slice.
-// Aucun poids de trait ni bonus visible n'est stocké ici : le contenu reste non-optimisable côté joueur.
+// Storyboard canonique des souvenirs d'enfance.
+// Les réponses nourriront plus tard des signaux cachés ; aucun bonus chiffré n'est exposé ici.
 
 const freezeAnswers = answers => Object.freeze(answers.map(answer => Object.freeze({ ...answer })));
 
 export const PAST_FRAGMENTS = Object.freeze([
     Object.freeze({
-        id: 'decisive-penalty',
-        visualKey: 'penalty',
-        memoryLabel: 'Un souvenir',
-        situation: 'Dernier penalty. Tout le monde regarde.',
-        question: "Qu’est-ce qui te traverse en premier ?",
-        prompt: 'Tu poses le ballon.',
+        id: 'memory-salon', visualKey: 'salon', memoryLabel: 'Souvenir 01',
+        question: "Quand tu regardes un joueur, qu’est-ce que tu remarques en premier ?",
         answers: freezeAnswers([
-            { id: 'fear-ridicule', text: 'Pourvu que je ne me ridiculise pas.' },
-            { id: 'already-decided', text: 'Je sais déjà où je vais tirer.' },
-            { id: 'keeper-nervous', text: 'Le gardien est peut-être aussi nerveux que moi.' },
-            { id: 'take-responsibility', text: 'Je veux le prendre. Même si je le rate.' }
+            { id: 'information', text: 'Sa prise d’information.' },
+            { id: 'risk', text: 'Sa prise de risque.' },
+            { id: 'first-touch', text: 'Sa première touche.' }
         ])
     }),
     Object.freeze({
-        id: 'friend-qualifying-goal',
-        visualKey: 'celebration',
-        memoryLabel: 'Un souvenir',
-        situation: 'Ton pote marque le but qui vous qualifie.',
-        question: "Sur le moment, qu’est-ce qui compte le plus ?",
-        prompt: 'Tout le monde court vers lui.',
+        id: 'memory-cour', visualKey: 'cour', memoryLabel: 'Souvenir 02',
+        question: "Quand t’as le ballon, qu’est-ce que tu regardes en premier ?",
         answers: freezeAnswers([
-            { id: 'happy-for-him', text: 'Je suis heureux pour lui.' },
-            { id: 'wish-it-were-me', text: 'J’aurais aimé que ce soit moi.' },
-            { id: 'qualified-first', text: 'Peu importe. On est qualifiés.' },
-            { id: 'remember-assist', text: 'J’espère qu’il se rappelle qui lui a donné le ballon.' }
+            { id: 'opponent-distance', text: 'La distance entre moi et l’adversaire.' },
+            { id: 'teammate-position', text: 'Le placement de mon coéquipier.' },
+            { id: 'space', text: 'L’espace pour créer quelque chose.' }
         ])
     }),
     Object.freeze({
-        id: 'level-judgment',
-        visualKey: 'locker-room-judgment',
-        memoryLabel: 'Un souvenir',
-        situation: "Quelqu’un te dit que tu n’es peut-être pas assez bon.",
-        question: "Qu’est-ce qui te vient en premier ?",
-        prompt: 'Tu l’entends jusqu’au bout.',
+        id: 'memory-city', visualKey: 'city', memoryLabel: 'Souvenir 03',
+        question: "Qu’est-ce qui te frustre le plus dans un match ?",
         answers: freezeAnswers([
-            { id: 'maybe-right', text: 'Peut-être qu’il a raison.' },
-            { id: 'who-judges-me', text: 'Pour qui il se prend pour me juger ?' },
-            { id: 'just-play', text: 'Rien. Je préfère jouer.' },
-            { id: 'prove-it', text: 'Très bien. Je vais lui montrer.' }
+            { id: 'cannot-try', text: 'Ne pas pouvoir tenter ce que j’ai en tête.' },
+            { id: 'too-slow', text: 'Quand le jeu devient trop lent.' },
+            { id: 'too-individual', text: 'Quand chacun joue personnel.' }
         ])
     }),
     Object.freeze({
-        id: 'best-match-locker-room',
-        visualKey: 'locker-room-praise',
-        memoryLabel: 'Un souvenir',
-        situation: 'Après ton meilleur match, le vestiaire parle de toi.',
-        question: "Qu’est-ce que ça change pour toi ?",
-        prompt: 'Tu les entends parler.',
+        id: 'memory-chambre', visualKey: 'chambre', memoryLabel: 'Souvenir 04',
+        question: "Si ton coéquipier réussit là où toi tu voulais briller, tu ressens quoi en premier ?",
         answers: freezeAnswers([
-            { id: 'they-exaggerate', text: 'Ils exagèrent.' },
-            { id: 'next-match-pressure', text: 'Ça ne voudra rien dire si je rate le prochain.' },
-            { id: 'seen-differently', text: 'Les gens vont peut-être me regarder autrement.' },
-            { id: 'want-replay', text: 'Rien. J’ai juste envie de rejouer.' }
+            { id: 'team-first', text: 'Tant qu’on gagne, ça me va.' },
+            { id: 'happy-but-me', text: 'Je suis content pour lui, mais j’aurais aimé que ce soit moi.' },
+            { id: 'prove-worth', text: 'Ça me donne encore plus envie de montrer ce que je vaux.' },
+            { id: 'hidden-anger', text: 'Ça m’énerve, même si je le montre pas.' }
+        ])
+    }),
+    Object.freeze({
+        id: 'memory-porte', visualKey: 'porte', memoryLabel: 'Souvenir 05',
+        question: "Quand tout le monde commence à douter de toi, qu’est-ce qui te pousse à continuer ?",
+        answers: freezeAnswers([
+            { id: 'prove-wrong', text: 'Leur prouver qu’ils se trompent.' },
+            { id: 'find-limit', text: 'Voir jusqu’où je peux vraiment aller.' },
+            { id: 'too-much-given', text: 'J’ai déjà trop donné pour m’arrêter maintenant.' },
+            { id: 'love-game', text: 'Parce que jouer reste ce que j’aime le plus.' }
         ])
     })
 ]);
