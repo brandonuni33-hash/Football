@@ -39,7 +39,6 @@ function resetAction() {
   const goals = state.goals;
   state = { ...createControlLabState(), goals };
   restartAt = 0;
-  document.querySelector("#goal-flash").hidden = true;
 }
 
 document.querySelector("#player-name").textContent = `${profile.name} · ${profile.age} ans`;
@@ -91,7 +90,6 @@ function frame(now) {
   protectButton.textContent = state.protectionCooldown > 0 ? `${Math.ceil(state.protectionCooldown)}s` : "PROT.";
   passButton.classList.toggle("active", controls.passPressed);
   shootButton.classList.toggle("active", controls.charge > 0);
-  document.querySelector("#goal-flash").hidden = state.status !== "goal";
 
   renderControlLab(ctx, state, profile, controls.charge);
   requestAnimationFrame(frame);
