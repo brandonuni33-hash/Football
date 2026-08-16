@@ -1,7 +1,11 @@
-import { BALL_PHASE, TEAM } from "./constants.js";
+import { BALL_PHASE, RULES, TEAM } from "./constants.js";
 import { getPlayer } from "./matchState.js";
 
 export function clearPossession(state, phase = BALL_PHASE.FREE) {
+  const previousOwner = state.ball.ownerId ? getPlayer(state, state.ball.ownerId) : null;
+  if (previousOwner && phase === BALL_PHASE.FREE) {
+    previousOwner.recentBallLossRemaining = RULES.recentBallLossDuration;
+  }
   for (const player of state.players) {
     player.hasBall = false;
     if (!player.humanSlot) player.aiDecisionRemaining = Math.min(player.aiDecisionRemaining ?? 0, 0.1);
@@ -24,6 +28,8 @@ export function givePossession(state, playerId, event = "possession") {
   state.ball.vx = 0;
   state.ball.vy = 0;
   owner.defensiveBrakeRemaining = 0;
+  owner.deepBrakeRemaining = 0;
+  owner.recentBallLossRemaining = 0;
   owner.dribbleTouchRemaining = 0;
   owner.jockeying = false;
   owner.offBallShieldTargetId = null;
