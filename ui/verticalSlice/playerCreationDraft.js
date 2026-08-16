@@ -11,11 +11,10 @@ export const VERTICAL_SLICE_BODY_LIMITS = Object.freeze({
     weight: Object.freeze({ min: 38, max: 70 })
 });
 
-// Six écrans validés. Le poste et le pied fort partagent le même écran.
+// Cinq écrans : toute la personnalisation visuelle (tête + corps) vit sur Apparence.
 export const CREATION_SCREENS = Object.freeze([
     'identity',
     'appearance',
-    'body',
     'positionAndFoot',
     'nationalities',
     'childhoodCountry'
