@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <title>STP — Control Lab V1</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
@@ -14,15 +15,8 @@
 
   <main class="shell">
     <header class="topbar">
-      <div>
-        <p class="eyebrow">STREET TO PRO · CONTROL LAB V1</p>
-        <h1>Deux pouces, une seule intention</h1>
-      </div>
-      <div class="hud">
-        <strong id="player-name">Elias Morel · 24 ans</strong>
-        <span>Contrôle : <b id="control-mode">NEUTRE</b></span>
-        <span>Action : <b id="action-mode">—</b></span>
-      </div>
+      <div><p class="eyebrow">STREET TO PRO · CONTROL LAB V1</p><h1>Lire, provoquer, repartir</h1></div>
+      <div class="hud"><strong id="player-name">Elias Morel · 24 ans</strong><span>Stick droit : <b id="control-mode">VISION</b></span><span>Action : <b id="action-mode">—</b></span></div>
     </header>
 
     <section class="game-wrap">
@@ -32,39 +26,31 @@
       <div class="touch-layer" aria-label="Contrôles tactiles">
         <div class="stick-zone move-zone">
           <span class="control-caption">DÉPLACEMENT</span>
-          <div id="move-joystick" class="joystick joystick-move">
-            <div id="move-stick" class="stick"></div>
-          </div>
+          <div id="move-joystick" class="joystick joystick-move"><div id="move-stick" class="stick"></div></div>
         </div>
 
         <div class="right-hand-zone">
           <div class="action-arc" aria-label="Actions">
-            <button id="pass" class="action pass" type="button">PASSE</button>
             <button id="protect" class="action protect" type="button">PROT.</button>
+            <button id="pass" class="action pass" type="button">PASSE</button>
             <button id="shoot" class="action shoot" type="button"><span>TIR</span><i id="power-fill"></i></button>
           </div>
-
           <div class="stick-zone control-zone">
-            <span class="control-caption">BALLON / VISION</span>
-            <div id="control-joystick" class="joystick joystick-control">
-              <div id="control-stick" class="stick"></div>
-            </div>
+            <span class="control-caption">LECTURE / FEINTE</span>
+            <div id="control-joystick" class="joystick joystick-control"><div id="control-stick" class="stick"></div></div>
           </div>
         </div>
       </div>
     </section>
 
     <section class="control-notes">
-      <div><strong>Stick gauche</strong><span>Déplacement. Double impulsion dans la même direction = poussée/accélération.</span></div>
-      <div><strong>Stick droit</strong><span>Avec ballon : direction + longueur du toucher. Sans ballon : vision.</span></div>
-      <div><strong>Protection</strong><span>Maintenir PROT. et continuer à se déplacer avec le stick gauche.</span></div>
-      <div><strong>Passe</strong><span>Bouton présent pour tester l’ergonomie ; aucun coéquipier n’est encore simulé.</span></div>
+      <div><strong>Vitesse contre outils</strong><span>En déplacement avec le ballon, le stick droit est verrouillé. Ralentir ou s’arrêter rend les outils techniques disponibles.</span></div>
+      <div><strong>Réception</strong><span>Sans ballon : vision. À la réception : jusqu’à 3 s pour préparer l’orientation, tant que tu ne repars pas en course.</span></div>
+      <div><strong>Feinte</strong><span>À l’arrêt avec ballon : stick droit = feinte de corps. Aucun stun garanti ; le défenseur peut rester sur ses appuis.</span></div>
+      <div><strong>Protection</strong><span>Seulement à l’arrêt/faible vitesse, 3 s max, puis 5 s de cooldown. Accélérer coupe immédiatement la protection.</span></div>
     </section>
 
-    <div class="footer-actions">
-      <button id="reset" type="button">Recommencer l’action</button>
-      <span>Calibration conservée : vitesse 80 · accélération 80 · contrôle moteur 100 · tir 109</span>
-    </div>
+    <div class="footer-actions"><button id="reset" type="button">Recommencer l’action</button><span>Calibration baseline conservée : vitesse 80 · accélération 80 · contrôle 100 · tir 109</span></div>
   </main>
   <script type="module" src="./game.js"></script>
 </body>
