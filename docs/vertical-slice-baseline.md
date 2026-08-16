@@ -17,14 +17,15 @@ Aucun de ces éléments n'est encore branché au Career Hub ni au moteur de matc
 
 La vertical slice commence à 14 ans.
 
-Six écrans :
+Cinq écrans :
 
 1. identité ;
-2. visage ;
-3. gabarit ;
-4. poste + pied fort ;
-5. nationalités ;
-6. pays où le joueur a grandi.
+2. apparence — personnalisation de la tête et du corps sur une seule page ;
+3. poste + pied fort ;
+4. nationalités ;
+5. pays où le joueur a grandi.
+
+L’écran Apparence est le propriétaire unique de la personnalisation visuelle. Il regroupe le visage et le gabarit actuel et constitue l’emplacement prévu pour les options de coiffure, peau et autres détails visuels à venir. Il n’existe plus d’écran Corps séparé dans le parcours.
 
 Le pied fort est obligatoire : `RIGHT` ou `LEFT`. L'ambidextrie n'est pas un choix gratuit à la création.
 
