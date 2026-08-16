@@ -8,9 +8,10 @@ import {
     continueFromNationalities
 } from '../../../ui/verticalSlice/playerCreationNationalitiesStep.js';
 
-test('l’étape nationalités démarre sans nationalité principale', () => {
+test('l’étape nationalités démarre au quatrième écran sans nationalité principale', () => {
     const state = createNationalitiesStepState();
-    assert.equal(state.screenIndex, 5);
+    assert.equal(state.screenIndex, 4);
+    assert.equal(state.screenCount, 5);
     assert.equal(nationalitiesValidation(state).valid, false);
 });
 
@@ -47,5 +48,5 @@ test('continuer mène au pays où le joueur a grandi', () => {
 
     assert.equal(result.ok, true);
     assert.equal(result.nextStep, 'childhoodCountry');
-    assert.equal(result.state.screenIndex, 6);
+    assert.equal(result.state.screenIndex, 5);
 });
