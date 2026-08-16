@@ -1,20 +1,14 @@
 import { createPlayerCreationDraft } from './playerCreationDraft.js';
-import { countryMetadata } from '../../domain/world/countryCatalog.js';
 
-export const CHILDHOOD_COUNTRIES = Object.freeze([
-    Object.freeze({ ...countryMetadata('France'), available: true, note: 'Disponible au lancement' }),
-    Object.freeze({ ...countryMetadata('Angleterre'), available: false, note: 'Prévu pour la version complète' }),
-    Object.freeze({ ...countryMetadata('Espagne'), available: false, note: 'Prévu pour la version complète' }),
-    Object.freeze({ ...countryMetadata('Portugal'), available: false, note: 'Prévu pour la version complète' }),
-    Object.freeze({ ...countryMetadata('Belgique'), available: false, note: 'Prévu pour la version complète' }),
-    Object.freeze({ ...countryMetadata('Brésil'), available: false, note: 'Prévu pour la version complète' })
+export const CHILDHOOD_CONTINENTS = Object.freeze([
+    Object.freeze({ id: 'Europe', label: 'Europe', icon: '🌍' }),
+    Object.freeze({ id: 'Afrique', label: 'Afrique', icon: '🌍' })
 ]);
 
 export const CHILDHOOD_COUNTRY_COPY = Object.freeze({
     eyebrow: 'Ton environnement',
     title: 'Où as-tu grandi ?',
-    description: 'Ton pays d’enfance fait partie de ton identité et peut influencer certaines rencontres de ton histoire.',
-    info: 'Les décors et l’ambiance de ton prologue dépendront du continent dans lequel tu as grandi.',
+    description: 'Choisis le continent qui a façonné ton enfance.',
     continueLabel: 'Terminer la création'
 });
 
@@ -24,64 +18,33 @@ function draftFrom(input = {}) {
 }
 
 export function createChildhoodCountryStepState(input = {}) {
-    return Object.freeze({
-        ...(input?.draft ? input : {}),
-        draft: draftFrom(input),
-        step: 'childhoodCountry',
-        screenIndex: 5,
-        screenCount: 5
-    });
+    return Object.freeze({ ...(input?.draft ? input : {}), draft: draftFrom(input), step: 'childhoodCountry', screenIndex: 5, screenCount: 5 });
 }
 
-export function setChildhoodCountry(state, country) {
-    const option = CHILDHOOD_COUNTRIES.find(item => item.id === country);
-    if (!option) throw new Error(`Pays d’enfance inconnu : ${country}`);
-    if (!option.available) throw new Error(`Pays d’enfance indisponible dans la vertical slice : ${country}`);
-
-    return Object.freeze({
-        ...state,
-        draft: { ...state.draft, raisedInCountry: option.id }
-    });
+export function setChildhoodCountry(state, continent) {
+    if (!CHILDHOOD_CONTINENTS.some(item => item.id === continent)) throw new Error(`Continent d’enfance inconnu : ${continent}`);
+    return Object.freeze({ ...state, draft: { ...state.draft, raisedInContinent: continent, raisedInCountry: null } });
 }
 
 export function childhoodCountryValidation(state) {
-    const country = state?.draft?.raisedInCountry ?? null;
-    const option = CHILDHOOD_COUNTRIES.find(item => item.id === country);
-    const errors = {};
-
-    if (!option || !option.available) errors.raisedInCountry = 'Pays d’enfance requis.';
-
-    return Object.freeze({
-        valid: Object.keys(errors).length === 0,
-        errors: Object.freeze(errors)
-    });
+    const continent = state?.draft?.raisedInContinent ?? null;
+    const valid = CHILDHOOD_CONTINENTS.some(item => item.id === continent);
+    return Object.freeze({ valid, errors: Object.freeze(valid ? {} : { raisedInContinent: 'Continent d’enfance requis.' }) });
 }
 
 export function childhoodCountryViewModel(state) {
     const validation = childhoodCountryValidation(state);
-    const selectedCountry = state?.draft?.raisedInCountry ?? null;
-
+    const selectedContinent = state?.draft?.raisedInContinent ?? null;
     return Object.freeze({
-        step: 'childhoodCountry',
-        progress: Object.freeze({ current: 5, total: 5, ratio: 1 }),
-        copy: CHILDHOOD_COUNTRY_COPY,
-        selectedCountry,
-        countries: CHILDHOOD_COUNTRIES.map(country => Object.freeze({
-            ...country,
-            selected: country.id === selectedCountry
-        })),
-        canContinue: validation.valid,
-        errors: validation.errors
+        step: 'childhoodCountry', progress: Object.freeze({ current: 5, total: 5, ratio: 1 }), copy: CHILDHOOD_COUNTRY_COPY,
+        selectedCountry: selectedContinent,
+        countries: CHILDHOOD_CONTINENTS.map(continent => Object.freeze({ id: continent.id, label: continent.label, flag: continent.icon, available: true, note: '', selected: continent.id === selectedContinent })),
+        canContinue: validation.valid, errors: validation.errors
     });
 }
 
 export function finishPlayerCreation(state) {
     const validation = childhoodCountryValidation(state);
     if (!validation.valid) return Object.freeze({ ok: false, state, errors: validation.errors });
-
-    return Object.freeze({
-        ok: true,
-        nextStep: 'pastFragments',
-        state: Object.freeze({ ...state, step: 'pastFragments', screenIndex: 6 })
-    });
+    return Object.freeze({ ok: true, nextStep: 'pastFragments', state: Object.freeze({ ...state, step: 'pastFragments', screenIndex: 6 }) });
 }
