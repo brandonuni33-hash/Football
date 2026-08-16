@@ -22,6 +22,12 @@ test('le joueur de référence suit le poste sélectionné',async({page})=>{
  expect(result.first.position).toBe('BU');expect(result.second.position).toBe('DC');expect(result.first.formation).toBe(result.second.formation);expect(result.first.index).not.toBe(result.second.index);
 });
 
+test('un AD reste ailier droit après la mi-temps',async({page})=>{
+ await page.goto('/index.html');
+ const result=await page.evaluate(async match=>{const {default:Controller}=await import('/ui/simulatedMatchVisualizationController.js');const controller=new Controller();controller.show(match,{player:{age:25,club:'Blagnac U15',position:'AD'},seed:'wing-browser'});const makeEvent=(period,minute,x)=>({id:`wing-${period}`,matchId:'visual-mobile',type:'BUILD_UP',cameraState:'BUILD_UP',clock:{period,regulationMinute:minute,stoppageMinute:0},minuteLabel:`${minute}'`,possessionSide:'HOME',zone:{x,y:50,lane:'CENTER',third:'MIDDLE'},ballCarrier:{team:'HOME',index:6,role:'midfielder'},playerContribution:'NONE',playerInvolved:false,score:{home:0,away:0},text:'Construction.'});controller.timeline={...controller.timeline,playerAge:25,competition:'Ligue 1',events:[makeEvent('FIRST_HALF',20,34),makeEvent('SECOND_HALF',60,66)]};const ys=[];for(let i=0;i<2;i+=1){controller.index=i;controller.renderCurrent();const focal=document.querySelector('[data-player-focal="true"]');ys.push(parseFloat(focal?.style.top||'0'));}return ys;},match);
+ expect(result[0]).toBeGreaterThan(60);expect(result[1]).toBeLessThan(40);
+});
+
 test('le joueur focal n affiche plus de point jaune au-dessus de lui',async({page})=>{
  await page.goto('/index.html');
  const content=await page.evaluate(async match=>{const {default:Controller}=await import('/ui/simulatedMatchVisualizationController.js');new Controller().show(match,{player:{age:14,club:'Blagnac U15',position:'BU'}});const focal=document.querySelector('[data-player-focal="true"]');return focal?getComputedStyle(focal,'::before').content:null;},match);
@@ -34,10 +40,10 @@ test('la couleur adverse varie entre les matchs et les gardiens gardent une coul
  expect(new Set(result.kits).size).toBeGreaterThanOrEqual(4);expect(result.sample.own).not.toBe(result.sample.opponent);expect(result.sample.ownKeeper).not.toBe(result.sample.own);expect(result.sample.ownKeeper).not.toBe(result.sample.opponent);expect(result.sample.opponentKeeper).not.toBe(result.sample.opponent);expect(result.sample.opponentKeeper).not.toBe(result.sample.own);
 });
 
-test('une frappe affiche une trajectoire explicite vers le but',async({page})=>{
+test('une frappe affiche un ballon lisible et une trajectoire continue vers le but',async({page})=>{
  await page.goto('/index.html');
- const result=await page.evaluate(async match=>{const {default:Controller}=await import('/ui/simulatedMatchVisualizationController.js');const controller=new Controller();controller.show(match,{player:{age:14,club:'Blagnac U15',position:'BU'},seed:'flight-browser'});const shot={id:'browser-shot',matchId:'visual-mobile',type:'SHOT',cameraState:'SHOT',clock:{period:'FIRST_HALF',regulationMinute:64,stoppageMinute:0},minuteLabel:"64'",possessionSide:'HOME',zone:{x:82,y:50,lane:'CENTER',third:'ATTACKING'},ballCarrier:{team:'HOME',index:9,role:'attacker'},playerContribution:'NONE',playerInvolved:true,score:{home:1,away:1},text:'Une fenêtre de frappe s ouvre.'};controller.timeline={...controller.timeline,events:[shot]};controller.index=0;controller.renderCurrent();const ball=document.querySelector('.sim-match-ball');return{flight:ball?.dataset.ballFlight,targetX:Number(ball?.dataset.ballTargetX),left:parseFloat(ball?.style.left||'0'),trails:document.querySelectorAll('.sim-ball-trail').length};},match);
- expect(result.flight).toBe('true');expect(result.targetX).toBeGreaterThan(result.left);expect(result.targetX).toBeGreaterThanOrEqual(97);expect(result.trails).toBe(3);
+ const result=await page.evaluate(async match=>{const {default:Controller}=await import('/ui/simulatedMatchVisualizationController.js');const controller=new Controller();controller.show(match,{player:{age:14,club:'Blagnac U15',position:'BU'},seed:'flight-browser'});const shot={id:'browser-shot',matchId:'visual-mobile',type:'SHOT',cameraState:'SHOT',clock:{period:'FIRST_HALF',regulationMinute:64,stoppageMinute:0},minuteLabel:"64'",possessionSide:'HOME',zone:{x:82,y:50,lane:'CENTER',third:'ATTACKING'},ballCarrier:{team:'HOME',index:9,role:'attacker'},playerContribution:'NONE',playerInvolved:true,score:{home:1,away:1},text:'Une fenêtre de frappe s ouvre.'};controller.timeline={...controller.timeline,events:[shot]};controller.index=0;controller.renderCurrent();const ball=document.querySelector('.sim-match-ball'),rect=ball?.getBoundingClientRect();return{flight:ball?.dataset.ballFlight,targetX:Number(ball?.dataset.ballTargetX),left:parseFloat(ball?.style.left||'0'),paths:document.querySelectorAll('[data-ball-path="true"]').length,width:rect?.width||0};},match);
+ expect(result.flight).toBe('true');expect(result.targetX).toBeGreaterThan(result.left);expect(result.targetX).toBeGreaterThanOrEqual(97);expect(result.paths).toBe(1);expect(result.width).toBeGreaterThanOrEqual(9);
 });
 
 test('le texte progressif peut être révélé immédiatement',async({page})=>{
