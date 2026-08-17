@@ -35,7 +35,7 @@ test("le premier appui FREIN engage la posture sans tenter de récupérer", () =
   assert.equal(state.lastEvent, "defensive_brake");
 });
 
-test("le deuxième appui FREIN déclenche l'intervention au bon moment", () => {
+test("le deuxième appui FREIN ralentit davantage sans stopper ni tacler", () => {
   const state = createMatchState();
   const defender = getPlayer(state, "home-human");
   const owner = getPlayer(state, "away-human");
@@ -45,9 +45,10 @@ test("le deuxième appui FREIN déclenche l'intervention au bon moment", () => {
   pressDefensiveBrake(state, defender.id);
   assert.ok(defender.defensiveBrakeRemaining > 0);
   pressDefensiveBrake(state, defender.id);
-  assert.equal(defender.defensiveBrakeRemaining, 0);
-  assert.equal(state.ball.ownerId, null);
-  assert.equal(state.lastEvent, "tackle_won");
+  assert.ok(defender.defensiveBrakeRemaining > 0);
+  assert.equal(defender.deepBrakeRemaining, RULES.defensiveBrakeDeepDuration);
+  assert.equal(state.ball.ownerId, owner.id);
+  assert.equal(state.lastEvent, "defensive_brake_deep");
 });
 
 test("APPEL crée une demande temporaire sans forcer la passe", () => {
@@ -155,6 +156,8 @@ test("FREIN est légèrement plus rapide tout en restant une posture contenue", 
   assert.equal(RULES.jockeySpeedScale, 0.52);
   assert.ok(RULES.jockeySpeedScale > 0.48);
   assert.ok(RULES.jockeySpeedScale < 0.6);
+  assert.ok(RULES.deepJockeySpeedScale > 0.3);
+  assert.ok(RULES.deepJockeySpeedScale < RULES.jockeySpeedScale);
 });
 
 test("le franchissement de la ligne entre les poteaux vaut but même sur un tir rapide", () => {
@@ -279,7 +282,7 @@ test("le stick gauche reste en allure normale et RAPIDE libère la course", () =
   assert.ok(rapidPlayer.x > normalPlayer.x + 12);
 });
 
-test("FREIN libère le joueur rapidement s'il ne déclenche pas le tacle", () => {
+test("FREIN libère le joueur rapidement s'il ne déclenche pas le frein renforcé", () => {
   let state = createMatchState({ online: true });
   const defender = getPlayer(state, "home-human");
   const owner = getPlayer(state, "away-human");
@@ -291,19 +294,23 @@ test("FREIN libère le joueur rapidement s'il ne déclenche pas le tacle", () =>
   assert.equal(defender.jockeying, false);
 });
 
-test("deux pressions successives sur le vrai bouton FREIN lancent le tacle", () => {
+test("deux pressions successives sur FREIN renforcent le ralentissement sans tacle automatique", () => {
   let state = createMatchState({ online: true });
   const defender = getPlayer(state, "home-human");
   const owner = getPlayer(state, "away-human");
   givePossession(state, owner.id);
   owner.x = defender.x + 30; owner.y = defender.y;
   defender.facingX = 1; defender.facingY = 0;
-  state = stepMatch(state, { host: { secondaryPressed: true } }, 1 / 60);
+  state = stepMatch(state, { host: { secondaryPressed: true, moveX: -1 } }, 1 / 60);
   assert.ok(defender.defensiveBrakeRemaining > 0);
   assert.equal(state.ball.ownerId, owner.id);
-  state = stepMatch(state, { host: { secondaryPressed: true } }, 1 / 60);
-  assert.equal(state.ball.ownerId, null);
-  assert.equal(state.lastEvent, "tackle_won");
+  state = stepMatch(state, { host: { secondaryPressed: true, moveX: -1 } }, 1 / 60);
+  assert.ok(defender.deepBrakeRemaining > 0);
+  assert.equal(state.ball.ownerId, owner.id);
+  assert.equal(state.lastEvent, "defensive_brake_deep");
+  const before = defender.x;
+  state = advance(state, { host: { moveX: -1 } }, 0.2);
+  assert.ok(defender.x < before, "le joueur doit continuer à reculer au lieu d'être stoppé");
 });
 
 test("le terrain de la vertical slice est légèrement élargi", () => {
@@ -320,7 +327,7 @@ test("le curseur 0 à 100 modifie réellement la vitesse des passes", () => {
   assert.ok(Math.hypot(fast.ball.vx, fast.ball.vy) > Math.hypot(slow.ball.vx, slow.ball.vy) * 2);
 });
 
-test("la passe humaine est fortement assistée sans supprimer l'intention", () => {
+test("la passe humaine choisit une cible puis verrouille sa trajectoire sur elle", () => {
   const state = createMatchState({ passSpeedLevel: 50 });
   const passer = getPlayer(state, "home-human");
   const target = getPlayer(state, "home-left");
@@ -331,9 +338,8 @@ test("la passe humaine est fortement assistée sans supprimer l'intention", () =
   givePossession(state, passer.id);
   startPass(state, passer.id, null, { x: 0, y: -1 });
   assert.equal(state.ball.targetId, target.id);
-  assert.ok(state.ball.vx > 0, "l'assistance doit rapprocher la passe du partenaire");
-  assert.ok(state.ball.vy < 0, "l'intention du stick doit encore influencer la trajectoire");
-  assert.ok(Math.abs(state.ball.vy) < state.ball.vx * 0.35, "l'assistance doit rester majoritaire");
+  assert.ok(state.ball.vx > 0, "le ballon doit partir vers le receveur choisi");
+  assert.ok(Math.abs(state.ball.vy) < 0.000001, "la trajectoire doit être verrouillée sur le receveur");
 });
 
 test("le milieu adverse participe au pressing au lieu de rester immobile", () => {
