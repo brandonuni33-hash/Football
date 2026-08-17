@@ -23,20 +23,20 @@ export const LAB_RULES = Object.freeze({
   controlledSpeed: 222,
   ballOffset: 28,
   movementDeadzone: 0.06,
-  // Body follows locomotion slowly; the head is a distinct, faster system.
-  bodyTurnDegreesPerSecond: 140,
+  // Body follows locomotion with inertia, but faster than the previous 140°/s pass.
+  bodyTurnDegreesPerSecond: 200,
   headTurnDegreesPerSecond: 260,
   headReturnDegreesPerSecond: 210,
 });
 
 // Validated mobile camera baseline: 1.40 / 60 / 41.
-// The head may scan across 220°, but only a 120° visual cone is readable at
-// any instant. The camera itself is anchored to the ball.
+// The head may scan across 180° total (±90° around the torso), while a 120°
+// visual cone is readable at any instant. The camera itself is anchored to the ball.
 export const CAMERA_DEFAULTS = Object.freeze({
   zoom: 1.40,
   angle: 60,
   scan: 41,
-  headScanDegrees: 220,
+  headScanDegrees: 180,
   visionDegrees: 120,
   scanDeadzone: 0.12,
   blindPitchAlpha: 0.12,
