@@ -2,7 +2,11 @@ import { CAMERA_DEFAULTS, PITCH, VIEWPORT, clamp, normalize } from "./constants.
 import { getControlledPlayer } from "./state.js";
 
 export function cameraGeometry(settings = CAMERA_DEFAULTS) {
-  const zoom = clamp(Number(settings.zoom ?? CAMERA_DEFAULTS.zoom), 1.1, 1.8);
+  const zoom = clamp(
+    Number(settings.zoom ?? CAMERA_DEFAULTS.zoom),
+    CAMERA_DEFAULTS.minZoom,
+    CAMERA_DEFAULTS.maxZoom,
+  );
   const angle = clamp(Number(settings.angle ?? CAMERA_DEFAULTS.angle), 0, 60);
   const scan = clamp(Number(settings.scan ?? CAMERA_DEFAULTS.scan), 0, 100);
   const yScale = 0.95 - angle * 0.0028;
@@ -57,9 +61,9 @@ export function createCameraState(state, settings = CAMERA_DEFAULTS) {
   };
 }
 
-// Head scan is limited to 220° total: roughly 110° to either side of the
-// player's torso. The actual head rotation now lives on the player state; this
-// helper remains the deterministic angular limiter used by tests and input.
+// Head scan is limited by CAMERA_DEFAULTS.headScanDegrees around the torso.
+// The actual head rotation lives on player state; this helper remains the
+// deterministic angular limiter used by tests and input.
 export function constrainScanToFacing(player, scanX = 0, scanY = 0) {
   const raw = normalize(scanX, scanY);
   if (raw.magnitude <= 0) return raw;
