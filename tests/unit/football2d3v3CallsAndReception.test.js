@@ -20,7 +20,15 @@ function receiveWithIntent(magnitude) {
   state.ball.vx = 70;
   state.ball.vy = 0;
   state = stepMatch(state, { host: { controlX: 0, controlY } }, 1 / 60);
-  return { state, receiver, before };
+  return { state, receiver, before, controlY };
+}
+
+function advanceReception(sample, seconds) {
+  const frames = Math.ceil(seconds * 60);
+  for (let i = 0; i < frames; i += 1) {
+    sample.state = stepMatch(sample.state, { host: { controlX: 0, controlY: sample.controlY } }, 1 / 60);
+  }
+  return sample;
 }
 
 test("une demande APPEL valide devient prioritaire pendant environ 1,6 seconde", () => {
@@ -80,22 +88,30 @@ test("les appels IA restent rares et déclenchent un cooldown individuel et coll
   }
 });
 
-test("contrôle neutre reste proche alors qu'un stick franc emmène clairement ballon et corps", () => {
-  const neutral = receiveWithIntent(0);
+test("le contrôle orienté ne téléporte plus brutalement le ballon", () => {
   const strong = receiveWithIntent(1);
-  assert.equal(neutral.state.ball.ownerId, neutral.receiver.id);
   assert.equal(strong.state.ball.ownerId, strong.receiver.id);
-  assert.ok(distance(strong.receiver, strong.state.ball) > distance(neutral.receiver, neutral.state.ball) + 25);
-  assert.ok(strong.receiver.y < strong.before.y - 4, "le corps doit accompagner la première touche engagée");
-  assert.ok(strong.receiver.vy < -35, "le premier appui doit lancer le corps dans la direction choisie");
-  assert.equal(strong.receiver.orientedTouchDistance, RULES.orientedTouchLongDistance);
+  const gap = distance(strong.receiver, strong.state.ball);
+  assert.ok(gap >= RULES.orientedTouchStartDistance - 3);
+  assert.ok(gap < RULES.orientedTouchLongDistance, "le ballon doit démarrer près du pied puis rouler, pas apparaître directement loin devant");
+  assert.ok(strong.state.ball.vy < -RULES.orientedTouchMediumBallSpeed, "la première touche doit donner une vraie vitesse au ballon dans la direction demandée");
 });
 
-test("petite direction et direction franche produisent deux contrôles distincts", () => {
+test("le ballon continue dans la direction demandée au lieu de revenir dans les pieds", () => {
+  const strong = receiveWithIntent(1);
+  const firstBallY = strong.state.ball.y;
+  advanceReception(strong, 0.14);
+  assert.ok(strong.state.ball.y < firstBallY - 4, "le ballon doit continuer à rouler vers la direction choisie");
+  assert.ok(strong.state.ball.y < strong.receiver.y - RULES.dribbleControlDistance, "le joueur doit poursuivre le ballon et non l'aspirer sous ses pieds");
+});
+
+test("petite direction et direction franche restent distinctes sans poussée excessive", () => {
   const short = receiveWithIntent(0.28);
   const strong = receiveWithIntent(1);
+  advanceReception(short, 0.12);
+  advanceReception(strong, 0.12);
   assert.equal(short.receiver.orientedTouchDistance, RULES.orientedTouchShortDistance);
   assert.equal(strong.receiver.orientedTouchDistance, RULES.orientedTouchLongDistance);
-  assert.ok(distance(strong.receiver, strong.state.ball) > distance(short.receiver, short.state.ball) + 20);
-  assert.ok(strong.receiver.orientedTouchRemaining > short.receiver.orientedTouchRemaining);
+  assert.ok(strong.state.ball.y < short.state.ball.y - 3, "le stick franc doit emmener plus loin que la petite orientation");
+  assert.ok(distance(strong.receiver, strong.state.ball) < 45, "même franche, la première touche ne doit pas ressembler à une grosse poussée de balle");
 });
