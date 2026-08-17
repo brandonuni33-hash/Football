@@ -57,6 +57,7 @@ function movePlayer(state, player, input, dt) {
     ? ((player.deepBrakeRemaining ?? 0) > 0 ? RULES.deepJockeySpeedScale : RULES.jockeySpeedScale)
     : 1;
   if (player.humanSlot && !input.rapidHeld) speedScale = Math.min(speedScale, RULES.normalPaceScale);
+  if (!player.humanSlot && input.catchUp) speedScale = Math.max(speedScale, RULES.aiCatchUpSpeedScale);
   if (player.protectionRemaining > 0) speedScale = Math.min(speedScale, RULES.protectionSpeedScale);
   const targetVx = move.x * movementFeel.maxSpeed * move.magnitude * speedScale;
   const targetVy = move.y * movementFeel.maxSpeed * move.magnitude * speedScale;
@@ -155,6 +156,7 @@ function carryBall(state, dt) {
   }
   const gap = distance(owner, state.ball);
   if (gap > RULES.controlRadius + 11) {
+    state.lastTechnicalError = { team: owner.team, playerId: owner.id, at: state.elapsed, type: "heavy_touch" };
     clearPossession(state, BALL_PHASE.FREE);
     state.ball.lastTouchId = owner.id;
     state.lastEvent = "heavy_touch";
@@ -234,6 +236,22 @@ function interceptOrReceive(state) {
   }
 }
 
+function maybeFlagImprecisePass(state) {
+  if (state.ball.phase !== BALL_PHASE.PASS || state.ball.imprecisionFlagged || !state.ball.targetId) return;
+  const target = getPlayer(state, state.ball.targetId);
+  if (!target) return;
+  const toTargetX = target.x - state.ball.x;
+  const toTargetY = target.y - state.ball.y;
+  const range = Math.hypot(toTargetX, toTargetY);
+  if (range > RULES.imprecisePassCheckRange) return;
+  const velocity = normalize(state.ball.vx, state.ball.vy);
+  if (velocity.magnitude <= 0.05) return;
+  const crossTrack = Math.abs(velocity.x * toTargetY - velocity.y * toTargetX);
+  if (crossTrack < RULES.imprecisePassCrossTrack) return;
+  state.ball.imprecisionFlagged = true;
+  state.lastTechnicalError = { team: target.team, playerId: target.id, at: state.elapsed, type: "imprecise_pass" };
+}
+
 function stepBall(state, dt) {
   if (state.ball.ownerId) { carryBall(state, dt); return state; }
   const previousBall = { x: state.ball.x, y: state.ball.y };
@@ -243,6 +261,7 @@ function stepBall(state, dt) {
   state.ball.vx *= friction;
   state.ball.vy *= friction;
 
+  maybeFlagImprecisePass(state);
   if (resolveGoalkeeperSave(state, previousBall)) return state;
   const crossedLineFor = crossedGoalLine(previousBall, state.ball);
   if (crossedLineFor) {
