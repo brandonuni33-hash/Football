@@ -106,3 +106,63 @@ test("une passe qui s'écarte nettement du receveur est détectée comme impréc
   assert.equal(state.lastTechnicalError?.type, "imprecise_pass");
   assert.equal(state.lastTechnicalError?.team, TEAM.HOME);
 });
+
+test("dans notre moitié un contre-pressing adverse ne part pas automatiquement", () => {
+  const state = createMatchState({ aiLevel: 80 });
+  const { owner } = setStableAwayShape(state, 350);
+  givePossession(state, owner.id);
+  state.elapsed = 12;
+  state.lastTechnicalError = null;
+  state.lastPossessionLoss = { team: TEAM.AWAY, at: 12 };
+  state.aiDefense.away.cooldownUntil = 0;
+  assert.equal(defensiveTeamPhase(state, TEAM.AWAY), DEFENSE_PHASE.CONTAIN);
+});
+
+test("dans notre moitié une erreur technique ne suffit pas si le bloc adverse est trop loin", () => {
+  const state = createMatchState({ aiLevel: 80 });
+  const { owner } = setStableAwayShape(state, 350);
+  givePossession(state, owner.id);
+  state.elapsed = 20;
+  state.lastPossessionLoss = null;
+  state.lastTechnicalError = { team: TEAM.HOME, playerId: owner.id, at: 20, type: "heavy_touch" };
+  state.aiDefense.away.cooldownUntil = 0;
+  assert.equal(defensiveTeamPhase(state, TEAM.AWAY), DEFENSE_PHASE.CONTAIN);
+  assert.equal(state.aiDefense.away.lastTechnicalErrorAt, 20, "l'erreur est consommée sans créer un pressing tardif");
+});
+
+test("dans notre moitié un pressing haut n'existe que sur erreur avec bloc déjà proche et compact", () => {
+  const state = createMatchState({ aiLevel: 80 });
+  const { owner, middle, left, right } = setStableAwayShape(state, 350);
+  givePossession(state, owner.id);
+  middle.x = 418; middle.y = 270;
+  left.x = 455; left.y = 175;
+  right.x = 468; right.y = 365;
+  state.elapsed = 30;
+  state.lastPossessionLoss = null;
+  state.lastTechnicalError = { team: TEAM.HOME, playerId: owner.id, at: 30, type: "imprecise_pass" };
+  state.aiDefense.away.cooldownUntil = 0;
+  assert.equal(defensiveTeamPhase(state, TEAM.AWAY), DEFENSE_PHASE.PRESS);
+  assert.ok(state.aiDefense.away.pressUntil - state.elapsed <= RULES.aiHighPressMaxDuration + 0.0001);
+  assert.ok(state.aiDefense.away.pressUntil - state.elapsed > 0);
+  assert.ok(state.aiDefense.away.cooldownUntil - state.aiDefense.away.pressUntil >= RULES.aiHighPressCooldown - 0.0001);
+});
+
+test("un pressing non technique s'arrête si le porteur revient dans sa propre moitié", () => {
+  const state = createMatchState({ aiLevel: 80 });
+  const { owner, middle, left, right } = setStableAwayShape(state, 560);
+  givePossession(state, owner.id);
+  state.elapsed = 40;
+  state.lastTechnicalError = null;
+  state.lastPossessionLoss = { team: TEAM.AWAY, at: 40 };
+  state.aiDefense.away.cooldownUntil = 0;
+  assert.equal(defensiveTeamPhase(state, TEAM.AWAY), DEFENSE_PHASE.PRESS);
+  assert.equal(state.aiDefense.away.lastTrigger, "counterpress");
+
+  owner.x = 430;
+  middle.x = 520;
+  left.x = 555;
+  right.x = 570;
+  state.elapsed += 0.1;
+  assert.equal(defensiveTeamPhase(state, TEAM.AWAY), DEFENSE_PHASE.CONTAIN);
+  assert.equal(state.aiDefense.away.pressUntil, 0);
+});
