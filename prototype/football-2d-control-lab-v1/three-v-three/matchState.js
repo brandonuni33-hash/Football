@@ -29,6 +29,10 @@ function goalkeeper(id, team, x) {
   return { id, team, role: "goalkeeper", x, y: FIELD.height / 2, vx: 0, vy: 0, facingX: team === TEAM.HOME ? 1 : -1, facingY: 0 };
 }
 
+function defensePhaseState() {
+  return { phase: "contain", pressUntil: 0, cooldownUntil: 0, lastTrigger: null, lastTechnicalErrorAt: -10 };
+}
+
 export function createMatchState({ online = false, aiLevel = 50, passSpeedLevel = 40, gameSpeedLevel = 50 } = {}) {
   const players = [
     player("home-human", TEAM.HOME, "human", 250, 270, "host"),
@@ -53,8 +57,16 @@ export function createMatchState({ online = false, aiLevel = 50, passSpeedLevel 
     ],
     possession: { team: TEAM.HOME, playerId: owner.id, duel: null },
     possessionChangedAt: 0,
+    lastPossessionTeam: TEAM.HOME,
+    lastPossessionLoss: null,
+    lastTechnicalError: null,
+    aiDefense: { home: defensePhaseState(), away: defensePhaseState() },
     aiTeamCallCooldown: { home: 0, away: 0 },
-    ball: { x: owner.x + 23, y: owner.y, vx: 0, vy: 0, phase: BALL_PHASE.CONTROLLED, ownerId: owner.id, targetId: null, lastTouchId: owner.id },
+    ball: {
+      x: owner.x + 23, y: owner.y, vx: 0, vy: 0,
+      phase: BALL_PHASE.CONTROLLED, ownerId: owner.id, targetId: null, lastTouchId: owner.id,
+      imprecisionFlagged: false,
+    },
     lastEvent: "kickoff",
     eventId: 0,
     aiLevel: Math.min(100, Math.max(0, Number(aiLevel) || 0)),
@@ -92,6 +104,7 @@ export function resetAfterGoal(state, scoringTeam) {
     ball: { ...fresh.ball, x: owner.x + owner.facingX * 23, y: owner.y, ownerId, lastTouchId: ownerId },
     possession: { team: conceding, playerId: ownerId, duel: null },
     possessionChangedAt: state.elapsed,
+    lastPossessionTeam: conceding,
     lastEvent: "restart",
     eventId: state.eventId + 1,
   };
