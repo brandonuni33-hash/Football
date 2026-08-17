@@ -6,6 +6,13 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <title>STP — 11v11 Gameplay Lab</title>
   <link rel="stylesheet" href="./styles-11v11-gameplay-lab.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "./eleven-v-eleven-gameplay-lab/formationGameplayV2.js": "./eleven-v-eleven-gameplay-lab/progressionGameplayV3.js"
+      }
+    }
+  </script>
 </head>
 <body>
   <main id="game-screen" class="game-screen">
@@ -30,7 +37,7 @@
           <label for="angle">ANGLE 3/4</label><output id="angle-value">60</output>
           <input id="angle" type="range" min="0" max="60" value="60" step="1" />
         </div>
-        <p>Vision 120° · tête 180° · corps 200°/s · caméra ballon</p>
+        <p>Vision 120° · tête 180° · corps 200°/s · caméra ballon + joueur</p>
       </section>
 
       <div class="controls">
