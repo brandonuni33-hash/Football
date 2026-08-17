@@ -53,6 +53,29 @@ export function getControlledPlayer(state) {
   return state.players.find((player) => player.id === state.controlledId) ?? null;
 }
 
+function shortestAngleDelta(from, to) {
+  let delta = to - from;
+  while (delta > Math.PI) delta -= Math.PI * 2;
+  while (delta < -Math.PI) delta += Math.PI * 2;
+  return delta;
+}
+
+export function rotateFacingToward(player, targetX, targetY, dt = 1 / 60) {
+  const target = normalize(targetX, targetY);
+  if (target.magnitude <= 0) return player;
+
+  const current = normalize(player.facingX, player.facingY);
+  const currentAngle = current.magnitude > 0 ? Math.atan2(current.y, current.x) : Math.atan2(target.y, target.x);
+  const targetAngle = Math.atan2(target.y, target.x);
+  const maxTurn = LAB_RULES.bodyTurnDegreesPerSecond * Math.PI / 180 * Math.max(0, dt);
+  const delta = shortestAngleDelta(currentAngle, targetAngle);
+  const nextAngle = currentAngle + clamp(delta, -maxTurn, maxTurn);
+
+  player.facingX = Math.cos(nextAngle);
+  player.facingY = Math.sin(nextAngle);
+  return player;
+}
+
 export function stepLabState(state, input = {}, dt = 1 / 60) {
   const player = getControlledPlayer(state);
   if (!player) return state;
@@ -64,8 +87,7 @@ export function stepLabState(state, input = {}, dt = 1 / 60) {
   player.x = clamp(player.x + player.vx * dt, PITCH.inset + 24, PITCH.width - PITCH.inset - 24);
   player.y = clamp(player.y + player.vy * dt, PITCH.inset + 24, PITCH.height - PITCH.inset - 24);
   if (magnitude > 0.08) {
-    player.facingX = move.x;
-    player.facingY = move.y;
+    rotateFacingToward(player, move.x, move.y, dt);
   }
 
   // The other 21 players remain formation markers with only a tiny idle drift.
