@@ -45,6 +45,26 @@ function mat4ScaleTranslate(scale, translation) {
   ]);
 }
 
+function mat4Translation([x=0,y=0,z=0]) {
+  return mat4ScaleTranslate([1,1,1],[x,y,z]);
+}
+
+function mat4RotationX(angle=0) {
+  const c=Math.cos(angle), s=Math.sin(angle);
+  return new Float32Array([1,0,0,0, 0,c,s,0, 0,-s,c,0, 0,0,0,1]);
+}
+function mat4RotationY(angle=0) {
+  const c=Math.cos(angle), s=Math.sin(angle);
+  return new Float32Array([c,0,-s,0, 0,1,0,0, s,0,c,0, 0,0,0,1]);
+}
+function mat4RotationZ(angle=0) {
+  const c=Math.cos(angle), s=Math.sin(angle);
+  return new Float32Array([c,s,0,0, -s,c,0,0, 0,0,1,0, 0,0,0,1]);
+}
+function mat4Euler([x=0,y=0,z=0]) {
+  return mat4Multiply(mat4RotationZ(z), mat4Multiply(mat4RotationY(y), mat4RotationX(x)));
+}
+
 function normalize(v) {
   const len = Math.hypot(v[0], v[1], v[2]) || 1;
   return [v[0]/len, v[1]/len, v[2]/len];
@@ -127,6 +147,17 @@ function createGpuPrimitive(gl, primitive) {
   return {vao, positionBuffer, elementBuffer, count, type, materialIndex: primitive.materialIndex};
 }
 
+function createGpuScene(gl, parsed) {
+  return parsed.meshes.map((mesh) => mesh.primitives.map((primitive) => createGpuPrimitive(gl, primitive)));
+}
+
+function destroyGpuScene(gl, gpuMeshes) {
+  for (const mesh of gpuMeshes) for (const primitive of mesh) {
+    gl.deleteVertexArray(primitive.vao); gl.deleteBuffer(primitive.positionBuffer);
+    if (primitive.elementBuffer) gl.deleteBuffer(primitive.elementBuffer);
+  }
+}
+
 function sceneRoots(gltf) {
   const roots = gltf.scenes?.[gltf.scene ?? 0]?.nodes;
   if (roots?.length) return roots;
@@ -154,18 +185,38 @@ export function createStpCamera(reference = STP_CAMERA_REFERENCE) {
   });
 }
 
+export function createBallModelMatrix(normalization, state = {}) {
+  assert(normalization?.source?.center, 'normalisation ballon invalide');
+  const s = normalization.scale;
+  const [cx,cy,cz] = normalization.source.center;
+  const centerer = mat4ScaleTranslate([s,s,s],[-cx*s,-cy*s,-cz*s]);
+  const rotation = mat4Euler(state.rotation ?? [0,0,0]);
+  const position = state.position ?? [0, normalization.radius, 0];
+  return mat4Multiply(mat4Translation(position), mat4Multiply(rotation, centerer));
+}
+
 export function createFieldSceneRenderer(canvas, parsed, normalization, options = {}) {
   const gl = canvas.getContext('webgl2', {alpha:false, antialias:true});
   assert(gl, 'WebGL2 indisponible');
   const program = createProgram(gl);
   const uMvp = gl.getUniformLocation(program, 'u_mvp');
   const uColor = gl.getUniformLocation(program, 'u_color');
-  const gpuMeshes = parsed.meshes.map((mesh) => mesh.primitives.map((primitive) => createGpuPrimitive(gl, primitive)));
+  const fieldGpuMeshes = createGpuScene(gl, parsed);
   const camera = createStpCamera(options.camera ?? STP_CAMERA_REFERENCE);
   const bounds = normalization.source.bounds;
   const center = [(bounds.min[0]+bounds.max[0])/2, bounds.min[1], (bounds.min[2]+bounds.max[2])/2];
   const [sx, sy, sz] = normalization.scale;
-  const normalizer = mat4ScaleTranslate([sx,sy,sz], [-center[0]*sx,-center[1]*sy,-center[2]*sz]);
+  const fieldNormalizer = mat4ScaleTranslate([sx,sy,sz], [-center[0]*sx,-center[1]*sy,-center[2]*sz]);
+
+  const ballAsset = options.ball?.parsed && options.ball?.normalization ? {
+    parsed: options.ball.parsed,
+    normalization: options.ball.normalization,
+    gpuMeshes: createGpuScene(gl, options.ball.parsed),
+  } : null;
+  let ballState = {
+    position: [...(options.ball?.position ?? [0, ballAsset?.normalization.radius ?? 0.11, 0])],
+    rotation: [...(options.ball?.rotation ?? [0,0,0])],
+  };
 
   function resize() {
     const dpr = Math.min(devicePixelRatio || 1, 2);
@@ -175,13 +226,13 @@ export function createFieldSceneRenderer(canvas, parsed, normalization, options 
     gl.viewport(0, 0, width, height);
   }
 
-  function drawNode(nodeIndex, parentWorld, viewProjection) {
-    const node = parsed.json.nodes[nodeIndex] ?? {};
+  function drawParsedNode(assetParsed, gpuMeshes, nodeIndex, parentWorld, rootTransform, viewProjection) {
+    const node = assetParsed.json.nodes[nodeIndex] ?? {};
     const world = mat4Multiply(parentWorld, mat4FromNode(node));
     if (node.mesh !== undefined) {
-      const mvp = mat4Multiply(viewProjection, mat4Multiply(normalizer, world));
+      const mvp = mat4Multiply(viewProjection, mat4Multiply(rootTransform, world));
       for (const primitive of gpuMeshes[node.mesh] ?? []) {
-        const material = primitive.materialIndex === null ? null : parsed.materials[primitive.materialIndex];
+        const material = primitive.materialIndex === null ? null : assetParsed.materials[primitive.materialIndex];
         gl.uniformMatrix4fv(uMvp, false, mvp);
         gl.uniform4fv(uColor, material?.baseColorFactor ?? [0.7,0.7,0.7,1]);
         gl.bindVertexArray(primitive.vao);
@@ -189,7 +240,13 @@ export function createFieldSceneRenderer(canvas, parsed, normalization, options 
         else gl.drawElements(gl.TRIANGLES, primitive.count, primitive.type, 0);
       }
     }
-    for (const child of node.children ?? []) drawNode(child, world, viewProjection);
+    for (const child of node.children ?? []) drawParsedNode(assetParsed, gpuMeshes, child, world, rootTransform, viewProjection);
+  }
+
+  function drawParsedScene(assetParsed, gpuMeshes, rootTransform, viewProjection) {
+    for (const root of sceneRoots(assetParsed.json)) {
+      drawParsedNode(assetParsed, gpuMeshes, root, mat4Identity(), rootTransform, viewProjection);
+    }
   }
 
   function render() {
@@ -203,17 +260,34 @@ export function createFieldSceneRenderer(canvas, parsed, normalization, options 
     const projection = mat4Perspective((camera.fovDeg*Math.PI)/180, canvas.width/canvas.height, camera.near, camera.far);
     const view = mat4LookAt(camera.eye, camera.target);
     const viewProjection = mat4Multiply(projection, view);
-    for (const root of sceneRoots(parsed.json)) drawNode(root, mat4Identity(), viewProjection);
+    drawParsedScene(parsed, fieldGpuMeshes, fieldNormalizer, viewProjection);
+    if (ballAsset) {
+      drawParsedScene(
+        ballAsset.parsed,
+        ballAsset.gpuMeshes,
+        createBallModelMatrix(ballAsset.normalization, ballState),
+        viewProjection,
+      );
+    }
     gl.bindVertexArray(null);
   }
 
+  function setBallTransform(next = {}) {
+    if (!ballAsset) return false;
+    if (next.position) ballState.position = [...next.position];
+    if (next.rotation) ballState.rotation = [...next.rotation];
+    return true;
+  }
+
+  function getBallTransform() {
+    return ballAsset ? Object.freeze({position:Object.freeze([...ballState.position]),rotation:Object.freeze([...ballState.rotation])}) : null;
+  }
+
   function destroy() {
-    for (const mesh of gpuMeshes) for (const primitive of mesh) {
-      gl.deleteVertexArray(primitive.vao); gl.deleteBuffer(primitive.positionBuffer);
-      if (primitive.elementBuffer) gl.deleteBuffer(primitive.elementBuffer);
-    }
+    destroyGpuScene(gl, fieldGpuMeshes);
+    if (ballAsset) destroyGpuScene(gl, ballAsset.gpuMeshes);
     gl.deleteProgram(program);
   }
 
-  return Object.freeze({gl, camera, render, resize, destroy});
+  return Object.freeze({gl, camera, hasBall: Boolean(ballAsset), render, resize, setBallTransform, getBallTransform, destroy});
 }
