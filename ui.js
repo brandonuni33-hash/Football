@@ -1,10 +1,11 @@
 // ui.js
 // Façade UI historique conservée pour compatibilité avec application/gameEngine.js.
-// Le rendu dashboard, les applications, la création et les modales vivent désormais dans ui/.
+// Le rendu dashboard, les applications et les modales vivent dans ui/ ; la création
+// officielle est désormais le parcours vertical slice en six étapes.
 
 import { installCoreStyles } from './ui/coreStyles.js';
 import { installNotificationStyles } from './ui/notificationStyles.js';
-import CreationController from './ui/creationController.js';
+import PlayerCreationFlowController from './ui/verticalSlice/playerCreationFlowController.js';
 import ModalController from './ui/modalController.js';
 import BlockResultController from './ui/blockResultController.js';
 
@@ -12,17 +13,10 @@ export class UserInterface {
     constructor(gameEngine) {
         this.engine = gameEngine;
         this.gateway = null;
-        this.currentStep = 1;
         this.activeApp = 'home';
-        this.selectedData = {
-            firstname: '', lastname: '', position: null,
-            continent: null, country: null, origin: null,
-            heartClub: null, youthClub: null, coachVision: null, coachName: null
-        };
-        this.randomYouthClubs = [];
         installCoreStyles();
         installNotificationStyles();
-        this.creationController = new CreationController(this);
+        this.playerCreationController = new PlayerCreationFlowController(this);
         this.modalController = new ModalController(this);
         this.blockResultController = new BlockResultController(this, this.modalController);
         this.initDOM();
@@ -42,13 +36,14 @@ export class UserInterface {
     }
 
     render() {
-        if (this.gateway?.state?.player || this.engine?.state) {
-            return this.viewCoordinator?.renderDashboard?.(this.gateway?.state || this.engine?.state) || '';
+        const state = this.gateway?.state || this.engine?.state || null;
+        if (state?.player) {
+            document.documentElement.classList.remove('stp-player-creation-mode');
+            const app = this.initDOM();
+            app.classList.remove('stp-player-creation-app');
+            return this.viewCoordinator?.renderDashboard?.(state) || '';
         }
-        const app = this.initDOM();
-        app.innerHTML = this.creationController.render();
-        this.creationController.bind();
-        return app.innerHTML;
+        return this.playerCreationController.mount();
     }
 
     renderDashboard(state = this.gateway?.state || this.engine?.state) {
@@ -62,9 +57,6 @@ export class UserInterface {
     renderSpecificAppContent() {
         return this.viewCoordinator?.renderAppContent?.(this.activeApp) || '';
     }
-
-    isStepValid() { return this.creationController.isValid(); }
-    bindStepEvents() { return this.creationController.bind(); }
 
     handleBlockResult(result) { return this.blockResultController.handleBlockResult(result); }
     handlePostInteraction() { return this.blockResultController.handlePostInteraction(); }

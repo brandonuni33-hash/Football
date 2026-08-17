@@ -75,28 +75,43 @@ test('le statut inclut Joueur important et peut produire titulaire remplaçant o
   expect(result.appearances.length).toBe(3);
 });
 
-test('les offres de départ françaises privilégient les clubs modestes et limitent les élites', async ({ page }) => {
+test('la création moderne diffère le choix du club formateur au lieu de générer des offres', async ({ page }) => {
   await boot(page);
-  const result = await page.evaluate(async () => {
-    const { default: CreationController } = await import('/ui/creationController.js');
-    const originalRandom = Math.random;
-    let cursor = 0;
-    const sequence = [.7, .6, .2, .8, .3, .7, .4, .9, .5, .6, .2, .7, .4, .8, .3, .6, .5, .7, .2, .9];
-    Math.random = () => sequence[(cursor++) % sequence.length];
-    try {
-      const ui = { selectedData: { country: 'France' }, randomYouthClubs: [] };
-      const controller = new CreationController(ui);
-      controller.prepareYouthOffers();
-      return ui.randomYouthClubs.map(club => ({ country: club.country, prestige: club.prestige, name: club.name }));
-    } finally {
-      Math.random = originalRandom;
-    }
+  const result = await page.evaluate(() => {
+    const state = window.game.gameUI.startCareer({
+      firstname: 'Modern',
+      lastname: 'Youth',
+      age: 14,
+      faceId: 'face-01',
+      height: 168,
+      weight: 56,
+      position: 'BU',
+      preferredFoot: 'RIGHT',
+      primaryNationality: 'France',
+      secondaryNationality: null,
+      raisedInCountry: 'France',
+      origin: null,
+      youthClub: null,
+      heartClub: null
+    });
+    return {
+      age: state.player.age,
+      origin: state.player.origin,
+      youthClub: state.player.youthClub,
+      youthClubName: state.player.youthClubName,
+      youthClubData: state.player.youthClubData,
+      heartClub: state.player.heartClub,
+      socialYouthClubName: state.social?.youthClubName
+    };
   });
 
-  expect(result.length).toBeGreaterThanOrEqual(4);
-  expect(result.every(club => club.country === 'France')).toBe(true);
-  expect(result.filter(club => Number(club.prestige) >= 76).length).toBeLessThanOrEqual(1);
-  expect(result.some(club => Number(club.prestige) <= 60)).toBe(true);
+  expect(result.age).toBe(14);
+  expect(result.origin).toBeNull();
+  expect(result.youthClub).toBeNull();
+  expect(result.youthClubName).toBeNull();
+  expect(result.youthClubData).toBeNull();
+  expect(result.heartClub).toBeNull();
+  expect(result.socialYouthClubName).toBeNull();
 });
 
 test('le premier passage professionnel attribue un vrai club et un rôle d effectif cohérent', async ({ page }) => {
