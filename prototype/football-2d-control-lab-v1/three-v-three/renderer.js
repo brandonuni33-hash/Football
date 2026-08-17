@@ -1,5 +1,6 @@
 import { BALL_PHASE, FIELD, TEAM } from "./constants.js";
 import { controlledPlayerId } from "./matchState.js";
+import { applyCameraTransform } from "./camera.js";
 
 function pitch(ctx) {
   ctx.fillStyle = "#123d2d"; ctx.fillRect(0, 0, FIELD.width, FIELD.height);
@@ -68,7 +69,9 @@ function drawGoalkeeper(ctx, keeper) {
   ctx.restore();
 }
 
-export function render(ctx, state, slot = "host") {
+function world(ctx, state, slot, camera) {
+  ctx.save();
+  if (camera) applyCameraTransform(ctx, camera);
   pitch(ctx);
   const localId = controlledPlayerId(slot);
   const passTargetId = state.ball.phase === BALL_PHASE.PASS ? state.ball.targetId : null;
@@ -78,7 +81,20 @@ export function render(ctx, state, slot = "host") {
   ctx.translate(state.ball.x, state.ball.y);
   ctx.fillStyle = "#fff"; ctx.strokeStyle = state.ball.phase === BALL_PHASE.FREE ? "#f1bd48" : "#111"; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.restore();
+  ctx.restore();
+}
+
+function hud(ctx, state) {
   ctx.fillStyle = "rgba(5,9,12,.78)"; ctx.fillRect(FIELD.width / 2 - 76, 12, 152, 42);
   ctx.fillStyle = "#fff"; ctx.font = "900 23px system-ui"; ctx.textAlign = "center"; ctx.fillText(`${state.score.home}  —  ${state.score.away}`, FIELD.width / 2, 41);
   ctx.font = "800 12px system-ui"; ctx.textAlign = "left"; ctx.fillStyle = "rgba(255,255,255,.88)"; ctx.fillText((state.lastEvent ?? "").toUpperCase().replaceAll("_", " "), 48, 64);
+}
+
+export function render(ctx, state, slot = "host", camera = null) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = "#0d3025";
+  ctx.fillRect(0, 0, FIELD.width, FIELD.height);
+  world(ctx, state, slot, camera);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  hud(ctx, state);
 }
