@@ -153,13 +153,106 @@ const controlStick = bindStick(elements.controlRoot, elements.controlKnob, (x, y
   return { x, y, lockSide: 0 };
 });
 
-const queued = { primary: false, secondary: false, tertiary: false };
-for (const key of ["primary", "secondary", "tertiary"]) {
+const queued = {
+  primary: false,
+  secondary: false,
+  tertiary: false,
+  passPower: 0.48,
+  lobPass: false,
+};
+
+for (const key of ["primary", "tertiary"]) {
   elements[key].addEventListener("pointerdown", (event) => {
     event.preventDefault();
     queued[key] = true;
   });
 }
+
+const PASS_GESTURE = Object.freeze({
+  quickTapMs: 190,
+  doubleTapWindowMs: 230,
+  fullPowerMs: 920,
+  minPower: 0.18,
+});
+
+const passGesture = {
+  pointer: null,
+  downAt: 0,
+  lobArmed: false,
+  pending: null,
+};
+
+function passPowerFromHold(durationMs) {
+  const normalized = clamp(durationMs / PASS_GESTURE.fullPowerMs, 0, 1);
+  return PASS_GESTURE.minPower + (1 - PASS_GESTURE.minPower) * normalized;
+}
+
+function queuePass(power, lobPass) {
+  queued.secondary = true;
+  queued.passPower = clamp(power, PASS_GESTURE.minPower, 1);
+  queued.lobPass = Boolean(lobPass);
+}
+
+function flushPendingPass(now = performance.now()) {
+  if (!passGesture.pending || now < passGesture.pending.deadline) return;
+  const controlled = getControlledPlayer(state);
+  if (controlled?.hasBall) queuePass(passGesture.pending.power, false);
+  passGesture.pending = null;
+}
+
+function clearPassHold() {
+  passGesture.pointer = null;
+  passGesture.downAt = 0;
+  passGesture.lobArmed = false;
+  elements.secondary.classList.remove("active");
+}
+
+elements.secondary.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
+  const controlled = getControlledPlayer(state);
+  if (!controlled?.hasBall) {
+    queued.secondary = true;
+    return;
+  }
+
+  const now = performance.now();
+  const secondTap = passGesture.pending && now <= passGesture.pending.deadline;
+  if (secondTap) passGesture.pending = null;
+
+  passGesture.pointer = event.pointerId;
+  passGesture.downAt = now;
+  passGesture.lobArmed = Boolean(secondTap);
+  elements.secondary.classList.add("active");
+  elements.secondary.setPointerCapture?.(event.pointerId);
+});
+
+function releasePassButton(event) {
+  if (event.pointerId !== passGesture.pointer) return;
+  const now = performance.now();
+  const duration = Math.max(0, now - passGesture.downAt);
+  const power = passPowerFromHold(duration);
+
+  if (passGesture.lobArmed) {
+    queuePass(power, true);
+  } else if (duration <= PASS_GESTURE.quickTapMs) {
+    passGesture.pending = {
+      power,
+      deadline: now + PASS_GESTURE.doubleTapWindowMs,
+    };
+  } else {
+    queuePass(power, false);
+  }
+  clearPassHold();
+}
+
+function cancelPassButton(event) {
+  if (event.pointerId !== passGesture.pointer) return;
+  clearPassHold();
+}
+
+elements.secondary.addEventListener("pointerup", releasePassButton);
+elements.secondary.addEventListener("pointercancel", cancelPassButton);
+elements.secondary.addEventListener("lostpointercapture", cancelPassButton);
 
 const rapid = { held: false, pointer: null };
 elements.rapid.addEventListener("pointerdown", (event) => {
@@ -182,6 +275,7 @@ elements.rapid.addEventListener("pointercancel", releaseRapid);
 elements.rapid.addEventListener("lostpointercapture", releaseRapid);
 
 function readInput() {
+  flushPendingPass();
   const mode = controlMode(state);
   const controlX = mode === "locked" ? 0 : controlStick.x;
   const controlY = mode === "locked" ? 0 : controlStick.y;
@@ -196,10 +290,14 @@ function readInput() {
     primaryPressed: queued.primary,
     secondaryPressed: queued.secondary,
     tertiaryPressed: queued.tertiary,
+    passPower: queued.passPower,
+    lobPass: queued.lobPass,
   };
   queued.primary = false;
   queued.secondary = false;
   queued.tertiary = false;
+  queued.passPower = 0.48;
+  queued.lobPass = false;
   return input;
 }
 
@@ -220,6 +318,8 @@ document.querySelector("#restart").addEventListener("click", () => {
   state = createGameplayState();
   controlStick.reset();
   moveStick.reset();
+  passGesture.pending = null;
+  clearPassHold();
 });
 
 function drawPitch(context) {
@@ -319,14 +419,26 @@ function drawPlayer(context, player, alpha = 1) {
 }
 
 function drawBall(context, alpha = 1) {
+  const height = Math.max(0, state.ball.lobHeight ?? 0);
   context.save();
   context.globalAlpha *= alpha;
-  context.translate(state.ball.x, state.ball.y);
+
+  if (height > 0.5) {
+    context.save();
+    context.translate(state.ball.x, state.ball.y);
+    context.fillStyle = `rgba(0,0,0,${0.26 * alpha})`;
+    context.beginPath();
+    context.ellipse(0, 4, 9 + Math.min(8, height * 0.05), 4, 0, 0, Math.PI * 2);
+    context.fill();
+    context.restore();
+  }
+
+  context.translate(state.ball.x, state.ball.y - height * 0.55);
   context.fillStyle = "#fff";
   context.strokeStyle = "#111";
   context.lineWidth = 2;
   context.beginPath();
-  context.arc(0, 0, 8, 0, Math.PI * 2);
+  context.arc(0, 0, 8 + Math.min(2, height * 0.018), 0, Math.PI * 2);
   context.fill();
   context.stroke();
   context.restore();
@@ -431,15 +543,16 @@ function render() {
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = "rgba(5,9,12,.72)";
-  ctx.fillRect(16, VIEWPORT.height - 49, 690, 32);
+  ctx.fillRect(16, VIEWPORT.height - 49, 760, 32);
   ctx.fillStyle = "#f3f1eb";
   ctx.font = "800 12px system-ui";
   ctx.textAlign = "left";
   const mode = controlMode(state, player).toUpperCase();
   const homePhase = state.tactical.home?.phase ?? "-";
   const awayPhase = state.tactical.away?.phase ?? "-";
+  const lob = state.ball.lobActive ? " · BALLON LEVÉ" : "";
   ctx.fillText(
-    `STP 11v11 · ${state.score.home}-${state.score.away} · 4-3-3 vs 4-4-2 · ${mode} · DOM ${homePhase} / EXT ${awayPhase}`,
+    `STP 11v11 · ${state.score.home}-${state.score.away} · 4-3-3 vs 4-4-2 · ${mode} · DOM ${homePhase} / EXT ${awayPhase}${lob}`,
     28,
     VIEWPORT.height - 28,
   );
@@ -463,6 +576,14 @@ function syncHud() {
   elements.primary.textContent = labels.primary;
   elements.secondary.textContent = labels.secondary;
   elements.tertiary.textContent = labels.tertiary;
+
+  if (player.hasBall && passGesture.pointer !== null) {
+    const power = Math.round(passPowerFromHold(performance.now() - passGesture.downAt) * 100);
+    elements.secondary.textContent = passGesture.lobArmed ? `LEVÉE ${power}%` : `PASSE ${power}%`;
+  } else if (player.hasBall && passGesture.pending) {
+    elements.secondary.textContent = "PASSE…";
+  }
+
   elements.secondary.classList.toggle("braking", player.defensiveBrakeRemaining > 0);
   elements.tertiary.classList.toggle("protecting", player.protectionRemaining > 0);
   elements.controlRoot.dataset.mode = mode;
@@ -471,7 +592,8 @@ function syncHud() {
     controlStick.reset();
   }
 
-  hudDetail.textContent = `${modeText(mode)} · NOUS 4-3-3 · EUX 4-4-2 · vision périphérique`;
+  const chaser = state.looseBallChaserId ? ` · LIBRE→#${getPlayer(state, state.looseBallChaserId)?.number ?? "?"}` : "";
+  hudDetail.textContent = `${modeText(mode)} · NOUS 4-3-3 · EUX 4-4-2 · puissance passe${chaser}`;
 }
 
 function frame(now) {
@@ -482,7 +604,13 @@ function frame(now) {
   let input = readInput();
   while (accumulator >= RULES.fixedStep) {
     state = stepGameplay(state, input, RULES.fixedStep);
-    input = { ...input, primaryPressed: false, secondaryPressed: false, tertiaryPressed: false };
+    input = {
+      ...input,
+      primaryPressed: false,
+      secondaryPressed: false,
+      tertiaryPressed: false,
+      lobPass: false,
+    };
     accumulator -= RULES.fixedStep;
   }
 
