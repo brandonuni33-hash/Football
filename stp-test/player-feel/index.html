@@ -4,14 +4,14 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <title>STP — Player Feel Lab V0.10</title>
+  <title>STP — Player Feel Lab V0.11</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
   <main class="game-screen">
     <header class="hudbar">
-      <strong>STP · PLAYER FEEL LAB V0.10</strong>
-      <span id="hud-detail">3 caméras comparables · angle et zoom réglables</span>
+      <strong>STP · PLAYER FEEL LAB V0.11</strong>
+      <span id="hud-detail">4 caméras comparables · 3/4 ajouté · angle et zoom réglables</span>
       <button id="restart" type="button">RESTART</button>
     </header>
     <section class="arena">
@@ -22,6 +22,7 @@
           <button class="camera-preset" type="button" data-camera="broadcast">1 · BROADCAST HAUTE</button>
           <button class="camera-preset active" type="button" data-camera="mid">2 · INTERMÉDIAIRE</button>
           <button class="camera-preset" type="button" data-camera="behind">3 · PROCHE DERRIÈRE</button>
+          <button class="camera-preset" type="button" data-camera="threequarter">4 · 3/4 OBLIQUE</button>
         </div>
         <div class="camera-sliders">
           <label for="camera-angle">ANGLE <output id="camera-angle-value">26°</output></label>
@@ -40,10 +41,11 @@
         <span>1. Broadcast haute : terrain très lisible</span>
         <span>2. Intermédiaire : collectif + scanning</span>
         <span>3. Proche derrière : scanning très fort</span>
-        <span>Angle et zoom restent réglables sur les trois</span>
+        <span>4. 3/4 oblique : corps + terrain avec vraie perspective diagonale</span>
+        <span>Angle et zoom restent réglables sur les quatre</span>
       </aside>
     </section>
   </main>
-  <script type="module" src="./playerFeelLabV10.js"></script>
+  <script type="module" src="./playerFeelLabV11.js"></script>
 </body>
 </html>
