@@ -57,19 +57,29 @@ export class CareerApplication {
     }
 
     create(selectedData = {}) {
+        const primaryNationality = selectedData.primaryNationality || selectedData.nationality || selectedData.country || 'France';
+        const raisedInCountry = selectedData.raisedInCountry || selectedData.country || primaryNationality;
         const player = this.playerLogic.createPlayerProfile({
             ...selectedData,
             firstname: selectedData.firstname,
             lastname: selectedData.lastname,
             firstName: selectedData.firstname,
             lastName: selectedData.lastname,
-            country: selectedData.country,
-            nationality: selectedData.country,
+            country: raisedInCountry,
+            nationality: primaryNationality,
+            primaryNationality,
+            secondaryNationality: selectedData.secondaryNationality || null,
+            raisedInCountry,
             position: selectedData.position,
             origin: selectedData.origin,
-            heartClub: selectedData.heartClub
+            heartClub: selectedData.heartClub,
+            youthClub: selectedData.youthClub ?? null,
+            age: Math.max(14, Number(selectedData.age) || 14)
         });
 
+        // La création moderne ne choisit aucun club formateur. Le libellé
+        // technique ci-dessous maintient les invariants de la carrière jeunesse
+        // sans inventer de choix utilisateur ni renseigner youthClubData.
         const youthClub = selectedData.youthClub || null;
         const youthClubName = youthClub?.name || 'Centre de Formation';
         const coachName = selectedData.coachName || 'l’entraîneur';
@@ -77,9 +87,10 @@ export class CareerApplication {
         const contract = this.economyManager.calculateContractOffer(youthClub, player);
 
         player.club = youthClubName;
-        player.clubCountry = youthClub?.country || player.clubCountry || player.country || 'France';
+        player.clubCountry = youthClub?.country || player.clubCountry || raisedInCountry || 'France';
         player.clubLevel = Number(youthClub?.tier) || player.clubLevel || 1;
-        player.youthClubName = youthClubName;
+        player.youthClub = selectedData.youthClub ?? null;
+        player.youthClubName = youthClub?.name || null;
         player.youthClubData = youthClub ? { ...youthClub } : null;
         player.isYouthPlayer = Number(player.age) < 18;
 
@@ -93,7 +104,7 @@ export class CareerApplication {
 
         const social = this.socialSystem.initSocialData(coachName);
         social.coachVision = coachVision;
-        social.youthClubName = youthClubName;
+        social.youthClubName = youthClub?.name || null;
         social.coachData = { name: coachName, relation: 50, opinion: 'Neutre', hasLeftClub: false };
 
         const state = {
