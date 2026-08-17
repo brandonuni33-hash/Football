@@ -13,6 +13,28 @@ test("le camera lab contient bien 22 joueurs, 11 par équipe", () => {
   assert.ok(getControlledPlayer(state));
 });
 
+test("les 21 joueurs de référence bougent réellement autour de leur structure", () => {
+  const state = createLabState();
+  const controlled = getControlledPlayer(state);
+  const starts = new Map(
+    state.players
+      .filter((player) => player.id !== controlled.id)
+      .map((player) => [player.id, { x: player.x, y: player.y }]),
+  );
+
+  for (let i = 0; i < 120; i += 1) stepLabState(state, {}, 1 / 60);
+
+  const distances = state.players
+    .filter((player) => player.id !== controlled.id)
+    .map((player) => {
+      const start = starts.get(player.id);
+      return Math.hypot(player.x - start.x, player.y - start.y);
+    });
+
+  assert.ok(distances.filter((distance) => distance > 12).length >= 15);
+  assert.ok(Math.max(...distances) > 30);
+});
+
 test("le grand terrain respecte approximativement les proportions 105 x 68", () => {
   const expected = 105 / 68;
   const actual = PITCH.width / PITCH.height;
@@ -82,13 +104,30 @@ test("la caméra et la vision de base sont verrouillées", () => {
   assert.equal(LAB_RULES.headTurnDegreesPerSecond, 260);
 });
 
-test("la caméra est ancrée exactement sur le ballon au centre du terrain", () => {
+test("le ballon de conduite n'est plus soudé à une position fixe du pied", () => {
+  const state = createLabState();
+  const player = getControlledPlayer(state);
+  const separations = [];
+
+  for (let i = 0; i < 60; i += 1) {
+    stepLabState(state, { moveX: 1, moveY: 0 }, 1 / 60);
+    separations.push(Math.hypot(state.ball.x - player.x, state.ball.y - player.y));
+  }
+
+  const weldedX = player.x + player.facingX * LAB_RULES.ballOffset;
+  const weldedY = player.y + player.facingY * LAB_RULES.ballOffset;
+  assert.ok(Math.hypot(state.ball.x - weldedX, state.ball.y - weldedY) > 4);
+  assert.ok(Math.max(...separations) - Math.min(...separations) > 10);
+  assert.ok(separations.at(-1) < LAB_RULES.ballControlRadius + 1);
+});
+
+test("la caméra reste ancrée exactement sur le ballon même avec le nouveau dribble", () => {
   const state = createLabState();
   const camera = createCameraState(state, CAMERA_DEFAULTS);
   assert.ok(Math.abs(camera.x - state.ball.x) < 0.001);
   assert.ok(Math.abs(camera.y - state.ball.y) < 0.001);
 
-  stepLabState(state, { moveX: 1, moveY: 0 }, 0.25);
+  for (let i = 0; i < 30; i += 1) stepLabState(state, { moveX: 1, moveY: 0 }, 1 / 60);
   updateCamera(camera, state, {}, CAMERA_DEFAULTS);
   assert.ok(Math.abs(camera.x - state.ball.x) < 0.001);
   assert.ok(Math.abs(camera.y - state.ball.y) < 0.001);
