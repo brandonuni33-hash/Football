@@ -10,6 +10,7 @@ export const FEEL_RULES = Object.freeze({
   sharpTurnDegrees: 58,
   sharpTurnMinSpeed: 108,
   plantDuration: 0.12,
+  plantCooldownDuration: 0.34,
   plantSpeedScale: 0.44,
   bodyTurnDegreesPerSecond: 245,
   lowSpeedTurnDegreesPerSecond: 330,
@@ -65,6 +66,7 @@ export function createPlayerFeelState() {
       gaitPhase: 0,
       plantedFoot: "right",
       plantRemaining: 0,
+      plantCooldown: 0,
       plantTurnSign: 0,
       mode: "idle",
       rapid: false,
@@ -80,8 +82,9 @@ export function createPlayerFeelState() {
 }
 
 function triggerPlant(player, turnDelta) {
-  if (player.plantRemaining > 0) return;
+  if (player.plantRemaining > 0 || player.plantCooldown > 0) return;
   player.plantRemaining = FEEL_RULES.plantDuration;
+  player.plantCooldown = FEEL_RULES.plantCooldownDuration;
   player.plantTurnSign = Math.sign(turnDelta) || 1;
   player.plantedFoot = player.plantTurnSign < 0 ? "left" : "right";
 }
@@ -102,6 +105,7 @@ function updateMotion(player, input, dt) {
   const desired = normalize(input.moveX ?? 0, input.moveY ?? 0);
   player.inputMagnitude = desired.magnitude;
   player.rapid = Boolean(input.rapidHeld);
+  if (player.plantCooldown > 0) player.plantCooldown = Math.max(0, player.plantCooldown - dt);
 
   if (desired.magnitude > 0) {
     const targetAngle = Math.atan2(desired.y, desired.x);
@@ -111,6 +115,7 @@ function updateMotion(player, input, dt) {
       player.speed >= FEEL_RULES.sharpTurnMinSpeed
       && turnDegrees >= FEEL_RULES.sharpTurnDegrees
       && player.plantRemaining <= 0
+      && player.plantCooldown <= 0
     ) triggerPlant(player, turnDelta);
   }
 
