@@ -1,5 +1,5 @@
-import { PITCH, VIEWPORT } from "./constants.js";
-import { TEAM } from "./state.js";
+import { CAMERA_DEFAULTS, PITCH, VIEWPORT } from "./constants.js";
+import { TEAM, getControlledPlayer } from "./state.js";
 import { applyCameraTransform, cameraGeometry } from "./camera.js";
 
 function drawPitch(ctx) {
@@ -89,17 +89,42 @@ function drawBall(ctx, ball) {
   ctx.restore();
 }
 
+function clipToHumanVision(ctx, player, camera) {
+  const gazeAngle = Math.atan2(camera.gazeY ?? player.facingY, camera.gazeX ?? player.facingX);
+  const halfVision = (CAMERA_DEFAULTS.visionDegrees / 2) * Math.PI / 180;
+  const radius = Math.hypot(PITCH.width, PITCH.height) * 2.2;
+  ctx.beginPath();
+  ctx.moveTo(player.x, player.y);
+  ctx.arc(player.x, player.y, radius, gazeAngle - halfVision, gazeAngle + halfVision);
+  ctx.closePath();
+  ctx.clip();
+}
+
+function drawGazeIndicator(ctx, player, camera) {
+  const gazeX = camera.gazeX ?? player.facingX;
+  const gazeY = camera.gazeY ?? player.facingY;
+  ctx.save();
+  ctx.translate(player.x, player.y);
+  ctx.strokeStyle = camera.scanActive ? "rgba(126,219,239,.95)" : "rgba(126,219,239,.45)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(gazeX * 29, gazeY * 29);
+  ctx.lineTo(gazeX * 42, gazeY * 42);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawOverlay(ctx, camera, settings) {
   const geometry = cameraGeometry(settings);
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = "rgba(5,9,12,.72)";
-  ctx.fillRect(18, VIEWPORT.height - 48, 340, 30);
-  ctx.fillStyle = "rgba(255,255,255,.9)";
+  ctx.fillStyle = "rgba(5,9,12,.76)";
+  ctx.fillRect(18, VIEWPORT.height - 48, 470, 30);
+  ctx.fillStyle = "rgba(255,255,255,.92)";
   ctx.font = "800 12px system-ui";
   ctx.textAlign = "left";
   ctx.fillText(
-    `CAMÉRA · Z ${geometry.zoom.toFixed(2)} · 3/4 ${Math.round(geometry.angle)} · SCAN ${Math.round(geometry.scan)}${camera.scanActive ? " · ACTIF" : ""}`,
+    `Z ${geometry.zoom.toFixed(2)} · 3/4 ${Math.round(geometry.angle)} · SCAN ${Math.round(geometry.scan)} · VISION 180° · TÊTE 260°${camera.scanActive ? " · REGARD" : ""}`,
     30,
     VIEWPORT.height - 28,
   );
@@ -107,6 +132,7 @@ function drawOverlay(ctx, camera, settings) {
 }
 
 export function renderLab(ctx, state, camera, settings) {
+  const controlled = getControlledPlayer(state);
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, VIEWPORT.width, VIEWPORT.height);
@@ -114,9 +140,34 @@ export function renderLab(ctx, state, camera, settings) {
 
   ctx.save();
   applyCameraTransform(ctx, camera, settings);
+
+  // Outside the current gaze hemisphere, only a very dark hint of the pitch
+  // remains. Player information is not rendered there.
+  ctx.save();
+  ctx.globalAlpha = CAMERA_DEFAULTS.blindPitchAlpha;
   drawPitch(ctx);
-  for (const player of state.players) drawPlayer(ctx, player);
-  drawBall(ctx, state.ball);
+  ctx.restore();
+
+  if (controlled) {
+    ctx.save();
+    clipToHumanVision(ctx, controlled, camera);
+    drawPitch(ctx);
+    for (const player of state.players) {
+      if (!player.controlled) drawPlayer(ctx, player);
+    }
+    ctx.restore();
+
+    // Proprioception: the controlled player and the ball at his feet remain
+    // readable even when the head turns far over a shoulder.
+    drawPlayer(ctx, controlled);
+    drawBall(ctx, state.ball);
+    drawGazeIndicator(ctx, controlled, camera);
+  } else {
+    drawPitch(ctx);
+    for (const player of state.players) drawPlayer(ctx, player);
+    drawBall(ctx, state.ball);
+  }
+
   ctx.restore();
   drawOverlay(ctx, camera, settings);
 }
