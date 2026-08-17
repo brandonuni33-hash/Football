@@ -104,6 +104,8 @@ function aiCallOpportunity(state, player, owner, plan) {
 function updateAICalls(state, team, plan) {
   const owner = getOwner(state);
   if (!owner || owner.team !== team) return;
+  state.aiTeamCallCooldown ??= { home: 0, away: 0 };
+  if ((state.aiTeamCallCooldown[team] ?? 0) > 0) return;
   const aiOffBall = state.players.filter((entry) => entry.team === team && !entry.humanSlot && entry.id !== owner.id);
   if (aiOffBall.some((entry) => entry.callRemaining > 0)) return;
   const best = aiOffBall
@@ -114,6 +116,7 @@ function updateAICalls(state, team, plan) {
   best.player.callRemaining = RULES.aiCallDuration;
   best.player.aiCallCooldown = RULES.aiCallCooldown;
   best.player.aiCallReason = best.reason;
+  state.aiTeamCallCooldown[team] = RULES.aiTeamCallCooldown;
 }
 
 function carrierIntent(state, player) {
