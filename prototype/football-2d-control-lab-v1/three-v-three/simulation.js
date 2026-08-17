@@ -21,6 +21,7 @@ function tickTimers(player, dt) {
   player.recentBallLossRemaining = Math.max(0, (player.recentBallLossRemaining ?? 0) - dt);
   player.aiDecisionRemaining = Math.max(0, (player.aiDecisionRemaining ?? 0) - dt);
   player.aiPassCooldown = Math.max(0, (player.aiPassCooldown ?? 0) - dt);
+  player.aiCallCooldown = Math.max(0, (player.aiCallCooldown ?? 0) - dt);
   player.orientedTouchRemaining = Math.max(0, (player.orientedTouchRemaining ?? 0) - dt);
   player.dribbleTouchRemaining = Math.max(0, (player.dribbleTouchRemaining ?? 0) - dt);
   if (player.protectionRemaining <= 0) player.offBallShieldTargetId = null;
@@ -130,8 +131,12 @@ function carryBall(state, dt) {
   const orientedTouch = (owner.orientedTouchRemaining ?? 0) > 0;
   const fx = orientedTouch ? owner.orientedTouchX : protectedControl ? owner.controlX : owner.facingX;
   const fy = orientedTouch ? owner.orientedTouchY : protectedControl ? owner.controlY : owner.facingY;
-  const touchRatio = orientedTouch ? owner.orientedTouchRemaining / 0.28 : 0;
-  const forward = orientedTouch ? 24 + touchRatio * 24 : protectedControl ? RULES.protectionControlDistance : RULES.dribbleControlDistance;
+  const orientedDuration = Math.max(0.01, owner.orientedTouchDuration ?? RULES.orientedTouchShortDuration);
+  const touchRatio = orientedTouch ? clamp(owner.orientedTouchRemaining / orientedDuration, 0, 1) : 0;
+  const orientedDistance = owner.orientedTouchDistance ?? RULES.orientedTouchShortDistance;
+  const forward = orientedTouch
+    ? RULES.dribbleControlDistance + (orientedDistance - RULES.dribbleControlDistance) * touchRatio
+    : protectedControl ? RULES.protectionControlDistance : RULES.dribbleControlDistance;
   if (protectedControl || orientedTouch) {
     state.ball.x = owner.x + fx * forward;
     state.ball.y = owner.y + fy * forward;
@@ -174,6 +179,27 @@ function carryBall(state, dt) {
   state.ball.vy *= touchFriction;
 }
 
+function orientedReceptionProfile(magnitude) {
+  if (magnitude < 0.42) return {
+    distance: RULES.orientedTouchShortDistance,
+    duration: RULES.orientedTouchShortDuration,
+    bodySpeed: 24,
+    bodyNudge: 2.5,
+  };
+  if (magnitude < 0.76) return {
+    distance: RULES.orientedTouchMediumDistance,
+    duration: RULES.orientedTouchMediumDuration,
+    bodySpeed: 39,
+    bodyNudge: 4.5,
+  };
+  return {
+    distance: RULES.orientedTouchLongDistance,
+    duration: RULES.orientedTouchLongDuration,
+    bodySpeed: 58,
+    bodyNudge: 6.5,
+  };
+}
+
 function interceptOrReceive(state) {
   if (state.ball.ownerId) return;
   const candidates = state.ball.phase === BALL_PHASE.PASS || state.ball.phase === BALL_PHASE.SHOT
@@ -184,14 +210,22 @@ function interceptOrReceive(state) {
   const intended = state.ball.targetId === receiver.id;
   givePossession(state, receiver.id, intended ? "reception" : "interception");
   if (intended && (receiver.receptionIntentMagnitude ?? 0) > 0.08) {
+    const magnitude = receiver.receptionIntentMagnitude;
+    const profile = orientedReceptionProfile(magnitude);
     receiver.facingX = receiver.receptionIntentX;
     receiver.facingY = receiver.receptionIntentY;
     receiver.orientedTouchX = receiver.receptionIntentX;
     receiver.orientedTouchY = receiver.receptionIntentY;
-    receiver.orientedTouchRemaining = 0.28;
-    state.ball.x = receiver.x + receiver.orientedTouchX * 48;
-    state.ball.y = receiver.y + receiver.orientedTouchY * 48;
-    state.lastEvent = "oriented_reception";
+    receiver.orientedTouchDistance = profile.distance;
+    receiver.orientedTouchDuration = profile.duration;
+    receiver.orientedTouchRemaining = profile.duration;
+    receiver.vx = receiver.vx * 0.45 + receiver.orientedTouchX * profile.bodySpeed;
+    receiver.vy = receiver.vy * 0.45 + receiver.orientedTouchY * profile.bodySpeed;
+    receiver.x = clamp(receiver.x + receiver.orientedTouchX * profile.bodyNudge, fieldBounds.minX, fieldBounds.maxX);
+    receiver.y = clamp(receiver.y + receiver.orientedTouchY * profile.bodyNudge, fieldBounds.minY, fieldBounds.maxY);
+    state.ball.x = receiver.x + receiver.orientedTouchX * profile.distance;
+    state.ball.y = receiver.y + receiver.orientedTouchY * profile.distance;
+    state.lastEvent = magnitude >= 0.76 ? "oriented_reception_strong" : magnitude >= 0.42 ? "oriented_reception" : "oriented_reception_short";
   }
   if (receiver.protectionRemaining > 0) {
     receiver.facingX = receiver.controlX;
