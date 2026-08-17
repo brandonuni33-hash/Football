@@ -225,7 +225,7 @@ function interceptOrReceive(state) {
     receiver.y = clamp(receiver.y + receiver.orientedTouchY * profile.bodyNudge, fieldBounds.minY, fieldBounds.maxY);
     state.ball.x = receiver.x + receiver.orientedTouchX * profile.distance;
     state.ball.y = receiver.y + receiver.orientedTouchY * profile.distance;
-    state.lastEvent = magnitude >= 0.76 ? "oriented_reception_strong" : magnitude >= 0.42 ? "oriented_reception" : "oriented_reception_short";
+    state.lastEvent = "oriented_reception";
   }
   if (receiver.protectionRemaining > 0) {
     receiver.facingX = receiver.controlX;
@@ -280,6 +280,9 @@ export function stepMatch(state, inputs = {}, dt = RULES.fixedStep) {
   const time = clamp(dt, 0, 0.05);
   state.tick += 1;
   state.elapsed += time;
+  state.aiTeamCallCooldown ??= { home: 0, away: 0 };
+  state.aiTeamCallCooldown.home = Math.max(0, (state.aiTeamCallCooldown.home ?? 0) - time);
+  state.aiTeamCallCooldown.away = Math.max(0, (state.aiTeamCallCooldown.away ?? 0) - time);
   applyHumanActions(state, "host", inputs.host ?? {});
   applyHumanActions(state, "guest", inputs.guest ?? {});
   const aiInputs = collectAIInputs(state);
