@@ -24,10 +24,25 @@ function passOptions(state, carrier) {
     .filter((entry) => entry.team === carrier.team && entry.id !== carrier.id)
     .map((receiver) => {
       const lane = evaluatePassingLane(state, carrier, receiver);
-      const callBoost = receiver.callRemaining > 0 ? 42 : 0;
+      const manualRequest = !!receiver.humanSlot && receiver.callRemaining > 0;
+      const aiRequest = !receiver.humanSlot && receiver.callRemaining > 0;
+      const validRequestedLane = !lane.blocked && lane.receiverSpace >= 36 && lane.score >= -4;
+      const callBoost = manualRequest && validRequestedLane
+        ? RULES.manualCallPriorityBoost
+        : aiRequest && validRequestedLane
+          ? RULES.aiCallBoost
+          : 0;
       const orientation = dot(normalize(receiver.facingX, receiver.facingY), normalize(receiver.x - carrier.x, receiver.y - carrier.y));
       const score = lane.score + callBoost + orientation * 5;
-      return { type: "pass", targetId: receiver.id, score, lane, reason: callBoost ? "called-option" : "open-option" };
+      return {
+        type: "pass",
+        targetId: receiver.id,
+        score,
+        lane,
+        reason: manualRequest
+          ? validRequestedLane ? "manual-call-priority" : "manual-call-unsafe"
+          : aiRequest && validRequestedLane ? "ai-call-window" : "open-option",
+      };
     });
 }
 
