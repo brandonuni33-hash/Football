@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#07100b">
+<title>STP — Player Feel Lab</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07100b;color:#f5f1e8;font-family:Inter,system-ui,sans-serif}body{position:fixed;inset:0}canvas{width:100%;height:100%;display:block}
+#hud{position:absolute;left:max(12px,env(safe-area-inset-left));top:max(12px,env(safe-area-inset-top));padding:10px 12px;border:1px solid rgba(255,255,255,.14);border-radius:12px;background:rgba(6,10,8,.72);backdrop-filter:blur(8px);pointer-events:none}.k{font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:#d8bd72;font-weight:800}.v{font-size:15px;font-weight:800;margin-top:2px}.s{font-size:10px;color:#b8beb8;margin-top:3px}
+#picker{position:absolute;inset:0;display:grid;place-items:center;background:linear-gradient(180deg,#08110b,#050806)}#picker.hidden{display:none}.panel{width:min(420px,calc(100vw - 32px));padding:20px;border-radius:16px;border:1px solid rgba(255,255,255,.14);background:rgba(8,12,9,.92);text-align:center}.panel h1{font-size:20px;margin:0 0 7px}.panel p{font-size:12px;line-height:1.45;color:#b9c0ba;margin:0 0 14px}.pick{display:inline-block;padding:12px 15px;border-radius:10px;background:#d6b768;color:#111;font-weight:850;font-size:12px;cursor:pointer}.pick input{display:none}#error{margin-top:10px;color:#ffb6a7;font-size:11px}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud"><div class="k">STP · Player Feel Lab</div><div class="v">Terrain 105 × 68 m</div><div class="s">Caméra intermédiaire · 16° · zoom 1,07×</div></div>
+<div id="picker"><div class="panel"><h1>Charger le terrain STP</h1><p>Sélectionne le fichier <b>soccer-field-stp-compact.glb</b>. Le lab le normalise automatiquement à 105 × 68 m puis l'affiche avec notre caméra validée.</p><label class="pick">CHOISIR LE GLB<input id="file" type="file" accept=".glb,model/gltf-binary"></label><div id="error"></div></div></div>
+<script type="module">
+import {parseGlb} from '../core/assets/glbLoader.js';
+import {createFieldNormalization} from '../core/assets/fieldNormalization.js';
+import {createFieldSceneRenderer,STP_CAMERA_REFERENCE} from '../core/rendering/glbSceneRenderer.js';
+const canvas=document.getElementById('game'),picker=document.getElementById('picker'),input=document.getElementById('file'),error=document.getElementById('error');
+let renderer=null;
+async function open(file){
+  try{
+    error.textContent='';
+    const parsed=parseGlb(await file.arrayBuffer());
+    const normalization=createFieldNormalization(parsed);
+    renderer?.destroy();
+    renderer=createFieldSceneRenderer(canvas,parsed,normalization,{camera:STP_CAMERA_REFERENCE});
+    renderer.render();
+    picker.classList.add('hidden');
+  }catch(e){console.error(e);error.textContent=e.message}
+}
+input.addEventListener('change',()=>input.files?.[0]&&open(input.files[0]));
+addEventListener('resize',()=>renderer?.render(),{passive:true});
+</script>
+</body>
+</html>
