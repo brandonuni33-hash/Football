@@ -69,13 +69,37 @@ function updateBase(camera, player, settings, dt) {
   camera.baseY = smooth(camera.baseY, bounded.y, CAMERA_DEFAULTS.followResponse, dt);
 }
 
+// A footballer can scan roughly 90° to either side of the direction he is
+// currently facing. Inputs behind that 180° front hemisphere are projected
+// onto the nearest shoulder; a pure 180° backward request produces no scan.
+export function constrainScanToFacing(player, scanX = 0, scanY = 0) {
+  const raw = normalize(scanX, scanY);
+  if (raw.magnitude <= 0) return raw;
+
+  const facing = normalize(player?.facingX ?? 1, player?.facingY ?? 0);
+  const forward = facing.magnitude > 0 ? facing : { x: 1, y: 0, magnitude: 1 };
+  const forwardDot = raw.x * forward.x + raw.y * forward.y;
+  if (forwardDot >= 0) return raw;
+
+  const lateral = { x: -forward.y, y: forward.x };
+  const lateralDot = raw.x * lateral.x + raw.y * lateral.y;
+  if (Math.abs(lateralDot) < 0.0001) return { x: 0, y: 0, magnitude: 0 };
+
+  const side = Math.sign(lateralDot);
+  return {
+    x: lateral.x * side,
+    y: lateral.y * side,
+    magnitude: raw.magnitude * Math.abs(lateralDot),
+  };
+}
+
 export function updateCamera(camera, state, scanInput = {}, settings = CAMERA_DEFAULTS, dt = 1 / 60) {
   const player = getControlledPlayer(state);
   if (!player) return camera;
   const geometry = cameraGeometry(settings);
   updateBase(camera, player, settings, dt);
 
-  const raw = normalize(scanInput.scanX, scanInput.scanY);
+  const raw = constrainScanToFacing(player, scanInput.scanX, scanInput.scanY);
   const active = raw.magnitude >= CAMERA_DEFAULTS.scanDeadzone;
   const targetX = active ? raw.x * geometry.scanMaxX * raw.magnitude : 0;
   const targetY = active ? raw.y * geometry.scanMaxY * raw.magnitude : 0;
