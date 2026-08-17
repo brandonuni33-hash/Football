@@ -4,31 +4,34 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <title>STP — Player Feel Lab V0.4</title>
+  <title>STP — Player Feel Lab V0.5</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
   <main class="game-screen">
     <header class="hudbar">
-      <strong>STP · PLAYER FEEL LAB V0.4</strong>
-      <span id="hud-detail">Caméra inclinée · corps resserré · décélération en petits pas</span>
+      <strong>STP · PLAYER FEEL LAB V0.5</strong>
+      <span id="hud-detail">Angle caméra réglable · jambes resserrées</span>
       <button id="restart" type="button">RESTART</button>
     </header>
     <section class="arena">
       <canvas id="game" width="1000" height="540" aria-label="Player Feel Lab Street to Pro"></canvas>
+      <div class="camera-tuner">
+        <label for="camera-angle">ANGLE CAMÉRA <output id="camera-angle-value">28°</output></label>
+        <input id="camera-angle" type="range" min="0" max="45" value="28" step="1" />
+      </div>
       <div class="controls">
         <div id="move-joystick" class="joystick move"><div id="move-stick" class="stick amber"></div></div>
         <button id="rapid" class="action rapid-action" type="button">RAPIDE</button>
       </div>
       <aside class="legend">
-        <b>À TESTER · V0.4</b>
-        <span>1. buste moins incliné</span>
-        <span>2. bras proches du corps, mouvement au coude</span>
-        <span>3. demi-tour lisible sur un pied d'appui</span>
-        <span>4. au relâchement : quelques petits pas, pas de glisse</span>
+        <b>À TESTER · V0.5</b>
+        <span>1. règle toi-même l'angle caméra</span>
+        <span>2. jambes plus proches de l'axe du corps</span>
+        <span>3. vérifie les appuis et les petits pas au freinage</span>
       </aside>
     </section>
   </main>
-  <script type="module" src="./playerFeelLabV04.js"></script>
+  <script type="module" src="./playerFeelLabV05.js"></script>
 </body>
 </html>
