@@ -6,6 +6,7 @@ import { collectAIInputs, executeAIAction } from "./ai.js";
 import { selectRecoveryCandidate } from "./ballRecovery.js";
 import { crossedGoalLine, moveGoalkeepers, resolveGoalkeeperSave } from "./goalkeepers.js";
 import { footworkAccelerationScale, reactToBodyFeint, tickFootwork, updateSupportState } from "./footwork.js";
+import { resolvePlayerCollisions } from "./playerCollisions.js";
 
 function tickTimers(player, dt) {
   const wasProtected = player.protectionRemaining > 0;
@@ -311,6 +312,7 @@ export function stepMatch(state, inputs = {}, dt = RULES.fixedStep) {
     movePlayer(state, player, input, time);
     if (!player.humanSlot) executeAIAction(state, player, input);
   }
+  resolvePlayerCollisions(state);
   moveGoalkeepers(state, time);
   const next = stepBall(state, time);
   resolveLooseChallenges(next);
