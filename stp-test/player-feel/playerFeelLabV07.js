@@ -1,4 +1,4 @@
-import { VIEWPORT, PITCH, FEEL_RULES, createPlayerFeelState, stepPlayerFeel, mannequinPose } from "./playerFeelModelV07.js";
+import { VIEWPORT, PITCH, FEEL_RULES, createPlayerFeelState, stepPlayerFeel, mannequinPose } from "./playerFeelModelV08.js";
 
 const canvas = document.querySelector("#game");
 const ctx = canvas.getContext("2d");
@@ -64,7 +64,7 @@ function drawPitch() {
   ctx.beginPath(); ctx.moveTo(PITCH.width / 2, PITCH.inset); ctx.lineTo(PITCH.width / 2, PITCH.height - PITCH.inset); ctx.stroke();
   ctx.beginPath(); ctx.arc(PITCH.width / 2, PITCH.height / 2, 92, 0, Math.PI * 2); ctx.stroke();
 }
-function limb(a, b, width, color) { ctx.strokeStyle = color; ctx.lineWidth = width; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
+function limb(a, b, width, color) { ctx.strokeStyle = color; ctx.lineWidth = width; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); }
 function joint(point, radius, color) { ctx.fillStyle = color; ctx.beginPath(); ctx.arc(point.x, point.y, radius, 0, Math.PI * 2); ctx.fill(); }
 function foot(point, facing, planted) {
   ctx.save(); ctx.translate(point.x, point.y); ctx.rotate(facing);
@@ -93,7 +93,8 @@ function render() {
   const verticalScale = Math.cos(cameraAngleDeg * Math.PI / 180);
   ctx.save(); ctx.translate(VIEWPORT.width / 2, VIEWPORT.height / 2); ctx.scale(1, verticalScale); ctx.translate(-state.camera.x, -state.camera.y); drawPitch(); drawPlayer(); ctx.restore();
   const p = state.player;
-  hud.textContent = `V0.7 · angle ${cameraAngleDeg}° · ${Math.round(p.speed)} u/s · ${p.precisionBodyLock ? "PRÉCISION CORPS" : p.mode}`;
+  const precision = Math.round((p.precisionBodyControl ?? 0) * 100);
+  hud.textContent = `V0.8 · angle ${cameraAngleDeg}° · ${Math.round(p.speed)} u/s · ${precision > 0 ? `DOS ${precision}%` : p.mode}`;
 }
 
 function frame(now) {
