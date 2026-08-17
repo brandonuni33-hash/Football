@@ -249,10 +249,18 @@ function containPressureIntent(state, player, owner) {
     y: owner.y,
   };
   const gap = distance(player, owner);
-  if (gap > RULES.aiContainDistance + 38) return moveToward(player, target, 0.58);
-  if (gap > RULES.aiContainDistance - 12) return moveToward(player, target, 0.40);
-  if (canUseDefensiveBrake(state, player, owner)) return { ...moveToward(player, target, 0.20), jockeyHeld: true };
-  return moveToward(player, target, 0.30);
+  let intent;
+  if (gap > RULES.aiContainDistance + 38) intent = moveToward(player, target, 0.58);
+  else if (gap > 48 && canUseDefensiveBrake(state, player, owner)) intent = { ...moveToward(player, target, 0.34), jockeyHeld: true };
+  else if (canUseDefensiveBrake(state, player, owner)) intent = { ...moveToward(player, target, 0.18), jockeyHeld: true };
+  else intent = moveToward(player, target, 0.30);
+
+  if (gap <= RULES.tackleRange && canUseDefensiveBrake(state, player, owner)) {
+    const tackle = evaluateTackle(state, player, owner, 0.28);
+    player.aiTackleEvaluation = { score: Math.round(tackle.score * 10) / 10, gap: Math.round(tackle.gap), shouldTackle: tackle.shouldTackle };
+    if (tackle.shouldTackle && player.recoveryRemaining <= 0) intent.tacklePressed = true;
+  }
+  return intent;
 }
 
 function pressPressureIntent(state, player, owner, target) {
