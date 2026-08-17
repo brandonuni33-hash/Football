@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { CAMERA_DEFAULTS, PITCH } from "../../prototype/football-2d-control-lab-v1/eleven-v-eleven-camera-lab/constants.js";
-import { TEAM, createLabState, getControlledPlayer, stepLabState } from "../../prototype/football-2d-control-lab-v1/eleven-v-eleven-camera-lab/state.js";
+import { CAMERA_DEFAULTS, LAB_RULES, PITCH } from "../../prototype/football-2d-control-lab-v1/eleven-v-eleven-camera-lab/constants.js";
+import { TEAM, createLabState, getControlledPlayer, rotateFacingToward, stepLabState } from "../../prototype/football-2d-control-lab-v1/eleven-v-eleven-camera-lab/state.js";
 import { cameraBounds, cameraGeometry, constrainScanToFacing, createCameraState, isPointInVision, updateCamera } from "../../prototype/football-2d-control-lab-v1/eleven-v-eleven-camera-lab/camera.js";
 import { constrainScanStickVector } from "../../prototype/football-2d-control-lab-v1/eleven-v-eleven-camera-lab/input.js";
 
@@ -30,6 +30,37 @@ test("le joueur contrôlé peut parcourir le grand terrain sans déplacer les li
   assert.ok(player.x < PITCH.width - PITCH.inset);
 });
 
+test("le corps du joueur ne se retourne plus instantanément", () => {
+  const state = createLabState();
+  const player = getControlledPlayer(state);
+  assert.ok(player.facingX > 0.99 && Math.abs(player.facingY) < 0.001);
+  stepLabState(state, { moveX: 0, moveY: 1 }, 1 / 60);
+  const angle = Math.atan2(player.facingY, player.facingX) * 180 / Math.PI;
+  assert.ok(angle > 2 && angle < 3, "une frame ne doit faire tourner le corps que d'environ 2.3 degrés");
+});
+
+test("un changement de direction à 90 degrés prend environ 0.65 seconde", () => {
+  const state = createLabState();
+  const player = getControlledPlayer(state);
+  rotateFacingToward(player, 0, 1, 0.5);
+  let angle = Math.atan2(player.facingY, player.facingX) * 180 / Math.PI;
+  assert.ok(angle > 69 && angle < 71, "après 0.5 s le virage de 90 degrés n'est pas encore terminé");
+  rotateFacingToward(player, 0, 1, 0.2);
+  angle = Math.atan2(player.facingY, player.facingX) * 180 / Math.PI;
+  assert.ok(angle > 89.9 && angle < 90.1);
+});
+
+test("un demi-tour complet demande plus d'une seconde", () => {
+  const state = createLabState();
+  const player = getControlledPlayer(state);
+  rotateFacingToward(player, -1, 0, 1);
+  let angle = Math.abs(Math.atan2(player.facingY, player.facingX) * 180 / Math.PI);
+  assert.ok(angle > 139 && angle < 141, "après une seconde le demi-tour ne doit pas être terminé");
+  rotateFacingToward(player, -1, 0, 0.35);
+  angle = Math.abs(Math.atan2(player.facingY, player.facingX) * 180 / Math.PI);
+  assert.ok(angle > 179.9 && angle <= 180);
+});
+
 test("la caméra et la vision de base sont verrouillées", () => {
   const geometry = cameraGeometry(CAMERA_DEFAULTS);
   assert.equal(geometry.zoom, 1.40);
@@ -37,6 +68,7 @@ test("la caméra et la vision de base sont verrouillées", () => {
   assert.equal(geometry.scan, 41);
   assert.equal(CAMERA_DEFAULTS.headScanDegrees, 260);
   assert.equal(CAMERA_DEFAULTS.visionDegrees, 180);
+  assert.equal(LAB_RULES.bodyTurnDegreesPerSecond, 140);
   assert.ok(geometry.yScale < 0.8);
   assert.ok(Math.abs(geometry.shear) > 0.09);
 });
