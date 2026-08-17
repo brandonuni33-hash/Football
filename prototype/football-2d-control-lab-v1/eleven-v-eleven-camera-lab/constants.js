@@ -30,6 +30,7 @@ export const CAMERA_DEFAULTS = Object.freeze({
   zoom: 1.40,
   angle: 60,
   scan: 41,
+  headScanDegrees: 220,
   followAhead: 64,
   followDeadX: 76,
   followDeadY: 58,
