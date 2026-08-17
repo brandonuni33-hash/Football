@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { CAMERA_DEFAULTS, PITCH } from "../../prototype/football-2d-control-lab-v1/eleven-v-eleven-camera-lab/constants.js";
 import { TEAM, createLabState, getControlledPlayer, stepLabState } from "../../prototype/football-2d-control-lab-v1/eleven-v-eleven-camera-lab/state.js";
-import { cameraBounds, cameraGeometry, constrainScanToFacing, createCameraState, updateCamera } from "../../prototype/football-2d-control-lab-v1/eleven-v-eleven-camera-lab/camera.js";
+import { cameraBounds, cameraGeometry, constrainScanToFacing, createCameraState, isPointInVision, updateCamera } from "../../prototype/football-2d-control-lab-v1/eleven-v-eleven-camera-lab/camera.js";
 import { constrainScanStickVector } from "../../prototype/football-2d-control-lab-v1/eleven-v-eleven-camera-lab/input.js";
 
 test("le camera lab contient bien 22 joueurs, 11 par équipe", () => {
@@ -30,29 +30,58 @@ test("le joueur contrôlé peut parcourir le grand terrain sans déplacer les li
   assert.ok(player.x < PITCH.width - PITCH.inset);
 });
 
-test("la caméra de base est verrouillée sur 1.40 / 60 / 41", () => {
+test("la caméra et la vision de base sont verrouillées", () => {
   const geometry = cameraGeometry(CAMERA_DEFAULTS);
   assert.equal(geometry.zoom, 1.40);
   assert.equal(geometry.angle, 60);
   assert.equal(geometry.scan, 41);
   assert.equal(CAMERA_DEFAULTS.headScanDegrees, 260);
+  assert.equal(CAMERA_DEFAULTS.visionDegrees, 180);
   assert.ok(geometry.yScale < 0.8);
   assert.ok(Math.abs(geometry.shear) > 0.09);
 });
 
-test("le SCAN est volontairement lent puis revient quand le stick est relâché", () => {
+test("le SCAN tourne le regard mais ne fait presque plus voyager la caméra", () => {
   const state = createLabState();
+  const player = getControlledPlayer(state);
+  player.facingX = 1;
+  player.facingY = 0;
   const camera = createCameraState(state, CAMERA_DEFAULTS);
   const baseX = camera.x;
-  for (let i = 0; i < 5; i += 1) updateCamera(camera, state, { scanX: 1, scanY: 0 }, CAMERA_DEFAULTS, 1 / 60);
-  assert.ok(camera.x < baseX + 110, "le regard ne doit pas partir instantanément au maximum");
-  for (let i = 5; i < 30; i += 1) updateCamera(camera, state, { scanX: 1, scanY: 0 }, CAMERA_DEFAULTS, 1 / 60);
-  const scannedX = camera.x;
-  assert.ok(scannedX > baseX + 150);
+  const baseY = camera.y;
+
+  for (let i = 0; i < 5; i += 1) updateCamera(camera, state, { scanX: 0, scanY: 1 }, CAMERA_DEFAULTS, 1 / 60);
+  assert.ok(Math.hypot(camera.x - baseX, camera.y - baseY) < 15, "le cadrage ne doit pas partir comme une caméra libre");
+
+  for (let i = 5; i < 60; i += 1) updateCamera(camera, state, { scanX: 0, scanY: 1 }, CAMERA_DEFAULTS, 1 / 60);
+  assert.ok(Math.hypot(camera.x - camera.baseX, camera.y - camera.baseY) < 40);
+  assert.ok(camera.gazeY > 0.9, "le regard doit réellement avoir tourné sur le côté");
   assert.equal(camera.scanActive, true);
+
   for (let i = 0; i < 120; i += 1) updateCamera(camera, state, { scanX: 0, scanY: 0 }, CAMERA_DEFAULTS, 1 / 60);
   assert.ok(Math.abs(camera.x - camera.baseX) < 2);
+  assert.ok(Math.abs(camera.y - camera.baseY) < 2);
+  assert.ok(camera.gazeX > 0.99 && Math.abs(camera.gazeY) < 0.05, "le regard revient vers l'orientation du corps");
   assert.equal(camera.scanActive, false);
+});
+
+test("la vision lisible couvre exactement un demi-espace de 180 degrés", () => {
+  const state = createLabState();
+  const player = getControlledPlayer(state);
+  const gaze = { x: 1, y: 0 };
+  assert.equal(isPointInVision(player, gaze, { x: player.x + 100, y: player.y }), true);
+  assert.equal(isPointInVision(player, gaze, { x: player.x - 100, y: player.y }), false);
+  assert.equal(isPointInVision(player, gaze, { x: player.x, y: player.y + 100 }), true, "la limite à 90 degrés fait partie du champ");
+  const angle100 = 100 * Math.PI / 180;
+  assert.equal(isPointInVision(player, gaze, { x: player.x + Math.cos(angle100) * 100, y: player.y + Math.sin(angle100) * 100 }), false);
+});
+
+test("tourner la tête déplace les 180 degrés visibles au lieu d'ajouter de l'information", () => {
+  const state = createLabState();
+  const player = getControlledPlayer(state);
+  const gazeDown = { x: 0, y: 1 };
+  assert.equal(isPointInVision(player, gazeDown, { x: player.x, y: player.y + 100 }), true);
+  assert.equal(isPointInVision(player, gazeDown, { x: player.x, y: player.y - 100 }), false);
 });
 
 test("le SCAN autorise environ 130 degrés de chaque côté du regard", () => {
@@ -88,7 +117,7 @@ test("une demande trop loin derrière est plafonnée à 130 degrés et jamais à
   const dot = limited.x * player.facingX + limited.y * player.facingY;
   const angle = Math.acos(Math.max(-1, Math.min(1, dot))) * 180 / Math.PI;
   assert.ok(angle > 129 && angle < 131);
-  assert.ok(limited.x < 0, "à 130 degrés le joueur peut clairement regarder derrière l'épaule sans obtenir une vision arrière totale");
+  assert.ok(limited.x < 0);
 });
 
 test("le joystick SCAN est physiquement bloqué à la butée de 130 degrés", () => {
@@ -104,7 +133,7 @@ test("le joystick ne peut pas traverser la zone aveugle par l'arrière", () => {
   const rightStop = constrainScanStickVector(-1, 0.4, facing, 0);
   const draggedBehind = constrainScanStickVector(-1, -0.4, facing, rightStop.lockSide);
   const angle = Math.atan2(draggedBehind.y, draggedBehind.x) * 180 / Math.PI;
-  assert.ok(angle > 129 && angle < 131, "le stick doit rester sur la même épaule au lieu de traverser derrière");
+  assert.ok(angle > 129 && angle < 131);
   assert.equal(draggedBehind.lockSide, 1);
 });
 
