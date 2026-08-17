@@ -42,24 +42,24 @@ test('le parcours 01/06 -> 06/06 crée un joueur de 14 ans avec les nouvelles do
   await fillIdentity(page);
 
   await expect(page.getByText('02 / 06')).toBeVisible();
-  await page.locator('.stp-face-choice[data-face-id="face-03"]').click();
+  await page.locator('[data-face-id="face-03"]').click();
   await page.locator('.stp-continue').click();
 
   await expect(page.getByText('03 / 06')).toBeVisible();
   await page.locator('.stp-continue').click();
 
   await expect(page.getByText('04 / 06')).toBeVisible();
-  await page.locator('.stp-position-choice[data-position="AD"]').click();
-  await page.locator('.stp-foot-choice[data-foot="LEFT"]').click();
+  await page.locator('[data-position="AD"]').first().click();
+  await page.locator('[data-foot="LEFT"]').click();
   await page.locator('.stp-continue').click();
 
   await expect(page.getByText('05 / 06')).toBeVisible();
-  await page.locator('.stp-nationality-choice[data-kind="primary"][data-country="Maroc"]').click();
-  await page.locator('.stp-nationality-choice[data-kind="secondary"][data-country="France"]').click();
+  await page.locator('[name="primaryNationality"]').selectOption('Maroc');
+  await page.locator('[name="secondaryNationality"]').selectOption('France');
   await page.locator('.stp-continue').click();
 
   await expect(page.getByText('06 / 06')).toBeVisible();
-  await page.locator('.stp-country-choice[data-country="France"]').click();
+  await page.locator('[data-country="France"]:not([disabled])').click();
   await page.locator('.stp-continue').click();
 
   await expect(page.locator('[data-stp-step]')).toHaveCount(0);
