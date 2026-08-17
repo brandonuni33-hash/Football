@@ -74,6 +74,10 @@ export const PLAYER_INNER_VOICE_CATALOG = Object.freeze(
   SOURCE.filter(item => item?.id && ALLOWED_IDS.has(item.id))
 );
 
+if (PLAYER_INNER_VOICE_CATALOG.length > 150) {
+  throw new Error(`Inner voice catalog exceeds canonical limit: ${PLAYER_INNER_VOICE_CATALOG.length}/150`);
+}
+
 export function getInnerVoiceCatalogEntries({ family = null, tags = [], maxIntensity = 3, includeUnique = true, depth = null } = {}) {
   const required = Array.isArray(tags) ? tags : [tags].filter(Boolean);
   return PLAYER_INNER_VOICE_CATALOG.filter(item => {
