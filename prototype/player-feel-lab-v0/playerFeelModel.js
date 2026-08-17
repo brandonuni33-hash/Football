@@ -6,13 +6,13 @@ export const FEEL_RULES = Object.freeze({
   rapidSpeed: 222,
   normalPaceScale: 0.76,
   acceleration: 760,
-  deceleration: 980,
+  deceleration: 720,
   sharpTurnDegrees: 58,
   sharpTurnMinSpeed: 108,
-  plantDuration: 0.16,
-  plantSpeedScale: 0.34,
-  bodyTurnDegreesPerSecond: 200,
-  lowSpeedTurnDegreesPerSecond: 275,
+  plantDuration: 0.12,
+  plantSpeedScale: 0.44,
+  bodyTurnDegreesPerSecond: 245,
+  lowSpeedTurnDegreesPerSecond: 330,
   gaitStride: 20,
   gaitWidth: 11,
   gaitMinFrequency: 1.45,
@@ -128,7 +128,7 @@ function updateMotion(player, input, dt) {
     const moveAngle = player.plantRemaining > 0 ? player.facing : Math.atan2(desired.y, desired.x);
     const desiredVx = Math.cos(moveAngle) * nextSpeed;
     const desiredVy = Math.sin(moveAngle) * nextSpeed;
-    const response = player.plantRemaining > 0 ? 0.22 : 0.38;
+    const response = player.plantRemaining > 0 ? 0.30 : 0.38;
     player.vx += (desiredVx - player.vx) * response;
     player.vy += (desiredVy - player.vy) * response;
   } else {
