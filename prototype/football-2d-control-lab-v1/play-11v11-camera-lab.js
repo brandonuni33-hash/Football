@@ -1,5 +1,5 @@
 import { CAMERA_DEFAULTS } from "./eleven-v-eleven-camera-lab/constants.js";
-import { createLabState, stepLabState } from "./eleven-v-eleven-camera-lab/state.js";
+import { createLabState, getControlledPlayer, stepLabState } from "./eleven-v-eleven-camera-lab/state.js";
 import { createCameraState, updateCamera } from "./eleven-v-eleven-camera-lab/camera.js";
 import { createLabInput } from "./eleven-v-eleven-camera-lab/input.js";
 import { renderLab } from "./eleven-v-eleven-camera-lab/renderer.js";
@@ -14,14 +14,20 @@ const zoomValue = document.querySelector("#zoom-value");
 const angleValue = document.querySelector("#angle-value");
 const scanValue = document.querySelector("#scan-value");
 
+let state = createLabState();
+
 const input = createLabInput({
   moveRoot: document.querySelector("#move-joystick"),
   moveKnob: document.querySelector("#move-stick"),
   scanRoot: document.querySelector("#scan-joystick"),
   scanKnob: document.querySelector("#scan-stick"),
+}, {
+  getScanFacing: () => {
+    const player = getControlledPlayer(state);
+    return { x: player?.facingX ?? 1, y: player?.facingY ?? 0 };
+  },
 });
 
-let state = createLabState();
 let settings = readSettings();
 let camera = createCameraState(state, settings);
 let previous = performance.now();
