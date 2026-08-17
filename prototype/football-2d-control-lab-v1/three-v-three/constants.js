@@ -52,6 +52,7 @@ export const RULES = Object.freeze({
   aiCallBoost: 22,
   aiCallDuration: 0.9,
   aiCallCooldown: 2.6,
+  aiTeamCallCooldown: 1.8,
   aiCallMinLaneScore: 32,
   aiCallMinReceiverSpace: 48,
   scoreToWin: 3,
