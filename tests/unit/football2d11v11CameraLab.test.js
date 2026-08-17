@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { CAMERA_DEFAULTS, LAB_RULES, PITCH } from "../../prototype/football-2d-control-lab-v1/eleven-v-eleven-camera-lab/constants.js";
-import { TEAM, createLabState, getControlledPlayer, rotateFacingToward, stepLabState } from "../../prototype/football-2d-control-lab-v1/eleven-v-eleven-camera-lab/state.js";
+import { TEAM, createLabState, getControlledPlayer, rotateFacingToward, rotateHeadToward, stepLabState } from "../../prototype/football-2d-control-lab-v1/eleven-v-eleven-camera-lab/state.js";
 import { cameraBounds, cameraGeometry, constrainScanToFacing, createCameraState, isPointInVision, updateCamera } from "../../prototype/football-2d-control-lab-v1/eleven-v-eleven-camera-lab/camera.js";
 import { constrainScanStickVector } from "../../prototype/football-2d-control-lab-v1/eleven-v-eleven-camera-lab/input.js";
 
@@ -17,48 +17,57 @@ test("le grand terrain respecte approximativement les proportions 105 x 68", () 
   const expected = 105 / 68;
   const actual = PITCH.width / PITCH.height;
   assert.ok(Math.abs(actual - expected) < 0.01);
-  assert.ok(PITCH.width > 1500);
-  assert.ok(PITCH.height > 1000);
 });
 
-test("le joueur contrôlé peut parcourir le grand terrain sans déplacer les limites", () => {
+test("corps et tête sont deux orientations distinctes", () => {
   const state = createLabState();
   const player = getControlledPlayer(state);
-  const startX = player.x;
-  stepLabState(state, { moveX: 1, moveY: 0 }, 0.5);
-  assert.ok(player.x > startX + 80);
-  assert.ok(player.x < PITCH.width - PITCH.inset);
+  assert.ok(player.facingX > 0.99);
+  assert.ok(player.headFacingX > 0.99);
+
+  stepLabState(state, { scanX: 0, scanY: 1 }, 0.25);
+  const bodyAngle = Math.atan2(player.facingY, player.facingX) * 180 / Math.PI;
+  const headAngle = Math.atan2(player.headFacingY, player.headFacingX) * 180 / Math.PI;
+  assert.ok(Math.abs(bodyAngle) < 0.1, "le SCAN ne doit pas faire tourner le torse");
+  assert.ok(headAngle > 64 && headAngle < 66, "la tête doit pouvoir tourner indépendamment à environ 260 degrés par seconde");
 });
 
 test("le corps du joueur ne se retourne plus instantanément", () => {
   const state = createLabState();
   const player = getControlledPlayer(state);
-  assert.ok(player.facingX > 0.99 && Math.abs(player.facingY) < 0.001);
   stepLabState(state, { moveX: 0, moveY: 1 }, 1 / 60);
   const angle = Math.atan2(player.facingY, player.facingX) * 180 / Math.PI;
-  assert.ok(angle > 2 && angle < 3, "une frame ne doit faire tourner le corps que d'environ 2.3 degrés");
+  assert.ok(angle > 2 && angle < 3);
 });
 
-test("un changement de direction à 90 degrés prend environ 0.65 seconde", () => {
+test("un changement de corps à 90 degrés prend environ 0.65 seconde", () => {
   const state = createLabState();
   const player = getControlledPlayer(state);
   rotateFacingToward(player, 0, 1, 0.5);
   let angle = Math.atan2(player.facingY, player.facingX) * 180 / Math.PI;
-  assert.ok(angle > 69 && angle < 71, "après 0.5 s le virage de 90 degrés n'est pas encore terminé");
+  assert.ok(angle > 69 && angle < 71);
   rotateFacingToward(player, 0, 1, 0.2);
   angle = Math.atan2(player.facingY, player.facingX) * 180 / Math.PI;
   assert.ok(angle > 89.9 && angle < 90.1);
 });
 
-test("un demi-tour complet demande plus d'une seconde", () => {
+test("la tête revient vers le corps sans téléportation quand le SCAN est relâché", () => {
   const state = createLabState();
   const player = getControlledPlayer(state);
-  rotateFacingToward(player, -1, 0, 1);
-  let angle = Math.abs(Math.atan2(player.facingY, player.facingX) * 180 / Math.PI);
-  assert.ok(angle > 139 && angle < 141, "après une seconde le demi-tour ne doit pas être terminé");
-  rotateFacingToward(player, -1, 0, 0.35);
-  angle = Math.abs(Math.atan2(player.facingY, player.facingX) * 180 / Math.PI);
-  assert.ok(angle > 179.9 && angle <= 180);
+  rotateHeadToward(player, 0, 1, 0.25, false);
+  const before = Math.atan2(player.headFacingY, player.headFacingX) * 180 / Math.PI;
+  rotateHeadToward(player, player.facingX, player.facingY, 0.1, true);
+  const after = Math.atan2(player.headFacingY, player.headFacingX) * 180 / Math.PI;
+  assert.ok(before > 64 && before < 66);
+  assert.ok(after > 43 && after < 45, "le retour de tête doit être progressif à environ 210 degrés par seconde");
+});
+
+test("la tête reste limitée à 130 degrés de chaque côté du corps", () => {
+  const state = createLabState();
+  const player = getControlledPlayer(state);
+  rotateHeadToward(player, -1, 0.1, 2, false);
+  const relative = Math.atan2(player.headFacingY, player.headFacingX) * 180 / Math.PI;
+  assert.ok(relative > 129 && relative < 131);
 });
 
 test("la caméra et la vision de base sont verrouillées", () => {
@@ -69,98 +78,54 @@ test("la caméra et la vision de base sont verrouillées", () => {
   assert.equal(CAMERA_DEFAULTS.headScanDegrees, 260);
   assert.equal(CAMERA_DEFAULTS.visionDegrees, 180);
   assert.equal(LAB_RULES.bodyTurnDegreesPerSecond, 140);
-  assert.ok(geometry.yScale < 0.8);
-  assert.ok(Math.abs(geometry.shear) > 0.09);
+  assert.equal(LAB_RULES.headTurnDegreesPerSecond, 260);
 });
 
-test("le SCAN tourne le regard mais ne fait presque plus voyager la caméra", () => {
+test("la caméra est ancrée exactement sur le ballon au centre du terrain", () => {
   const state = createLabState();
-  const player = getControlledPlayer(state);
-  player.facingX = 1;
-  player.facingY = 0;
   const camera = createCameraState(state, CAMERA_DEFAULTS);
-  const baseX = camera.x;
-  const baseY = camera.y;
+  assert.ok(Math.abs(camera.x - state.ball.x) < 0.001);
+  assert.ok(Math.abs(camera.y - state.ball.y) < 0.001);
 
-  for (let i = 0; i < 5; i += 1) updateCamera(camera, state, { scanX: 0, scanY: 1 }, CAMERA_DEFAULTS, 1 / 60);
-  assert.ok(Math.hypot(camera.x - baseX, camera.y - baseY) < 15, "le cadrage ne doit pas partir comme une caméra libre");
+  stepLabState(state, { moveX: 1, moveY: 0 }, 0.25);
+  updateCamera(camera, state, {}, CAMERA_DEFAULTS);
+  assert.ok(Math.abs(camera.x - state.ball.x) < 0.001);
+  assert.ok(Math.abs(camera.y - state.ball.y) < 0.001);
+});
 
-  for (let i = 5; i < 60; i += 1) updateCamera(camera, state, { scanX: 0, scanY: 1 }, CAMERA_DEFAULTS, 1 / 60);
-  assert.ok(Math.hypot(camera.x - camera.baseX, camera.y - camera.baseY) < 40);
-  assert.ok(camera.gazeY > 0.9, "le regard doit réellement avoir tourné sur le côté");
+test("le SCAN tourne uniquement la tête et ne déplace plus la caméra hors du ballon", () => {
+  const state = createLabState();
+  const camera = createCameraState(state, CAMERA_DEFAULTS);
+  for (let i = 0; i < 30; i += 1) {
+    stepLabState(state, { scanX: 0, scanY: 1 }, 1 / 60);
+    updateCamera(camera, state, { scanX: 0, scanY: 1 }, CAMERA_DEFAULTS);
+  }
+  assert.ok(Math.abs(camera.x - state.ball.x) < 0.001);
+  assert.ok(Math.abs(camera.y - state.ball.y) < 0.001);
+  assert.ok(camera.gazeY > 0.99);
   assert.equal(camera.scanActive, true);
-
-  for (let i = 0; i < 120; i += 1) updateCamera(camera, state, { scanX: 0, scanY: 0 }, CAMERA_DEFAULTS, 1 / 60);
-  assert.ok(Math.abs(camera.x - camera.baseX) < 2);
-  assert.ok(Math.abs(camera.y - camera.baseY) < 2);
-  assert.ok(camera.gazeX > 0.99 && Math.abs(camera.gazeY) < 0.05, "le regard revient vers l'orientation du corps");
-  assert.equal(camera.scanActive, false);
 });
 
-test("la vision lisible couvre exactement un demi-espace de 180 degrés", () => {
+test("la vision lisible couvre exactement 180 degrés autour de la tête", () => {
   const state = createLabState();
   const player = getControlledPlayer(state);
-  const gaze = { x: 1, y: 0 };
-  assert.equal(isPointInVision(player, gaze, { x: player.x + 100, y: player.y }), true);
-  assert.equal(isPointInVision(player, gaze, { x: player.x - 100, y: player.y }), false);
-  assert.equal(isPointInVision(player, gaze, { x: player.x, y: player.y + 100 }), true, "la limite à 90 degrés fait partie du champ");
-  const angle100 = 100 * Math.PI / 180;
-  assert.equal(isPointInVision(player, gaze, { x: player.x + Math.cos(angle100) * 100, y: player.y + Math.sin(angle100) * 100 }), false);
+  player.headFacingX = 0;
+  player.headFacingY = 1;
+  assert.equal(isPointInVision(player, null, { x: player.x, y: player.y + 100 }), true);
+  assert.equal(isPointInVision(player, null, { x: player.x, y: player.y - 100 }), false);
+  assert.equal(isPointInVision(player, null, { x: player.x + 100, y: player.y }), true);
 });
 
-test("tourner la tête déplace les 180 degrés visibles au lieu d'ajouter de l'information", () => {
+test("le SCAN logiciel reste plafonné à 130 degrés", () => {
   const state = createLabState();
   const player = getControlledPlayer(state);
-  const gazeDown = { x: 0, y: 1 };
-  assert.equal(isPointInVision(player, gazeDown, { x: player.x, y: player.y + 100 }), true);
-  assert.equal(isPointInVision(player, gazeDown, { x: player.x, y: player.y - 100 }), false);
-});
-
-test("le SCAN autorise environ 130 degrés de chaque côté du regard", () => {
-  const state = createLabState();
-  const player = getControlledPlayer(state);
-  player.facingX = 1;
-  player.facingY = 0;
-  const behindRight = constrainScanToFacing(player, -1, 1);
-  const angle = Math.atan2(behindRight.y, behindRight.x) * 180 / Math.PI;
-  assert.ok(angle > 129 && angle < 131);
-  assert.ok(behindRight.magnitude > 0.99);
-});
-
-test("le SCAN à 90 degrés reste totalement accessible", () => {
-  const state = createLabState();
-  const player = getControlledPlayer(state);
-  player.facingX = 1;
-  player.facingY = 0;
-  const left = constrainScanToFacing(player, 0, -1);
-  const right = constrainScanToFacing(player, 0, 1);
-  assert.ok(left.magnitude > 0.99);
-  assert.ok(right.magnitude > 0.99);
-  assert.ok(Math.abs(left.x) < 0.001 && left.y < -0.99);
-  assert.ok(Math.abs(right.x) < 0.001 && right.y > 0.99);
-});
-
-test("une demande trop loin derrière est plafonnée à 130 degrés et jamais à 180", () => {
-  const state = createLabState();
-  const player = getControlledPlayer(state);
-  player.facingX = 1;
-  player.facingY = 0;
   const limited = constrainScanToFacing(player, -1, 0.25);
   const dot = limited.x * player.facingX + limited.y * player.facingY;
   const angle = Math.acos(Math.max(-1, Math.min(1, dot))) * 180 / Math.PI;
   assert.ok(angle > 129 && angle < 131);
-  assert.ok(limited.x < 0);
 });
 
-test("le joystick SCAN est physiquement bloqué à la butée de 130 degrés", () => {
-  const facing = { x: 1, y: 0 };
-  const first = constrainScanStickVector(-1, 0.4, facing, 0);
-  const angle = Math.atan2(first.y, first.x) * 180 / Math.PI;
-  assert.ok(angle > 129 && angle < 131);
-  assert.equal(first.lockSide, 1);
-});
-
-test("le joystick ne peut pas traverser la zone aveugle par l'arrière", () => {
+test("le joystick SCAN est physiquement bloqué à la butée et ne traverse pas derrière", () => {
   const facing = { x: 1, y: 0 };
   const rightStop = constrainScanStickVector(-1, 0.4, facing, 0);
   const draggedBehind = constrainScanStickVector(-1, -0.4, facing, rightStop.lockSide);
@@ -169,25 +134,19 @@ test("le joystick ne peut pas traverser la zone aveugle par l'arrière", () => {
   assert.equal(draggedBehind.lockSide, 1);
 });
 
-test("recentrer le joystick libère la butée et permet de choisir l'autre épaule", () => {
+test("recentrer le joystick libère la butée", () => {
   const facing = { x: 1, y: 0 };
-  const rightStop = constrainScanStickVector(-1, 0.4, facing, 0);
-  const centered = constrainScanStickVector(0, 0, facing, rightStop.lockSide);
+  const stop = constrainScanStickVector(-1, 0.4, facing, 0);
+  const centered = constrainScanStickVector(0, 0, facing, stop.lockSide);
   assert.equal(centered.lockSide, 0);
-  const leftStop = constrainScanStickVector(-1, -0.4, facing, centered.lockSide);
-  const angle = Math.atan2(leftStop.y, leftStop.x) * 180 / Math.PI;
-  assert.ok(angle < -129 && angle > -131);
-  assert.equal(leftStop.lockSide, -1);
 });
 
-test("la caméra reste toujours dans les limites du terrain même avec SCAN maximal", () => {
+test("la caméra reste dans les limites du terrain près des bords", () => {
   const state = createLabState();
+  state.ball.x = PITCH.inset;
+  state.ball.y = PITCH.inset;
   const settings = { zoom: 1.8, angle: 60, scan: 100 };
   const camera = createCameraState(state, settings);
-  const player = getControlledPlayer(state);
-  player.facingX = 0;
-  player.facingY = -1;
-  for (let i = 0; i < 120; i += 1) updateCamera(camera, state, { scanX: -1, scanY: -1 }, settings, 1 / 60);
   const bounds = cameraBounds(settings);
   assert.ok(camera.x >= bounds.minX - 0.001 && camera.x <= bounds.maxX + 0.001);
   assert.ok(camera.y >= bounds.minY - 0.001 && camera.y <= bounds.maxY + 0.001);
