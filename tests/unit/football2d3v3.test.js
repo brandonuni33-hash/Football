@@ -491,7 +491,8 @@ test("toute réception peut être orientée avec le stick droit", () => {
   assert.equal(state.ball.ownerId, receiver.id);
   assert.ok(receiver.orientedTouchRemaining > 0);
   assert.ok(receiver.facingY < -0.9);
-  assert.ok(state.ball.y < receiver.y - 35);
+  assert.ok(state.ball.y < receiver.y - RULES.orientedTouchStartDistance + 2);
+  assert.ok(state.ball.vy < 0, "le ballon doit repartir dans la direction choisie au lieu d'être collé au pied");
   assert.equal(state.lastEvent, "oriented_reception");
 });
 
