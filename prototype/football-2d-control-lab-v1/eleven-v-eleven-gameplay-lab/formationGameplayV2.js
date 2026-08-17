@@ -59,8 +59,10 @@ const SHAPE = Object.freeze({
   overlapAdvance: 155,
   overlapMaxBeyondHalf: 310,
   backThreeXOffset: 26,
+  midfieldBallShift: 0.30,
   midfieldForwardShift: 72,
   midfieldDefendDrop: 58,
+  forwardBallShift: 0.22,
   forwardAdvance: 78,
   runDuration: 1.15,
   runMinCooldown: 4.0,
@@ -76,14 +78,17 @@ function teamDirection(team) { return team === TEAM.HOME ? 1 : -1; }
 function teamKey(team) { return team === TEAM.HOME ? "home" : "away"; }
 function clamp(value, min, max) { return Math.min(max, Math.max(min, value)); }
 function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
-function attackProgress(team, x) { return team === TEAM.HOME ? x / PITCH.width : (PITCH.width - x) / PITCH.width; }
+function attackProgress(team, x) {
+  return team === TEAM.HOME ? x / PITCH.width : (PITCH.width - x) / PITCH.width;
+}
 function slotFor(player) { return FORMATIONS[teamKey(player.team)]?.slots[player.id] ?? null; }
 function isCenterBack(player) { return slotFor(player)?.line === "centerback"; }
 function isFullback(player) { return slotFor(player)?.line === "fullback"; }
 function isForward(player) { return slotFor(player)?.line === "forward"; }
 
 function resetPlayerToSlot(player, slot) {
-  player.role = slot.role;
+  player.role = slot.line === "midfield" && ["RM", "LM"].includes(slot.role) ? "CM" : slot.role;
+  player.positionLabel = slot.role;
   player.x = slot.x;
   player.y = slot.y;
   player.originX = slot.x;
@@ -120,33 +125,40 @@ export function createGameplayState() {
 function chooseOverlap(state, team) {
   const owner = getOwner(state);
   if (!owner || owner.team !== team) return null;
-  if (attackProgress(team, state.ball.x) < SHAPE.overlapTriggerProgress) return null;
-  const slots = FORMATIONS[teamKey(team)].slots;
-  const right = Object.entries(slots).find(([, slot]) => slot.line === "fullback" && slot.side === "right")?.[0] ?? null;
-  const left = Object.entries(slots).find(([, slot]) => slot.line === "fullback" && slot.side === "left")?.[0] ?? null;
-  if (state.ball.y <= SHAPE.overlapLaneEdge) return right;
-  if (state.ball.y >= PITCH.height - SHAPE.overlapLaneEdge) return left;
-  return null;
+  const progress = attackProgress(team, state.ball.x);
+  if (progress < SHAPE.overlapTriggerProgress) return null;
+
+  const fullbacks = Object.entries(FORMATIONS[teamKey(team)].slots)
+    .filter(([, slot]) => slot.line === "fullback")
+    .map(([id, slot]) => ({ id, slot }));
+  const corridor = state.ball.y <= SHAPE.overlapLaneEdge
+    || state.ball.y >= PITCH.height - SHAPE.overlapLaneEdge;
+  if (!corridor) return null;
+  return fullbacks
+    .sort((a, b) => Math.abs(a.slot.y - state.ball.y) - Math.abs(b.slot.y - state.ball.y))[0]?.id ?? null;
 }
 
 function blockShiftX(team, line, ballX, attacking) {
   const dir = teamDirection(team);
   const centered = ballX - MIDLINE;
-  const factor = line === "centerback" || line === "fullback" ? 0.22 : line === "midfield" ? 0.34 : 0.40;
+  const lineFactor = line === "centerback" || line === "fullback" ? 0.22 : line === "midfield" ? 0.34 : 0.40;
   const phase = attacking
     ? (line === "midfield" ? SHAPE.midfieldForwardShift : line === "forward" ? SHAPE.forwardAdvance : 30)
     : (line === "midfield" ? -SHAPE.midfieldDefendDrop : line === "forward" ? -32 : -22);
-  return centered * factor + dir * phase;
+  return centered * lineFactor + dir * phase;
 }
 
 function baseTarget(state, player, attacking) {
   const slot = slotFor(player);
   if (!slot) return { x: player.x, y: player.y };
   if (slot.line === "gk") {
-    return { x: slot.x, y: clamp(state.ball.y, PITCH.goalTop + 40, PITCH.goalBottom - 40) };
+    const y = clamp(state.ball.y, PITCH.goalTop + 40, PITCH.goalBottom - 40);
+    return { x: slot.x, y };
   }
+
   let x = slot.x + blockShiftX(player.team, slot.line, state.ball.x, attacking);
   let y = slot.y + (state.ball.y - PITCH.height / 2) * (slot.line === "midfield" ? 0.20 : 0.12);
+
   if (slot.line === "midfield") {
     const dir = teamDirection(player.team);
     const defenseReference = player.team === TEAM.HOME ? 390 : PITCH.width - 390;
@@ -154,7 +166,11 @@ function baseTarget(state, player, attacking) {
     const linkCenter = (defenseReference + attackReference + state.ball.x) / 3;
     x = x * 0.54 + linkCenter * 0.46 + dir * (attacking ? 18 : -10);
   }
-  if (slot.line === "forward") y += (state.ball.y - slot.y) * 0.10;
+
+  if (slot.line === "forward") {
+    y += (state.ball.y - slot.y) * 0.10;
+  }
+
   return {
     x: clamp(x, PITCH.inset + 28, PITCH.width - PITCH.inset - 28),
     y: clamp(y, PITCH.inset + 36, PITCH.height - PITCH.inset - 36),
@@ -163,24 +179,33 @@ function baseTarget(state, player, attacking) {
 
 function applyBackThreeCoverage(state, team, targets, overlapId) {
   if (!overlapId) return;
-  const defenders = Object.entries(FORMATIONS[teamKey(team)].slots)
+  const key = teamKey(team);
+  const defenders = Object.entries(FORMATIONS[key].slots)
     .filter(([id, slot]) => (slot.line === "centerback" || slot.line === "fullback") && id !== overlapId)
-    .map(([id]) => getPlayer(state, id)).filter(Boolean).sort((a, b) => a.y - b.y);
+    .map(([id]) => getPlayer(state, id))
+    .filter(Boolean)
+    .sort((a, b) => a.y - b.y);
+
   const lanes = [PITCH.height * 0.27, PITCH.height * 0.50, PITCH.height * 0.73];
   const dir = teamDirection(team);
   defenders.forEach((player, index) => {
     const current = targets.get(player.id) ?? baseTarget(state, player, true);
-    targets.set(player.id, { x: current.x - dir * SHAPE.backThreeXOffset, y: lanes[index] ?? current.y, role: "back-three" });
+    const x = current.x - dir * SHAPE.backThreeXOffset;
+    targets.set(player.id, { x, y: lanes[index] ?? current.y, role: "back-three" });
   });
 }
 
 function overlapTarget(state, player) {
   const dir = teamDirection(player.team);
-  const beyondHalf = player.team === TEAM.HOME ? MIDLINE + SHAPE.overlapMaxBeyondHalf : MIDLINE - SHAPE.overlapMaxBeyondHalf;
+  const beyondHalf = player.team === TEAM.HOME
+    ? MIDLINE + SHAPE.overlapMaxBeyondHalf
+    : MIDLINE - SHAPE.overlapMaxBeyondHalf;
   const desiredX = state.ball.x + dir * SHAPE.overlapAdvance;
   return {
-    x: player.team === TEAM.HOME ? clamp(desiredX, MIDLINE + 24, beyondHalf) : clamp(desiredX, beyondHalf, MIDLINE - 24),
-    y: player.formationSide === "right" ? PITCH.inset + 92 : PITCH.height - PITCH.inset - 92,
+    x: player.team === TEAM.HOME
+      ? clamp(desiredX, MIDLINE + 24, beyondHalf)
+      : clamp(desiredX, beyondHalf, MIDLINE - 24),
+    y: (slotFor(player)?.y ?? player.y) < PITCH.height / 2 ? PITCH.inset + 92 : PITCH.height - PITCH.inset - 92,
     role: "overlap",
   };
 }
@@ -190,21 +215,28 @@ function eligibleRunners(state, team) {
 }
 
 function updateRunWindow(state, team) {
-  const info = state.formationTactical[teamKey(team)];
+  const key = teamKey(team);
+  const info = state.formationTactical[key];
   const owner = getOwner(state);
   if (!owner || owner.team !== team) {
     info.runnerId = null;
     info.runUntil = 0;
     return;
   }
+
   if (info.runnerId && state.elapsed >= info.runUntil) {
     const previous = getPlayer(state, info.runnerId);
     if (previous) previous.callRemaining = 0;
     info.runnerId = null;
     info.runUntil = 0;
   }
+
   if (!info.runnerId && state.elapsed >= info.nextRunAt) {
-    const candidates = eligibleRunners(state, team).sort((a, b) => Math.abs(a.y - state.ball.y) - Math.abs(b.y - state.ball.y) || a.number - b.number);
+    const candidates = eligibleRunners(state, team).sort((a, b) => {
+      const laneA = Math.abs(a.y - state.ball.y);
+      const laneB = Math.abs(b.y - state.ball.y);
+      return laneA - laneB || a.number - b.number;
+    });
     const pick = candidates[(Math.floor(state.elapsed * 10) + (team === TEAM.HOME ? 1 : 0)) % Math.max(1, candidates.length)] ?? null;
     if (pick) {
       info.runnerId = pick.id;
@@ -227,25 +259,30 @@ function runTarget(state, player) {
 }
 
 function buildTargets(state, team) {
+  const key = teamKey(team);
   const owner = getOwner(state);
   const attacking = owner?.team === team;
   const targets = new Map();
   const overlapId = attacking ? chooseOverlap(state, team) : null;
-  state.formationTactical[teamKey(team)].overlapId = overlapId;
+  state.formationTactical[key].overlapId = overlapId;
+
   for (const player of state.players.filter((entry) => entry.team === team && !entry.controlled)) {
     targets.set(player.id, baseTarget(state, player, attacking));
   }
+
   if (overlapId) {
     const overlap = getPlayer(state, overlapId);
     if (overlap && !overlap.hasBall) targets.set(overlap.id, overlapTarget(state, overlap));
     applyBackThreeCoverage(state, team, targets, overlapId);
   }
+
   updateRunWindow(state, team);
-  const runnerId = state.formationTactical[teamKey(team)].runnerId;
+  const runnerId = state.formationTactical[key].runnerId;
   if (runnerId) {
     const runner = getPlayer(state, runnerId);
     if (runner && !runner.hasBall) targets.set(runner.id, runTarget(state, runner));
   }
+
   return targets;
 }
 
@@ -255,7 +292,8 @@ function steerToTarget(player, target, dt) {
   const dy = target.y - player.y;
   const gap = Math.hypot(dx, dy);
   if (gap < 0.5) return;
-  const scale = Math.min(1, (SHAPE.correctionSpeed * dt) / gap);
+  const maxStep = SHAPE.correctionSpeed * dt;
+  const scale = Math.min(1, maxStep / gap);
   player.x += dx * scale;
   player.y += dy * scale;
   player.vx += dx * Math.min(0.22, dt * 7.5);
@@ -264,7 +302,8 @@ function steerToTarget(player, target, dt) {
 }
 
 function enforceHalfwayRules(state, team) {
-  const overlapId = state.formationTactical[teamKey(team)].overlapId;
+  const key = teamKey(team);
+  const overlapId = state.formationTactical[key].overlapId;
   for (const player of state.players.filter((entry) => entry.team === team)) {
     if (isCenterBack(player)) {
       if (team === TEAM.HOME) player.x = Math.min(player.x, MIDLINE - SHAPE.cbHalfwayMargin);
@@ -275,7 +314,10 @@ function enforceHalfwayRules(state, team) {
       else player.x = Math.max(player.x, MIDLINE + SHAPE.fullbackHalfwayMargin);
     }
   }
-  const advanced = state.players.filter((entry) => entry.team === team && isFullback(entry)).filter((player) => team === TEAM.HOME ? player.x > MIDLINE : player.x < MIDLINE);
+
+  const advanced = state.players.filter((entry) => entry.team === team && isFullback(entry)).filter((player) => (
+    team === TEAM.HOME ? player.x > MIDLINE : player.x < MIDLINE
+  ));
   if (advanced.length > 1) {
     for (const player of advanced) {
       if (player.id === overlapId) continue;
@@ -286,7 +328,8 @@ function enforceHalfwayRules(state, team) {
 }
 
 function restrictForwardCalls(state, team) {
-  const runnerId = state.formationTactical[teamKey(team)].runnerId;
+  const key = teamKey(team);
+  const runnerId = state.formationTactical[key].runnerId;
   for (const player of state.players.filter((entry) => entry.team === team && isForward(entry))) {
     if (player.id !== runnerId && !player.controlled) player.callRemaining = Math.min(player.callRemaining, 0.08);
   }
@@ -323,11 +366,17 @@ export function cameraFromBall(state, settings = {}) {
   const player = getControlledPlayer(state);
   if (!player) return core.cameraFromBall(state, settings);
   const gap = distance(player, state.ball);
-  const playerWeight = clamp(SHAPE.cameraPlayerWeightMin + (gap / SHAPE.cameraWeightDistance) * 0.20, SHAPE.cameraPlayerWeightMin, SHAPE.cameraPlayerWeightMax);
+  const playerWeight = clamp(
+    SHAPE.cameraPlayerWeightMin + (gap / SHAPE.cameraWeightDistance) * 0.20,
+    SHAPE.cameraPlayerWeightMin,
+    SHAPE.cameraPlayerWeightMax,
+  );
   const ballWeight = 1 - playerWeight;
+  const targetX = state.ball.x * ballWeight + player.x * playerWeight;
+  const targetY = state.ball.y * ballWeight + player.y * playerWeight;
   return {
-    x: clamp(state.ball.x * ballWeight + player.x * playerWeight, bounds.minX, bounds.maxX),
-    y: clamp(state.ball.y * ballWeight + player.y * playerWeight, bounds.minY, bounds.maxY),
+    x: clamp(targetX, bounds.minX, bounds.maxX),
+    y: clamp(targetY, bounds.minY, bounds.maxY),
     playerWeight,
   };
 }
