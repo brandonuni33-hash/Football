@@ -1,4 +1,4 @@
-import { LAB_RULES, PITCH, clamp, normalize } from "./constants.js";
+import { CAMERA_DEFAULTS, LAB_RULES, PITCH, clamp, normalize } from "./constants.js";
 
 export const TEAM = Object.freeze({ HOME: "home", AWAY: "away" });
 export const CONTROLLED_ID = "home-8";
@@ -24,11 +24,15 @@ function mirror(entry) {
 
 function playerFrom(entry, team) {
   const [id, number, role, x, y] = entry;
+  const facingX = team === TEAM.HOME ? 1 : -1;
   return {
     id, number, role, team, x, y, originX: x, originY: y,
     vx: 0, vy: 0,
-    facingX: team === TEAM.HOME ? 1 : -1,
+    // facing = torso/body orientation; headFacing = gaze/head orientation.
+    facingX,
     facingY: 0,
+    headFacingX: facingX,
+    headFacingY: 0,
     controlled: id === CONTROLLED_ID,
   };
 }
@@ -60,35 +64,84 @@ function shortestAngleDelta(from, to) {
   return delta;
 }
 
-export function rotateFacingToward(player, targetX, targetY, dt = 1 / 60) {
+function rotateVectorToward(currentX, currentY, targetX, targetY, degreesPerSecond, dt) {
   const target = normalize(targetX, targetY);
-  if (target.magnitude <= 0) return player;
-
-  const current = normalize(player.facingX, player.facingY);
+  if (target.magnitude <= 0) return normalize(currentX, currentY);
+  const current = normalize(currentX, currentY);
   const currentAngle = current.magnitude > 0 ? Math.atan2(current.y, current.x) : Math.atan2(target.y, target.x);
   const targetAngle = Math.atan2(target.y, target.x);
-  const maxTurn = LAB_RULES.bodyTurnDegreesPerSecond * Math.PI / 180 * Math.max(0, dt);
+  const maxTurn = degreesPerSecond * Math.PI / 180 * Math.max(0, dt);
   const delta = shortestAngleDelta(currentAngle, targetAngle);
   const nextAngle = currentAngle + clamp(delta, -maxTurn, maxTurn);
+  return { x: Math.cos(nextAngle), y: Math.sin(nextAngle), magnitude: 1 };
+}
 
-  player.facingX = Math.cos(nextAngle);
-  player.facingY = Math.sin(nextAngle);
+export function rotateFacingToward(player, targetX, targetY, dt = 1 / 60) {
+  const next = rotateVectorToward(
+    player.facingX,
+    player.facingY,
+    targetX,
+    targetY,
+    LAB_RULES.bodyTurnDegreesPerSecond,
+    dt,
+  );
+  if (next.magnitude > 0) {
+    player.facingX = next.x;
+    player.facingY = next.y;
+  }
   return player;
+}
+
+function clampHeadToBody(player) {
+  const body = normalize(player.facingX, player.facingY);
+  const head = normalize(player.headFacingX, player.headFacingY);
+  if (body.magnitude <= 0 || head.magnitude <= 0) return player;
+
+  const bodyAngle = Math.atan2(body.y, body.x);
+  const headAngle = Math.atan2(head.y, head.x);
+  const halfRange = (CAMERA_DEFAULTS.headScanDegrees / 2) * Math.PI / 180;
+  const relative = clamp(shortestAngleDelta(bodyAngle, headAngle), -halfRange, halfRange);
+  const limited = bodyAngle + relative;
+  player.headFacingX = Math.cos(limited);
+  player.headFacingY = Math.sin(limited);
+  return player;
+}
+
+export function rotateHeadToward(player, targetX, targetY, dt = 1 / 60, returning = false) {
+  const speed = returning ? LAB_RULES.headReturnDegreesPerSecond : LAB_RULES.headTurnDegreesPerSecond;
+  const next = rotateVectorToward(
+    player.headFacingX,
+    player.headFacingY,
+    targetX,
+    targetY,
+    speed,
+    dt,
+  );
+  if (next.magnitude > 0) {
+    player.headFacingX = next.x;
+    player.headFacingY = next.y;
+  }
+  return clampHeadToBody(player);
 }
 
 export function stepLabState(state, input = {}, dt = 1 / 60) {
   const player = getControlledPlayer(state);
   if (!player) return state;
   state.elapsed += Math.max(0, dt);
+
   const move = normalize(input.moveX, input.moveY);
   const magnitude = move.magnitude < LAB_RULES.movementDeadzone ? 0 : move.magnitude;
   player.vx = move.x * LAB_RULES.controlledSpeed * magnitude;
   player.vy = move.y * LAB_RULES.controlledSpeed * magnitude;
   player.x = clamp(player.x + player.vx * dt, PITCH.inset + 24, PITCH.width - PITCH.inset - 24);
   player.y = clamp(player.y + player.vy * dt, PITCH.inset + 24, PITCH.height - PITCH.inset - 24);
-  if (magnitude > 0.08) {
-    rotateFacingToward(player, move.x, move.y, dt);
-  }
+
+  if (magnitude > 0.08) rotateFacingToward(player, move.x, move.y, dt);
+
+  const scan = normalize(input.scanX, input.scanY);
+  const scanning = scan.magnitude >= CAMERA_DEFAULTS.scanDeadzone;
+  if (scanning) rotateHeadToward(player, scan.x, scan.y, dt, false);
+  else rotateHeadToward(player, player.facingX, player.facingY, dt, true);
 
   // The other 21 players remain formation markers with only a tiny idle drift.
   // This lab is intentionally about scale/camera, not 11v11 gameplay AI.
