@@ -8,31 +8,57 @@
 <style>
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07100b;color:#f5f1e8;font-family:Inter,system-ui,sans-serif}body{position:fixed;inset:0}canvas{width:100%;height:100%;display:block}
 #hud{position:absolute;left:max(12px,env(safe-area-inset-left));top:max(12px,env(safe-area-inset-top));padding:10px 12px;border:1px solid rgba(255,255,255,.14);border-radius:12px;background:rgba(6,10,8,.72);backdrop-filter:blur(8px);pointer-events:none}.k{font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:#d8bd72;font-weight:800}.v{font-size:15px;font-weight:800;margin-top:2px}.s{font-size:10px;color:#b8beb8;margin-top:3px}
-#picker{position:absolute;inset:0;display:grid;place-items:center;background:linear-gradient(180deg,#08110b,#050806)}#picker.hidden{display:none}.panel{width:min(420px,calc(100vw - 32px));padding:20px;border-radius:16px;border:1px solid rgba(255,255,255,.14);background:rgba(8,12,9,.92);text-align:center}.panel h1{font-size:20px;margin:0 0 7px}.panel p{font-size:12px;line-height:1.45;color:#b9c0ba;margin:0 0 14px}.pick{display:inline-block;padding:12px 15px;border-radius:10px;background:#d6b768;color:#111;font-weight:850;font-size:12px;cursor:pointer}.pick input{display:none}#error{margin-top:10px;color:#ffb6a7;font-size:11px}
+#picker{position:absolute;inset:0;display:grid;place-items:center;background:linear-gradient(180deg,#08110b,#050806)}#picker.hidden{display:none}.panel{width:min(440px,calc(100vw - 32px));padding:20px;border-radius:16px;border:1px solid rgba(255,255,255,.14);background:rgba(8,12,9,.92)}.panel h1{font-size:20px;margin:0 0 7px;text-align:center}.panel p{font-size:12px;line-height:1.45;color:#b9c0ba;margin:0 0 14px;text-align:center}.asset{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid rgba(255,255,255,.09)}.asset:first-of-type{border-top:0}.assetName{font-size:12px;font-weight:800}.assetState{font-size:10px;color:#aeb6b0;margin-top:2px}.pick{display:inline-block;padding:10px 12px;border-radius:9px;background:#d6b768;color:#111;font-weight:850;font-size:11px;cursor:pointer}.pick input{display:none}#error{margin-top:10px;color:#ffb6a7;font-size:11px;text-align:center}
 </style>
 </head>
 <body>
 <canvas id="game"></canvas>
-<div id="hud"><div class="k">STP · Player Feel Lab</div><div class="v">Terrain 105 × 68 m</div><div class="s">Caméra intermédiaire · 16° · zoom 1,07×</div></div>
-<div id="picker"><div class="panel"><h1>Charger le terrain STP</h1><p>Sélectionne le fichier <b>soccer-field-stp-compact.glb</b>. Le lab le normalise automatiquement à 105 × 68 m puis l'affiche avec notre caméra validée.</p><label class="pick">CHOISIR LE GLB<input id="file" type="file" accept=".glb,model/gltf-binary"></label><div id="error"></div></div></div>
+<div id="hud"><div class="k">STP · Player Feel Lab</div><div class="v">Terrain 105 × 68 m · Ballon Ø 22 cm</div><div class="s">Caméra intermédiaire · 16° · zoom 1,07×</div></div>
+<div id="picker"><div class="panel"><h1>Charger le socle STP</h1><p>Le terrain et le ballon restent deux assets indépendants. Le lab normalise automatiquement leur échelle réelle.</p>
+<div class="asset"><div><div class="assetName">Terrain STP</div><div class="assetState" id="fieldState">soccer-field-stp-compact.glb</div></div><label class="pick">CHOISIR<input id="fieldFile" type="file" accept=".glb,model/gltf-binary"></label></div>
+<div class="asset"><div><div class="assetName">Ballon STP</div><div class="assetState" id="ballState">FootBall.glb · diamètre cible 0,22 m</div></div><label class="pick">CHOISIR<input id="ballFile" type="file" accept=".glb,model/gltf-binary"></label></div>
+<div id="error"></div></div></div>
 <script type="module">
 import {parseGlb} from '../core/assets/glbLoader.js';
 import {createFieldNormalization} from '../core/assets/fieldNormalization.js';
+import {createBallNormalization} from '../core/assets/ballNormalization.js';
 import {createFieldSceneRenderer,STP_CAMERA_REFERENCE} from '../core/rendering/glbSceneRenderer.js';
-const canvas=document.getElementById('game'),picker=document.getElementById('picker'),input=document.getElementById('file'),error=document.getElementById('error');
-let renderer=null;
-async function open(file){
+const canvas=document.getElementById('game'),picker=document.getElementById('picker'),error=document.getElementById('error');
+const fieldInput=document.getElementById('fieldFile'),ballInput=document.getElementById('ballFile');
+const fieldState=document.getElementById('fieldState'),ballState=document.getElementById('ballState');
+let renderer=null,fieldParsed=null,ballParsed=null;
+
+async function parseFile(file,label){
+  try{return parseGlb(await file.arrayBuffer())}
+  catch(e){throw new Error(`${label}: ${e.message}`)}
+}
+
+function build(){
+  if(!fieldParsed||!ballParsed)return;
   try{
     error.textContent='';
-    const parsed=parseGlb(await file.arrayBuffer());
-    const normalization=createFieldNormalization(parsed);
+    const fieldNormalization=createFieldNormalization(fieldParsed);
+    const ballNormalization=createBallNormalization(ballParsed);
     renderer?.destroy();
-    renderer=createFieldSceneRenderer(canvas,parsed,normalization,{camera:STP_CAMERA_REFERENCE});
+    renderer=createFieldSceneRenderer(canvas,fieldParsed,fieldNormalization,{
+      camera:STP_CAMERA_REFERENCE,
+      ball:{parsed:ballParsed,normalization:ballNormalization,position:[0,ballNormalization.radius,0]},
+    });
     renderer.render();
     picker.classList.add('hidden');
   }catch(e){console.error(e);error.textContent=e.message}
 }
-input.addEventListener('change',()=>input.files?.[0]&&open(input.files[0]));
+
+fieldInput.addEventListener('change',async()=>{
+  if(!fieldInput.files?.[0])return;
+  try{fieldParsed=await parseFile(fieldInput.files[0],'Terrain');fieldState.textContent='✓ Terrain chargé';build()}
+  catch(e){error.textContent=e.message}
+});
+ballInput.addEventListener('change',async()=>{
+  if(!ballInput.files?.[0])return;
+  try{ballParsed=await parseFile(ballInput.files[0],'Ballon');ballState.textContent='✓ Ballon chargé · Ø 22 cm';build()}
+  catch(e){error.textContent=e.message}
+});
 addEventListener('resize',()=>renderer?.render(),{passive:true});
 </script>
 </body>
