@@ -132,7 +132,7 @@ function drawOverlay(ctx, camera, settings) {
   ctx.font = "800 12px system-ui";
   ctx.textAlign = "left";
   ctx.fillText(
-    `BALL CAM · Z ${geometry.zoom.toFixed(2)} · 3/4 ${Math.round(geometry.angle)} · VISION 180° · TÊTE 260°${camera.scanActive ? " · SCAN" : ""}`,
+    `BALL CAM · Z ${geometry.zoom.toFixed(2)} · 3/4 ${Math.round(geometry.angle)} · VISION ${CAMERA_DEFAULTS.visionDegrees}° · TÊTE ${CAMERA_DEFAULTS.headScanDegrees}°${camera.scanActive ? " · SCAN" : ""}`,
     30,
     VIEWPORT.height - 28,
   );
