@@ -5,6 +5,7 @@
 import { installCoreStyles } from './ui/coreStyles.js';
 import { installNotificationStyles } from './ui/notificationStyles.js';
 import CreationController from './ui/creationController.js';
+import PlayerCreationFlowController from './ui/playerCreationFlowController.js';
 import ModalController from './ui/modalController.js';
 import BlockResultController from './ui/blockResultController.js';
 
@@ -14,15 +15,12 @@ export class UserInterface {
         this.gateway = null;
         this.currentStep = 1;
         this.activeApp = 'home';
-        this.selectedData = {
-            firstname: '', lastname: '', position: null,
-            continent: null, country: null, origin: null,
-            heartClub: null, youthClub: null, coachVision: null, coachName: null
-        };
+        this.selectedData = {};
         this.randomYouthClubs = [];
         installCoreStyles();
         installNotificationStyles();
         this.creationController = new CreationController(this);
+        this.playerCreationFlowController = new PlayerCreationFlowController(this);
         this.modalController = new ModalController(this);
         this.blockResultController = new BlockResultController(this, this.modalController);
         this.initDOM();
@@ -46,9 +44,7 @@ export class UserInterface {
             return this.viewCoordinator?.renderDashboard?.(this.gateway?.state || this.engine?.state) || '';
         }
         const app = this.initDOM();
-        app.innerHTML = this.creationController.render();
-        this.creationController.bind();
-        return app.innerHTML;
+        return this.playerCreationFlowController.render();
     }
 
     renderDashboard(state = this.gateway?.state || this.engine?.state) {

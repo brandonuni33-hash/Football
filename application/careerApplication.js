@@ -63,11 +63,20 @@ export class CareerApplication {
             lastname: selectedData.lastname,
             firstName: selectedData.firstname,
             lastName: selectedData.lastname,
-            country: selectedData.country,
-            nationality: selectedData.country,
+            country: selectedData.primaryNationality || selectedData.country || selectedData.nationality,
+            nationality: selectedData.primaryNationality || selectedData.nationality || selectedData.country,
             position: selectedData.position,
             origin: selectedData.origin,
-            heartClub: selectedData.heartClub
+            heartClub: selectedData.heartClub,
+            faceId: selectedData.faceId,
+            height: selectedData.height,
+            weight: selectedData.weight,
+            preferredFoot: selectedData.preferredFoot,
+            primaryNationality: selectedData.primaryNationality,
+            secondaryNationality: selectedData.secondaryNationality,
+            raisedInCountry: selectedData.raisedInCountry,
+            raisedInContinent: selectedData.raisedInContinent,
+            age: 14
         });
 
         const youthClub = selectedData.youthClub || null;
@@ -82,6 +91,9 @@ export class CareerApplication {
         player.youthClubName = youthClubName;
         player.youthClubData = youthClub ? { ...youthClub } : null;
         player.isYouthPlayer = Number(player.age) < 18;
+        if (Object.prototype.hasOwnProperty.call(selectedData, 'origin')) player.origin = selectedData.origin ?? null;
+        if (Object.prototype.hasOwnProperty.call(selectedData, 'youthClub')) player.youthClub = selectedData.youthClub ?? null;
+        if (Object.prototype.hasOwnProperty.call(selectedData, 'heartClub')) player.heartClub = selectedData.heartClub ?? null;
 
         if (!player.isYouthPlayer) this.worldSystem.normalizeCareerClub(player);
         this.careerSystem.initialize(player, youthClub || (player.clubId ? this.worldSystem.getClub(player.clubId) : null));
