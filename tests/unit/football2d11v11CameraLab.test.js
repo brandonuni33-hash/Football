@@ -62,12 +62,12 @@ test("la tête revient vers le corps sans téléportation quand le SCAN est rel�
   assert.ok(after > 43 && after < 45, "le retour de tête doit être progressif à environ 210 degrés par seconde");
 });
 
-test("la tête reste limitée à 130 degrés de chaque côté du corps", () => {
+test("la tête reste limitée à 110 degrés de chaque côté du corps", () => {
   const state = createLabState();
   const player = getControlledPlayer(state);
   rotateHeadToward(player, -1, 0.1, 2, false);
   const relative = Math.atan2(player.headFacingY, player.headFacingX) * 180 / Math.PI;
-  assert.ok(relative > 129 && relative < 131);
+  assert.ok(relative > 109 && relative < 111);
 });
 
 test("la caméra et la vision de base sont verrouillées", () => {
@@ -75,8 +75,9 @@ test("la caméra et la vision de base sont verrouillées", () => {
   assert.equal(geometry.zoom, 1.40);
   assert.equal(geometry.angle, 60);
   assert.equal(geometry.scan, 41);
-  assert.equal(CAMERA_DEFAULTS.headScanDegrees, 260);
+  assert.equal(CAMERA_DEFAULTS.headScanDegrees, 220);
   assert.equal(CAMERA_DEFAULTS.visionDegrees, 120);
+  assert.equal(LAB_RULES.controlledSpeed, 222);
   assert.equal(LAB_RULES.bodyTurnDegreesPerSecond, 140);
   assert.equal(LAB_RULES.headTurnDegreesPerSecond, 260);
 });
@@ -131,13 +132,13 @@ test("la vision lisible couvre exactement 120 degrés autour de la tête", () =>
   assert.equal(isPointInVision(player, null, { x: player.x, y: player.y - 100 }), false);
 });
 
-test("le SCAN logiciel reste plafonné à 130 degrés", () => {
+test("le SCAN logiciel reste plafonné à 110 degrés", () => {
   const state = createLabState();
   const player = getControlledPlayer(state);
   const limited = constrainScanToFacing(player, -1, 0.25);
   const dot = limited.x * player.facingX + limited.y * player.facingY;
   const angle = Math.acos(Math.max(-1, Math.min(1, dot))) * 180 / Math.PI;
-  assert.ok(angle > 129 && angle < 131);
+  assert.ok(angle > 109 && angle < 111);
 });
 
 test("le joystick SCAN est physiquement bloqué à la butée et ne traverse pas derrière", () => {
@@ -145,7 +146,7 @@ test("le joystick SCAN est physiquement bloqué à la butée et ne traverse pas 
   const rightStop = constrainScanStickVector(-1, 0.4, facing, 0);
   const draggedBehind = constrainScanStickVector(-1, -0.4, facing, rightStop.lockSide);
   const angle = Math.atan2(draggedBehind.y, draggedBehind.x) * 180 / Math.PI;
-  assert.ok(angle > 129 && angle < 131);
+  assert.ok(angle > 109 && angle < 111);
   assert.equal(draggedBehind.lockSide, 1);
 });
 
