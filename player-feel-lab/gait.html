@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#07100b">
+<title>STP — Appuis Lab</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07100b;color:#f5f1e8;font-family:Inter,system-ui,sans-serif;touch-action:none}body{position:fixed;inset:0}canvas#game{position:absolute;inset:0;width:100%;height:100%;display:block}
+#hud{position:absolute;left:max(12px,env(safe-area-inset-left));top:max(12px,env(safe-area-inset-top));z-index:6;padding:10px 12px;border:1px solid rgba(255,255,255,.13);border-radius:12px;background:rgba(6,10,8,.73);backdrop-filter:blur(8px);pointer-events:none}.k{font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:#d8bd72;font-weight:850}.v{font-size:15px;font-weight:850;margin-top:2px}.s{font-size:10px;color:#b8beb8;margin-top:3px;line-height:1.35}
+#telemetry{position:absolute;right:max(12px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));z-index:6;padding:9px 11px;border:1px solid rgba(255,255,255,.12);border-radius:11px;background:rgba(6,10,8,.68);font-size:10px;color:#c2c9c3;display:none}#telemetry b{color:#fff}
+#rig{position:absolute;display:none;z-index:4;transform-origin:50% 100%;pointer-events:none;filter:drop-shadow(0 3px 3px rgba(0,0,0,.28))}.part{position:absolute;inset:0;width:100%;height:100%;user-select:none;pointer-events:none}.leg{z-index:1}.torso{z-index:2}.leftLeg{transform-origin:39% 60%}.rightLeg{transform-origin:61% 60%}.torso{transform-origin:50% 60%}.contact{position:absolute;z-index:5;width:8px;height:4px;border-radius:50%;background:rgba(255,255,255,.2);box-shadow:0 0 0 1px rgba(0,0,0,.28);display:none;pointer-events:none}.contact.planted{background:#e0bd66;box-shadow:0 0 8px rgba(224,189,102,.85)}
+#joy{position:absolute;left:max(22px,calc(env(safe-area-inset-left) + 14px));bottom:max(22px,calc(env(safe-area-inset-bottom) + 14px));width:118px;height:118px;border-radius:50%;background:rgba(8,11,16,.35);border:1px solid rgba(255,255,255,.17);backdrop-filter:blur(5px);z-index:7;display:none}#knob{position:absolute;left:35px;top:35px;width:48px;height:48px;border-radius:50%;background:rgba(245,245,240,.8)}
+#sprint{position:absolute;right:max(22px,calc(env(safe-area-inset-right) + 14px));bottom:max(24px,calc(env(safe-area-inset-bottom) + 16px));z-index:7;width:82px;height:82px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(150,117,47,.82);color:#fff;font-size:11px;font-weight:900;display:none}#sprint.active{background:#d6b768;color:#111;transform:scale(.96)}
+#slow{position:absolute;right:max(25px,calc(env(safe-area-inset-right) + 17px));bottom:max(116px,calc(env(safe-area-inset-bottom) + 108px));z-index:7;border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:9px 10px;background:rgba(7,11,8,.82);color:#fff;font-size:9px;font-weight:850;display:none}#slow.active{border-color:#d6b768;color:#d6b768}
+#picker{position:absolute;inset:0;z-index:20;display:grid;place-items:center;background:linear-gradient(180deg,#08110b,#050806)}#picker.hidden{display:none}.panel{width:min(460px,calc(100vw - 32px));padding:20px;border:1px solid rgba(255,255,255,.14);border-radius:16px;background:rgba(8,12,9,.94)}.panel h1{font-size:20px;margin:0 0 7px;text-align:center}.panel p{font-size:12px;line-height:1.45;color:#b9c0ba;margin:0 0 14px;text-align:center}.asset{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid rgba(255,255,255,.09)}.assetName{font-size:12px;font-weight:850}.assetState{font-size:10px;color:#aeb6b0;margin-top:2px}.pick{padding:10px 12px;border-radius:9px;background:#d6b768;color:#111;font-size:11px;font-weight:850}.pick input{display:none}#error{margin-top:10px;color:#ffb6a7;font-size:11px;text-align:center}
+@media(max-height:650px){#joy{width:96px;height:96px}#knob{left:29px;top:29px;width:38px;height:38px}#sprint{width:68px;height:68px}#slow{bottom:94px}}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="rig"><img id="leftLeg" class="part leg leftLeg"><img id="rightLeg" class="part leg rightLeg"><img id="torso" class="part torso"></div>
+<span id="leftContact" class="contact"></span><span id="rightContact" class="contact"></span>
+<div id="hud"><div class="k">STP · Appuis Lab</div><div class="v">Foulée procédurale V1</div><div class="s">Caméra 16° · 1,07× · les jambes suivent la distance réellement parcourue</div></div>
+<div id="telemetry"><b id="speed">0,0 m/s</b> · <span id="plant">appui G</span><br><span id="phase">phase 0,00</span></div>
+<div id="joy"><div id="knob"></div></div><button id="slow">RALENTI x0,35</button><button id="sprint">SPRINT</button>
+<div id="picker"><div class="panel"><h1>Test des appuis STP</h1><p>Charge le même terrain, le même ballon et l'image frontale STP_REF_01. Le lab découpe temporairement les jambes pour tester l'adhérence au sol sans construire un système d'animation complet.</p>
+<div class="asset"><div><div class="assetName">Terrain</div><div id="fieldState" class="assetState">soccer-field-stp-compact.glb</div></div><label class="pick">CHOISIR<input id="fieldFile" type="file" accept=".glb,model/gltf-binary"></label></div>
+<div class="asset"><div><div class="assetName">Ballon</div><div id="ballState" class="assetState">stp-football.glb</div></div><label class="pick">CHOISIR<input id="ballFile" type="file" accept=".glb,model/gltf-binary"></label></div>
+<div class="asset"><div><div class="assetName">STP_REF_01</div><div id="playerState" class="assetState">image frontale verrouillée</div></div><label class="pick">CHOISIR<input id="playerFile" type="file" accept="image/*"></label></div><div id="error"></div></div></div>
+<script type="module">
+import {parseGlb} from '../core/assets/glbLoader.js';
+import {createFieldNormalization} from '../core/assets/fieldNormalization.js';
+import {createBallNormalization} from '../core/assets/ballNormalization.js';
+import {createPlayerMovement} from '../core/physics/playerMovement.js';
+import {createPlayerGaitPose} from '../core/animation/playerGait.js';
+import {projectPlayerBillboard} from '../core/rendering/stpProjection.js';
+import {createFieldSceneRenderer,STP_CAMERA_REFERENCE} from '../core/rendering/glbSceneRenderer.js';
+
+const $=id=>document.getElementById(id);const canvas=$('game'),picker=$('picker'),error=$('error');
+const rig=$('rig'),torso=$('torso'),leftLeg=$('leftLeg'),rightLeg=$('rightLeg'),leftContact=$('leftContact'),rightContact=$('rightContact');
+let fieldParsed=null,ballParsed=null,renderer=null,movement=null,playerReady=false,last=performance.now(),slow=false;
+let input={x:0,z:0,sprint:false};
+
+async function parseFile(file,label){try{return parseGlb(await file.arrayBuffer())}catch(e){throw new Error(`${label}: ${e.message}`)}}
+function polygonPath(ctx,pts,w,h){ctx.beginPath();pts.forEach(([x,y],i)=>i?ctx.lineTo(x*w,y*h):ctx.moveTo(x*w,y*h));ctx.closePath()}
+
+async function makeRigSprites(file){
+  const bitmap=await createImageBitmap(file);const maxH=900,scale=Math.min(1,maxH/bitmap.height),w=Math.round(bitmap.width*scale),h=Math.round(bitmap.height*scale);
+  const base=document.createElement('canvas');base.width=w;base.height=h;const x=base.getContext('2d',{willReadFrequently:true});x.drawImage(bitmap,0,0,w,h);
+  const data=x.getImageData(0,0,w,h),p=data.data,sample=[],step=Math.max(1,Math.floor(Math.min(w,h)/30));
+  for(let i=0;i<w;i+=step)for(const y of [0,Math.min(h-1,4)]){const k=(y*w+i)*4;sample.push([p[k],p[k+1],p[k+2]])}
+  for(let i=0;i<h;i+=step)for(const xx of [0,Math.min(w-1,4)]){const k=(i*w+xx)*4;sample.push([p[k],p[k+1],p[k+2]])}
+  const bg=[0,1,2].map(ch=>sample.map(v=>v[ch]).sort((a,b)=>a-b)[Math.floor(sample.length/2)]);
+  for(let i=0;i<p.length;i+=4){const dr=p[i]-bg[0],dg=p[i+1]-bg[1],db=p[i+2]-bg[2],d=Math.hypot(dr,dg,db),mx=Math.max(p[i],p[i+1],p[i+2]),mn=Math.min(p[i],p[i+1],p[i+2]);let a=Math.max(0,Math.min(1,(d-10)/34));if((p[i]+p[i+1]+p[i+2])/3<205||mx-mn>24)a=Math.max(a,.94);p[i+3]=Math.round(a*255)}x.putImageData(data,0,0);
+  const left=[[.19,.565],[.50,.565],[.49,.70],[.44,.88],[.34,.98],[.02,1],[.16,.91],[.20,.72]];
+  const right=[[.50,.565],[.81,.565],[.80,.72],[.84,.91],[.98,1],[.66,.98],[.56,.88],[.51,.70]];
+  const clearLeft=[[.23,.61],[.50,.61],[.49,.71],[.44,.89],[.34,.99],[.03,1],[.17,.92],[.20,.73]];
+  const clearRight=[[.50,.61],[.77,.61],[.80,.73],[.83,.92],[.97,1],[.66,.99],[.56,.89],[.51,.71]];
+  function piece(poly){const c=document.createElement('canvas');c.width=w;c.height=h;const q=c.getContext('2d');q.save();polygonPath(q,poly,w,h);q.clip();q.drawImage(base,0,0);q.restore();return c.toDataURL('image/png')}
+  const top=document.createElement('canvas');top.width=w;top.height=h;const t=top.getContext('2d');t.drawImage(base,0,0);t.save();t.globalCompositeOperation='destination-out';polygonPath(t,clearLeft,w,h);t.fill();polygonPath(t,clearRight,w,h);t.fill();t.restore();
+  return {torso:top.toDataURL('image/png'),left:piece(left),right:piece(right),aspect:w/h};
+}
+
+function syncPlayer(state){
+  if(!movement||!playerReady)return;const pose=createPlayerGaitPose(state);const projected=projectPlayerBillboard([state.position[0],state.bob,state.position[2]],movement.config.height,{width:innerWidth,height:innerHeight},STP_CAMERA_REFERENCE);
+  const visible=projected.visible;rig.style.display=visible?'block':'none';leftContact.style.display=rightContact.style.display=visible?'block':'none';if(!visible)return;
+  const h=projected.pixelHeight,w=h*Number(rig.dataset.aspect||.36);rig.style.width=`${w}px`;rig.style.height=`${h}px`;rig.style.left=`${projected.feet.x}px`;rig.style.top=`${projected.feet.y}px`;rig.style.transform=`translate(-50%,-100%) translateX(${pose.hipShiftRatio*h}px)`;
+  leftLeg.style.transform=`translateY(${-pose.leftLiftRatio*h}px) rotate(${pose.leftLegDeg}deg)`;rightLeg.style.transform=`translateY(${-pose.rightLiftRatio*h}px) rotate(${pose.rightLegDeg}deg)`;torso.style.transform=`rotate(${pose.torsoRollDeg}deg)`;
+  const spread=Math.max(2,w*.13),fy=projected.feet.y-2;leftContact.style.left=`${projected.feet.x-spread-4}px`;rightContact.style.left=`${projected.feet.x+spread-4}px`;leftContact.style.top=`${fy-pose.leftLiftRatio*h}px`;rightContact.style.top=`${fy-pose.rightLiftRatio*h}px`;leftContact.classList.toggle('planted',state.plantedFoot==='left');rightContact.classList.toggle('planted',state.plantedFoot==='right');
+  $('speed').textContent=`${state.speed.toFixed(1).replace('.',',')} m/s`;$('plant').textContent=`appui ${state.plantedFoot==='left'?'G':'D'}`;$('phase').textContent=`phase ${state.stridePhase.toFixed(2).replace('.',',')}`;
+}
+
+function build(){if(!fieldParsed||!ballParsed||!playerReady)return;try{const fieldNorm=createFieldNormalization(fieldParsed),ballNorm=createBallNormalization(ballParsed);renderer?.destroy();renderer=createFieldSceneRenderer(canvas,fieldParsed,fieldNorm,{camera:STP_CAMERA_REFERENCE,ball:{parsed:ballParsed,normalization:ballNorm,position:[5,ballNorm.radius,0]}});movement=createPlayerMovement({height:1.68,position:[-6,0,0]});renderer.render();syncPlayer(movement.snapshot());picker.classList.add('hidden');$('telemetry').style.display='block';$('joy').style.display='block';$('sprint').style.display='block';$('slow').style.display='block';last=performance.now()}catch(e){console.error(e);error.textContent=e.message}}
+$('fieldFile').addEventListener('change',async e=>{try{fieldParsed=await parseFile(e.target.files[0],'Terrain');$('fieldState').textContent='✓ Terrain chargé';build()}catch(err){error.textContent=err.message}});$('ballFile').addEventListener('change',async e=>{try{ballParsed=await parseFile(e.target.files[0],'Ballon');$('ballState').textContent='✓ Ballon chargé';build()}catch(err){error.textContent=err.message}});$('playerFile').addEventListener('change',async e=>{try{const r=await makeRigSprites(e.target.files[0]);torso.src=r.torso;leftLeg.src=r.left;rightLeg.src=r.right;await Promise.all([torso.decode(),leftLeg.decode(),rightLeg.decode()]);rig.dataset.aspect=r.aspect;playerReady=true;$('playerState').textContent='✓ Rig temporaire prêt';build()}catch(err){error.textContent=`Joueur: ${err.message}`}});
+
+let joyPointer=null;function setJoy(cx,cy){const r=$('joy').getBoundingClientRect(),x0=r.left+r.width/2,y0=r.top+r.height/2,dx=cx-x0,dy=cy-y0,max=r.width*.34,len=Math.hypot(dx,dy)||1,k=Math.min(1,max/len),px=dx*k,py=dy*k;$('knob').style.transform=`translate(${px}px,${py}px)`;input.x=px/max;input.z=-py/max}
+$('joy').addEventListener('pointerdown',e=>{joyPointer=e.pointerId;$('joy').setPointerCapture(e.pointerId);setJoy(e.clientX,e.clientY)});$('joy').addEventListener('pointermove',e=>{if(e.pointerId===joyPointer)setJoy(e.clientX,e.clientY)});function clearJoy(e){if(joyPointer!==null&&(!e||e.pointerId===joyPointer)){joyPointer=null;$('knob').style.transform='';input.x=0;input.z=0}}$('joy').addEventListener('pointerup',clearJoy);$('joy').addEventListener('pointercancel',clearJoy);
+function sprintOn(e){e.preventDefault();input.sprint=true;$('sprint').classList.add('active')}function sprintOff(e){e.preventDefault();input.sprint=false;$('sprint').classList.remove('active')}$('sprint').addEventListener('pointerdown',sprintOn);$('sprint').addEventListener('pointerup',sprintOff);$('sprint').addEventListener('pointercancel',sprintOff);$('slow').addEventListener('click',()=>{slow=!slow;$('slow').classList.toggle('active',slow)});
+
+const keys=new Set();addEventListener('keydown',e=>keys.add(e.code));addEventListener('keyup',e=>keys.delete(e.code));function keyboard(){let x=0,z=0;if(keys.has('ArrowLeft')||keys.has('KeyA'))x--;if(keys.has('ArrowRight')||keys.has('KeyD'))x++;if(keys.has('ArrowUp')||keys.has('KeyW'))z--;if(keys.has('ArrowDown')||keys.has('KeyS'))z++;if(x||z){input.x=x;input.z=z}input.sprint=input.sprint||keys.has('ShiftLeft')||keys.has('ShiftRight')}
+function frame(now){let dt=Math.min((now-last)/1000,.05);last=now;if(slow)dt*=.35;if(renderer&&movement){keyboard();syncPlayer(movement.step(dt,input));renderer.render()}requestAnimationFrame(frame)}requestAnimationFrame(frame);addEventListener('resize',()=>renderer?.render(),{passive:true});
+</script>
+</body>
+</html>
