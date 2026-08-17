@@ -9,7 +9,7 @@
   <script type="importmap">
     {
       "imports": {
-        "./eleven-v-eleven-gameplay-lab/formationGameplayV2.js": "./eleven-v-eleven-gameplay-lab/paceWidthGameplayV4.js"
+        "./eleven-v-eleven-gameplay-lab/formationGameplayV2.js": "./eleven-v-eleven-gameplay-lab/interactionGameplayV5.js"
       }
     }
   </script>
@@ -18,7 +18,7 @@
   <main id="game-screen" class="game-screen">
     <header class="hudbar">
       <strong>STP · GAMEPLAY LAB 11v11</strong>
-      <span id="hud-detail">4-3-3 · 4-4-2 · rythme contextuel</span>
+      <span id="hud-detail">4-3-3 · 4-4-2 · appels contextuels</span>
       <div class="hud-actions">
         <button id="restart" type="button">RESTART</button>
         <button id="toggle-settings" type="button">RÉGLAGES</button>
@@ -37,7 +37,7 @@
           <label for="angle">ANGLE 3/4</label><output id="angle-value">60</output>
           <input id="angle" type="range" min="0" max="60" value="60" step="1" />
         </div>
-        <p>Vision 120° · tête 180° · caméra joueur + ballon · terrain élargi</p>
+        <p>Vision progressive · caméra ballon + joueur · PASSE : maintien = puissance · double tap + maintien = levée</p>
       </section>
 
       <div class="controls">
