@@ -10,6 +10,7 @@ import { resolvePlayerCollisions } from "./playerCollisions.js";
 
 function tickTimers(player, dt) {
   const wasProtected = player.protectionRemaining > 0;
+  const wasOrientedTouch = (player.orientedTouchRemaining ?? 0) > 0;
   player.protectionRemaining = Math.max(0, player.protectionRemaining - dt);
   if (wasProtected && player.protectionRemaining === 0) player.protectionCooldown = RULES.protectionCooldown;
   player.protectionCooldown = Math.max(0, player.protectionCooldown - dt);
@@ -25,6 +26,7 @@ function tickTimers(player, dt) {
   player.aiCallCooldown = Math.max(0, (player.aiCallCooldown ?? 0) - dt);
   player.orientedTouchRemaining = Math.max(0, (player.orientedTouchRemaining ?? 0) - dt);
   player.dribbleTouchRemaining = Math.max(0, (player.dribbleTouchRemaining ?? 0) - dt);
+  if (wasOrientedTouch && player.orientedTouchRemaining === 0) player.orientedTouchReleasePending = true;
   if (player.protectionRemaining <= 0) player.offBallShieldTargetId = null;
   tickFootwork(player, dt);
 }
@@ -33,6 +35,14 @@ function movePlayer(state, player, input, dt) {
   tickTimers(player, dt);
   if (player.recoveryRemaining > 0) input = {};
   let move = normalize(input.moveX, input.moveY);
+
+  if ((player.orientedTouchRemaining ?? 0) > 0 && move.magnitude < 0.12) {
+    const range = Math.max(1, RULES.orientedTouchLongDistance - RULES.orientedTouchShortDistance);
+    const intensity = clamp(((player.orientedTouchDistance ?? RULES.orientedTouchShortDistance) - RULES.orientedTouchShortDistance) / range, 0, 1);
+    const follow = RULES.orientedTouchAutoFollowMin + (RULES.orientedTouchAutoFollowMax - RULES.orientedTouchAutoFollowMin) * intensity;
+    move = { x: player.orientedTouchX, y: player.orientedTouchY, magnitude: follow };
+  }
+
   const offBallShielding = player.protectionRemaining > 0 && !player.hasBall && !!player.offBallShieldTargetId;
   if (offBallShielding && state.possession.team !== player.team) {
     player.protectionRemaining = 0;
@@ -131,15 +141,34 @@ function carryBall(state, dt) {
   if (!owner) return;
   const protectedControl = owner.protectionRemaining > 0;
   const orientedTouch = (owner.orientedTouchRemaining ?? 0) > 0;
-  const fx = orientedTouch ? owner.orientedTouchX : protectedControl ? owner.controlX : owner.facingX;
-  const fy = orientedTouch ? owner.orientedTouchY : protectedControl ? owner.controlY : owner.facingY;
-  const orientedDuration = Math.max(0.01, owner.orientedTouchDuration ?? RULES.orientedTouchShortDuration);
-  const touchRatio = orientedTouch ? clamp(owner.orientedTouchRemaining / orientedDuration, 0, 1) : 0;
-  const orientedDistance = owner.orientedTouchDistance ?? RULES.orientedTouchShortDistance;
-  const forward = orientedTouch
-    ? RULES.dribbleControlDistance + (orientedDistance - RULES.dribbleControlDistance) * touchRatio
-    : protectedControl ? RULES.protectionControlDistance : RULES.dribbleControlDistance;
-  if (protectedControl || orientedTouch) {
+
+  if (orientedTouch) {
+    state.ball.x += state.ball.vx * dt;
+    state.ball.y += state.ball.vy * dt;
+    const friction = Math.pow(RULES.orientedTouchBallFriction, dt * 60);
+    state.ball.vx *= friction;
+    state.ball.vy *= friction;
+    state.ball.x = clamp(state.ball.x, FIELD.inset + 6, FIELD.width - FIELD.inset - 6);
+    state.ball.y = clamp(state.ball.y, FIELD.inset + 6, FIELD.height - FIELD.inset - 6);
+    return;
+  }
+
+  if (owner.orientedTouchReleasePending) {
+    owner.orientedTouchReleasePending = false;
+    if (distance(owner, state.ball) > RULES.orientedTouchRecontrolRadius) {
+      state.lastTechnicalError = { team: owner.team, playerId: owner.id, at: state.elapsed, type: "heavy_touch" };
+      clearPossession(state, BALL_PHASE.FREE);
+      state.ball.lastTouchId = owner.id;
+      state.lastEvent = "heavy_oriented_touch";
+      state.eventId += 1;
+      return;
+    }
+  }
+
+  const fx = protectedControl ? owner.controlX : owner.facingX;
+  const fy = protectedControl ? owner.controlY : owner.facingY;
+  const forward = protectedControl ? RULES.protectionControlDistance : RULES.dribbleControlDistance;
+  if (protectedControl) {
     state.ball.x = owner.x + fx * forward;
     state.ball.y = owner.y + fy * forward;
     state.ball.vx = owner.vx;
@@ -186,20 +215,20 @@ function orientedReceptionProfile(magnitude) {
   if (magnitude < 0.42) return {
     distance: RULES.orientedTouchShortDistance,
     duration: RULES.orientedTouchShortDuration,
-    bodySpeed: 24,
-    bodyNudge: 2.5,
+    ballSpeed: RULES.orientedTouchShortBallSpeed,
+    bodySpeed: 12,
   };
   if (magnitude < 0.76) return {
     distance: RULES.orientedTouchMediumDistance,
     duration: RULES.orientedTouchMediumDuration,
-    bodySpeed: 39,
-    bodyNudge: 4.5,
+    ballSpeed: RULES.orientedTouchMediumBallSpeed,
+    bodySpeed: 20,
   };
   return {
     distance: RULES.orientedTouchLongDistance,
     duration: RULES.orientedTouchLongDuration,
-    bodySpeed: 58,
-    bodyNudge: 6.5,
+    ballSpeed: RULES.orientedTouchLongBallSpeed,
+    bodySpeed: 28,
   };
 }
 
@@ -215,6 +244,8 @@ function interceptOrReceive(state) {
   if (intended && (receiver.receptionIntentMagnitude ?? 0) > 0.08) {
     const magnitude = receiver.receptionIntentMagnitude;
     const profile = orientedReceptionProfile(magnitude);
+    const previousVx = receiver.vx;
+    const previousVy = receiver.vy;
     receiver.facingX = receiver.receptionIntentX;
     receiver.facingY = receiver.receptionIntentY;
     receiver.orientedTouchX = receiver.receptionIntentX;
@@ -222,12 +253,14 @@ function interceptOrReceive(state) {
     receiver.orientedTouchDistance = profile.distance;
     receiver.orientedTouchDuration = profile.duration;
     receiver.orientedTouchRemaining = profile.duration;
-    receiver.vx = receiver.vx * 0.45 + receiver.orientedTouchX * profile.bodySpeed;
-    receiver.vy = receiver.vy * 0.45 + receiver.orientedTouchY * profile.bodySpeed;
-    receiver.x = clamp(receiver.x + receiver.orientedTouchX * profile.bodyNudge, fieldBounds.minX, fieldBounds.maxX);
-    receiver.y = clamp(receiver.y + receiver.orientedTouchY * profile.bodyNudge, fieldBounds.minY, fieldBounds.maxY);
-    state.ball.x = receiver.x + receiver.orientedTouchX * profile.distance;
-    state.ball.y = receiver.y + receiver.orientedTouchY * profile.distance;
+    receiver.orientedTouchReleasePending = false;
+    receiver.vx = previousVx * 0.55 + receiver.orientedTouchX * profile.bodySpeed;
+    receiver.vy = previousVy * 0.55 + receiver.orientedTouchY * profile.bodySpeed;
+    receiver.dribbleTouchRemaining = profile.duration + 0.08;
+    state.ball.x = receiver.x + receiver.orientedTouchX * RULES.orientedTouchStartDistance;
+    state.ball.y = receiver.y + receiver.orientedTouchY * RULES.orientedTouchStartDistance;
+    state.ball.vx = previousVx * 0.2 + receiver.orientedTouchX * profile.ballSpeed;
+    state.ball.vy = previousVy * 0.2 + receiver.orientedTouchY * profile.ballSpeed;
     state.lastEvent = "oriented_reception";
   }
   if (receiver.protectionRemaining > 0) {
