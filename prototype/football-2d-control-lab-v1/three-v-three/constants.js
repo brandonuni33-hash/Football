@@ -6,6 +6,9 @@ export const BALL_PHASE = Object.freeze({ CONTROLLED: "controlled", FREE: "free"
 export const RULES = Object.freeze({
   fixedStep: 1 / 60,
   playerRadius: 17,
+  playerCollisionRadius: 16,
+  playerCollisionIterations: 3,
+  playerCollisionVelocityBlock: 0.94,
   controlRadius: 29,
   dribbleFreedom: 0.5,
   dribbleControlDistance: 20,
