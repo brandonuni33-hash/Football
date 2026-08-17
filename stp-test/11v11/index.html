@@ -7,37 +7,74 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>STP — 11v11 Gameplay Lab</title>
   <link rel="stylesheet" href="./styles-11v11-gameplay-lab.css" />
+  <link rel="stylesheet" href="./styles-11v11-gameplay-lab-v7.css" />
   <script type="importmap">
-  {
-    "imports": {
-      "./eleven-v-eleven-gameplay-lab/formationGameplayV2.js": "./eleven-v-eleven-gameplay-lab/interactionGameplayV6.js"
+    {
+      "imports": {
+        "./eleven-v-eleven-gameplay-lab/interactionGameplayV7.js": "./eleven-v-eleven-gameplay-lab/interactionGameplayV8.js"
+      }
     }
-  }
   </script>
 </head>
 <body>
   <main id="game-screen" class="game-screen">
     <header class="hudbar">
       <strong>STP · GAMEPLAY LAB 11v11</strong>
-      <span id="hud-detail">4-3-3 · 4-4-2 · appels contextuels</span>
+      <span id="hud-detail">4-3-3 · 4-4-2 · rôles + duels aériens</span>
       <div class="hud-actions">
         <button id="restart" type="button">RESTART</button>
         <button id="toggle-settings" type="button">RÉGLAGES</button>
       </div>
     </header>
+
     <section class="arena">
       <canvas id="game" width="1000" height="540" aria-label="Laboratoire gameplay Street to Pro 11 contre 11"></canvas>
-      <section id="settings" class="settings collapsed">
-        <div class="setting-row">
-          <label for="zoom">ZOOM</label><output id="zoom-value">0.90</output>
-          <input id="zoom" type="range" min="75" max="180" value="90" step="1" />
+
+      <section id="settings" class="settings collapsed tuning-panel">
+        <div class="settings-grid">
+          <div class="setting-row">
+            <label for="zoom">ZOOM</label><output id="zoom-value">0.90</output>
+            <input id="zoom" type="range" min="75" max="180" value="90" step="1" />
+          </div>
+          <div class="setting-row">
+            <label for="angle">ANGLE 3/4</label><output id="angle-value">60</output>
+            <input id="angle" type="range" min="0" max="60" value="60" step="1" />
+          </div>
+          <div class="setting-row">
+            <label for="pitch-length">LONGUEUR TERRAIN</label><output id="pitch-length-value">100%</output>
+            <input id="pitch-length" type="range" min="78" max="125" value="100" step="1" />
+          </div>
+          <div class="setting-row">
+            <label for="pitch-width">LARGEUR TERRAIN</label><output id="pitch-width-value">100%</output>
+            <input id="pitch-width" type="range" min="78" max="125" value="100" step="1" />
+          </div>
+          <div class="setting-row">
+            <label for="match-speed">VITESSE MATCH</label><output id="match-speed-value">100%</output>
+            <input id="match-speed" type="range" min="60" max="120" value="100" step="1" />
+          </div>
+          <div class="setting-row">
+            <label for="short-pass">PASSE COURTE</label><output id="short-pass-value">100%</output>
+            <input id="short-pass" type="range" min="65" max="135" value="100" step="1" />
+          </div>
+          <div class="setting-row">
+            <label for="long-pass">PASSE LONGUE</label><output id="long-pass-value">100%</output>
+            <input id="long-pass" type="range" min="65" max="145" value="100" step="1" />
+          </div>
+          <div class="setting-row">
+            <label for="shot-power">PUISSANCE TIR</label><output id="shot-power-value">100%</output>
+            <input id="shot-power" type="range" min="65" max="145" value="100" step="1" />
+          </div>
+          <div class="setting-row">
+            <label for="shot-lift">HAUTEUR TIR</label><output id="shot-lift-value">100%</output>
+            <input id="shot-lift" type="range" min="45" max="165" value="100" step="1" />
+          </div>
         </div>
-        <div class="setting-row">
-          <label for="angle">ANGLE 3/4</label><output id="angle-value">60</output>
-          <input id="angle" type="range" min="0" max="60" value="60" step="1" />
-        </div>
-        <p>Vision progressive · caméra ballon + joueur · PASSE : maintien = puissance · double tap + maintien = levée</p>
+        <p>
+          TIR : maintien = puissance + hauteur · PASSE : maintien = puissance · double tap + maintien = levée ·
+          centre reçu : TÊTE TIR / TÊTE PASSE / joystick droit = poitrine ou pied.
+        </p>
       </section>
+
       <div class="controls">
         <div id="move-joystick" class="joystick move"><div id="move-stick" class="stick amber"></div></div>
         <div class="right-cluster">
