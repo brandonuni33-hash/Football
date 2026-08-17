@@ -6,11 +6,11 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>STP — 11v11 Gameplay Lab</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/brandonuni33-hash/Football@3d8d8cb4fad19bcd54d99cb3be897c2a3164412e/prototype/football-2d-control-lab-v1/styles-11v11-gameplay-lab.css" />
+  <link rel="stylesheet" href="./styles-11v11-gameplay-lab.css" />
   <script type="importmap">
   {
     "imports": {
-      "https://cdn.jsdelivr.net/gh/brandonuni33-hash/Football@3d8d8cb4fad19bcd54d99cb3be897c2a3164412e/prototype/football-2d-control-lab-v1/eleven-v-eleven-gameplay-lab/formationGameplayV2.js": "https://cdn.jsdelivr.net/gh/brandonuni33-hash/Football@3d8d8cb4fad19bcd54d99cb3be897c2a3164412e/prototype/football-2d-control-lab-v1/eleven-v-eleven-gameplay-lab/interactionGameplayV6.js"
+      "./eleven-v-eleven-gameplay-lab/formationGameplayV2.js": "./eleven-v-eleven-gameplay-lab/interactionGameplayV6.js"
     }
   }
   </script>
@@ -25,10 +25,8 @@
         <button id="toggle-settings" type="button">RÉGLAGES</button>
       </div>
     </header>
-
     <section class="arena">
       <canvas id="game" width="1000" height="540" aria-label="Laboratoire gameplay Street to Pro 11 contre 11"></canvas>
-
       <section id="settings" class="settings collapsed">
         <div class="setting-row">
           <label for="zoom">ZOOM</label><output id="zoom-value">0.90</output>
@@ -40,7 +38,6 @@
         </div>
         <p>Vision progressive · caméra ballon + joueur · PASSE : maintien = puissance · double tap + maintien = levée</p>
       </section>
-
       <div class="controls">
         <div id="move-joystick" class="joystick move"><div id="move-stick" class="stick amber"></div></div>
         <div class="right-cluster">
@@ -53,6 +50,6 @@
       </div>
     </section>
   </main>
-  <script type="module" src="https://cdn.jsdelivr.net/gh/brandonuni33-hash/Football@3d8d8cb4fad19bcd54d99cb3be897c2a3164412e/prototype/football-2d-control-lab-v1/play-11v11-gameplay-lab.js"></script>
+  <script type="module" src="./play-11v11-gameplay-lab.js"></script>
 </body>
 </html>
