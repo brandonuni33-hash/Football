@@ -4,26 +4,22 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>STP — 11v11 Gameplay Lab</title>
   <link rel="stylesheet" href="./styles-11v11-gameplay-lab.css" />
 </head>
 <body>
-  <main class="lab-shell">
-    <section class="stage">
-      <canvas id="game" width="1000" height="540" aria-label="Laboratoire gameplay Street to Pro 11 contre 11"></canvas>
+  <main id="game-screen" class="game-screen">
+    <header class="hudbar">
+      <strong>STP · GAMEPLAY LAB 11v11</strong>
+      <span id="hud-detail">Bloc équipe · triangles · zone/individuel</span>
+      <div class="hud-actions">
+        <button id="restart" type="button">RESTART</button>
+        <button id="toggle-settings" type="button">RÉGLAGES</button>
+      </div>
+    </header>
 
-      <header class="topbar">
-        <div>
-          <strong>STP · GAMEPLAY LAB 11v11</strong>
-          <span id="hud-detail">Bloc équipe · triangles · zone/individuel</span>
-        </div>
-        <div class="top-actions">
-          <button id="restart" type="button">RESTART</button>
-          <button id="toggle-settings" type="button">RÉGLAGES</button>
-        </div>
-      </header>
+    <section class="arena">
+      <canvas id="game" width="1000" height="540" aria-label="Laboratoire gameplay Street to Pro 11 contre 11"></canvas>
 
       <section id="settings" class="settings collapsed">
         <div class="setting-row">
@@ -38,23 +34,15 @@
       </section>
 
       <div class="controls">
-        <div class="control-label move-label">DÉPLACEMENT</div>
         <div id="move-joystick" class="joystick move"><div id="move-stick" class="stick amber"></div></div>
-
-        <div id="right-cluster" class="right-cluster">
-          <div id="control-joystick" class="joystick control" data-mode="scan"><div id="control-stick" class="stick"></div></div>
+        <div class="right-cluster">
           <button id="primary" class="action primary-action" type="button">TIR</button>
           <button id="secondary" class="action secondary-action" type="button">PASSE</button>
           <button id="tertiary" class="action tertiary-action" type="button">PROT.</button>
           <button id="rapid" class="action rapid-action" type="button">RAPIDE</button>
+          <div id="control-joystick" class="joystick control" data-mode="scan"><div id="control-stick" class="stick"></div></div>
         </div>
       </div>
-
-      <aside class="rotate-device" aria-live="polite">
-        <div class="rotate-phone" aria-hidden="true"></div>
-        <strong>TOURNE TON TÉLÉPHONE</strong>
-        <span>Street to Pro se joue en mode horizontal.</span>
-      </aside>
     </section>
   </main>
   <script type="module" src="./play-11v11-gameplay-lab.js"></script>
