@@ -4,14 +4,21 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <title>STP — Player Feel Lab V0.2</title>
+  <title>STP — Player Feel Lab V0.3</title>
   <link rel="stylesheet" href="./styles.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "./playerFeelModelV02.js": "./playerFeelModelV03.js"
+    }
+  }
+  </script>
 </head>
 <body>
   <main class="game-screen">
     <header class="hudbar">
-      <strong>STP · PLAYER FEEL LAB V0.2</strong>
-      <span id="hud-detail">Déplacement uniquement · aucun ballon · aucune IA</span>
+      <strong>STP · PLAYER FEEL LAB V0.3</strong>
+      <span id="hud-detail">Buste progressif · déplacement uniquement · aucun ballon · aucune IA</span>
       <button id="restart" type="button">RESTART</button>
     </header>
     <section class="arena">
@@ -21,11 +28,11 @@
         <button id="rapid" class="action rapid-action" type="button">RAPIDE</button>
       </div>
       <aside class="legend">
-        <b>À TESTER · V0.2</b>
-        <span>1. accélère puis lâche complètement</span>
-        <span>2. fais un demi-tour sec</span>
-        <span>3. regarde les bras et le pied d'appui</span>
-        <span>4. alterne normal / RAPIDE</span>
+        <b>À TESTER · V0.3</b>
+        <span>1. à l'arrêt : buste presque droit</span>
+        <span>2. accélère : il s'incline progressivement</span>
+        <span>3. lâche : il se redresse progressivement</span>
+        <span>4. observe bras + appuis pendant la transition</span>
       </aside>
     </section>
   </main>
