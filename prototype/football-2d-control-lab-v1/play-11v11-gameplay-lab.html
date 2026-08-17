@@ -9,7 +9,7 @@
   <script type="importmap">
     {
       "imports": {
-        "./eleven-v-eleven-gameplay-lab/formationGameplayV2.js": "./eleven-v-eleven-gameplay-lab/progressionGameplayV3.js"
+        "./eleven-v-eleven-gameplay-lab/formationGameplayV2.js": "./eleven-v-eleven-gameplay-lab/paceWidthGameplayV4.js"
       }
     }
   </script>
@@ -18,7 +18,7 @@
   <main id="game-screen" class="game-screen">
     <header class="hudbar">
       <strong>STP · GAMEPLAY LAB 11v11</strong>
-      <span id="hud-detail">Bloc équipe · triangles · zone/individuel</span>
+      <span id="hud-detail">4-3-3 · 4-4-2 · rythme contextuel</span>
       <div class="hud-actions">
         <button id="restart" type="button">RESTART</button>
         <button id="toggle-settings" type="button">RÉGLAGES</button>
@@ -37,7 +37,7 @@
           <label for="angle">ANGLE 3/4</label><output id="angle-value">60</output>
           <input id="angle" type="range" min="0" max="60" value="60" step="1" />
         </div>
-        <p>Vision 120° · tête 180° · corps 200°/s · caméra ballon + joueur</p>
+        <p>Vision 120° · tête 180° · caméra joueur + ballon · terrain élargi</p>
       </section>
 
       <div class="controls">
