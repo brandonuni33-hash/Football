@@ -62,12 +62,32 @@ function drawPlayer(ctx, player) {
   ctx.arc(0, 0, 18, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
+
+  // Dark long line = torso/body orientation.
   ctx.strokeStyle = "#111820";
   ctx.lineWidth = 4;
   ctx.beginPath();
   ctx.moveTo(0, 0);
-  ctx.lineTo(player.facingX * 26, player.facingY * 26);
+  ctx.lineTo(player.facingX * 27, player.facingY * 27);
   ctx.stroke();
+
+  // Cyan short line = head orientation. It is intentionally separate from the
+  // body so SCAN can turn the head before the torso follows locomotion.
+  if (player.controlled) {
+    const headX = player.headFacingX ?? player.facingX;
+    const headY = player.headFacingY ?? player.facingY;
+    ctx.strokeStyle = "rgba(126,219,239,.98)";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(headX * 7, headY * 7);
+    ctx.lineTo(headX * 20, headY * 20);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(126,219,239,.98)";
+    ctx.beginPath();
+    ctx.arc(headX * 20, headY * 20, 3.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
   ctx.fillStyle = "#10161c";
   ctx.font = "900 11px system-ui";
   ctx.textAlign = "center";
@@ -90,7 +110,9 @@ function drawBall(ctx, ball) {
 }
 
 function clipToHumanVision(ctx, player, camera) {
-  const gazeAngle = Math.atan2(camera.gazeY ?? player.facingY, camera.gazeX ?? player.facingX);
+  const gazeX = player.headFacingX ?? camera.gazeX ?? player.facingX;
+  const gazeY = player.headFacingY ?? camera.gazeY ?? player.facingY;
+  const gazeAngle = Math.atan2(gazeY, gazeX);
   const halfVision = (CAMERA_DEFAULTS.visionDegrees / 2) * Math.PI / 180;
   const radius = Math.hypot(PITCH.width, PITCH.height) * 2.2;
   ctx.beginPath();
@@ -100,31 +122,17 @@ function clipToHumanVision(ctx, player, camera) {
   ctx.clip();
 }
 
-function drawGazeIndicator(ctx, player, camera) {
-  const gazeX = camera.gazeX ?? player.facingX;
-  const gazeY = camera.gazeY ?? player.facingY;
-  ctx.save();
-  ctx.translate(player.x, player.y);
-  ctx.strokeStyle = camera.scanActive ? "rgba(126,219,239,.95)" : "rgba(126,219,239,.45)";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(gazeX * 29, gazeY * 29);
-  ctx.lineTo(gazeX * 42, gazeY * 42);
-  ctx.stroke();
-  ctx.restore();
-}
-
 function drawOverlay(ctx, camera, settings) {
   const geometry = cameraGeometry(settings);
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = "rgba(5,9,12,.76)";
-  ctx.fillRect(18, VIEWPORT.height - 48, 470, 30);
+  ctx.fillRect(18, VIEWPORT.height - 48, 540, 30);
   ctx.fillStyle = "rgba(255,255,255,.92)";
   ctx.font = "800 12px system-ui";
   ctx.textAlign = "left";
   ctx.fillText(
-    `Z ${geometry.zoom.toFixed(2)} · 3/4 ${Math.round(geometry.angle)} · SCAN ${Math.round(geometry.scan)} · VISION 180° · TÊTE 260°${camera.scanActive ? " · REGARD" : ""}`,
+    `BALL CAM · Z ${geometry.zoom.toFixed(2)} · 3/4 ${Math.round(geometry.angle)} · VISION 180° · TÊTE 260°${camera.scanActive ? " · SCAN" : ""}`,
     30,
     VIEWPORT.height - 28,
   );
@@ -141,8 +149,6 @@ export function renderLab(ctx, state, camera, settings) {
   ctx.save();
   applyCameraTransform(ctx, camera, settings);
 
-  // Outside the current gaze hemisphere, only a very dark hint of the pitch
-  // remains. Player information is not rendered there.
   ctx.save();
   ctx.globalAlpha = CAMERA_DEFAULTS.blindPitchAlpha;
   drawPitch(ctx);
@@ -157,11 +163,8 @@ export function renderLab(ctx, state, camera, settings) {
     }
     ctx.restore();
 
-    // Proprioception: the controlled player and the ball at his feet remain
-    // readable even when the head turns far over a shoulder.
     drawPlayer(ctx, controlled);
     drawBall(ctx, state.ball);
-    drawGazeIndicator(ctx, controlled, camera);
   } else {
     drawPitch(ctx);
     for (const player of state.players) drawPlayer(ctx, player);
