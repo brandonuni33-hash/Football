@@ -53,6 +53,7 @@ export function createMatchState({ online = false, aiLevel = 50, passSpeedLevel 
     ],
     possession: { team: TEAM.HOME, playerId: owner.id, duel: null },
     possessionChangedAt: 0,
+    aiTeamCallCooldown: { home: 0, away: 0 },
     ball: { x: owner.x + 23, y: owner.y, vx: 0, vy: 0, phase: BALL_PHASE.CONTROLLED, ownerId: owner.id, targetId: null, lastTouchId: owner.id },
     lastEvent: "kickoff",
     eventId: 0,
