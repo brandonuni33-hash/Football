@@ -4,6 +4,7 @@ import { stepMatch } from "./three-v-three/simulation.js";
 import { createInput } from "./three-v-three/input.js";
 import { consumeInputActions, mergeInputFrames } from "./three-v-three/inputBuffer.js";
 import { render } from "./three-v-three/renderer.js";
+import { canScanCamera, createCameraState, updateCamera } from "./three-v-three/camera.js";
 import { createGuestTransport, createHostTransport, createRoomCode, invitationUrl, reconcileLocalPlayer, roomFromLocation } from "./three-v-three/network.js";
 
 const canvas = document.querySelector("#game");
@@ -39,12 +40,14 @@ let running = false;
 let accumulator = 0;
 let previous = performance.now();
 let lastSnapshotAt = 0;
+let camera = createCameraState(state, slot);
 
 function clone(value) { return structuredClone(value); }
 function selectedAILevel() { return Number(aiLevelInput.value); }
 function selectedPassSpeed() { return Number(passSpeedInput.value); }
 function selectedGameSpeed() { return Number(gameSpeedInput.value); }
 function setStatus(text, kind = "") { status.textContent = text; status.dataset.kind = kind; }
+function resetCamera() { camera = createCameraState(state, slot); elements.controlRoot.classList.remove("scanning"); }
 function updateLabels() {
   const labels = actionLabels(state, controlledPlayerId(slot));
   hudAILevel.textContent = String(state.aiLevel ?? selectedAILevel());
@@ -55,8 +58,9 @@ function updateLabels() {
   elements.tertiary.textContent = labels.tertiary;
   elements.tertiary.classList.toggle("protecting", getHumanPlayer(state, slot)?.protectionRemaining > 0);
   elements.secondary.classList.toggle("braking", (getHumanPlayer(state, slot)?.defensiveBrakeRemaining ?? 0) > 0);
+  elements.controlRoot.dataset.mode = canScanCamera(state, slot) ? "scan" : "tech";
 }
-function showGame() { menu.hidden = true; game.hidden = false; running = true; accumulator = 0; previous = performance.now(); requestAnimationFrame(frame); }
+function showGame() { menu.hidden = true; game.hidden = false; running = true; accumulator = 0; previous = performance.now(); resetCamera(); requestAnimationFrame(frame); }
 
 async function hostFriend() {
   mode = "online-host"; slot = "host"; state = createMatchState({ online: true, aiLevel: selectedAILevel(), passSpeedLevel: selectedPassSpeed(), gameSpeedLevel: selectedGameSpeed() });
@@ -109,7 +113,9 @@ function frame(now) {
     }
     if (mode === "online-host" && now - lastSnapshotAt >= 50) { transport?.sendSnapshot(clone(state)); lastSnapshotAt = now; }
   }
-  updateLabels(); render(ctx, state, slot); requestAnimationFrame(frame);
+  updateCamera(camera, state, slot, localInput, elapsed);
+  elements.controlRoot.classList.toggle("scanning", camera.scanActive);
+  updateLabels(); render(ctx, state, slot, camera); requestAnimationFrame(frame);
 }
 
 aiLevelInput.addEventListener("input", () => { aiLevelValue.textContent = aiLevelInput.value; hudAILevel.textContent = aiLevelInput.value; });
