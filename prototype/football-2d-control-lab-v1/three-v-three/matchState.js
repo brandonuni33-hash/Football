@@ -12,11 +12,15 @@ function player(id, team, role, x, y, humanSlot = null) {
     jockeying: false, controlX: facingX, controlY: 0,
     receptionIntentX: facingX, receptionIntentY: 0, receptionIntentMagnitude: 0,
     orientedTouchX: facingX, orientedTouchY: 0, orientedTouchRemaining: 0,
+    orientedTouchDistance: RULES.dribbleControlDistance,
+    orientedTouchDuration: RULES.orientedTouchShortDuration,
     offBallShieldTargetId: null,
     ballControl: humanSlot ? 74 : 66,
     balance: humanSlot ? 72 : 65,
     aiDecisionRemaining: 0,
     aiPassCooldown: 0,
+    aiCallCooldown: 0,
+    aiCallReason: null,
     aiInput: {},
   };
 }
@@ -48,6 +52,7 @@ export function createMatchState({ online = false, aiLevel = 50, passSpeedLevel 
       goalkeeper("away-goalkeeper", TEAM.AWAY, FIELD.width - FIELD.inset - 25),
     ],
     possession: { team: TEAM.HOME, playerId: owner.id, duel: null },
+    possessionChangedAt: 0,
     ball: { x: owner.x + 23, y: owner.y, vx: 0, vy: 0, phase: BALL_PHASE.CONTROLLED, ownerId: owner.id, targetId: null, lastTouchId: owner.id },
     lastEvent: "kickoff",
     eventId: 0,
@@ -85,6 +90,7 @@ export function resetAfterGoal(state, scoringTeam) {
     score: { ...state.score },
     ball: { ...fresh.ball, x: owner.x + owner.facingX * 23, y: owner.y, ownerId, lastTouchId: ownerId },
     possession: { team: conceding, playerId: ownerId, duel: null },
+    possessionChangedAt: state.elapsed,
     lastEvent: "restart",
     eventId: state.eventId + 1,
   };
