@@ -1,5 +1,5 @@
 import { RULES, clamp } from "./constants.js";
-import { fieldBounds } from "./matchState.js";
+import { fieldBounds, getPlayer } from "./matchState.js";
 
 function firmness(player) {
   if ((player.protectionRemaining ?? 0) > 0) return 1.45;
@@ -64,6 +64,8 @@ function resolvePair(a, b, fallbackSign = 1) {
 
 export function resolvePlayerCollisions(state) {
   const players = state.players ?? [];
+  const controlledOwner = state.ball?.ownerId ? getPlayer(state, state.ball.ownerId) : null;
+  const ownerBefore = controlledOwner ? { x: controlledOwner.x, y: controlledOwner.y } : null;
   for (const player of players) player.bodyContactId = null;
 
   let contacts = 0;
@@ -79,6 +81,11 @@ export function resolvePlayerCollisions(state) {
       }
     }
     if (resolvedThisIteration === 0) break;
+  }
+
+  if (controlledOwner && ownerBefore && state.ball?.ownerId === controlledOwner.id) {
+    state.ball.x += controlledOwner.x - ownerBefore.x;
+    state.ball.y += controlledOwner.y - ownerBefore.y;
   }
   return contacts;
 }
