@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>STP — 11v11 Camera Lab</title>
+  <link rel="stylesheet" href="./styles-11v11-camera-lab.css" />
+</head>
+<body>
+  <main class="lab-shell">
+    <section class="stage">
+      <canvas id="game" width="1000" height="540" aria-label="Laboratoire caméra terrain 11 contre 11"></canvas>
+
+      <header class="topbar">
+        <div><strong>STP · CAMERA LAB 11v11</strong><span>Terrain grandeur match · gameplay 11v11 non activé</span></div>
+        <button id="toggle-settings" type="button">RÉGLAGES</button>
+      </header>
+
+      <section id="settings" class="settings">
+        <div class="setting-row">
+          <label for="zoom">ZOOM</label><output id="zoom-value">1.48</output>
+          <input id="zoom" type="range" min="110" max="180" value="148" step="1" />
+        </div>
+        <div class="setting-row">
+          <label for="angle">ANGLE 3/4</label><output id="angle-value">25</output>
+          <input id="angle" type="range" min="0" max="60" value="25" step="1" />
+        </div>
+        <div class="setting-row">
+          <label for="scan">AMPLITUDE SCAN</label><output id="scan-value">70</output>
+          <input id="scan" type="range" min="0" max="100" value="70" step="1" />
+        </div>
+        <button id="reset-camera" class="reset" type="button">VALEURS DE BASE</button>
+      </section>
+
+      <div class="controls">
+        <div class="control-label move-label">DÉPLACEMENT</div>
+        <div id="move-joystick" class="joystick move"><div id="move-stick" class="stick amber"></div></div>
+        <div class="control-label scan-label">SCAN</div>
+        <div id="scan-joystick" class="joystick scan"><div id="scan-stick" class="stick"></div></div>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="./play-11v11-camera-lab.js"></script>
+</body>
+</html>
