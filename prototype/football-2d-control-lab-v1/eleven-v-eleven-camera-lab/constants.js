@@ -49,11 +49,14 @@ export const LAB_RULES = Object.freeze({
   teamMaxSpeed: 112,
 });
 
-// Validated mobile camera baseline: 1.40 / 60 / 41.
+// Moving-player pass: the old 1.40 baseline is too close once the pitch comes
+// alive. Start at 0.90 and let the lab go as far out as 0.75 for calibration.
 // Head range is 180° total (±90° around the torso), while a 120° visual cone
 // is readable at any instant. The camera itself is anchored to the ball.
 export const CAMERA_DEFAULTS = Object.freeze({
-  zoom: 1.40,
+  zoom: 0.90,
+  minZoom: 0.75,
+  maxZoom: 1.80,
   angle: 60,
   scan: 41,
   headScanDegrees: 180,
