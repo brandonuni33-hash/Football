@@ -34,6 +34,7 @@ export function givePossession(state, playerId, event = "possession") {
   owner.jockeying = false;
   owner.offBallShieldTargetId = null;
   state.possession = { team: owner.team, playerId, duel: null };
+  state.possessionChangedAt = state.elapsed ?? 0;
   state.lastEvent = event;
   state.eventId += 1;
   return true;
