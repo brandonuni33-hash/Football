@@ -30,14 +30,14 @@ export const LAB_RULES = Object.freeze({
 });
 
 // Validated mobile camera baseline: 1.40 / 60 / 41.
-// The head may scan across 260°, but only a 180° visual hemisphere is readable
-// at any instant. The camera itself is anchored to the ball.
+// The head may scan across 260°, but only a 120° visual cone is readable at
+// any instant. The camera itself is anchored to the ball.
 export const CAMERA_DEFAULTS = Object.freeze({
   zoom: 1.40,
   angle: 60,
   scan: 41,
   headScanDegrees: 260,
-  visionDegrees: 180,
+  visionDegrees: 120,
   scanDeadzone: 0.12,
   blindPitchAlpha: 0.12,
 });
