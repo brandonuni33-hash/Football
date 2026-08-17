@@ -69,27 +69,27 @@ function updateBase(camera, player, settings, dt) {
   camera.baseY = smooth(camera.baseY, bounded.y, CAMERA_DEFAULTS.followResponse, dt);
 }
 
-// A footballer can scan roughly 90° to either side of the direction he is
-// currently facing. Inputs behind that 180° front hemisphere are projected
-// onto the nearest shoulder; a pure 180° backward request produces no scan.
+// Head scan is limited to 220° total: roughly 110° to either side of the
+// player's current facing. Requests farther behind are clamped to that limit,
+// so the player can genuinely look over a shoulder without gaining 360° vision.
 export function constrainScanToFacing(player, scanX = 0, scanY = 0) {
   const raw = normalize(scanX, scanY);
   if (raw.magnitude <= 0) return raw;
 
   const facing = normalize(player?.facingX ?? 1, player?.facingY ?? 0);
   const forward = facing.magnitude > 0 ? facing : { x: 1, y: 0, magnitude: 1 };
-  const forwardDot = raw.x * forward.x + raw.y * forward.y;
-  if (forwardDot >= 0) return raw;
+  const dot = clamp(raw.x * forward.x + raw.y * forward.y, -1, 1);
+  const cross = forward.x * raw.y - forward.y * raw.x;
+  let signedAngle = Math.atan2(cross, dot);
+  const halfRange = (CAMERA_DEFAULTS.headScanDegrees / 2) * Math.PI / 180;
+  signedAngle = clamp(signedAngle, -halfRange, halfRange);
 
-  const lateral = { x: -forward.y, y: forward.x };
-  const lateralDot = raw.x * lateral.x + raw.y * lateral.y;
-  if (Math.abs(lateralDot) < 0.0001) return { x: 0, y: 0, magnitude: 0 };
-
-  const side = Math.sign(lateralDot);
+  const cos = Math.cos(signedAngle);
+  const sin = Math.sin(signedAngle);
   return {
-    x: lateral.x * side,
-    y: lateral.y * side,
-    magnitude: raw.magnitude * Math.abs(lateralDot),
+    x: forward.x * cos - forward.y * sin,
+    y: forward.x * sin + forward.y * cos,
+    magnitude: raw.magnitude,
   };
 }
 
