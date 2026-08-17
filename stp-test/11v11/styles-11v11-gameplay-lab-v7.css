@@ -1,0 +1,26 @@
+.tuning-panel{
+  width:min(560px,72vw);
+  max-height:min(78dvh,430px);
+  overflow:auto;
+  overscroll-behavior:contain;
+  scrollbar-width:thin;
+}
+.settings-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:4px 12px;
+}
+.tuning-panel .setting-row{margin-bottom:4px}
+.tuning-panel .setting-row label{font-size:7px}
+.tuning-panel .setting-row output{font-size:9px}
+.tuning-panel .setting-row input{height:15px}
+.tuning-panel p{line-height:1.3;margin-top:7px}
+.action.active{transform:scale(.94);background:#e7af3f33;border-color:var(--amber)}
+@media(max-height:430px) and (orientation:landscape){
+  .tuning-panel{width:min(520px,64vw);max-height:calc(100dvh - 54px);top:44px}
+  .settings-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:2px 10px}
+}
+@media(orientation:portrait){
+  .tuning-panel{width:min(94vw,560px);max-height:46dvh}
+  .settings-grid{grid-template-columns:1fr 1fr}
+}

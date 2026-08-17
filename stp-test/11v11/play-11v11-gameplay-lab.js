@@ -2,18 +2,15 @@ import {
   VIEWPORT, PITCH, TEAM, BALL_PHASE, RULES,
   createGameplayState, getControlledPlayer, getPlayer,
   actionLabels, controlMode, stepGameplay, cameraGeometry, cameraFromBall,
-} from "./eleven-v-eleven-gameplay-lab/formationGameplayV2.js";
+  setGameplayTuning, getGameplayTuning, isIncomingAerial,
+} from "./eleven-v-eleven-gameplay-lab/interactionGameplayV7.js";
 
 const canvas = document.querySelector("#game");
 const ctx = canvas.getContext("2d");
-const zoomInput = document.querySelector("#zoom");
-const angleInput = document.querySelector("#angle");
-const zoomValue = document.querySelector("#zoom-value");
-const angleValue = document.querySelector("#angle-value");
 const settingsPanel = document.querySelector("#settings");
 const hudDetail = document.querySelector("#hud-detail");
 
-const elements = {
+const controls = {
   moveRoot: document.querySelector("#move-joystick"),
   moveKnob: document.querySelector("#move-stick"),
   controlRoot: document.querySelector("#control-joystick"),
@@ -22,6 +19,30 @@ const elements = {
   secondary: document.querySelector("#secondary"),
   tertiary: document.querySelector("#tertiary"),
   rapid: document.querySelector("#rapid"),
+};
+
+const sliders = {
+  zoom: document.querySelector("#zoom"),
+  angle: document.querySelector("#angle"),
+  pitchLength: document.querySelector("#pitch-length"),
+  pitchWidth: document.querySelector("#pitch-width"),
+  matchSpeed: document.querySelector("#match-speed"),
+  shortPass: document.querySelector("#short-pass"),
+  longPass: document.querySelector("#long-pass"),
+  shotPower: document.querySelector("#shot-power"),
+  shotLift: document.querySelector("#shot-lift"),
+};
+
+const outputs = {
+  zoom: document.querySelector("#zoom-value"),
+  angle: document.querySelector("#angle-value"),
+  pitchLength: document.querySelector("#pitch-length-value"),
+  pitchWidth: document.querySelector("#pitch-width-value"),
+  matchSpeed: document.querySelector("#match-speed-value"),
+  shortPass: document.querySelector("#short-pass-value"),
+  longPass: document.querySelector("#long-pass-value"),
+  shotPower: document.querySelector("#shot-power-value"),
+  shotLift: document.querySelector("#shot-lift-value"),
 };
 
 let state = createGameplayState();
@@ -145,8 +166,8 @@ function bindStick(root, knob, transform = null) {
   return stick;
 }
 
-const moveStick = bindStick(elements.moveRoot, elements.moveKnob);
-const controlStick = bindStick(elements.controlRoot, elements.controlKnob, (x, y, lockedSide) => {
+const moveStick = bindStick(controls.moveRoot, controls.moveKnob);
+const controlStick = bindStick(controls.controlRoot, controls.controlKnob, (x, y, lockedSide) => {
   const mode = controlMode(state);
   if (mode === "locked") return { x: 0, y: 0, lockSide: 0 };
   if (mode === "scan") return constrainScanStick(x, y, lockedSide);
@@ -159,14 +180,63 @@ const queued = {
   tertiary: false,
   passPower: 0.48,
   lobPass: false,
+  shotPower: 0.44,
 };
 
-for (const key of ["primary", "tertiary"]) {
-  elements[key].addEventListener("pointerdown", (event) => {
-    event.preventDefault();
-    queued[key] = true;
-  });
+controls.tertiary.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
+  queued.tertiary = true;
+});
+
+const SHOT_GESTURE = Object.freeze({
+  fullPowerMs: 900,
+  minPower: 0.18,
+});
+
+const shotGesture = {
+  pointer: null,
+  downAt: 0,
+};
+
+function shotPowerFromHold(durationMs) {
+  const normalized = clamp(durationMs / SHOT_GESTURE.fullPowerMs, 0, 1);
+  return SHOT_GESTURE.minPower + (1 - SHOT_GESTURE.minPower) * normalized;
 }
+
+function clearShotHold() {
+  shotGesture.pointer = null;
+  shotGesture.downAt = 0;
+  controls.primary.classList.remove("active");
+}
+
+controls.primary.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
+  const controlled = getControlledPlayer(state);
+  if (!controlled?.hasBall) {
+    queued.primary = true;
+    return;
+  }
+  shotGesture.pointer = event.pointerId;
+  shotGesture.downAt = performance.now();
+  controls.primary.classList.add("active");
+  controls.primary.setPointerCapture?.(event.pointerId);
+});
+
+function releaseShot(event) {
+  if (event.pointerId !== shotGesture.pointer) return;
+  queued.primary = true;
+  queued.shotPower = shotPowerFromHold(performance.now() - shotGesture.downAt);
+  clearShotHold();
+}
+
+function cancelShot(event) {
+  if (event.pointerId !== shotGesture.pointer) return;
+  clearShotHold();
+}
+
+controls.primary.addEventListener("pointerup", releaseShot);
+controls.primary.addEventListener("pointercancel", cancelShot);
+controls.primary.addEventListener("lostpointercapture", cancelShot);
 
 const PASS_GESTURE = Object.freeze({
   quickTapMs: 190,
@@ -204,10 +274,10 @@ function clearPassHold() {
   passGesture.pointer = null;
   passGesture.downAt = 0;
   passGesture.lobArmed = false;
-  elements.secondary.classList.remove("active");
+  controls.secondary.classList.remove("active");
 }
 
-elements.secondary.addEventListener("pointerdown", (event) => {
+controls.secondary.addEventListener("pointerdown", (event) => {
   event.preventDefault();
   const controlled = getControlledPlayer(state);
   if (!controlled?.hasBall) {
@@ -222,8 +292,8 @@ elements.secondary.addEventListener("pointerdown", (event) => {
   passGesture.pointer = event.pointerId;
   passGesture.downAt = now;
   passGesture.lobArmed = Boolean(secondTap);
-  elements.secondary.classList.add("active");
-  elements.secondary.setPointerCapture?.(event.pointerId);
+  controls.secondary.classList.add("active");
+  controls.secondary.setPointerCapture?.(event.pointerId);
 });
 
 function releasePassButton(event) {
@@ -250,29 +320,29 @@ function cancelPassButton(event) {
   clearPassHold();
 }
 
-elements.secondary.addEventListener("pointerup", releasePassButton);
-elements.secondary.addEventListener("pointercancel", cancelPassButton);
-elements.secondary.addEventListener("lostpointercapture", cancelPassButton);
+controls.secondary.addEventListener("pointerup", releasePassButton);
+controls.secondary.addEventListener("pointercancel", cancelPassButton);
+controls.secondary.addEventListener("lostpointercapture", cancelPassButton);
 
 const rapid = { held: false, pointer: null };
-elements.rapid.addEventListener("pointerdown", (event) => {
+controls.rapid.addEventListener("pointerdown", (event) => {
   event.preventDefault();
   rapid.pointer = event.pointerId;
   rapid.held = true;
-  elements.rapid.classList.add("active");
-  elements.rapid.setPointerCapture?.(event.pointerId);
+  controls.rapid.classList.add("active");
+  controls.rapid.setPointerCapture?.(event.pointerId);
 });
 
 function releaseRapid(event) {
   if (event.pointerId !== rapid.pointer) return;
   rapid.held = false;
   rapid.pointer = null;
-  elements.rapid.classList.remove("active");
+  controls.rapid.classList.remove("active");
 }
 
-elements.rapid.addEventListener("pointerup", releaseRapid);
-elements.rapid.addEventListener("pointercancel", releaseRapid);
-elements.rapid.addEventListener("lostpointercapture", releaseRapid);
+controls.rapid.addEventListener("pointerup", releaseRapid);
+controls.rapid.addEventListener("pointercancel", releaseRapid);
+controls.rapid.addEventListener("lostpointercapture", releaseRapid);
 
 function readInput() {
   flushPendingPass();
@@ -292,50 +362,79 @@ function readInput() {
     tertiaryPressed: queued.tertiary,
     passPower: queued.passPower,
     lobPass: queued.lobPass,
+    shotPower: queued.shotPower,
   };
   queued.primary = false;
   queued.secondary = false;
   queued.tertiary = false;
   queued.passPower = 0.48;
   queued.lobPass = false;
+  queued.shotPower = 0.44;
   return input;
 }
 
 function readSettings() {
-  return { zoom: Number(zoomInput.value) / 100, angle: Number(angleInput.value) };
+  return {
+    zoom: Number(sliders.zoom.value) / 100,
+    angle: Number(sliders.angle.value),
+    pitchLengthScale: Number(sliders.pitchLength.value) / 100,
+    pitchWidthScale: Number(sliders.pitchWidth.value) / 100,
+    matchSpeed: Number(sliders.matchSpeed.value) / 100,
+    shortPassSpeed: Number(sliders.shortPass.value) / 100,
+    longPassPower: Number(sliders.longPass.value) / 100,
+    shotPower: Number(sliders.shotPower.value) / 100,
+    shotLift: Number(sliders.shotLift.value) / 100,
+  };
 }
 
 function syncSettings() {
   settings = readSettings();
-  zoomValue.textContent = settings.zoom.toFixed(2);
-  angleValue.textContent = String(settings.angle);
+  setGameplayTuning(state, settings);
+  outputs.zoom.textContent = settings.zoom.toFixed(2);
+  outputs.angle.textContent = String(settings.angle);
+  outputs.pitchLength.textContent = `${Math.round(settings.pitchLengthScale * 100)}%`;
+  outputs.pitchWidth.textContent = `${Math.round(settings.pitchWidthScale * 100)}%`;
+  outputs.matchSpeed.textContent = `${Math.round(settings.matchSpeed * 100)}%`;
+  outputs.shortPass.textContent = `${Math.round(settings.shortPassSpeed * 100)}%`;
+  outputs.longPass.textContent = `${Math.round(settings.longPassPower * 100)}%`;
+  outputs.shotPower.textContent = `${Math.round(settings.shotPower * 100)}%`;
+  outputs.shotLift.textContent = `${Math.round(settings.shotLift * 100)}%`;
 }
 
-zoomInput.addEventListener("input", syncSettings);
-angleInput.addEventListener("input", syncSettings);
-document.querySelector("#toggle-settings").addEventListener("click", () => settingsPanel.classList.toggle("collapsed"));
+for (const slider of Object.values(sliders)) slider.addEventListener("input", syncSettings);
+
+document.querySelector("#toggle-settings").addEventListener("click", () => {
+  settingsPanel.classList.toggle("collapsed");
+});
+
 document.querySelector("#restart").addEventListener("click", () => {
   state = createGameplayState();
+  setGameplayTuning(state, readSettings());
   controlStick.reset();
   moveStick.reset();
   passGesture.pending = null;
   clearPassHold();
+  clearShotHold();
 });
 
 function drawPitch(context) {
+  const insetX = PITCH.insetX ?? PITCH.inset;
+  const insetY = PITCH.insetY ?? PITCH.inset;
   context.fillStyle = "#123d2d";
   context.fillRect(0, 0, PITCH.width, PITCH.height);
-  for (let x = 0; x < PITCH.width; x += 120) {
-    context.fillStyle = Math.floor(x / 120) % 2 ? "#164735" : "#194d39";
-    context.fillRect(x, 0, 120, PITCH.height);
+
+  const stripe = Math.max(90, PITCH.width / 14);
+  for (let x = 0; x < PITCH.width; x += stripe) {
+    context.fillStyle = Math.floor(x / stripe) % 2 ? "#164735" : "#194d39";
+    context.fillRect(x, 0, stripe, PITCH.height);
   }
 
   context.strokeStyle = "rgba(242,247,241,.68)";
   context.lineWidth = 3;
-  context.strokeRect(PITCH.inset, PITCH.inset, PITCH.width - PITCH.inset * 2, PITCH.height - PITCH.inset * 2);
+  context.strokeRect(insetX, insetY, PITCH.width - insetX * 2, PITCH.height - insetY * 2);
   context.beginPath();
-  context.moveTo(PITCH.width / 2, PITCH.inset);
-  context.lineTo(PITCH.width / 2, PITCH.height - PITCH.inset);
+  context.moveTo(PITCH.width / 2, insetY);
+  context.lineTo(PITCH.width / 2, PITCH.height - insetY);
   context.stroke();
   context.beginPath();
   context.arc(PITCH.width / 2, PITCH.height / 2, PITCH.centerCircleRadius, 0, Math.PI * 2);
@@ -345,8 +444,8 @@ function drawPitch(context) {
   context.fillStyle = "rgba(242,247,241,.82)";
   context.fill();
 
-  const leftX = PITCH.inset;
-  const rightX = PITCH.width - PITCH.inset;
+  const leftX = insetX;
+  const rightX = PITCH.width - insetX;
   context.strokeRect(leftX, PITCH.penaltyTop, PITCH.penaltyDepth, PITCH.penaltyBottom - PITCH.penaltyTop);
   context.strokeRect(rightX - PITCH.penaltyDepth, PITCH.penaltyTop, PITCH.penaltyDepth, PITCH.penaltyBottom - PITCH.penaltyTop);
   context.strokeRect(leftX, PITCH.sixYardTop, PITCH.sixYardDepth, PITCH.sixYardBottom - PITCH.sixYardTop);
@@ -383,6 +482,14 @@ function drawPlayer(context, player, alpha = 1) {
     context.lineWidth = 4;
     context.beginPath();
     context.arc(0, 0, 24, -1.1, 1.1);
+    context.stroke();
+  }
+
+  if ((player.tacticalRole ?? "").includes("idle-pressure")) {
+    context.strokeStyle = "#ff6d5f";
+    context.lineWidth = 2;
+    context.beginPath();
+    context.arc(0, 0, 25, 0, Math.PI * 2);
     context.stroke();
   }
 
@@ -451,7 +558,7 @@ function drawPassLock(context, alpha = 1) {
   context.save();
   context.globalAlpha *= alpha;
   context.translate(target.x, target.y);
-  context.strokeStyle = "#e7af3f";
+  context.strokeStyle = state.ball.lobActive ? "#f6d365" : "#e7af3f";
   context.lineWidth = 3;
   context.beginPath();
   context.arc(0, 0, RULES.passTargetLockVisual, 0, Math.PI * 2);
@@ -523,7 +630,6 @@ function render() {
 
   ctx.save();
   applyCamera(ctx, camera);
-
   drawPitchPerception(ctx, player);
 
   for (const other of state.players) {
@@ -543,14 +649,14 @@ function render() {
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = "rgba(5,9,12,.72)";
-  ctx.fillRect(16, VIEWPORT.height - 49, 760, 32);
+  ctx.fillRect(16, VIEWPORT.height - 49, 845, 32);
   ctx.fillStyle = "#f3f1eb";
-  ctx.font = "800 12px system-ui";
+  ctx.font = "800 11px system-ui";
   ctx.textAlign = "left";
   const mode = controlMode(state, player).toUpperCase();
   const homePhase = state.tactical.home?.phase ?? "-";
   const awayPhase = state.tactical.away?.phase ?? "-";
-  const lob = state.ball.lobActive ? " · BALLON LEVÉ" : "";
+  const lob = state.ball.lobActive ? ` · AIR ${Math.round(state.ball.lobHeight ?? 0)}` : "";
   ctx.fillText(
     `STP 11v11 · ${state.score.home}-${state.score.away} · 4-3-3 vs 4-4-2 · ${mode} · DOM ${homePhase} / EXT ${awayPhase}${lob}`,
     28,
@@ -561,7 +667,7 @@ function render() {
 
 function modeText(mode) {
   if (mode === "scan") return "SCAN";
-  if (mode === "receive") return "CONTRÔLE ORIENTÉ · PASSE";
+  if (mode === "receive") return isIncomingAerial(state) ? "CENTRE · TÊTE / CONTRÔLE" : "CONTRÔLE ORIENTÉ · PASSE";
   if (mode === "loose") return "CONTRÔLE ORIENTÉ · BALLON LIBRE";
   if (mode === "protect") return "PROTECTION";
   if (mode === "feint") return "FEINTE";
@@ -573,27 +679,38 @@ function syncHud() {
   const labels = actionLabels(state);
   const mode = controlMode(state, player);
 
-  elements.primary.textContent = labels.primary;
-  elements.secondary.textContent = labels.secondary;
-  elements.tertiary.textContent = labels.tertiary;
+  controls.primary.textContent = labels.primary;
+  controls.secondary.textContent = labels.secondary;
+  controls.tertiary.textContent = labels.tertiary;
+
+  if (player.hasBall && shotGesture.pointer !== null) {
+    const power = Math.round(shotPowerFromHold(performance.now() - shotGesture.downAt) * 100);
+    controls.primary.textContent = `TIR ${power}%`;
+  }
 
   if (player.hasBall && passGesture.pointer !== null) {
     const power = Math.round(passPowerFromHold(performance.now() - passGesture.downAt) * 100);
-    elements.secondary.textContent = passGesture.lobArmed ? `LEVÉE ${power}%` : `PASSE ${power}%`;
+    controls.secondary.textContent = passGesture.lobArmed ? `LEVÉE ${power}%` : `PASSE ${power}%`;
   } else if (player.hasBall && passGesture.pending) {
-    elements.secondary.textContent = "PASSE…";
+    controls.secondary.textContent = "PASSE…";
   }
 
-  elements.secondary.classList.toggle("braking", player.defensiveBrakeRemaining > 0);
-  elements.tertiary.classList.toggle("protecting", player.protectionRemaining > 0);
-  elements.controlRoot.dataset.mode = mode;
+  controls.secondary.classList.toggle("braking", player.defensiveBrakeRemaining > 0);
+  controls.tertiary.classList.toggle("protecting", player.protectionRemaining > 0);
+  controls.controlRoot.dataset.mode = mode;
 
   if (mode === "locked" && (Math.abs(controlStick.x) > 0.001 || Math.abs(controlStick.y) > 0.001)) {
     controlStick.reset();
   }
 
-  const chaser = state.looseBallChaserId ? ` · LIBRE→#${getPlayer(state, state.looseBallChaserId)?.number ?? "?"}` : "";
-  hudDetail.textContent = `${modeText(mode)} · NOUS 4-3-3 · EUX 4-4-2 · puissance passe${chaser}`;
+  const chasers = state.looseBallChasers ?? {};
+  const homeChaser = chasers.home ? getPlayer(state, chasers.home)?.number : null;
+  const awayChaser = chasers.away ? getPlayer(state, chasers.away)?.number : null;
+  const loose = homeChaser || awayChaser ? ` · LIBRE H#${homeChaser ?? "-"} A#${awayChaser ?? "-"}` : "";
+  const idle = state.gameplayV7?.idlePresserId ? ` · PRESS 4s #${getPlayer(state, state.gameplayV7.idlePresserId)?.number ?? "?"}` : "";
+  const aerial = state.gameplayV7?.aerialLastResolution ? ` · ${state.gameplayV7.aerialLastResolution}` : "";
+  const tune = getGameplayTuning(state);
+  hudDetail.textContent = `${modeText(mode)} · MATCH ${Math.round(tune.matchSpeed * 100)}%${loose}${idle}${aerial}`;
 }
 
 function frame(now) {
