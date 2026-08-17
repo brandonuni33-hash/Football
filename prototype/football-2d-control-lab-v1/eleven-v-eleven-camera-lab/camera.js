@@ -12,8 +12,10 @@ export function cameraGeometry(settings = CAMERA_DEFAULTS) {
   const scan = clamp(Number(settings.scan ?? CAMERA_DEFAULTS.scan), 0, 100);
   const yScale = 0.95 - angle * 0.0028;
   const shear = -(0.018 + angle * 0.00145);
-  const scanMaxX = 260 + scan * 5.4;
-  const scanMaxY = 145 + scan * 3.1;
+  // SCAN now nudges the framing only slightly. The meaningful change is the
+  // direction of gaze and the 180° information window, not camera travel.
+  const scanMaxX = 18 + scan * 0.36;
+  const scanMaxY = 12 + scan * 0.24;
   return { zoom, angle, scan, yScale, shear, scanMaxX, scanMaxY };
 }
 
@@ -42,6 +44,8 @@ export function createCameraState(state, settings = CAMERA_DEFAULTS) {
   const base = player
     ? clampCamera(player.x + CAMERA_DEFAULTS.followAhead, player.y, settings)
     : { x: PITCH.width / 2, y: PITCH.height / 2 };
+  const facing = normalize(player?.facingX ?? 1, player?.facingY ?? 0);
+  const gaze = facing.magnitude > 0 ? facing : { x: 1, y: 0 };
   return {
     baseX: base.x,
     baseY: base.y,
@@ -50,6 +54,8 @@ export function createCameraState(state, settings = CAMERA_DEFAULTS) {
     scanX: 0,
     scanY: 0,
     scanActive: false,
+    gazeX: gaze.x,
+    gazeY: gaze.y,
   };
 }
 
@@ -70,8 +76,8 @@ function updateBase(camera, player, settings, dt) {
 }
 
 // Head scan is limited to 260° total: roughly 130° to either side of the
-// player's current facing. This allows a clear look behind either shoulder
-// while still preventing a full 180° rear view or 360° free-camera vision.
+// player's current facing. This is the range the head can turn, not the amount
+// of information visible at once: readable vision remains 180°.
 export function constrainScanToFacing(player, scanX = 0, scanY = 0) {
   const raw = normalize(scanX, scanY);
   if (raw.magnitude <= 0) return raw;
@@ -93,17 +99,38 @@ export function constrainScanToFacing(player, scanX = 0, scanY = 0) {
   };
 }
 
+export function isPointInVision(player, gaze, point, degrees = CAMERA_DEFAULTS.visionDegrees) {
+  if (!player || !point) return false;
+  const toPoint = normalize(point.x - player.x, point.y - player.y);
+  if (toPoint.magnitude <= 0) return true;
+  const normalizedGaze = normalize(gaze?.x ?? player.facingX ?? 1, gaze?.y ?? player.facingY ?? 0);
+  const direction = normalizedGaze.magnitude > 0 ? normalizedGaze : { x: 1, y: 0 };
+  const threshold = Math.cos((clamp(degrees, 1, 359) / 2) * Math.PI / 180);
+  return toPoint.x * direction.x + toPoint.y * direction.y >= threshold - 0.0001;
+}
+
 export function updateCamera(camera, state, scanInput = {}, settings = CAMERA_DEFAULTS, dt = 1 / 60) {
   const player = getControlledPlayer(state);
   if (!player) return camera;
   const geometry = cameraGeometry(settings);
   updateBase(camera, player, settings, dt);
 
+  const facing = normalize(player.facingX, player.facingY);
+  const bodyForward = facing.magnitude > 0 ? facing : { x: 1, y: 0, magnitude: 1 };
   const raw = constrainScanToFacing(player, scanInput.scanX, scanInput.scanY);
   const active = raw.magnitude >= CAMERA_DEFAULTS.scanDeadzone;
-  const targetX = active ? raw.x * geometry.scanMaxX * raw.magnitude : 0;
-  const targetY = active ? raw.y * geometry.scanMaxY * raw.magnitude : 0;
+  const targetGaze = active ? raw : bodyForward;
   const response = active ? CAMERA_DEFAULTS.scanResponse : CAMERA_DEFAULTS.scanReturnResponse;
+
+  const nextGaze = normalize(
+    smooth(camera.gazeX ?? bodyForward.x, targetGaze.x, response, dt),
+    smooth(camera.gazeY ?? bodyForward.y, targetGaze.y, response, dt),
+  );
+  camera.gazeX = nextGaze.magnitude > 0 ? nextGaze.x : bodyForward.x;
+  camera.gazeY = nextGaze.magnitude > 0 ? nextGaze.y : bodyForward.y;
+
+  const targetX = active ? camera.gazeX * geometry.scanMaxX * raw.magnitude : 0;
+  const targetY = active ? camera.gazeY * geometry.scanMaxY * raw.magnitude : 0;
   camera.scanX = smooth(camera.scanX, targetX, response, dt);
   camera.scanY = smooth(camera.scanY, targetY, response, dt);
   camera.scanActive = active;
