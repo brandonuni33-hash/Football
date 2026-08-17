@@ -32,21 +32,21 @@ test("corps et tête sont deux orientations distinctes", () => {
   assert.ok(headAngle > 64 && headAngle < 66, "la tête doit pouvoir tourner indépendamment à environ 260 degrés par seconde");
 });
 
-test("le corps du joueur ne se retourne plus instantanément", () => {
+test("le corps du joueur tourne à 200 degrés par seconde sans snap instantané", () => {
   const state = createLabState();
   const player = getControlledPlayer(state);
   stepLabState(state, { moveX: 0, moveY: 1 }, 1 / 60);
   const angle = Math.atan2(player.facingY, player.facingX) * 180 / Math.PI;
-  assert.ok(angle > 2 && angle < 3);
+  assert.ok(angle > 3.2 && angle < 3.5);
 });
 
-test("un changement de corps à 90 degrés prend environ 0.65 seconde", () => {
+test("un changement de corps à 90 degrés prend environ 0.45 seconde", () => {
   const state = createLabState();
   const player = getControlledPlayer(state);
-  rotateFacingToward(player, 0, 1, 0.5);
+  rotateFacingToward(player, 0, 1, 0.4);
   let angle = Math.atan2(player.facingY, player.facingX) * 180 / Math.PI;
-  assert.ok(angle > 69 && angle < 71);
-  rotateFacingToward(player, 0, 1, 0.2);
+  assert.ok(angle > 79 && angle < 81);
+  rotateFacingToward(player, 0, 1, 0.1);
   angle = Math.atan2(player.facingY, player.facingX) * 180 / Math.PI;
   assert.ok(angle > 89.9 && angle < 90.1);
 });
@@ -62,12 +62,12 @@ test("la tête revient vers le corps sans téléportation quand le SCAN est rel�
   assert.ok(after > 43 && after < 45, "le retour de tête doit être progressif à environ 210 degrés par seconde");
 });
 
-test("la tête reste limitée à 110 degrés de chaque côté du corps", () => {
+test("la tête reste limitée à 90 degrés de chaque côté du corps", () => {
   const state = createLabState();
   const player = getControlledPlayer(state);
   rotateHeadToward(player, -1, 0.1, 2, false);
   const relative = Math.atan2(player.headFacingY, player.headFacingX) * 180 / Math.PI;
-  assert.ok(relative > 109 && relative < 111);
+  assert.ok(relative > 89 && relative < 91);
 });
 
 test("la caméra et la vision de base sont verrouillées", () => {
@@ -75,10 +75,10 @@ test("la caméra et la vision de base sont verrouillées", () => {
   assert.equal(geometry.zoom, 1.40);
   assert.equal(geometry.angle, 60);
   assert.equal(geometry.scan, 41);
-  assert.equal(CAMERA_DEFAULTS.headScanDegrees, 220);
+  assert.equal(CAMERA_DEFAULTS.headScanDegrees, 180);
   assert.equal(CAMERA_DEFAULTS.visionDegrees, 120);
   assert.equal(LAB_RULES.controlledSpeed, 222);
-  assert.equal(LAB_RULES.bodyTurnDegreesPerSecond, 140);
+  assert.equal(LAB_RULES.bodyTurnDegreesPerSecond, 200);
   assert.equal(LAB_RULES.headTurnDegreesPerSecond, 260);
 });
 
@@ -128,25 +128,25 @@ test("la vision lisible couvre exactement 120 degrés autour de la tête", () =>
     y: player.y + Math.cos(angle70) * 100,
   };
   assert.equal(isPointInVision(player, null, outside), false);
-  assert.equal(isPointInVision(player, null, { x: player.x + 100, y: player.y }), false, "90 degrés latéraux sont désormais hors vision");
+  assert.equal(isPointInVision(player, null, { x: player.x + 100, y: player.y }), false, "90 degrés latéraux restent hors vision");
   assert.equal(isPointInVision(player, null, { x: player.x, y: player.y - 100 }), false);
 });
 
-test("le SCAN logiciel reste plafonné à 110 degrés", () => {
+test("le SCAN logiciel reste plafonné à 90 degrés", () => {
   const state = createLabState();
   const player = getControlledPlayer(state);
   const limited = constrainScanToFacing(player, -1, 0.25);
   const dot = limited.x * player.facingX + limited.y * player.facingY;
   const angle = Math.acos(Math.max(-1, Math.min(1, dot))) * 180 / Math.PI;
-  assert.ok(angle > 109 && angle < 111);
+  assert.ok(angle > 89 && angle < 91);
 });
 
-test("le joystick SCAN est physiquement bloqué à la butée et ne traverse pas derrière", () => {
+test("le joystick SCAN est physiquement bloqué à la butée de 90 degrés et ne traverse pas derrière", () => {
   const facing = { x: 1, y: 0 };
   const rightStop = constrainScanStickVector(-1, 0.4, facing, 0);
   const draggedBehind = constrainScanStickVector(-1, -0.4, facing, rightStop.lockSide);
   const angle = Math.atan2(draggedBehind.y, draggedBehind.x) * 180 / Math.PI;
-  assert.ok(angle > 109 && angle < 111);
+  assert.ok(angle > 89 && angle < 91);
   assert.equal(draggedBehind.lockSide, 1);
 });
 
