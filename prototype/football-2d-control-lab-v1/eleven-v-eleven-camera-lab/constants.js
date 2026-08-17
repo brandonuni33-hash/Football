@@ -25,16 +25,19 @@ export const LAB_RULES = Object.freeze({
   movementDeadzone: 0.06,
 });
 
+// Validated mobile camera baseline: 1.40 / 60 / 41.
 export const CAMERA_DEFAULTS = Object.freeze({
-  zoom: 1.48,
-  angle: 25,
-  scan: 70,
+  zoom: 1.40,
+  angle: 60,
+  scan: 41,
   followAhead: 64,
   followDeadX: 76,
   followDeadY: 58,
   followResponse: 4.8,
-  scanResponse: 7.4,
-  scanReturnResponse: 5.8,
+  // Deliberately slower than the first lab pass: scanning should feel like
+  // turning the head, not flicking a free camera.
+  scanResponse: 2.25,
+  scanReturnResponse: 3.15,
   scanDeadzone: 0.12,
 });
 
