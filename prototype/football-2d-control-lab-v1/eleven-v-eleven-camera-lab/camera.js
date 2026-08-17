@@ -57,7 +57,7 @@ export function createCameraState(state, settings = CAMERA_DEFAULTS) {
   };
 }
 
-// Head scan is limited to 260° total: roughly 130° to either side of the
+// Head scan is limited to 220° total: roughly 110° to either side of the
 // player's torso. The actual head rotation now lives on the player state; this
 // helper remains the deterministic angular limiter used by tests and input.
 export function constrainScanToFacing(player, scanX = 0, scanY = 0) {
