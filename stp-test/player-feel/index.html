@@ -4,34 +4,46 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <title>STP — Player Feel Lab V0.9</title>
+  <title>STP — Player Feel Lab V0.10</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
   <main class="game-screen">
     <header class="hudbar">
-      <strong>STP · PLAYER FEEL LAB V0.9</strong>
-      <span id="hud-detail">Pieds fins · contrôle du dos léger · rapide légèrement réduit</span>
+      <strong>STP · PLAYER FEEL LAB V0.10</strong>
+      <span id="hud-detail">3 caméras comparables · angle et zoom réglables</span>
       <button id="restart" type="button">RESTART</button>
     </header>
     <section class="arena">
       <canvas id="game" width="1000" height="540" aria-label="Player Feel Lab Street to Pro"></canvas>
-      <div class="camera-tuner">
-        <label for="camera-angle">ANGLE CAMÉRA <output id="camera-angle-value">28°</output></label>
-        <input id="camera-angle" type="range" min="0" max="45" value="28" step="1" />
+
+      <div class="camera-tuner camera-tuner-v10">
+        <div class="camera-presets" role="group" aria-label="Choix caméra">
+          <button class="camera-preset" type="button" data-camera="broadcast">1 · BROADCAST HAUTE</button>
+          <button class="camera-preset active" type="button" data-camera="mid">2 · INTERMÉDIAIRE</button>
+          <button class="camera-preset" type="button" data-camera="behind">3 · PROCHE DERRIÈRE</button>
+        </div>
+        <div class="camera-sliders">
+          <label for="camera-angle">ANGLE <output id="camera-angle-value">26°</output></label>
+          <input id="camera-angle" type="range" min="0" max="45" value="26" step="1" />
+          <label for="camera-zoom">ZOOM <output id="camera-zoom-value">1.00×</output></label>
+          <input id="camera-zoom" type="range" min="75" max="135" value="100" step="1" />
+        </div>
       </div>
+
       <div class="controls">
         <div id="move-joystick" class="joystick move"><div id="move-stick" class="stick amber"></div></div>
         <button id="rapid" class="action rapid-action" type="button">RAPIDE</button>
       </div>
       <aside class="legend">
-        <b>À TESTER · V0.9</b>
-        <span>1. rapide légèrement moins élevé</span>
-        <span>2. contrôle du dos léger conservé</span>
-        <span>3. pieds fins et corps plus droit conservés</span>
+        <b>À TESTER · CAMÉRAS</b>
+        <span>1. Broadcast haute : terrain très lisible</span>
+        <span>2. Intermédiaire : collectif + scanning</span>
+        <span>3. Proche derrière : scanning très fort</span>
+        <span>Angle et zoom restent réglables sur les trois</span>
       </aside>
     </section>
   </main>
-  <script type="module" src="./playerFeelLabV09.js"></script>
+  <script type="module" src="./playerFeelLabV10.js"></script>
 </body>
 </html>
