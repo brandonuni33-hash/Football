@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { CAMERA_DEFAULTS, PITCH } from "../../prototype/football-2d-control-lab-v1/eleven-v-eleven-camera-lab/constants.js";
 import { TEAM, createLabState, getControlledPlayer, stepLabState } from "../../prototype/football-2d-control-lab-v1/eleven-v-eleven-camera-lab/state.js";
 import { cameraBounds, cameraGeometry, constrainScanToFacing, createCameraState, updateCamera } from "../../prototype/football-2d-control-lab-v1/eleven-v-eleven-camera-lab/camera.js";
+import { constrainScanStickVector } from "../../prototype/football-2d-control-lab-v1/eleven-v-eleven-camera-lab/input.js";
 
 test("le camera lab contient bien 22 joueurs, 11 par équipe", () => {
   const state = createLabState();
@@ -88,6 +89,34 @@ test("une demande trop loin derrière est plafonnée à 130 degrés et jamais à
   const angle = Math.acos(Math.max(-1, Math.min(1, dot))) * 180 / Math.PI;
   assert.ok(angle > 129 && angle < 131);
   assert.ok(limited.x < 0, "à 130 degrés le joueur peut clairement regarder derrière l'épaule sans obtenir une vision arrière totale");
+});
+
+test("le joystick SCAN est physiquement bloqué à la butée de 130 degrés", () => {
+  const facing = { x: 1, y: 0 };
+  const first = constrainScanStickVector(-1, 0.4, facing, 0);
+  const angle = Math.atan2(first.y, first.x) * 180 / Math.PI;
+  assert.ok(angle > 129 && angle < 131);
+  assert.equal(first.lockSide, 1);
+});
+
+test("le joystick ne peut pas traverser la zone aveugle par l'arrière", () => {
+  const facing = { x: 1, y: 0 };
+  const rightStop = constrainScanStickVector(-1, 0.4, facing, 0);
+  const draggedBehind = constrainScanStickVector(-1, -0.4, facing, rightStop.lockSide);
+  const angle = Math.atan2(draggedBehind.y, draggedBehind.x) * 180 / Math.PI;
+  assert.ok(angle > 129 && angle < 131, "le stick doit rester sur la même épaule au lieu de traverser derrière");
+  assert.equal(draggedBehind.lockSide, 1);
+});
+
+test("recentrer le joystick libère la butée et permet de choisir l'autre épaule", () => {
+  const facing = { x: 1, y: 0 };
+  const rightStop = constrainScanStickVector(-1, 0.4, facing, 0);
+  const centered = constrainScanStickVector(0, 0, facing, rightStop.lockSide);
+  assert.equal(centered.lockSide, 0);
+  const leftStop = constrainScanStickVector(-1, -0.4, facing, centered.lockSide);
+  const angle = Math.atan2(leftStop.y, leftStop.x) * 180 / Math.PI;
+  assert.ok(angle < -129 && angle > -131);
+  assert.equal(leftStop.lockSide, -1);
 });
 
 test("la caméra reste toujours dans les limites du terrain même avec SCAN maximal", () => {
