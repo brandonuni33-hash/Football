@@ -26,20 +26,22 @@ export const LAB_RULES = Object.freeze({
 });
 
 // Validated mobile camera baseline: 1.40 / 60 / 41.
+// The head may scan across 260°, but only a 180° visual hemisphere is readable
+// at any instant. SCAN turns attention; it is no longer a free camera.
 export const CAMERA_DEFAULTS = Object.freeze({
   zoom: 1.40,
   angle: 60,
   scan: 41,
   headScanDegrees: 260,
+  visionDegrees: 180,
   followAhead: 64,
   followDeadX: 76,
   followDeadY: 58,
   followResponse: 4.8,
-  // Deliberately slower than the first lab pass: scanning should feel like
-  // turning the head, not flicking a free camera.
   scanResponse: 2.25,
   scanReturnResponse: 3.15,
   scanDeadzone: 0.12,
+  blindPitchAlpha: 0.12,
 });
 
 export function clamp(value, min, max) {
