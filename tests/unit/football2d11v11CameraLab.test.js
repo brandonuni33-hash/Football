@@ -76,7 +76,7 @@ test("la caméra et la vision de base sont verrouillées", () => {
   assert.equal(geometry.angle, 60);
   assert.equal(geometry.scan, 41);
   assert.equal(CAMERA_DEFAULTS.headScanDegrees, 260);
-  assert.equal(CAMERA_DEFAULTS.visionDegrees, 180);
+  assert.equal(CAMERA_DEFAULTS.visionDegrees, 120);
   assert.equal(LAB_RULES.bodyTurnDegreesPerSecond, 140);
   assert.equal(LAB_RULES.headTurnDegreesPerSecond, 260);
 });
@@ -106,14 +106,29 @@ test("le SCAN tourne uniquement la tête et ne déplace plus la caméra hors du 
   assert.equal(camera.scanActive, true);
 });
 
-test("la vision lisible couvre exactement 180 degrés autour de la tête", () => {
+test("la vision lisible couvre exactement 120 degrés autour de la tête", () => {
   const state = createLabState();
   const player = getControlledPlayer(state);
   player.headFacingX = 0;
   player.headFacingY = 1;
+
   assert.equal(isPointInVision(player, null, { x: player.x, y: player.y + 100 }), true);
+
+  const angle60 = 60 * Math.PI / 180;
+  const onBoundary = {
+    x: player.x + Math.sin(angle60) * 100,
+    y: player.y + Math.cos(angle60) * 100,
+  };
+  assert.equal(isPointInVision(player, null, onBoundary), true, "la limite à 60 degrés fait partie du champ");
+
+  const angle70 = 70 * Math.PI / 180;
+  const outside = {
+    x: player.x + Math.sin(angle70) * 100,
+    y: player.y + Math.cos(angle70) * 100,
+  };
+  assert.equal(isPointInVision(player, null, outside), false);
+  assert.equal(isPointInVision(player, null, { x: player.x + 100, y: player.y }), false, "90 degrés latéraux sont désormais hors vision");
   assert.equal(isPointInVision(player, null, { x: player.x, y: player.y - 100 }), false);
-  assert.equal(isPointInVision(player, null, { x: player.x + 100, y: player.y }), true);
 });
 
 test("le SCAN logiciel reste plafonné à 130 degrés", () => {
