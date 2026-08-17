@@ -9,11 +9,14 @@
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07100b;color:#f5f1e8;font-family:Inter,system-ui,sans-serif}body{position:fixed;inset:0}canvas{width:100%;height:100%;display:block}
 #hud{position:absolute;left:max(12px,env(safe-area-inset-left));top:max(12px,env(safe-area-inset-top));padding:10px 12px;border:1px solid rgba(255,255,255,.14);border-radius:12px;background:rgba(6,10,8,.72);backdrop-filter:blur(8px);pointer-events:none}.k{font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:#d8bd72;font-weight:800}.v{font-size:15px;font-weight:800;margin-top:2px}.s{font-size:10px;color:#b8beb8;margin-top:3px}
 #picker{position:absolute;inset:0;display:grid;place-items:center;background:linear-gradient(180deg,#08110b,#050806)}#picker.hidden{display:none}.panel{width:min(440px,calc(100vw - 32px));padding:20px;border-radius:16px;border:1px solid rgba(255,255,255,.14);background:rgba(8,12,9,.92)}.panel h1{font-size:20px;margin:0 0 7px;text-align:center}.panel p{font-size:12px;line-height:1.45;color:#b9c0ba;margin:0 0 14px;text-align:center}.asset{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid rgba(255,255,255,.09)}.asset:first-of-type{border-top:0}.assetName{font-size:12px;font-weight:800}.assetState{font-size:10px;color:#aeb6b0;margin-top:2px}.pick{display:inline-block;padding:10px 12px;border-radius:9px;background:#d6b768;color:#111;font-weight:850;font-size:11px;cursor:pointer}.pick input{display:none}#error{margin-top:10px;color:#ffb6a7;font-size:11px;text-align:center}
+#physicsControls{position:absolute;right:max(14px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom));display:flex;gap:8px;align-items:center}#physicsControls.hidden{display:none}.action{border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:11px 13px;background:rgba(7,11,8,.82);color:#f5f1e8;font-weight:850;font-size:10px;letter-spacing:.04em;backdrop-filter:blur(8px)}.action.primary{background:#d6b768;color:#12120f;border-color:#d6b768}.telemetry{position:absolute;right:max(14px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));padding:9px 11px;border:1px solid rgba(255,255,255,.12);border-radius:11px;background:rgba(6,10,8,.66);font-size:10px;color:#c1c8c2;pointer-events:none}.telemetry b{color:#f5f1e8}.telemetry.hidden{display:none}
 </style>
 </head>
 <body>
 <canvas id="game"></canvas>
 <div id="hud"><div class="k">STP · Player Feel Lab</div><div class="v">Terrain 105 × 68 m · Ballon Ø 22 cm</div><div class="s">Caméra intermédiaire · 16° · zoom 1,07×</div></div>
+<div id="telemetry" class="telemetry hidden"><b id="speed">0,0 m/s</b> · <span id="ground">sol</span></div>
+<div id="physicsControls" class="hidden"><button class="action" id="resetBall">RESET</button><button class="action" id="groundKick">ROULÉ</button><button class="action primary" id="shotKick">FRAPPE</button></div>
 <div id="picker"><div class="panel"><h1>Charger le socle STP</h1><p>Le terrain et le ballon restent deux assets indépendants. Le lab normalise automatiquement leur échelle réelle.</p>
 <div class="asset"><div><div class="assetName">Terrain STP</div><div class="assetState" id="fieldState">soccer-field-stp-compact.glb</div></div><label class="pick">CHOISIR<input id="fieldFile" type="file" accept=".glb,model/gltf-binary"></label></div>
 <div class="asset"><div><div class="assetName">Ballon STP</div><div class="assetState" id="ballState">FootBall.glb · diamètre cible 0,22 m</div></div><label class="pick">CHOISIR<input id="ballFile" type="file" accept=".glb,model/gltf-binary"></label></div>
@@ -22,15 +25,30 @@
 import {parseGlb} from '../core/assets/glbLoader.js';
 import {createFieldNormalization} from '../core/assets/fieldNormalization.js';
 import {createBallNormalization} from '../core/assets/ballNormalization.js';
+import {createBallPhysics} from '../core/physics/ballPhysics.js';
 import {createFieldSceneRenderer,STP_CAMERA_REFERENCE} from '../core/rendering/glbSceneRenderer.js';
 const canvas=document.getElementById('game'),picker=document.getElementById('picker'),error=document.getElementById('error');
 const fieldInput=document.getElementById('fieldFile'),ballInput=document.getElementById('ballFile');
 const fieldState=document.getElementById('fieldState'),ballState=document.getElementById('ballState');
-let renderer=null,fieldParsed=null,ballParsed=null;
+const controls=document.getElementById('physicsControls'),telemetry=document.getElementById('telemetry');
+const speedEl=document.getElementById('speed'),groundEl=document.getElementById('ground');
+let renderer=null,fieldParsed=null,ballParsed=null,physics=null,last=performance.now();
 
 async function parseFile(file,label){
   try{return parseGlb(await file.arrayBuffer())}
   catch(e){throw new Error(`${label}: ${e.message}`)}
+}
+
+function syncBall(state){
+  if(!renderer||!state)return;
+  renderer.setBallTransform({position:state.position,rotation:state.rotation});
+  speedEl.textContent=`${state.speed.toFixed(1).replace('.',',')} m/s`;
+  groundEl.textContent=state.grounded?'sol':'air';
+}
+
+function resetBall(){
+  if(!physics)return;
+  syncBall(physics.reset({position:[-14,physics.config.radius,0]}));
 }
 
 function build(){
@@ -42,10 +60,15 @@ function build(){
     renderer?.destroy();
     renderer=createFieldSceneRenderer(canvas,fieldParsed,fieldNormalization,{
       camera:STP_CAMERA_REFERENCE,
-      ball:{parsed:ballParsed,normalization:ballNormalization,position:[0,ballNormalization.radius,0]},
+      ball:{parsed:ballParsed,normalization:ballNormalization,position:[-14,ballNormalization.radius,0]},
     });
+    physics=createBallPhysics({radius:ballNormalization.radius,position:[-14,ballNormalization.radius,0]});
+    syncBall(physics.snapshot());
     renderer.render();
     picker.classList.add('hidden');
+    controls.classList.remove('hidden');
+    telemetry.classList.remove('hidden');
+    last=performance.now();
   }catch(e){console.error(e);error.textContent=e.message}
 }
 
@@ -59,6 +82,25 @@ ballInput.addEventListener('change',async()=>{
   try{ballParsed=await parseFile(ballInput.files[0],'Ballon');ballState.textContent='✓ Ballon chargé · Ø 22 cm';build()}
   catch(e){error.textContent=e.message}
 });
+
+document.getElementById('resetBall').addEventListener('click',resetBall);
+document.getElementById('groundKick').addEventListener('click',()=>{
+  if(!physics)return;
+  physics.reset({position:[-14,physics.config.radius,0]});
+  physics.kick({direction:[1,0,0],speed:9,lift:0});
+});
+document.getElementById('shotKick').addEventListener('click',()=>{
+  if(!physics)return;
+  physics.reset({position:[-14,physics.config.radius,0]});
+  physics.kick({direction:[1,0,0],speed:22,lift:3.2});
+});
+
+function frame(now){
+  const dt=Math.min((now-last)/1000,0.05);last=now;
+  if(renderer&&physics){syncBall(physics.step(dt));renderer.render()}
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
 addEventListener('resize',()=>renderer?.render(),{passive:true});
 </script>
 </body>
