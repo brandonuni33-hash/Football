@@ -69,9 +69,9 @@ function updateBase(camera, player, settings, dt) {
   camera.baseY = smooth(camera.baseY, bounded.y, CAMERA_DEFAULTS.followResponse, dt);
 }
 
-// Head scan is limited to 220° total: roughly 110° to either side of the
-// player's current facing. Requests farther behind are clamped to that limit,
-// so the player can genuinely look over a shoulder without gaining 360° vision.
+// Head scan is limited to 260° total: roughly 130° to either side of the
+// player's current facing. This allows a clear look behind either shoulder
+// while still preventing a full 180° rear view or 360° free-camera vision.
 export function constrainScanToFacing(player, scanX = 0, scanY = 0) {
   const raw = normalize(scanX, scanY);
   if (raw.magnitude <= 0) return raw;
