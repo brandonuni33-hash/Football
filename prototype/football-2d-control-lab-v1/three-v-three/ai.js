@@ -141,6 +141,15 @@ function goalSideDepth(player, owner) {
   return (player.x - owner.x) * teamDirection(owner.team);
 }
 
+function ownerInOwnHalf(owner) {
+  const direction = teamDirection(owner.team);
+  return direction > 0 ? owner.x < FIELD.width / 2 : owner.x > FIELD.width / 2;
+}
+
+function isTechnicalPressTrigger(trigger) {
+  return trigger === "heavy_touch" || trigger === "imprecise_pass";
+}
+
 function defenseShape(state, team, owner) {
   const defenders = state.players.filter((entry) => entry.team === team);
   const depths = defenders.map((player) => goalSideDepth(player, owner));
@@ -157,12 +166,13 @@ function ensureDefenseState(state, team) {
   return state.aiDefense[team];
 }
 
-function startPress(state, team, trigger, duration) {
+function startPress(state, team, trigger, duration, highPress = false) {
   const phase = ensureDefenseState(state, team);
-  const safeDuration = Math.min(RULES.aiPressMaxDuration, duration);
+  const durationCap = highPress ? RULES.aiHighPressMaxDuration : RULES.aiPressMaxDuration;
+  const safeDuration = Math.min(durationCap, duration);
   phase.phase = DEFENSE_PHASE.PRESS;
   phase.pressUntil = state.elapsed + safeDuration;
-  phase.cooldownUntil = phase.pressUntil + RULES.aiPressCooldown;
+  phase.cooldownUntil = phase.pressUntil + (highPress ? RULES.aiHighPressCooldown : RULES.aiPressCooldown);
   phase.lastTrigger = trigger;
   return DEFENSE_PHASE.PRESS;
 }
@@ -176,6 +186,7 @@ export function defensiveTeamPhase(state, team, owner = getOwner(state)) {
   }
 
   const shape = defenseShape(state, team, owner);
+  const highPressZone = ownerInOwnHalf(owner);
   const shapeBroken = shape.goalSideCount < 2 || shape.deeplyBeaten >= 2;
   if (shapeBroken) {
     phase.phase = DEFENSE_PHASE.RETREAT;
@@ -187,6 +198,13 @@ export function defensiveTeamPhase(state, team, owner = getOwner(state)) {
   }
 
   if (phase.pressUntil > state.elapsed) {
+    if (highPressZone && !isTechnicalPressTrigger(phase.lastTrigger)) {
+      phase.phase = DEFENSE_PHASE.CONTAIN;
+      phase.pressUntil = 0;
+      phase.cooldownUntil = Math.max(phase.cooldownUntil, state.elapsed + RULES.aiHighPressCooldown);
+      return phase.phase;
+    }
+    if (highPressZone) phase.pressUntil = Math.min(phase.pressUntil, state.elapsed + RULES.aiHighPressMaxDuration);
     phase.phase = DEFENSE_PHASE.PRESS;
     return phase.phase;
   }
@@ -199,8 +217,20 @@ export function defensiveTeamPhase(state, team, owner = getOwner(state)) {
     && state.elapsed - technical.at <= RULES.aiPressTriggerWindow
     && technical.at > (phase.lastTechnicalErrorAt ?? -10)) {
     phase.lastTechnicalErrorAt = technical.at;
+    if (highPressZone) {
+      const nearest = Math.min(...shape.defenders.map((player) => distance(player, owner)));
+      const highOpportunity = nearest <= RULES.aiHighPressDefenderRange
+        && shape.compactDepth <= RULES.aiHighPressCompactDepth
+        && shape.goalSideCount >= 2;
+      if (highOpportunity) return startPress(state, team, technical.type, RULES.aiHighPressMaxDuration, true);
+      return phase.phase;
+    }
     return startPress(state, team, technical.type, RULES.aiPressTechnicalDuration);
   }
+
+  // Dans la moitié du porteur, le pressing haut reste exceptionnel :
+  // pas de contre-pressing automatique ni de piège de ligne sans erreur technique.
+  if (highPressZone) return phase.phase;
 
   const loss = state.lastPossessionLoss;
   if (loss?.team === team && state.elapsed - loss.at <= 0.65 && shape.compactDepth <= 220) {
