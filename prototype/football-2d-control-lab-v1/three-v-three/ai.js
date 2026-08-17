@@ -5,6 +5,8 @@ import { carrierMoveIntent, chooseCarrierIntent, evaluateTackle } from "./utilit
 import { startPass, startProtection, startShot, startTackle } from "./actions.js";
 import { teamDirection } from "./possession.js";
 
+export const DEFENSE_PHASE = Object.freeze({ RETREAT: "retreat", CONTAIN: "contain", PRESS: "press" });
+
 function moveToward(player, target, scale = 0.72) {
   const direction = normalize(target.x - player.x, target.y - player.y);
   return { moveX: direction.x * scale, moveY: direction.y * scale };
@@ -40,7 +42,7 @@ export function looseBallRole(state, player) {
 }
 
 function looseBallIntent(state, player) {
-  if (looseBallRole(state, player) === "recover") return moveToward(player, state.ball, 0.7);
+  if (looseBallRole(state, player) === "recover") return moveToward(player, state.ball, 0.82);
   const direction = teamDirection(player.team);
   const shape = fallbackShape(player);
   return moveToward(player, {
@@ -135,33 +137,164 @@ function attackIntent(state, player, plan) {
   return moveToward(player, target, role === ATTACK_ROLE.DEPTH ? 0.68 : 0.57);
 }
 
-function pressureIntent(state, player, owner, target) {
+function goalSideDepth(player, owner) {
+  return (player.x - owner.x) * teamDirection(owner.team);
+}
+
+function defenseShape(state, team, owner) {
+  const defenders = state.players.filter((entry) => entry.team === team);
+  const depths = defenders.map((player) => goalSideDepth(player, owner));
+  const goalSideCount = depths.filter((depth) => depth >= 12).length;
+  const deeplyBeaten = depths.filter((depth) => depth < -46).length;
+  const xValues = defenders.map((entry) => entry.x);
+  const compactDepth = Math.max(...xValues) - Math.min(...xValues);
+  return { defenders, depths, goalSideCount, deeplyBeaten, compactDepth };
+}
+
+function ensureDefenseState(state, team) {
+  state.aiDefense ??= {};
+  state.aiDefense[team] ??= { phase: DEFENSE_PHASE.CONTAIN, pressUntil: 0, cooldownUntil: 0, lastTrigger: null, lastTechnicalErrorAt: -10 };
+  return state.aiDefense[team];
+}
+
+function startPress(state, team, trigger, duration) {
+  const phase = ensureDefenseState(state, team);
+  const safeDuration = Math.min(RULES.aiPressMaxDuration, duration);
+  phase.phase = DEFENSE_PHASE.PRESS;
+  phase.pressUntil = state.elapsed + safeDuration;
+  phase.cooldownUntil = phase.pressUntil + RULES.aiPressCooldown;
+  phase.lastTrigger = trigger;
+  return DEFENSE_PHASE.PRESS;
+}
+
+export function defensiveTeamPhase(state, team, owner = getOwner(state)) {
+  const phase = ensureDefenseState(state, team);
+  if (!owner || owner.team === team) {
+    phase.phase = DEFENSE_PHASE.CONTAIN;
+    phase.pressUntil = 0;
+    return phase.phase;
+  }
+
+  const shape = defenseShape(state, team, owner);
+  const shapeBroken = shape.goalSideCount < 2 || shape.deeplyBeaten >= 2;
+  if (shapeBroken) {
+    phase.phase = DEFENSE_PHASE.RETREAT;
+    if (phase.pressUntil > state.elapsed) {
+      phase.pressUntil = 0;
+      phase.cooldownUntil = Math.max(phase.cooldownUntil, state.elapsed + 2.2);
+    }
+    return phase.phase;
+  }
+
+  if (phase.pressUntil > state.elapsed) {
+    phase.phase = DEFENSE_PHASE.PRESS;
+    return phase.phase;
+  }
+
+  phase.phase = DEFENSE_PHASE.CONTAIN;
+  if (phase.cooldownUntil > state.elapsed) return phase.phase;
+
+  const technical = state.lastTechnicalError;
+  if (technical && technical.team === owner.team
+    && state.elapsed - technical.at <= RULES.aiPressTriggerWindow
+    && technical.at > (phase.lastTechnicalErrorAt ?? -10)) {
+    phase.lastTechnicalErrorAt = technical.at;
+    return startPress(state, team, technical.type, RULES.aiPressTechnicalDuration);
+  }
+
+  const loss = state.lastPossessionLoss;
+  if (loss?.team === team && state.elapsed - loss.at <= 0.65 && shape.compactDepth <= 220) {
+    return startPress(state, team, "counterpress", RULES.aiPressCounterDuration);
+  }
+
+  const nearest = Math.min(...shape.defenders.map((player) => distance(player, owner)));
+  const sideTrap = (owner.y <= 92 || owner.y >= FIELD.height - 92)
+    && nearest >= 48 && nearest <= 125 && shape.compactDepth <= 210;
+  if (sideTrap) return startPress(state, team, "sideline_trap", RULES.aiPressTrapDuration);
+
+  return phase.phase;
+}
+
+function recoverySprintIntent(state, player, owner, depth = goalSideDepth(player, owner)) {
+  const recoveryX = clamp(
+    owner.x + teamDirection(owner.team) * RULES.aiRetreatDistance,
+    FIELD.inset + 48,
+    FIELD.width - FIELD.inset - 48,
+  );
+  const target = {
+    x: recoveryX,
+    y: clamp(owner.y * 0.62 + fallbackShape(player).y * 0.38, 72, FIELD.height - 72),
+  };
+  const scale = depth < -55 ? 1 : 0.9;
+  return { ...moveToward(player, target, scale), catchUp: true };
+}
+
+function retreatIntent(state, player, owner, plan) {
+  const depth = goalSideDepth(player, owner);
+  if (depth < RULES.aiCatchUpDepthTrigger) return recoverySprintIntent(state, player, owner, depth);
+  const role = plan.assignments.get(player.id);
+  const depthMultiplier = role === DEFEND_ROLE.BALANCE ? 1.55 : role === DEFEND_ROLE.COVER ? 1.28 : 1;
+  const target = {
+    x: clamp(owner.x + teamDirection(owner.team) * RULES.aiRetreatDistance * depthMultiplier, FIELD.inset + 48, FIELD.width - FIELD.inset - 48),
+    y: clamp(owner.y * 0.48 + fallbackShape(player).y * 0.52, 72, FIELD.height - 72),
+  };
+  return moveToward(player, target, role === DEFEND_ROLE.PRESSURE ? 0.72 : 0.62);
+}
+
+function containPressureIntent(state, player, owner) {
+  const depth = goalSideDepth(player, owner);
+  if (depth < RULES.aiCatchUpDepthTrigger) return recoverySprintIntent(state, player, owner, depth);
+  const target = {
+    x: clamp(owner.x + teamDirection(owner.team) * RULES.aiContainDistance, FIELD.inset + 48, FIELD.width - FIELD.inset - 48),
+    y: owner.y,
+  };
+  const gap = distance(player, owner);
+  if (gap > RULES.aiContainDistance + 38) return moveToward(player, target, 0.58);
+  if (gap > RULES.aiContainDistance - 12) return moveToward(player, target, 0.40);
+  if (canUseDefensiveBrake(state, player, owner)) return { ...moveToward(player, target, 0.20), jockeyHeld: true };
+  return moveToward(player, target, 0.30);
+}
+
+function pressPressureIntent(state, player, owner, target) {
+  const depth = goalSideDepth(player, owner);
+  if (depth < RULES.aiCatchUpDepthTrigger) return recoverySprintIntent(state, player, owner, depth);
   const gap = distance(player, owner);
   const canContain = canUseDefensiveBrake(state, player, owner);
   let intent;
-  if (gap > 155) intent = moveToward(player, target, 0.52);
-  else if (!canContain) intent = moveToward(player, target, 0.58);
-  else if (gap > 42) intent = { ...moveToward(player, target, 0.34), jockeyHeld: true };
-  else intent = { moveX: 0, moveY: 0, jockeyHeld: true };
-  const aggression = 0.44 + (player.id.length % 5) * 0.08;
+  if (gap > 155) intent = moveToward(player, target, 0.94);
+  else if (gap > 82) intent = moveToward(player, target, 0.72);
+  else if (!canContain) intent = moveToward(player, target, 0.62);
+  else if (gap > 42) intent = { ...moveToward(player, target, 0.52), jockeyHeld: true };
+  else intent = { ...moveToward(player, target, 0.20), jockeyHeld: true };
+  const aggression = 0.42 + (player.id.length % 5) * 0.07;
   const tackle = evaluateTackle(state, player, owner, aggression);
   player.aiTackleEvaluation = { score: Math.round(tackle.score * 10) / 10, gap: Math.round(tackle.gap), shouldTackle: tackle.shouldTackle };
   if (tackle.shouldTackle && player.recoveryRemaining <= 0) intent.tacklePressed = true;
   return intent;
 }
 
-function defendIntent(state, player, plan) {
+function defendIntent(state, player, plan, teamPhase) {
   const owner = getOwner(state);
   if (!owner) return looseBallIntent(state, player);
   const role = plan.assignments.get(player.id);
   const target = plan.targets.get(player.id) ?? fallbackShape(player);
-  if (role === DEFEND_ROLE.PRESSURE) return pressureIntent(state, player, owner, target);
+
+  if (teamPhase === DEFENSE_PHASE.RETREAT) return retreatIntent(state, player, owner, plan);
+
+  if (teamPhase === DEFENSE_PHASE.CONTAIN) {
+    if (role === DEFEND_ROLE.PRESSURE) return containPressureIntent(state, player, owner);
+    const depth = goalSideDepth(player, owner);
+    if (depth < RULES.aiCatchUpDepthTrigger) return recoverySprintIntent(state, player, owner, depth);
+    return moveToward(player, target, role === DEFEND_ROLE.COVER ? 0.46 : 0.40);
+  }
+
+  if (role === DEFEND_ROLE.PRESSURE) return pressPressureIntent(state, player, owner, target);
   if (role === DEFEND_ROLE.COVER && isRareTrap(state, player)) {
     const insideY = owner.y < FIELD.height / 2 ? owner.y + 34 : owner.y - 34;
     const trapIntent = moveToward(player, { x: owner.x + teamDirection(owner.team) * 25, y: insideY }, 0.58);
     return canUseDefensiveBrake(state, player, owner) ? { ...trapIntent, jockeyHeld: true } : trapIntent;
   }
-  return moveToward(player, target, role === DEFEND_ROLE.COVER ? 0.5 : 0.44);
+  return moveToward(player, target, role === DEFEND_ROLE.COVER ? 0.56 : 0.48);
 }
 
 export function collectAIInputs(state) {
@@ -172,8 +305,10 @@ export function collectAIInputs(state) {
   const teams = [...new Set(state.players.map((entry) => entry.team))];
   const plans = new Map(teams.map((team) => [team, buildTeamPlan(state, team)]));
   for (const [team, plan] of plans) updateAICalls(state, team, plan);
+  const defensePhases = new Map(teams.map((team) => [team, plans.get(team).phase === "defend" ? defensiveTeamPhase(state, team) : DEFENSE_PHASE.CONTAIN]));
   state.teamPlans = Object.fromEntries([...plans].map(([team, plan]) => [team, {
     phase: plan.phase,
+    defensivePhase: defensePhases.get(team),
     ownerId: plan.ownerId ?? null,
     assignments: Object.fromEntries(plan.assignments),
     targets: Object.fromEntries(plan.targets),
@@ -186,7 +321,7 @@ export function collectAIInputs(state) {
       const plan = plans.get(player.team);
       const ideal = state.ball.ownerId === null
         ? looseBallIntent(state, player)
-        : plan.phase === "attack" ? attackIntent(state, player, plan) : defendIntent(state, player, plan);
+        : plan.phase === "attack" ? attackIntent(state, player, plan) : defendIntent(state, player, plan, defensePhases.get(player.team));
       const spaced = preserveTeamSpacing(state, player, ideal);
       const phase = state.tick * 0.071 + player.id.length * 1.37;
       player.aiInput = {
