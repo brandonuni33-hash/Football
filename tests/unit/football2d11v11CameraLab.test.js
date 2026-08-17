@@ -34,7 +34,7 @@ test("la caméra de base est verrouillée sur 1.40 / 60 / 41", () => {
   assert.equal(geometry.zoom, 1.40);
   assert.equal(geometry.angle, 60);
   assert.equal(geometry.scan, 41);
-  assert.equal(CAMERA_DEFAULTS.headScanDegrees, 220);
+  assert.equal(CAMERA_DEFAULTS.headScanDegrees, 260);
   assert.ok(geometry.yScale < 0.8);
   assert.ok(Math.abs(geometry.shear) > 0.09);
 });
@@ -54,14 +54,14 @@ test("le SCAN est volontairement lent puis revient quand le stick est relâché"
   assert.equal(camera.scanActive, false);
 });
 
-test("le SCAN autorise environ 110 degrés de chaque côté du regard", () => {
+test("le SCAN autorise environ 130 degrés de chaque côté du regard", () => {
   const state = createLabState();
   const player = getControlledPlayer(state);
   player.facingX = 1;
   player.facingY = 0;
   const behindRight = constrainScanToFacing(player, -1, 1);
   const angle = Math.atan2(behindRight.y, behindRight.x) * 180 / Math.PI;
-  assert.ok(angle > 109 && angle < 111);
+  assert.ok(angle > 129 && angle < 131);
   assert.ok(behindRight.magnitude > 0.99);
 });
 
@@ -78,7 +78,7 @@ test("le SCAN à 90 degrés reste totalement accessible", () => {
   assert.ok(Math.abs(right.x) < 0.001 && right.y > 0.99);
 });
 
-test("une demande trop loin derrière est plafonnée à 110 degrés et jamais à 180", () => {
+test("une demande trop loin derrière est plafonnée à 130 degrés et jamais à 180", () => {
   const state = createLabState();
   const player = getControlledPlayer(state);
   player.facingX = 1;
@@ -86,8 +86,8 @@ test("une demande trop loin derrière est plafonnée à 110 degrés et jamais à
   const limited = constrainScanToFacing(player, -1, 0.25);
   const dot = limited.x * player.facingX + limited.y * player.facingY;
   const angle = Math.acos(Math.max(-1, Math.min(1, dot))) * 180 / Math.PI;
-  assert.ok(angle > 109 && angle < 111);
-  assert.ok(limited.x < 0, "à 110 degrés le joueur peut réellement regarder légèrement derrière l'épaule");
+  assert.ok(angle > 129 && angle < 131);
+  assert.ok(limited.x < 0, "à 130 degrés le joueur peut clairement regarder derrière l'épaule sans obtenir une vision arrière totale");
 });
 
 test("la caméra reste toujours dans les limites du terrain même avec SCAN maximal", () => {
