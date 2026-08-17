@@ -22,6 +22,7 @@ export const RULES = Object.freeze({
   bodyTurnDegreesPerSecond: 200,
   headTurnDegreesPerSecond: 260,
   headReturnDegreesPerSecond: 210,
+  aiHeadTurnDegreesPerSecond: 230,
   headScanDegrees: 180,
   visionDegrees: 120,
   scanDeadzone: 0.12,
@@ -29,7 +30,7 @@ export const RULES = Object.freeze({
   minZoom: 0.75,
   maxZoom: 1.80,
   angle: 60,
-  blindPitchAlpha: 0.12,
+  blindPitchAlpha: 0.035,
 
   controlRadius: 58,
   dribbleControlDistance: 30,
@@ -50,6 +51,7 @@ export const RULES = Object.freeze({
   passControlRadius: 28,
   passTargetLockVisual: 31,
   receptionWindow: 0.60,
+  looseControlWindowRadius: 155,
   orientedTouchStartDistance: 25,
   orientedTouchShortDistance: 34,
   orientedTouchMediumDistance: 45,
@@ -64,28 +66,56 @@ export const RULES = Object.freeze({
   orientedTouchRecontrolRadius: 48,
 
   shotSpeed: 540,
-  tackleRange: 47,
-  tackleDuration: 0.22,
-  tackleRecovery: 0.42,
-  missedTackleRecovery: 0.9,
   defensiveBrakeDuration: 1.2,
   defensiveBrakeDeepDuration: 0.7,
   jockeySpeedScale: 0.52,
   deepJockeySpeedScale: 0.40,
   recentBallLossDuration: 0.55,
   recentBallLossReachScale: 0.64,
+  naturalDuelReach: 27,
+  naturalDuelCooldown: 0.55,
 
   callDuration: 1.6,
   manualCallPriorityBoost: 66,
+  aiCallDuration: 0.9,
+  aiCallCooldown: 2.6,
+  aiTeamCallCooldown: 1.8,
   aiDecisionMin: 0.32,
   aiDecisionMax: 0.70,
   aiPassRange: 620,
-  aiContainDistance: 74,
-  aiPressDistance: 58,
-  aiHighPressDistance: 48,
-  aiHighPressOwnHalfChance: 0.05,
-  aiShapeResponse: 3.0,
-  aiMaxSpeedScale: 0.89,
+  aiPassMinScore: 22,
+
+  blockShiftDefense: 0.34,
+  blockShiftMidfield: 0.50,
+  blockShiftAttack: 0.58,
+  blockShiftY: 0.18,
+  attackLineAdvanceDefense: 42,
+  attackLineAdvanceMidfield: 72,
+  attackLineAdvanceAttack: 92,
+  defendLineDropDefense: 34,
+  defendLineDropMidfield: 48,
+  defendLineDropAttack: 34,
+  blockMinDepth: 390,
+  blockMaxDepth: 610,
+  teamMoveResponse: 0.74,
+  aiMaxSpeedScale: 0.88,
+
+  aiLightPressDistance: 72,
+  aiContainDistance: 104,
+  aiPressActivationRange: 230,
+  aiPressSpeedScale: 0.78,
+  aiContainSpeedScale: 0.68,
+
+  zoneTrackRadius: 165,
+  zoneTrackMaxDisplacement: 115,
+  zoneGoalSideDistance: 46,
+
+  triangleSupportBack: 116,
+  triangleSupportForward: 72,
+  triangleSupportWidth: 122,
+  triangleDepthRun: 172,
+  triangleAssignmentRadius: 360,
+
   goalkeeperSpeed: 154,
   goalkeeperSaveRadius: 38,
   goalkeeperHoldDistance: 32,
@@ -93,16 +123,16 @@ export const RULES = Object.freeze({
 
 const HOME_FORMATION = [
   ["home-1", 1, "GK", 126, 544],
-  ["home-2", 2, "RB", 350, 170],
-  ["home-4", 4, "RCB", 350, 420],
-  ["home-5", 5, "LCB", 350, 668],
-  ["home-3", 3, "LB", 350, 918],
-  ["home-6", 6, "DM", 610, 300],
+  ["home-2", 2, "RB", 330, 170],
+  ["home-4", 4, "RCB", 330, 420],
+  ["home-5", 5, "LCB", 330, 668],
+  ["home-3", 3, "LB", 330, 918],
+  ["home-6", 6, "DM", 500, 300],
   ["home-8", 8, "CM", 650, 544],
-  ["home-10", 10, "AM", 610, 788],
-  ["home-7", 7, "RW", 920, 245],
-  ["home-9", 9, "ST", 965, 544],
-  ["home-11", 11, "LW", 920, 843],
+  ["home-10", 10, "AM", 690, 788],
+  ["home-7", 7, "RW", 760, 245],
+  ["home-9", 9, "ST", 810, 544],
+  ["home-11", 11, "LW", 760, 843],
 ];
 
 export function clamp(value, min, max) { return Math.min(max, Math.max(min, value)); }
@@ -137,18 +167,50 @@ function rotateVectorToward(currentX, currentY, targetX, targetY, speedDeg, dt) 
   const next = from + clamp(shortestAngleDelta(from, to), -maxTurn, maxTurn);
   return { x: Math.cos(next), y: Math.sin(next), magnitude: 1 };
 }
+function lineGroup(role) {
+  if (role === "GK") return "gk";
+  if (["RB", "LB", "RCB", "LCB"].includes(role)) return "defense";
+  if (["DM", "CM", "AM"].includes(role)) return "midfield";
+  return "attack";
+}
+function lineShiftFactor(role) {
+  const group = lineGroup(role);
+  if (group === "defense") return RULES.blockShiftDefense;
+  if (group === "midfield") return RULES.blockShiftMidfield;
+  if (group === "attack") return RULES.blockShiftAttack;
+  return 0.08;
+}
+function attackAdvance(role) {
+  const group = lineGroup(role);
+  if (group === "defense") return RULES.attackLineAdvanceDefense;
+  if (group === "midfield") return RULES.attackLineAdvanceMidfield;
+  if (group === "attack") return RULES.attackLineAdvanceAttack;
+  return 0;
+}
+function defendDrop(role) {
+  const group = lineGroup(role);
+  if (group === "defense") return RULES.defendLineDropDefense;
+  if (group === "midfield") return RULES.defendLineDropMidfield;
+  if (group === "attack") return RULES.defendLineDropAttack;
+  return 0;
+}
 
 function makePlayer(entry, team) {
   const [id, number, role, x, y] = entry;
   const facingX = teamDirection(team);
   return {
     id, number, role, team, x, y, originX: x, originY: y,
-    vx: 0, vy: 0, facingX, facingY: 0, headFacingX: facingX, headFacingY: 0,
-    controlled: id === CONTROLLED_ID, hasBall: false,
+    vx: 0, vy: 0,
+    facingX, facingY: 0,
+    headFacingX: facingX, headFacingY: 0,
+    controlled: id === CONTROLLED_ID,
+    hasBall: false,
     protectionRemaining: 0, protectionCooldown: 0,
     defensiveBrakeRemaining: 0, deepBrakeRemaining: 0,
-    tackleRemaining: 0, recoveryRemaining: 0, recentBallLossRemaining: 0,
-    callRemaining: 0, receptionRemaining: 0,
+    recoveryRemaining: 0, recentBallLossRemaining: 0,
+    naturalDuelCooldown: 0,
+    callRemaining: 0, aiCallCooldown: 0,
+    receptionRemaining: 0,
     receptionIntentX: facingX, receptionIntentY: 0, receptionIntentMagnitude: 0,
     orientedTouchRemaining: 0, orientedTouchReleasePending: false,
     orientedTouchX: facingX, orientedTouchY: 0,
@@ -157,26 +219,41 @@ function makePlayer(entry, team) {
     aiDecisionRemaining: 0.2 + (number % 4) * 0.08,
     aiPassCooldown: 0,
     bodyFeintRemaining: 0,
+    tacticalRole: "shape",
+    markingMode: "zone",
+    markingTargetId: null,
   };
 }
 
 export function createGameplayState() {
-  const home = HOME_FORMATION.map((e) => makePlayer(e, TEAM.HOME));
-  const away = HOME_FORMATION.map(mirror).map((e) => makePlayer(e, TEAM.AWAY));
+  const home = HOME_FORMATION.map((entry) => makePlayer(entry, TEAM.HOME));
+  const away = HOME_FORMATION.map(mirror).map((entry) => makePlayer(entry, TEAM.AWAY));
   const players = [...home, ...away];
   const controlled = players.find((p) => p.id === CONTROLLED_ID);
   controlled.hasBall = true;
   return {
-    tick: 0, elapsed: 0, players,
+    tick: 0,
+    elapsed: 0,
+    players,
     score: { home: 0, away: 0 },
     possession: { team: TEAM.HOME, playerId: controlled.id },
     lastPossessionLoss: null,
-    lastEvent: "kickoff", eventId: 0,
+    lastEvent: "kickoff",
+    eventId: 0,
+    aiTeamCallCooldown: { home: 0, away: 0 },
+    tactical: {
+      home: { phase: "attack", presserId: null, triangleIds: [] },
+      away: { phase: "defend", presserId: null, triangleIds: [] },
+    },
     ball: {
       x: controlled.x + RULES.dribbleControlDistance,
-      y: controlled.y, vx: 0, vy: 0,
+      y: controlled.y,
+      vx: 0,
+      vy: 0,
       phase: BALL_PHASE.CONTROLLED,
-      ownerId: controlled.id, targetId: null, lastTouchId: controlled.id,
+      ownerId: controlled.id,
+      targetId: null,
+      lastTouchId: controlled.id,
     },
   };
 }
@@ -187,8 +264,8 @@ export function getOwner(state) { return state.ball.ownerId ? getPlayer(state, s
 export function hasPossession(state, id) { return state.ball.ownerId === id; }
 export function actionLabels(state) {
   return hasPossession(state, CONTROLLED_ID)
-    ? { primary: "TIR", secondary: "PASSE", tertiary: "PROT.", tackle: "" }
-    : { primary: "APPEL", secondary: "FREIN", tertiary: "PROT.", tackle: "TACLE" };
+    ? { primary: "TIR", secondary: "PASSE", tertiary: "PROT." }
+    : { primary: "APPEL", secondary: "FREIN", tertiary: "PROT." };
 }
 
 function setOwner(state, player, reason = "control") {
@@ -227,10 +304,11 @@ function tickPlayer(p, dt) {
   p.protectionCooldown = Math.max(0, p.protectionCooldown - dt);
   p.defensiveBrakeRemaining = Math.max(0, p.defensiveBrakeRemaining - dt);
   p.deepBrakeRemaining = Math.max(0, p.deepBrakeRemaining - dt);
-  p.tackleRemaining = Math.max(0, p.tackleRemaining - dt);
   p.recoveryRemaining = Math.max(0, p.recoveryRemaining - dt);
   p.recentBallLossRemaining = Math.max(0, p.recentBallLossRemaining - dt);
+  p.naturalDuelCooldown = Math.max(0, p.naturalDuelCooldown - dt);
   p.callRemaining = Math.max(0, p.callRemaining - dt);
+  p.aiCallCooldown = Math.max(0, p.aiCallCooldown - dt);
   p.receptionRemaining = Math.max(0, p.receptionRemaining - dt);
   p.orientedTouchRemaining = Math.max(0, p.orientedTouchRemaining - dt);
   if (wasOriented && p.orientedTouchRemaining === 0) p.orientedTouchReleasePending = true;
@@ -248,26 +326,55 @@ function clampHeadToBody(p) {
   p.headFacingX = Math.cos(bodyAngle + rel);
   p.headFacingY = Math.sin(bodyAngle + rel);
 }
-function updateHead(p, input, dt, mode) {
-  let tx = p.facingX, ty = p.facingY;
+function updateControlledHead(p, input, dt, mode) {
+  let tx = p.facingX;
+  let ty = p.facingY;
   let speed = RULES.headReturnDegreesPerSecond;
-  if (mode === "scan") {
+  if (["scan", "receive", "loose", "protect"].includes(mode)) {
     const right = normalize(input.controlX, input.controlY);
-    if (right.magnitude >= RULES.scanDeadzone) { tx = right.x; ty = right.y; speed = RULES.headTurnDegreesPerSecond; }
+    if (right.magnitude >= RULES.scanDeadzone) {
+      tx = right.x;
+      ty = right.y;
+      speed = RULES.headTurnDegreesPerSecond;
+    }
   }
   const next = rotateVectorToward(p.headFacingX, p.headFacingY, tx, ty, speed, dt);
-  if (next.magnitude) { p.headFacingX = next.x; p.headFacingY = next.y; }
+  if (next.magnitude) {
+    p.headFacingX = next.x;
+    p.headFacingY = next.y;
+  }
   clampHeadToBody(p);
+}
+function updateAIHeadTowardBall(state, p, dt) {
+  const toBall = normalize(state.ball.x - p.x, state.ball.y - p.y);
+  if (!toBall.magnitude) return;
+  const next = rotateVectorToward(
+    p.headFacingX,
+    p.headFacingY,
+    toBall.x,
+    toBall.y,
+    RULES.aiHeadTurnDegreesPerSecond,
+    dt,
+  );
+  if (next.magnitude) {
+    p.headFacingX = next.x;
+    p.headFacingY = next.y;
+  }
+}
+
+export function isLooseBallOrientationWindow(state, player = getControlledPlayer(state)) {
+  if (!player || state.ball.ownerId) return false;
+  if (state.ball.phase !== BALL_PHASE.FREE) return false;
+  return distance(player, state.ball) <= RULES.looseControlWindowRadius;
 }
 
 export function controlMode(state, player = getControlledPlayer(state)) {
   if (!player) return "scan";
   const targeted = state.ball.phase === BALL_PHASE.PASS && state.ball.targetId === player.id;
-  if (targeted || player.protectionRemaining > 0) return "tech";
-  if (player.hasBall) {
-    const speed = Math.hypot(player.vx, player.vy);
-    return speed < 18 ? "tech" : "locked";
-  }
+  if (targeted) return "receive";
+  if (isLooseBallOrientationWindow(state, player)) return "loose";
+  if (player.protectionRemaining > 0) return "protect";
+  if (player.hasBall) return Math.hypot(player.vx, player.vy) < 18 ? "feint" : "locked";
   return "scan";
 }
 
@@ -276,7 +383,9 @@ function moveControlled(state, p, input, dt) {
   let move = normalize(input.moveX, input.moveY);
   if (p.recoveryRemaining > 0) move = { x: 0, y: 0, magnitude: 0 };
   let speedScale = input.rapidHeld ? 1 : RULES.normalPaceScale;
-  if (p.defensiveBrakeRemaining > 0 && !p.hasBall) speedScale = p.deepBrakeRemaining > 0 ? RULES.deepJockeySpeedScale : RULES.jockeySpeedScale;
+  if (p.defensiveBrakeRemaining > 0 && !p.hasBall) {
+    speedScale = p.deepBrakeRemaining > 0 ? RULES.deepJockeySpeedScale : RULES.jockeySpeedScale;
+  }
   if (p.protectionRemaining > 0) speedScale = Math.min(speedScale, RULES.protectionSpeedScale);
   const targetVx = move.x * RULES.rapidSpeed * move.magnitude * speedScale;
   const targetVy = move.y * RULES.rapidSpeed * move.magnitude * speedScale;
@@ -290,36 +399,65 @@ function moveControlled(state, p, input, dt) {
     const owner = getOwner(state);
     if (owner && owner.team !== p.team) {
       const face = normalize(owner.x - p.x, owner.y - p.y);
-      if (face.magnitude) { p.facingX = face.x; p.facingY = face.y; }
+      if (face.magnitude) {
+        p.facingX = face.x;
+        p.facingY = face.y;
+      }
     }
   } else if (move.magnitude > 0.08) {
     const next = rotateVectorToward(p.facingX, p.facingY, move.x, move.y, RULES.bodyTurnDegreesPerSecond, dt);
-    p.facingX = next.x; p.facingY = next.y;
+    p.facingX = next.x;
+    p.facingY = next.y;
   }
 
   const mode = controlMode(state, p);
-  updateHead(p, input, dt, mode);
+  updateControlledHead(p, input, dt, mode);
   const right = normalize(input.controlX, input.controlY);
-  if (mode === "tech" && right.magnitude > 0.08) {
-    p.controlX = right.x; p.controlY = right.y;
-    if (state.ball.phase === BALL_PHASE.PASS && state.ball.targetId === p.id) {
-      p.receptionIntentX = right.x; p.receptionIntentY = right.y; p.receptionIntentMagnitude = right.magnitude;
-    } else if (p.protectionRemaining > 0) {
-      p.facingX = right.x; p.facingY = right.y;
-    } else if (p.hasBall && Math.hypot(p.vx, p.vy) < 18 && right.magnitude > 0.55) {
-      p.bodyFeintRemaining = 0.32;
-      p.facingX = right.x; p.facingY = right.y;
-      state.lastEvent = "body_feint";
-    }
-  } else if (!(state.ball.phase === BALL_PHASE.PASS && state.ball.targetId === p.id)) {
+
+  if ((mode === "receive" || mode === "loose") && right.magnitude > 0.08) {
+    p.receptionIntentX = right.x;
+    p.receptionIntentY = right.y;
+    p.receptionIntentMagnitude = right.magnitude;
+  } else if (mode !== "receive" && mode !== "loose") {
     p.receptionIntentMagnitude = 0;
   }
+
+  if (mode === "protect" && right.magnitude > 0.08) {
+    p.controlX = right.x;
+    p.controlY = right.y;
+    p.facingX = right.x;
+    p.facingY = right.y;
+  } else if (mode === "feint" && right.magnitude > 0.55) {
+    p.controlX = right.x;
+    p.controlY = right.y;
+    p.bodyFeintRemaining = 0.32;
+    p.facingX = right.x;
+    p.facingY = right.y;
+    state.lastEvent = "body_feint";
+  }
+}
+
+function passLaneClearance(state, passer, receiver) {
+  const dx = receiver.x - passer.x;
+  const dy = receiver.y - passer.y;
+  const lengthSq = dx * dx + dy * dy;
+  let nearest = Infinity;
+  for (const opponent of state.players) {
+    if (opponent.team === passer.team) continue;
+    const t = lengthSq > 0.001
+      ? clamp(((opponent.x - passer.x) * dx + (opponent.y - passer.y) * dy) / lengthSq, 0, 1)
+      : 0;
+    const px = passer.x + dx * t;
+    const py = passer.y + dy * t;
+    nearest = Math.min(nearest, Math.hypot(opponent.x - px, opponent.y - py));
+  }
+  return nearest;
 }
 
 function selectPassTarget(state, passer, intent = {}) {
   const requested = normalize(intent.controlX ?? intent.x, intent.controlY ?? intent.y);
   const dir = requested.magnitude > 0.18 ? requested : normalize(passer.facingX, passer.facingY);
-  const mates = state.players.filter((p) => p.team === passer.team && p.id !== passer.id && p.role !== "GK" && p.recoveryRemaining <= 0);
+  const mates = state.players.filter((p) => p.team === passer.team && p.id !== passer.id && p.recoveryRemaining <= 0);
   return mates.map((candidate) => {
     const to = normalize(candidate.x - passer.x, candidate.y - passer.y);
     const alignment = dir.x * to.x + dir.y * to.y;
@@ -327,8 +465,12 @@ function selectPassTarget(state, passer, intent = {}) {
     const range = distance(passer, candidate);
     const opponents = state.players.filter((p) => p.team !== passer.team);
     const space = Math.min(...opponents.map((o) => distance(o, candidate)));
-    return { candidate, score: alignment * 1.25 + call + clamp(space, 0, 180) / 300 - Math.max(0, range - 520) / 700 };
-  }).filter((x) => distance(passer, x.candidate) <= RULES.passMaxRange)
+    const lane = passLaneClearance(state, passer, candidate);
+    return {
+      candidate,
+      score: alignment * 1.25 + call + clamp(space, 0, 180) / 300 + clamp(lane, 0, 100) / 260 - Math.max(0, range - 520) / 700,
+    };
+  }).filter((item) => distance(passer, item.candidate) <= RULES.passMaxRange)
     .sort((a, b) => b.score - a.score)[0]?.candidate ?? null;
 }
 
@@ -339,25 +481,32 @@ export function startPass(state, passer, input = {}, forcedTargetId = null) {
   const dir = normalize(target.x - passer.x, target.y - passer.y);
   if (!dir.magnitude) return false;
   clearOwner(state, BALL_PHASE.PASS);
-  state.ball.x = passer.x + dir.x * 26; state.ball.y = passer.y + dir.y * 26;
-  state.ball.vx = dir.x * RULES.passSpeed; state.ball.vy = dir.y * RULES.passSpeed;
-  state.ball.targetId = target.id; state.ball.lastTouchId = passer.id;
+  state.ball.x = passer.x + dir.x * 26;
+  state.ball.y = passer.y + dir.y * 26;
+  state.ball.vx = dir.x * RULES.passSpeed;
+  state.ball.vy = dir.y * RULES.passSpeed;
+  state.ball.targetId = target.id;
+  state.ball.lastTouchId = passer.id;
   target.receptionRemaining = RULES.receptionWindow;
   passer.aiPassCooldown = 0.8;
-  state.lastEvent = "pass_locked"; state.eventId += 1;
+  state.lastEvent = "pass_locked";
+  state.eventId += 1;
   return true;
 }
 export function startShot(state, p, input = {}) {
   if (!p?.hasBall) return false;
   const requested = normalize(input.controlX ?? input.x, input.controlY ?? input.y);
-  let dir = requested.magnitude > 0.18 ? requested : normalize(p.facingX, p.facingY);
   const goal = { x: attackingGoalX(p.team), y: PITCH.height / 2 };
-  if (requested.magnitude <= 0.18) dir = normalize(goal.x - p.x, goal.y - p.y);
+  const dir = requested.magnitude > 0.18 ? requested : normalize(goal.x - p.x, goal.y - p.y);
   clearOwner(state, BALL_PHASE.SHOT);
-  state.ball.x = p.x + dir.x * 27; state.ball.y = p.y + dir.y * 27;
-  state.ball.vx = dir.x * RULES.shotSpeed; state.ball.vy = dir.y * RULES.shotSpeed;
-  state.ball.targetId = null; state.ball.lastTouchId = p.id;
-  state.lastEvent = "shot"; state.eventId += 1;
+  state.ball.x = p.x + dir.x * 27;
+  state.ball.y = p.y + dir.y * 27;
+  state.ball.vx = dir.x * RULES.shotSpeed;
+  state.ball.vy = dir.y * RULES.shotSpeed;
+  state.ball.targetId = null;
+  state.ball.lastTouchId = p.id;
+  state.lastEvent = "shot";
+  state.eventId += 1;
   return true;
 }
 export function startProtection(state, p) {
@@ -365,13 +514,15 @@ export function startProtection(state, p) {
   const awaiting = state.ball.phase === BALL_PHASE.PASS && state.ball.targetId === p.id;
   if (!p.hasBall && !awaiting && state.possession.team !== p.team) return false;
   p.protectionRemaining = RULES.protectionDuration;
-  state.lastEvent = "protection"; state.eventId += 1;
+  state.lastEvent = "protection";
+  state.eventId += 1;
   return true;
 }
 export function requestCall(state, p) {
   if (!p || p.hasBall || state.possession.team !== p.team) return false;
   p.callRemaining = RULES.callDuration;
-  state.lastEvent = "call"; state.eventId += 1;
+  state.lastEvent = "call";
+  state.eventId += 1;
   return true;
 }
 export function pressBrake(state, p) {
@@ -385,27 +536,8 @@ export function pressBrake(state, p) {
     p.deepBrakeRemaining = 0;
     state.lastEvent = "brake";
   }
-  state.eventId += 1; return true;
-}
-export function startTackle(state, p) {
-  if (!p || p.hasBall || p.recoveryRemaining > 0) return false;
-  p.tackleRemaining = RULES.tackleDuration;
-  const owner = getOwner(state);
-  const close = owner && owner.team !== p.team && distance(p, owner) <= RULES.tackleRange;
-  const facing = normalize(p.facingX, p.facingY);
-  const toward = owner ? normalize(owner.x - p.x, owner.y - p.y) : { x: 0, y: 0 };
-  const angled = close && facing.x * toward.x + facing.y * toward.y > 0.12;
-  if (angled && owner.protectionRemaining <= 0) {
-    clearOwner(state, BALL_PHASE.FREE);
-    state.ball.vx = facing.x * 150; state.ball.vy = facing.y * 150;
-    state.ball.lastTouchId = p.id;
-    p.recoveryRemaining = RULES.tackleRecovery;
-    state.lastEvent = "tackle_won";
-  } else {
-    p.recoveryRemaining = RULES.missedTackleRecovery;
-    state.lastEvent = "tackle_missed";
-  }
-  state.eventId += 1; return true;
+  state.eventId += 1;
+  return true;
 }
 
 function applyHumanActions(state, input) {
@@ -414,40 +546,55 @@ function applyHumanActions(state, input) {
   if (input.primaryPressed) p.hasBall ? startShot(state, p, input) : requestCall(state, p);
   if (input.secondaryPressed) p.hasBall ? startPass(state, p, input) : pressBrake(state, p);
   if (input.tertiaryPressed) startProtection(state, p);
-  if (input.tacklePressed && !p.hasBall) startTackle(state, p);
 }
 
 function carryBall(state, owner, dt) {
   if (owner.orientedTouchRemaining > 0) {
-    state.ball.x += state.ball.vx * dt; state.ball.y += state.ball.vy * dt;
+    state.ball.x += state.ball.vx * dt;
+    state.ball.y += state.ball.vy * dt;
     const friction = Math.pow(RULES.orientedTouchBallFriction, dt * 60);
-    state.ball.vx *= friction; state.ball.vy *= friction; return;
+    state.ball.vx *= friction;
+    state.ball.vy *= friction;
+    return;
   }
   if (owner.orientedTouchReleasePending) {
     owner.orientedTouchReleasePending = false;
     if (distance(owner, state.ball) > RULES.orientedTouchRecontrolRadius) {
-      clearOwner(state, BALL_PHASE.FREE); state.ball.lastTouchId = owner.id;
-      state.lastEvent = "heavy_oriented_touch"; state.eventId += 1; return;
+      clearOwner(state, BALL_PHASE.FREE);
+      state.ball.lastTouchId = owner.id;
+      state.lastEvent = "heavy_oriented_touch";
+      state.eventId += 1;
+      return;
     }
   }
   const protectedControl = owner.protectionRemaining > 0;
   const fx = protectedControl ? owner.controlX : owner.facingX;
   const fy = protectedControl ? owner.controlY : owner.facingY;
   const forward = protectedControl ? RULES.protectionControlDistance : RULES.dribbleControlDistance;
-  const desiredX = owner.x + fx * forward, desiredY = owner.y + fy * forward;
+  const desiredX = owner.x + fx * forward;
+  const desiredY = owner.y + fy * forward;
   if (protectedControl) {
-    state.ball.x = desiredX; state.ball.y = desiredY; state.ball.vx = owner.vx; state.ball.vy = owner.vy; return;
+    state.ball.x = desiredX;
+    state.ball.y = desiredY;
+    state.ball.vx = owner.vx;
+    state.ball.vy = owner.vy;
+    return;
   }
   const speed = Math.hypot(owner.vx, owner.vy);
   const gap = distance(owner, state.ball);
   if (gap > RULES.heavyTouchGap) {
-    clearOwner(state, BALL_PHASE.FREE); state.ball.lastTouchId = owner.id;
-    state.lastEvent = "heavy_touch"; state.eventId += 1; return;
+    clearOwner(state, BALL_PHASE.FREE);
+    state.ball.lastTouchId = owner.id;
+    state.lastEvent = "heavy_touch";
+    state.eventId += 1;
+    return;
   }
   if (speed < 9) {
     state.ball.x = approach(state.ball.x, desiredX, 300 * dt);
     state.ball.y = approach(state.ball.y, desiredY, 300 * dt);
-    state.ball.vx *= 0.82; state.ball.vy *= 0.82; return;
+    state.ball.vx *= 0.82;
+    state.ball.vy *= 0.82;
+    return;
   }
   if (owner.dribbleTouchRemaining <= 0 || gap < 17) {
     const touch = RULES.dribbleTouchBaseSpeed + speed * RULES.dribbleTouchSpeedRatio;
@@ -455,28 +602,42 @@ function carryBall(state, owner, dt) {
     state.ball.vy = owner.vy + fy * touch * RULES.dribbleFreedom + (desiredY - state.ball.y) * 1.25;
     owner.dribbleTouchRemaining = RULES.dribbleTouchInterval;
   }
-  const freeX = state.ball.x + state.ball.vx * dt, freeY = state.ball.y + state.ball.vy * dt;
+  const freeX = state.ball.x + state.ball.vx * dt;
+  const freeY = state.ball.y + state.ball.vy * dt;
   const guidedX = approach(freeX, desiredX, RULES.dribbleGuideSpeed * dt);
   const guidedY = approach(freeY, desiredY, RULES.dribbleGuideSpeed * dt);
   state.ball.x = freeX * RULES.dribbleFreedom + guidedX * (1 - RULES.dribbleFreedom);
   state.ball.y = freeY * RULES.dribbleFreedom + guidedY * (1 - RULES.dribbleFreedom);
-  const friction = Math.pow(0.985, dt * 60); state.ball.vx *= friction; state.ball.vy *= friction;
+  const friction = Math.pow(0.985, dt * 60);
+  state.ball.vx *= friction;
+  state.ball.vy *= friction;
 }
 
 function orientedReception(state, p) {
-  const m = p.receptionIntentMagnitude;
-  if (m <= 0.08) return;
-  let dist = RULES.orientedTouchShortDistance, duration = RULES.orientedTouchShortDuration, ballSpeed = RULES.orientedTouchShortBallSpeed;
-  if (m >= 0.76) { dist = RULES.orientedTouchLongDistance; duration = RULES.orientedTouchLongDuration; ballSpeed = RULES.orientedTouchLongBallSpeed; }
-  else if (m >= 0.42) { dist = RULES.orientedTouchMediumDistance; duration = RULES.orientedTouchMediumDuration; ballSpeed = RULES.orientedTouchMediumBallSpeed; }
-  p.facingX = p.receptionIntentX; p.facingY = p.receptionIntentY;
-  p.orientedTouchX = p.receptionIntentX; p.orientedTouchY = p.receptionIntentY;
-  p.orientedTouchRemaining = duration; p.orientedTouchReleasePending = false;
+  const magnitude = p.receptionIntentMagnitude;
+  if (magnitude <= 0.08) return;
+  let duration = RULES.orientedTouchShortDuration;
+  let ballSpeed = RULES.orientedTouchShortBallSpeed;
+  if (magnitude >= 0.76) {
+    duration = RULES.orientedTouchLongDuration;
+    ballSpeed = RULES.orientedTouchLongBallSpeed;
+  } else if (magnitude >= 0.42) {
+    duration = RULES.orientedTouchMediumDuration;
+    ballSpeed = RULES.orientedTouchMediumBallSpeed;
+  }
+  p.facingX = p.receptionIntentX;
+  p.facingY = p.receptionIntentY;
+  p.orientedTouchX = p.receptionIntentX;
+  p.orientedTouchY = p.receptionIntentY;
+  p.orientedTouchRemaining = duration;
+  p.orientedTouchReleasePending = false;
   state.ball.x = p.x + p.orientedTouchX * RULES.orientedTouchStartDistance;
   state.ball.y = p.y + p.orientedTouchY * RULES.orientedTouchStartDistance;
-  state.ball.vx = p.orientedTouchX * ballSpeed; state.ball.vy = p.orientedTouchY * ballSpeed;
+  state.ball.vx = p.orientedTouchX * ballSpeed;
+  state.ball.vy = p.orientedTouchY * ballSpeed;
   p.dribbleTouchRemaining = duration + 0.08;
-  state.lastEvent = "oriented_reception";
+  p.receptionIntentMagnitude = 0;
+  state.lastEvent = "oriented_control";
 }
 
 function recoveryCandidate(state) {
@@ -484,32 +645,54 @@ function recoveryCandidate(state) {
   for (const p of state.players) {
     if (p.id === state.ball.lastTouchId && (state.ball.phase === BALL_PHASE.PASS || state.ball.phase === BALL_PHASE.SHOT)) continue;
     if (p.recoveryRemaining > 0) continue;
-    const reach = p.recentBallLossRemaining > 0 ? RULES.passControlRadius * RULES.recentBallLossReachScale : RULES.passControlRadius;
+    const reach = p.recentBallLossRemaining > 0
+      ? RULES.passControlRadius * RULES.recentBallLossReachScale
+      : RULES.passControlRadius;
     const gap = distance(p, state.ball);
     if (gap > reach) continue;
-    const score = gap + (p.recentBallLossRemaining > 0 ? 18 : 0);
-    if (!best || score < best.score) best = { p, score };
+    const score = gap + (p.recentBallLossRemaining > 0 ? 24 : 0);
+    if (!best || score < best.score) best = { player: p, score };
   }
-  return best?.p ?? null;
+  return best?.player ?? null;
 }
 
-function checkGoal(state, prev) {
-  const within = state.ball.y >= PITCH.goalTop && state.ball.y <= PITCH.goalBottom;
-  if (!within) return false;
-  if (prev.x < PITCH.width - PITCH.inset && state.ball.x >= PITCH.width - PITCH.inset) { scoreGoal(state, TEAM.HOME); return true; }
-  if (prev.x > PITCH.inset && state.ball.x <= PITCH.inset) { scoreGoal(state, TEAM.AWAY); return true; }
+function checkGoal(state, previousBall) {
+  const inGoalMouth = state.ball.y >= PITCH.goalTop && state.ball.y <= PITCH.goalBottom;
+  if (!inGoalMouth) return false;
+  if (previousBall.x < PITCH.width - PITCH.inset && state.ball.x >= PITCH.width - PITCH.inset) {
+    scoreGoal(state, TEAM.HOME);
+    return true;
+  }
+  if (previousBall.x > PITCH.inset && state.ball.x <= PITCH.inset) {
+    scoreGoal(state, TEAM.AWAY);
+    return true;
+  }
   return false;
 }
 function scoreGoal(state, team) {
   state.score[team] += 1;
   const conceding = team === TEAM.HOME ? TEAM.AWAY : TEAM.HOME;
-  const restart = state.players.find((p) => p.team === conceding && p.role === "CM") ?? state.players.find((p) => p.team === conceding && p.role !== "GK");
-  for (const p of state.players) { p.hasBall = false; p.x = p.originX; p.y = p.originY; p.vx = p.vy = 0; }
+  const restart = state.players.find((p) => p.team === conceding && p.role === "CM")
+    ?? state.players.find((p) => p.team === conceding && p.role !== "GK");
+  for (const p of state.players) {
+    p.hasBall = false;
+    p.x = p.originX;
+    p.y = p.originY;
+    p.vx = 0;
+    p.vy = 0;
+  }
   restart.hasBall = true;
-  state.ball.ownerId = restart.id; state.ball.phase = BALL_PHASE.CONTROLLED; state.ball.targetId = null; state.ball.lastTouchId = restart.id;
-  state.ball.x = restart.x + restart.facingX * RULES.dribbleControlDistance; state.ball.y = restart.y; state.ball.vx = state.ball.vy = 0;
+  state.ball.ownerId = restart.id;
+  state.ball.phase = BALL_PHASE.CONTROLLED;
+  state.ball.targetId = null;
+  state.ball.lastTouchId = restart.id;
+  state.ball.x = restart.x + restart.facingX * RULES.dribbleControlDistance;
+  state.ball.y = restart.y;
+  state.ball.vx = 0;
+  state.ball.vy = 0;
   state.possession = { team: conceding, playerId: restart.id };
-  state.lastEvent = "goal"; state.eventId += 1;
+  state.lastEvent = "goal";
+  state.eventId += 1;
 }
 
 function goalkeeperSave(state) {
@@ -517,7 +700,8 @@ function goalkeeperSave(state) {
   for (const gk of state.players.filter((p) => p.role === "GK")) {
     if (distance(gk, state.ball) <= RULES.goalkeeperSaveRadius) {
       setOwner(state, gk, "goalkeeper_save");
-      state.ball.x = gk.x + teamDirection(gk.team) * RULES.goalkeeperHoldDistance; state.ball.y = gk.y;
+      state.ball.x = gk.x + teamDirection(gk.team) * RULES.goalkeeperHoldDistance;
+      state.ball.y = gk.y;
       return true;
     }
   }
@@ -526,161 +710,428 @@ function goalkeeperSave(state) {
 
 function stepBall(state, dt) {
   const owner = getOwner(state);
-  if (owner) { carryBall(state, owner, dt); return; }
-  const prev = { x: state.ball.x, y: state.ball.y };
-  state.ball.x += state.ball.vx * dt; state.ball.y += state.ball.vy * dt;
+  if (owner) {
+    carryBall(state, owner, dt);
+    return;
+  }
+  const previousBall = { x: state.ball.x, y: state.ball.y };
+  state.ball.x += state.ball.vx * dt;
+  state.ball.y += state.ball.vy * dt;
   const friction = Math.pow(state.ball.phase === BALL_PHASE.SHOT ? 0.995 : 0.989, dt * 60);
-  state.ball.vx *= friction; state.ball.vy *= friction;
-  if (goalkeeperSave(state) || checkGoal(state, prev)) return;
+  state.ball.vx *= friction;
+  state.ball.vy *= friction;
+
+  if (goalkeeperSave(state) || checkGoal(state, previousBall)) return;
+
   if (state.ball.y < PITCH.inset + 6 || state.ball.y > PITCH.height - PITCH.inset - 6) {
-    state.ball.y = clamp(state.ball.y, PITCH.inset + 6, PITCH.height - PITCH.inset - 6); state.ball.vy *= -0.42;
+    state.ball.y = clamp(state.ball.y, PITCH.inset + 6, PITCH.height - PITCH.inset - 6);
+    state.ball.vy *= -0.42;
   }
   if (state.ball.x < PITCH.inset + 6 || state.ball.x > PITCH.width - PITCH.inset - 6) {
-    state.ball.x = clamp(state.ball.x, PITCH.inset + 6, PITCH.width - PITCH.inset - 6); state.ball.vx *= -0.42;
+    state.ball.x = clamp(state.ball.x, PITCH.inset + 6, PITCH.width - PITCH.inset - 6);
+    state.ball.vx *= -0.42;
   }
+
   const winner = recoveryCandidate(state);
   if (winner) {
-    const intended = state.ball.targetId === winner.id;
-    setOwner(state, winner, intended ? "reception" : "interception");
-    if (intended) orientedReception(state, winner);
+    const intendedPass = state.ball.phase === BALL_PHASE.PASS && state.ball.targetId === winner.id;
+    const looseControl = state.ball.phase === BALL_PHASE.FREE && winner.controlled && winner.receptionIntentMagnitude > 0.08;
+    setOwner(state, winner, intendedPass ? "reception" : "interception");
+    if (intendedPass || looseControl) orientedReception(state, winner);
   }
-  if (!state.ball.ownerId && Math.hypot(state.ball.vx, state.ball.vy) < 7) { state.ball.phase = BALL_PHASE.FREE; state.ball.targetId = null; }
+
+  if (!state.ball.ownerId && Math.hypot(state.ball.vx, state.ball.vy) < 7) {
+    state.ball.phase = BALL_PHASE.FREE;
+    state.ball.targetId = null;
+  }
 }
 
-function roleScale(role) {
-  if (role === "GK") return 0.08;
-  if (["RB","LB","RCB","LCB"].includes(role)) return 0.54;
-  if (role === "DM") return 0.72;
-  if (["CM","AM"].includes(role)) return 0.86;
-  return 1;
+function teamHasPossession(state, team) {
+  return getOwner(state)?.team === team || state.possession.team === team;
 }
-function tacticalTarget(state, p) {
+
+function baseBlockTarget(state, p) {
   if (p.role === "GK") {
     const ownX = ownGoalX(p.team);
-    return { x: ownX + teamDirection(p.team) * 44, y: clamp(state.ball.y, PITCH.goalTop + 35, PITCH.goalBottom - 35) };
+    return {
+      x: ownX + teamDirection(p.team) * 44,
+      y: clamp(state.ball.y, PITCH.goalTop + 35, PITCH.goalBottom - 35),
+    };
   }
-  const owner = getOwner(state);
-  const dir = teamDirection(p.team);
-  const possessionTeam = owner?.team ?? state.possession.team;
-  const ballShiftX = (state.ball.x - PITCH.width / 2) * 0.20 * roleScale(p.role);
-  const ballShiftY = (state.ball.y - PITCH.height / 2) * 0.13 * roleScale(p.role);
-  let x = p.originX + ballShiftX, y = p.originY + ballShiftY;
-  if (possessionTeam === p.team) {
-    if (["RW","LW","ST"].includes(p.role)) x += dir * 75;
-    if (["CM","AM","DM"].includes(p.role)) x += dir * 35;
-    if (p.role === "RW") y = Math.min(y, 235);
-    if (p.role === "LW") y = Math.max(y, PITCH.height - 235);
-  } else {
-    x -= dir * 38;
+
+  const ownPossession = teamHasPossession(state, p.team);
+  const direction = teamDirection(p.team);
+  const factor = lineShiftFactor(p.role);
+  const ballDeltaX = state.ball.x - PITCH.width / 2;
+  const ballDeltaY = state.ball.y - PITCH.height / 2;
+  let x = p.originX + ballDeltaX * factor;
+  let y = p.originY + ballDeltaY * RULES.blockShiftY;
+
+  if (ownPossession) x += direction * attackAdvance(p.role);
+  else x -= direction * defendDrop(p.role);
+
+  const blockCenter = PITCH.width / 2 + ballDeltaX * 0.46;
+  const halfDepth = (ownPossession ? RULES.blockMaxDepth : RULES.blockMinDepth) / 2;
+  x = clamp(x, blockCenter - halfDepth, blockCenter + halfDepth);
+
+  if (p.role === "RW") y = Math.min(y, 235);
+  if (p.role === "LW") y = Math.max(y, PITCH.height - 235);
+  if (p.role === "RB") y = Math.min(y, 250);
+  if (p.role === "LB") y = Math.max(y, PITCH.height - 250);
+
+  return {
+    x: clamp(x, PITCH.inset + 28, PITCH.width - PITCH.inset - 28),
+    y: clamp(y, PITCH.inset + 28, PITCH.height - PITCH.inset - 28),
+  };
+}
+
+function triangleSupportMap(state, team, owner) {
+  if (!owner || owner.team !== team) return new Map();
+  const direction = teamDirection(team);
+  const candidates = state.players
+    .filter((p) => p.team === team && p.id !== owner.id && p.role !== "GK")
+    .map((p) => ({ p, gap: distance(p, owner) }))
+    .filter((item) => item.gap <= RULES.triangleAssignmentRadius)
+    .sort((a, b) => a.gap - b.gap);
+
+  const first = candidates[0]?.p;
+  const second = candidates.find((item) => item.p.id !== first?.id && Math.sign(item.p.y - owner.y) !== Math.sign((first?.y ?? owner.y) - owner.y))?.p
+    ?? candidates[1]?.p;
+  const depth = candidates.find((item) => item.p.id !== first?.id && item.p.id !== second?.id)?.p;
+
+  const targets = new Map();
+  const upperY = clamp(owner.y - RULES.triangleSupportWidth, PITCH.inset + 48, PITCH.height - PITCH.inset - 48);
+  const lowerY = clamp(owner.y + RULES.triangleSupportWidth, PITCH.inset + 48, PITCH.height - PITCH.inset - 48);
+
+  if (first) {
+    const sideY = first.y <= owner.y ? upperY : lowerY;
+    targets.set(first.id, {
+      role: "triangle-support",
+      x: clamp(owner.x - direction * RULES.triangleSupportBack, PITCH.inset + 40, PITCH.width - PITCH.inset - 40),
+      y: sideY,
+    });
   }
-  return { x: clamp(x, PITCH.inset + 28, PITCH.width - PITCH.inset - 28), y: clamp(y, PITCH.inset + 28, PITCH.height - PITCH.inset - 28) };
+  if (second) {
+    const sideY = second.y <= owner.y ? upperY : lowerY;
+    targets.set(second.id, {
+      role: "triangle-support",
+      x: clamp(owner.x + direction * RULES.triangleSupportForward, PITCH.inset + 40, PITCH.width - PITCH.inset - 40),
+      y: sideY,
+    });
+  }
+  if (depth) {
+    targets.set(depth.id, {
+      role: "triangle-depth",
+      x: clamp(owner.x + direction * RULES.triangleDepthRun, PITCH.inset + 48, PITCH.width - PITCH.inset - 48),
+      y: clamp(owner.y + (depth.y < owner.y ? -72 : 72), PITCH.inset + 48, PITCH.height - PITCH.inset - 48),
+    });
+  }
+  return targets;
 }
-function nearestDefenderToOwner(state, owner) {
-  if (!owner) return null;
-  return state.players.filter((p) => p.team !== owner.team && p.role !== "GK" && !p.controlled)
-    .sort((a,b) => distance(a, owner) - distance(b, owner))[0] ?? null;
+
+function localZoneThreat(state, defender, zoneTarget) {
+  const opponents = state.players.filter((p) => p.team !== defender.team && p.role !== "GK");
+  let best = null;
+  for (const opponent of opponents) {
+    const zoneGap = Math.hypot(opponent.x - zoneTarget.x, opponent.y - zoneTarget.y);
+    if (zoneGap > RULES.zoneTrackRadius) continue;
+    const dangerDirection = teamDirection(opponent.team);
+    const progressThreat = (opponent.x - zoneTarget.x) * dangerDirection;
+    const score = zoneGap - Math.max(0, progressThreat) * 0.25;
+    if (!best || score < best.score) best = { opponent, score };
+  }
+  return best?.opponent ?? null;
 }
-function ownerInOwnHalf(owner) { return owner.team === TEAM.HOME ? owner.x < PITCH.width / 2 : owner.x > PITCH.width / 2; }
+
+function defenderInOwnHalf(team, ballX) {
+  return team === TEAM.HOME ? ballX < PITCH.width / 2 : ballX > PITCH.width / 2;
+}
+
+function selectLightPresser(state, defendingTeam, owner) {
+  if (!owner || owner.team === defendingTeam) return null;
+  if (!defenderInOwnHalf(defendingTeam, owner.x)) return null;
+  return state.players
+    .filter((p) => p.team === defendingTeam && p.role !== "GK" && !p.controlled && p.recoveryRemaining <= 0)
+    .map((p) => ({ p, gap: distance(p, owner) }))
+    .filter((item) => item.gap <= RULES.aiPressActivationRange)
+    .sort((a, b) => a.gap - b.gap)[0]?.p ?? null;
+}
+
+function defensiveTeamTarget(state, p, owner, presser) {
+  const zone = baseBlockTarget(state, p);
+  p.tacticalRole = "zone";
+  p.markingMode = "zone";
+  p.markingTargetId = null;
+
+  if (!owner || owner.team === p.team) return zone;
+
+  if (presser?.id === p.id) {
+    const ownGoal = { x: ownGoalX(p.team), y: PITCH.height / 2 };
+    const goalSide = normalize(ownGoal.x - owner.x, ownGoal.y - owner.y);
+    p.tacticalRole = "light-press";
+    p.markingMode = "individual";
+    p.markingTargetId = owner.id;
+    return {
+      x: clamp(owner.x + goalSide.x * RULES.aiLightPressDistance, PITCH.inset + 26, PITCH.width - PITCH.inset - 26),
+      y: clamp(owner.y + goalSide.y * RULES.aiLightPressDistance, PITCH.inset + 26, PITCH.height - PITCH.inset - 26),
+    };
+  }
+
+  const threat = localZoneThreat(state, p, zone);
+  if (!threat) return zone;
+  const ownGoal = { x: ownGoalX(p.team), y: PITCH.height / 2 };
+  const goalSide = normalize(ownGoal.x - threat.x, ownGoal.y - threat.y);
+  const track = {
+    x: threat.x + goalSide.x * RULES.zoneGoalSideDistance,
+    y: threat.y + goalSide.y * RULES.zoneGoalSideDistance * 0.35,
+  };
+  const dx = track.x - zone.x;
+  const dy = track.y - zone.y;
+  const gap = Math.hypot(dx, dy);
+  if (gap > RULES.zoneTrackMaxDisplacement) {
+    const scale = RULES.zoneTrackMaxDisplacement / gap;
+    track.x = zone.x + dx * scale;
+    track.y = zone.y + dy * scale;
+  }
+  p.tacticalRole = "mark";
+  p.markingMode = "individual";
+  p.markingTargetId = threat.id;
+  return {
+    x: clamp(track.x, PITCH.inset + 28, PITCH.width - PITCH.inset - 28),
+    y: clamp(track.y, PITCH.inset + 28, PITCH.height - PITCH.inset - 28),
+  };
+}
+
+function evaluateAICall(state, p, owner, triangleTarget) {
+  if (!owner || owner.team !== p.team || p.id === owner.id || p.role === "GK") return;
+  if (p.callRemaining > 0 || p.aiCallCooldown > 0 || state.aiTeamCallCooldown[p.team] > 0) return;
+  if (!triangleTarget) return;
+  const lane = passLaneClearance(state, owner, p);
+  const opponents = state.players.filter((o) => o.team !== p.team);
+  const space = Math.min(...opponents.map((o) => distance(o, p)));
+  if (lane < 34 || space < 54) return;
+  p.callRemaining = RULES.aiCallDuration;
+  p.aiCallCooldown = RULES.aiCallCooldown;
+  state.aiTeamCallCooldown[p.team] = RULES.aiTeamCallCooldown;
+}
 
 function bestAIPass(state, p) {
-  const mates = state.players.filter((m) => m.team === p.team && m.id !== p.id && m.role !== "GK" && distance(m,p) <= RULES.aiPassRange);
-  const dir = teamDirection(p.team);
+  const direction = teamDirection(p.team);
+  const mates = state.players.filter((m) => m.team === p.team && m.id !== p.id && distance(m, p) <= RULES.aiPassRange);
   return mates.map((m) => {
     const opponents = state.players.filter((o) => o.team !== p.team);
-    const space = Math.min(...opponents.map((o) => distance(o,m)));
-    const progress = (m.x - p.x) * dir;
+    const space = Math.min(...opponents.map((o) => distance(o, m)));
+    const progress = (m.x - p.x) * direction;
     const call = m.callRemaining > 0 ? RULES.manualCallPriorityBoost : 0;
-    return { m, score: progress * 0.22 + space * 0.30 + call - distance(p,m) * 0.05 };
-  }).sort((a,b) => b.score - a.score)[0] ?? null;
+    const lane = passLaneClearance(state, p, m);
+    const triangle = m.tacticalRole.startsWith("triangle") ? 24 : 0;
+    return {
+      m,
+      score: progress * 0.18 + space * 0.24 + lane * 0.26 + call + triangle - distance(p, m) * 0.045,
+    };
+  }).sort((a, b) => b.score - a.score)[0] ?? null;
+}
+
+function updateTeamPlans(state) {
+  const owner = getOwner(state);
+  for (const team of [TEAM.HOME, TEAM.AWAY]) {
+    const attacking = owner?.team === team;
+    const triangle = attacking ? triangleSupportMap(state, team, owner) : new Map();
+    const presser = !attacking ? selectLightPresser(state, team, owner) : null;
+    state.tactical[team] = {
+      phase: attacking ? "attack" : owner ? "defend" : "loose",
+      presserId: presser?.id ?? null,
+      triangleIds: [...triangle.keys()],
+      triangle,
+    };
+  }
 }
 
 function moveAI(state, p, dt) {
   tickPlayer(p, dt);
   if (p.controlled) return;
-  if (p.recoveryRemaining > 0) { p.vx *= 0.75; p.vy *= 0.75; return; }
+  updateAIHeadTowardBall(state, p, dt);
+  if (p.recoveryRemaining > 0) {
+    p.vx *= 0.75;
+    p.vy *= 0.75;
+    return;
+  }
+
   const owner = getOwner(state);
-  let target = tacticalTarget(state, p);
+  const plan = state.tactical[p.team];
+  let target = baseBlockTarget(state, p);
   let pace = RULES.aiMaxSpeedScale;
-  const nearestPressure = owner && owner.team !== p.team ? nearestDefenderToOwner(state, owner) : null;
-  if (nearestPressure?.id === p.id) {
-    const highZone = ownerInOwnHalf(owner);
-    const shouldPress = !highZone || (state.tick + p.number * 17) % 120 < Math.floor(120 * RULES.aiHighPressOwnHalfChance);
-    if (shouldPress) {
-      const toGoal = normalize(ownGoalX(p.team) - owner.x, PITCH.height / 2 - owner.y);
-      const contain = highZone ? RULES.aiContainDistance : RULES.aiPressDistance;
-      target = { x: owner.x + toGoal.x * contain, y: owner.y + toGoal.y * contain };
-      pace = highZone ? 0.72 : 0.94;
+
+  if (p.role === "GK") {
+    target = baseBlockTarget(state, p);
+    pace = 0.72;
+  } else if (owner?.team === p.team && p.id !== owner.id) {
+    const triangleTarget = plan?.triangle?.get(p.id);
+    if (triangleTarget) {
+      target = triangleTarget;
+      p.tacticalRole = triangleTarget.role;
+      evaluateAICall(state, p, owner, triangleTarget);
+    } else {
+      p.tacticalRole = "shape";
+      p.markingMode = "zone";
+      p.markingTargetId = null;
+    }
+  } else if (owner && owner.team !== p.team) {
+    const presser = plan?.presserId ? getPlayer(state, plan.presserId) : null;
+    target = defensiveTeamTarget(state, p, owner, presser);
+    pace = p.id === presser?.id ? RULES.aiPressSpeedScale : RULES.aiContainSpeedScale;
+  } else {
+    const nearest = state.players
+      .filter((candidate) => candidate.team === p.team && candidate.role !== "GK" && !candidate.controlled)
+      .sort((a, b) => distance(a, state.ball) - distance(b, state.ball))[0];
+    if (nearest?.id === p.id) {
+      target = { x: state.ball.x, y: state.ball.y };
+      p.tacticalRole = "loose-ball";
+      pace = 0.92;
     }
   }
+
   if (p.hasBall) {
+    p.tacticalRole = "carrier";
     const goal = { x: attackingGoalX(p.team), y: PITCH.height / 2 };
-    target = { x: goal.x - teamDirection(p.team) * 120, y: clamp(goal.y + Math.sin(state.elapsed + p.number) * 100, PITCH.inset + 80, PITCH.height - PITCH.inset - 80) };
-    pace = 0.82;
+    target = {
+      x: goal.x - teamDirection(p.team) * 120,
+      y: clamp(p.y + Math.sin(state.elapsed * 0.75 + p.number) * 48, PITCH.inset + 80, PITCH.height - PITCH.inset - 80),
+    };
+    pace = 0.80;
     p.aiDecisionRemaining -= dt;
     if (p.aiDecisionRemaining <= 0 && p.aiPassCooldown <= 0) {
       const goalDistance = Math.abs(goal.x - p.x);
       const pass = bestAIPass(state, p);
       if (goalDistance < 260 && Math.abs(p.y - goal.y) < 250) startShot(state, p, {});
-      else if (pass && pass.score > 18) startPass(state, p, {}, pass.m.id);
-      p.aiDecisionRemaining = RULES.aiDecisionMin + ((p.number * 37 + state.tick) % 100) / 100 * (RULES.aiDecisionMax - RULES.aiDecisionMin);
+      else if (pass && pass.score > RULES.aiPassMinScore) startPass(state, p, {}, pass.m.id);
+      p.aiDecisionRemaining = RULES.aiDecisionMin
+        + ((p.number * 37 + state.tick) % 100) / 100 * (RULES.aiDecisionMax - RULES.aiDecisionMin);
     }
   }
+
   const move = normalize(target.x - p.x, target.y - p.y);
-  const speed = RULES.rapidSpeed * pace;
-  const targetVx = move.x * speed * Math.min(1, move.magnitude * 2.2);
-  const targetVy = move.y * speed * Math.min(1, move.magnitude * 2.2);
-  p.vx = approach(p.vx, targetVx, RULES.acceleration * 0.72 * dt);
-  p.vy = approach(p.vy, targetVy, RULES.acceleration * 0.72 * dt);
+  const targetSpeed = RULES.rapidSpeed * pace;
+  const targetVx = move.x * targetSpeed * Math.min(1, move.magnitude * 2.2);
+  const targetVy = move.y * targetSpeed * Math.min(1, move.magnitude * 2.2);
+  p.vx = approach(p.vx, targetVx, RULES.acceleration * RULES.teamMoveResponse * dt);
+  p.vy = approach(p.vy, targetVy, RULES.acceleration * RULES.teamMoveResponse * dt);
   p.x = clamp(p.x + p.vx * dt, PITCH.inset + 24, PITCH.width - PITCH.inset - 24);
   p.y = clamp(p.y + p.vy * dt, PITCH.inset + 24, PITCH.height - PITCH.inset - 24);
-  if (move.magnitude > 0.08) {
-    const next = rotateVectorToward(p.facingX, p.facingY, move.x, move.y, RULES.bodyTurnDegreesPerSecond, dt);
-    p.facingX = next.x; p.facingY = next.y; p.headFacingX = next.x; p.headFacingY = next.y;
+
+  if (move.magnitude > 0.10 && Math.hypot(p.vx, p.vy) > 20) {
+    const nextBody = rotateVectorToward(p.facingX, p.facingY, p.vx, p.vy, RULES.bodyTurnDegreesPerSecond, dt);
+    p.facingX = nextBody.x;
+    p.facingY = nextBody.y;
+  } else if (owner && owner.team !== p.team && distance(p, owner) < 150) {
+    const faceBall = normalize(state.ball.x - p.x, state.ball.y - p.y);
+    const nextBody = rotateVectorToward(p.facingX, p.facingY, faceBall.x, faceBall.y, 115, dt);
+    p.facingX = nextBody.x;
+    p.facingY = nextBody.y;
   }
 }
 
 function resolveCollisions(state) {
-  const minDist = RULES.collisionRadius * 2;
-  for (let iter = 0; iter < RULES.collisionIterations; iter += 1) {
-    for (let i = 0; i < state.players.length; i += 1) for (let j = i + 1; j < state.players.length; j += 1) {
-      const a = state.players[i], b = state.players[j];
-      let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx,dy);
-      if (d >= minDist) continue;
-      if (d < 0.001) { dx = 1; dy = 0; d = 1; }
-      const nx = dx / d, ny = dy / d, overlap = minDist - d;
-      const firmnessA = a.protectionRemaining > 0 ? 0.70 : a.recoveryRemaining > 0 ? 0.30 : 0.50;
-      const firmnessB = b.protectionRemaining > 0 ? 0.70 : b.recoveryRemaining > 0 ? 0.30 : 0.50;
-      const total = firmnessA + firmnessB;
-      a.x -= nx * overlap * (firmnessB / total); a.y -= ny * overlap * (firmnessB / total);
-      b.x += nx * overlap * (firmnessA / total); b.y += ny * overlap * (firmnessA / total);
-      const av = a.vx * nx + a.vy * ny, bv = b.vx * nx + b.vy * ny;
-      if (av > 0) { a.vx -= nx * av * 0.9; a.vy -= ny * av * 0.9; }
-      if (bv < 0) { b.vx -= nx * bv * 0.9; b.vy -= ny * bv * 0.9; }
+  const minDistance = RULES.collisionRadius * 2;
+  for (let iteration = 0; iteration < RULES.collisionIterations; iteration += 1) {
+    for (let i = 0; i < state.players.length; i += 1) {
+      for (let j = i + 1; j < state.players.length; j += 1) {
+        const a = state.players[i];
+        const b = state.players[j];
+        let dx = b.x - a.x;
+        let dy = b.y - a.y;
+        let gap = Math.hypot(dx, dy);
+        if (gap >= minDistance) continue;
+        if (gap < 0.001) {
+          dx = 1;
+          dy = 0;
+          gap = 1;
+        }
+        const nx = dx / gap;
+        const ny = dy / gap;
+        const overlap = minDistance - gap;
+        const firmnessA = a.protectionRemaining > 0 ? 0.70 : a.recoveryRemaining > 0 ? 0.30 : 0.50;
+        const firmnessB = b.protectionRemaining > 0 ? 0.70 : b.recoveryRemaining > 0 ? 0.30 : 0.50;
+        const total = firmnessA + firmnessB;
+        a.x -= nx * overlap * (firmnessB / total);
+        a.y -= ny * overlap * (firmnessB / total);
+        b.x += nx * overlap * (firmnessA / total);
+        b.y += ny * overlap * (firmnessA / total);
+        const av = a.vx * nx + a.vy * ny;
+        const bv = b.vx * nx + b.vy * ny;
+        if (av > 0) {
+          a.vx -= nx * av * 0.9;
+          a.vy -= ny * av * 0.9;
+        }
+        if (bv < 0) {
+          b.vx -= nx * bv * 0.9;
+          b.vy -= ny * bv * 0.9;
+        }
+      }
     }
   }
 }
 
-function goalkeeperAutoDistribution(state) {
+function resolveNaturalDuels(state) {
+  const owner = getOwner(state);
+  if (!owner || owner.protectionRemaining > 0) return;
+  const challengers = state.players
+    .filter((p) => p.team !== owner.team && p.recoveryRemaining <= 0 && p.naturalDuelCooldown <= 0)
+    .map((p) => ({ p, gap: distance(p, owner) }))
+    .filter((item) => item.gap <= RULES.naturalDuelReach)
+    .sort((a, b) => a.gap - b.gap);
+  const challenger = challengers[0]?.p;
+  if (!challenger) return;
+
+  const toOwner = normalize(owner.x - challenger.x, owner.y - challenger.y);
+  const body = normalize(challenger.facingX, challenger.facingY);
+  const angle = body.x * toOwner.x + body.y * toOwner.y;
+  const ownerSpeed = Math.hypot(owner.vx, owner.vy);
+  const cleanContact = angle > 0.10 && ownerSpeed < RULES.rapidSpeed * 0.96;
+  if (!cleanContact) return;
+
+  clearOwner(state, BALL_PHASE.FREE);
+  state.ball.vx = challenger.vx * 0.35 + toOwner.x * 65;
+  state.ball.vy = challenger.vy * 0.35 + toOwner.y * 65;
+  state.ball.lastTouchId = challenger.id;
+  challenger.naturalDuelCooldown = RULES.naturalDuelCooldown;
+  owner.recoveryRemaining = 0.18;
+  state.lastEvent = "duel_ball_loose";
+  state.eventId += 1;
+}
+
+function goalkeeperAutoDistribution(state, dt) {
   const owner = getOwner(state);
   if (!owner || owner.role !== "GK") return;
-  owner.aiDecisionRemaining -= RULES.fixedStep;
-  if (owner.aiDecisionRemaining <= 0) {
-    const target = state.players.filter((p) => p.team === owner.team && p.role !== "GK").sort((a,b) => distance(a,owner)-distance(b,owner))[0];
-    if (target) startPass(state, owner, {}, target.id);
-    owner.aiDecisionRemaining = 0.65;
-  }
+  owner.aiDecisionRemaining -= dt;
+  if (owner.aiDecisionRemaining > 0) return;
+  const targets = state.players
+    .filter((p) => p.team === owner.team && p.role !== "GK")
+    .map((p) => ({ p, lane: passLaneClearance(state, owner, p), range: distance(owner, p) }))
+    .filter((item) => item.range <= RULES.passMaxRange)
+    .sort((a, b) => (b.lane - a.lane) || (a.range - b.range));
+  if (targets[0]) startPass(state, owner, {}, targets[0].p.id);
+  owner.aiDecisionRemaining = 0.65;
 }
 
 export function stepGameplay(state, input = {}, dt = RULES.fixedStep) {
   const time = clamp(dt, 0, 0.05);
-  state.tick += 1; state.elapsed += time;
+  state.tick += 1;
+  state.elapsed += time;
+  state.aiTeamCallCooldown.home = Math.max(0, state.aiTeamCallCooldown.home - time);
+  state.aiTeamCallCooldown.away = Math.max(0, state.aiTeamCallCooldown.away - time);
+
   applyHumanActions(state, input);
+  updateTeamPlans(state);
+
   const controlled = getControlledPlayer(state);
   moveControlled(state, controlled, input, time);
   for (const p of state.players) if (!p.controlled) moveAI(state, p, time);
+
   resolveCollisions(state);
+  resolveNaturalDuels(state);
   stepBall(state, time);
-  goalkeeperAutoDistribution(state);
+  goalkeeperAutoDistribution(state, time);
   return state;
 }
 
@@ -692,14 +1143,22 @@ export function cameraGeometry(settings = {}) {
   return { zoom, angle, yScale, shear };
 }
 export function cameraBounds(settings = {}) {
-  const g = cameraGeometry(settings);
-  const halfWidth = VIEWPORT.width / (2 * g.zoom);
-  const halfHeight = VIEWPORT.height / (2 * g.zoom * g.yScale);
-  return { minX: halfWidth - 20, maxX: PITCH.width - halfWidth + 20, minY: halfHeight - 20, maxY: PITCH.height - halfHeight + 20 };
+  const geometry = cameraGeometry(settings);
+  const halfWidth = VIEWPORT.width / (2 * geometry.zoom);
+  const halfHeight = VIEWPORT.height / (2 * geometry.zoom * geometry.yScale);
+  return {
+    minX: halfWidth - 20,
+    maxX: PITCH.width - halfWidth + 20,
+    minY: halfHeight - 20,
+    maxY: PITCH.height - halfHeight + 20,
+  };
 }
 export function cameraFromBall(state, settings = {}) {
-  const b = cameraBounds(settings);
-  return { x: clamp(state.ball.x, b.minX, b.maxX), y: clamp(state.ball.y, b.minY, b.maxY) };
+  const bounds = cameraBounds(settings);
+  return {
+    x: clamp(state.ball.x, bounds.minX, bounds.maxX),
+    y: clamp(state.ball.y, bounds.minY, bounds.maxY),
+  };
 }
 export function isPointVisible(player, point, degrees = RULES.visionDegrees) {
   const to = normalize(point.x - player.x, point.y - player.y);
