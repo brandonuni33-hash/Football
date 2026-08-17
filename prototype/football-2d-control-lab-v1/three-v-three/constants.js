@@ -55,6 +55,18 @@ export const RULES = Object.freeze({
   aiTeamCallCooldown: 1.8,
   aiCallMinLaneScore: 32,
   aiCallMinReceiverSpace: 48,
+  aiPressMaxDuration: 3,
+  aiPressTechnicalDuration: 2.4,
+  aiPressCounterDuration: 1.8,
+  aiPressTrapDuration: 2.1,
+  aiPressCooldown: 4.2,
+  aiPressTriggerWindow: 0.95,
+  aiContainDistance: 86,
+  aiRetreatDistance: 108,
+  aiCatchUpSpeedScale: 1.08,
+  aiCatchUpDepthTrigger: -8,
+  imprecisePassCrossTrack: 31,
+  imprecisePassCheckRange: 145,
   scoreToWin: 3,
 });
 
