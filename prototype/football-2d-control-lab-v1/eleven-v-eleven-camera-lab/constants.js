@@ -23,6 +23,9 @@ export const LAB_RULES = Object.freeze({
   controlledSpeed: 222,
   ballOffset: 28,
   movementDeadzone: 0.06,
+  // The player may move immediately, but his body cannot snap instantly to
+  // the new direction. 140°/s gives roughly 0.65 s for 90° and 1.3 s for 180°.
+  bodyTurnDegreesPerSecond: 140,
 });
 
 // Validated mobile camera baseline: 1.40 / 60 / 41.
