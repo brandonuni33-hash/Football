@@ -1,6 +1,6 @@
-import { FIELD, clamp, distance, normalize } from "./constants.js";
+import { FIELD, RULES, clamp, distance, normalize } from "./constants.js";
 import { getOwner } from "./matchState.js";
-import { ATTACK_ROLE, DEFEND_ROLE, buildTeamPlan, tacticalRole } from "./teamBrain.js";
+import { ATTACK_ROLE, DEFEND_ROLE, buildTeamPlan, evaluatePassingLane, tacticalRole } from "./teamBrain.js";
 import { carrierMoveIntent, chooseCarrierIntent, evaluateTackle } from "./utilityAI.js";
 import { startPass, startProtection, startShot, startTackle } from "./actions.js";
 import { teamDirection } from "./possession.js";
@@ -76,6 +76,46 @@ export function canUseDefensiveBrake(state, player, owner = getOwner(state)) {
   return gap <= 155 && goalSideDepth >= 6 && lateralGap <= Math.min(96, gap * 0.82 + 16);
 }
 
+function nearestOpponentGap(state, player) {
+  return Math.min(...state.players.filter((entry) => entry.team !== player.team).map((entry) => distance(entry, player)));
+}
+
+function aiCallOpportunity(state, player, owner, plan) {
+  if (!owner || owner.team !== player.team || player.id === owner.id || player.humanSlot) return null;
+  if ((player.aiCallCooldown ?? 0) > 0 || player.callRemaining > 0 || player.recoveryRemaining > 0) return null;
+  const lane = evaluatePassingLane(state, owner, player);
+  if (lane.blocked || lane.receiverSpace < RULES.aiCallMinReceiverSpace || lane.score < RULES.aiCallMinLaneScore || lane.range > 430) return null;
+
+  const role = plan.assignments.get(player.id);
+  const ownerPressure = nearestOpponentGap(state, owner);
+  const transition = (state.elapsed - (state.possessionChangedAt ?? -10)) <= 0.85;
+  const fixation = ownerPressure <= 82;
+  const switchLane = Math.abs(player.y - owner.y) >= 105 && lane.nearestClearance >= 45;
+  const corridorOpen = lane.progress >= 42 && lane.receiverSpace >= 62 && lane.nearestClearance >= 46;
+  if (!transition && !fixation && !switchLane && !corridorOpen) return null;
+
+  const contextBonus = (transition ? 12 : 0) + (fixation ? 14 : 0) + (switchLane ? 11 : 0) + (corridorOpen ? 15 : 0);
+  const roleBonus = role === ATTACK_ROLE.DEPTH ? 8 : role === ATTACK_ROLE.SUPPORT ? 3 : 0;
+  const score = lane.score + contextBonus + roleBonus;
+  const reason = fixation ? "fixation" : transition ? "transition" : switchLane ? "decalage" : "couloir";
+  return score >= 54 ? { player, score, reason } : null;
+}
+
+function updateAICalls(state, team, plan) {
+  const owner = getOwner(state);
+  if (!owner || owner.team !== team) return;
+  const aiOffBall = state.players.filter((entry) => entry.team === team && !entry.humanSlot && entry.id !== owner.id);
+  if (aiOffBall.some((entry) => entry.callRemaining > 0)) return;
+  const best = aiOffBall
+    .map((player) => aiCallOpportunity(state, player, owner, plan))
+    .filter(Boolean)
+    .sort((a, b) => b.score - a.score)[0];
+  if (!best) return;
+  best.player.callRemaining = RULES.aiCallDuration;
+  best.player.aiCallCooldown = RULES.aiCallCooldown;
+  best.player.aiCallReason = best.reason;
+}
+
 function carrierIntent(state, player) {
   const choice = chooseCarrierIntent(state, player);
   if (choice.type === "pass") return { passPressed: true, targetId: choice.targetId };
@@ -128,6 +168,7 @@ export function collectAIInputs(state) {
   const error = (100 - level) / 100;
   const teams = [...new Set(state.players.map((entry) => entry.team))];
   const plans = new Map(teams.map((team) => [team, buildTeamPlan(state, team)]));
+  for (const [team, plan] of plans) updateAICalls(state, team, plan);
   state.teamPlans = Object.fromEntries([...plans].map(([team, plan]) => [team, {
     phase: plan.phase,
     ownerId: plan.ownerId ?? null,
