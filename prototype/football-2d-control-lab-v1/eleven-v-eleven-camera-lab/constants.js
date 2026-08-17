@@ -23,26 +23,21 @@ export const LAB_RULES = Object.freeze({
   controlledSpeed: 222,
   ballOffset: 28,
   movementDeadzone: 0.06,
-  // The player may move immediately, but his body cannot snap instantly to
-  // the new direction. 140°/s gives roughly 0.65 s for 90° and 1.3 s for 180°.
+  // Body follows locomotion slowly; the head is a distinct, faster system.
   bodyTurnDegreesPerSecond: 140,
+  headTurnDegreesPerSecond: 260,
+  headReturnDegreesPerSecond: 210,
 });
 
 // Validated mobile camera baseline: 1.40 / 60 / 41.
 // The head may scan across 260°, but only a 180° visual hemisphere is readable
-// at any instant. SCAN turns attention; it is no longer a free camera.
+// at any instant. The camera itself is anchored to the ball.
 export const CAMERA_DEFAULTS = Object.freeze({
   zoom: 1.40,
   angle: 60,
   scan: 41,
   headScanDegrees: 260,
   visionDegrees: 180,
-  followAhead: 64,
-  followDeadX: 76,
-  followDeadY: 58,
-  followResponse: 4.8,
-  scanResponse: 2.25,
-  scanReturnResponse: 3.15,
   scanDeadzone: 0.12,
   blindPitchAlpha: 0.12,
 });
