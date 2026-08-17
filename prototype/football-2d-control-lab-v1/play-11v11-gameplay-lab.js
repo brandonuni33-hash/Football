@@ -2,7 +2,7 @@ import {
   VIEWPORT, PITCH, TEAM, BALL_PHASE, RULES,
   createGameplayState, getControlledPlayer, getPlayer,
   actionLabels, controlMode, stepGameplay, cameraGeometry, cameraFromBall,
-} from "./eleven-v-eleven-gameplay-lab/engine.js";
+} from "./eleven-v-eleven-gameplay-lab/formationGameplayV2.js";
 
 const canvas = document.querySelector("#game");
 const ctx = canvas.getContext("2d");
@@ -439,7 +439,7 @@ function render() {
   const homePhase = state.tactical.home?.phase ?? "-";
   const awayPhase = state.tactical.away?.phase ?? "-";
   ctx.fillText(
-    `STP 11v11 · ${state.score.home}-${state.score.away} · ${mode} · DOM ${homePhase} / EXT ${awayPhase} · ${state.lastEvent} · Z ${settings.zoom.toFixed(2)}`,
+    `STP 11v11 · ${state.score.home}-${state.score.away} · 4-3-3 vs 4-4-2 · ${mode} · DOM ${homePhase} / EXT ${awayPhase}`,
     28,
     VIEWPORT.height - 28,
   );
@@ -471,7 +471,7 @@ function syncHud() {
     controlStick.reset();
   }
 
-  hudDetail.textContent = `${modeText(mode)} · Vision nette ${RULES.visionDegrees}° · périphérie progressive`;
+  hudDetail.textContent = `${modeText(mode)} · NOUS 4-3-3 · EUX 4-4-2 · vision périphérique`;
 }
 
 function frame(now) {
