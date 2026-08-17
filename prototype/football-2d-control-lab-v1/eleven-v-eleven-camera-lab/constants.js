@@ -23,15 +23,35 @@ export const LAB_RULES = Object.freeze({
   controlledSpeed: 222,
   ballOffset: 28,
   movementDeadzone: 0.06,
-  // Body follows locomotion with inertia, but faster than the previous 140°/s pass.
+
+  // Body follows locomotion with inertia.
   bodyTurnDegreesPerSecond: 200,
   headTurnDegreesPerSecond: 260,
   headReturnDegreesPerSecond: 210,
+
+  // Camera-lab dribble: the ball remains under control but is no longer welded
+  // to the foot. It accelerates toward a point ahead of the run, keeps some
+  // momentum on direction changes and can visibly move nearer/farther away.
+  ballLeadDistance: 38,
+  ballGuideResponse: 5.0,
+  ballVelocityResponse: 9.0,
+  ballMaxSpeed: 310,
+  ballFreeFriction: 5.5,
+  ballControlRadius: 58,
+  ballRecoveryResponse: 3.0,
+
+  // Moving 11v11 reference shell. These values animate the 21 non-controlled
+  // players around their tactical anchors so camera/vision can be judged in a
+  // living pitch without pretending this is the final 11v11 AI.
+  teamShiftX: 0.18,
+  teamShiftY: 0.12,
+  teamMoveResponse: 2.7,
+  teamMaxSpeed: 112,
 });
 
 // Validated mobile camera baseline: 1.40 / 60 / 41.
-// The head may scan across 180° total (±90° around the torso), while a 120°
-// visual cone is readable at any instant. The camera itself is anchored to the ball.
+// Head range is 180° total (±90° around the torso), while a 120° visual cone
+// is readable at any instant. The camera itself is anchored to the ball.
 export const CAMERA_DEFAULTS = Object.freeze({
   zoom: 1.40,
   angle: 60,
