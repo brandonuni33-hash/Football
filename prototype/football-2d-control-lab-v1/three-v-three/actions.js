@@ -70,6 +70,8 @@ export function startPass(state, passerId, targetId = null, intent = {}) {
   state.ball.vy = direction.y * passSpeed;
   state.ball.targetId = target.id;
   state.ball.lastTouchId = passer.id;
+  state.ball.imprecisionFlagged = false;
+  state.ball.passStartedAt = state.elapsed ?? 0;
   passer.aiPassCooldown = 0.8;
   target.receptionRemaining = RULES.receptionWindow;
   state.lastEvent = "pass";
