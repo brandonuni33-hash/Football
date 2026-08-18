@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#07100b">
+<title>STP — Player + Stats Lab · grounded</title>
+<style>
+html,body{margin:0;width:100%;height:100%;background:#07100b;color:#f5f1e8;font-family:Inter,system-ui,sans-serif}body{display:grid;place-items:center}.loading{font-size:12px;letter-spacing:.08em;color:#d6b768}.error{max-width:86vw;line-height:1.5;color:#fff}
+</style>
+</head>
+<body>
+<div class="loading" id="loading">Ajustement de STP_REF_01…</div>
+<script>
+(async()=>{
+  const BASE_SOURCE='https://rawcdn.githack.com/brandonuni33-hash/Football/7a792c349241638cf87ca9f236d47294c2384596/player-feel-lab/stats-public.html';
+  const SPRITE_SOURCE='https://rawcdn.githack.com/brandonuni33-hash/Football/aeaaae28656d8fd96589df07d9cdb556acea7e3b/player-feel-lab/stats-public.html';
+
+  const [baseRes,spriteRes]=await Promise.all([
+    fetch(BASE_SOURCE,{cache:'no-store'}),
+    fetch(SPRITE_SOURCE,{cache:'no-store'})
+  ]);
+  if(!baseRes.ok) throw new Error('Impossible de charger la base du lab');
+  if(!spriteRes.ok) throw new Error('Impossible de charger STP_REF_01');
+
+  let html=await baseRes.text();
+  const spriteWrapper=await spriteRes.text();
+  const spriteMatch=spriteWrapper.match(/const SPRITE='(data:image\/webp;base64,[^']+)'/);
+  if(!spriteMatch) throw new Error('Asset STP_REF_01 introuvable');
+  const SPRITE=spriteMatch[1];
+
+  const spriteNeedle="const SPRITE_SRC='../assets/player-feel/stp_ref_01_run.webp';";
+  const sizeNeedle='const h=clamp(Math.max(46,q.scale*4.8),46,72)';
+  const anchorNeedle='g.translate(q.x,q.y);g.scale(flip,1);';
+  const bobNeedle='p.bob=Math.abs(Math.sin(p.phase*Math.PI*2))*.025*ratio';
+
+  if(!html.includes(spriteNeedle)) throw new Error('Point de branchement STP_REF_01 introuvable');
+  if(!html.includes(sizeNeedle)) throw new Error('Réglage de taille introuvable');
+  if(!html.includes(anchorNeedle)) throw new Error('Ancrage joueur introuvable');
+
+  html=html.replace(spriteNeedle,`const SPRITE_SRC='${SPRITE}';`);
+  html=html.replace(sizeNeedle,'const h=clamp(Math.max(38,q.scale*4.0),38,58)');
+  html=html.replace(anchorNeedle,'g.translate(q.x,q.y+5);g.scale(flip,1);');
+  if(html.includes(bobNeedle)) html=html.replace(bobNeedle,'p.bob=Math.abs(Math.sin(p.phase*Math.PI*2))*.008*ratio');
+
+  document.open();
+  document.write(html);
+  document.close();
+})().catch(err=>{
+  document.body.innerHTML=`<div class="error"><strong>STP_REF_01 — erreur de chargement</strong><br>${err.message}</div>`;
+});
+</script>
+</body>
+</html>
