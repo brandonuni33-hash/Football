@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+<title>STP Pitch Lab — Clean Plane + UV + PBR</title>
+<style>
+:root{--bg:#111416;--panel:#1a1f22;--panel2:#20262a;--line:#30383e;--text:#eef1ef;--muted:#9da6a1;--gold:#e2c36e;--ok:#7ad18b}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font:12px Inter,system-ui,-apple-system,Segoe UI,sans-serif}.app{height:100%;display:grid;grid-template-rows:44px 1fr 26px}.top{display:flex;align-items:center;gap:8px;padding:0 10px;background:#181c1f;border-bottom:1px solid var(--line)}.brand{font-weight:850;letter-spacing:.07em}.badge{padding:4px 7px;border:1px solid #554a28;background:#2b2719;color:#f2d98f;border-radius:5px}.spacer{flex:1}.ok{color:var(--ok)}.workspace{display:grid;grid-template-columns:220px minmax(0,1fr) 300px;min-height:0}.panel{background:var(--panel);overflow:auto}.left{border-right:1px solid var(--line)}.right{border-left:1px solid var(--line)}.head{height:34px;display:flex;align-items:center;padding:0 10px;background:#20262a;border-bottom:1px solid var(--line);font-weight:800}.tree{padding:6px 0}.node{display:flex;align-items:center;gap:6px;padding:7px 10px;color:#cfd5d1}.node.sel{background:#314039;color:white}.dot{width:7px;height:7px;border-radius:50%;background:#8fb69a}.viewport{position:relative;min-width:0;min-height:0;background:#0c1110}.viewport canvas.main{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}.tabs{position:absolute;top:8px;left:8px;z-index:5;display:flex;gap:5px;flex-wrap:wrap}.tabs button{border:1px solid #444c50;background:rgba(25,30,32,.9);color:#dfe4e1;border-radius:5px;padding:6px 8px}.tabs button.active{border-color:#aa8f44;color:#ffe39a;background:#39301c}.hint{position:absolute;left:8px;bottom:8px;z-index:5;background:rgba(17,21,19,.78);border:1px solid rgba(255,255,255,.1);padding:6px 8px;border-radius:5px;color:#c0c8c3}.preview{position:absolute;inset:0;display:none;align-items:center;justify-content:center;padding:24px;background:#0e1213}.preview.show{display:flex}.preview canvas{max-width:92%;max-height:92%;border:1px solid #4a5256;background:#111;box-shadow:0 12px 40px rgba(0,0,0,.35)}.section{border-bottom:1px solid var(--line)}.section h3{margin:0;padding:8px 10px;background:#20262a;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#d0d6d2}.body{padding:9px 10px}.kv{display:grid;grid-template-columns:110px 1fr;gap:7px;margin:6px 0}.kv span:first-child{color:var(--muted)}.mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}.toggle{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0}.toggle input{width:18px;height:18px}.slider{display:grid;grid-template-columns:110px 1fr 45px;gap:7px;align-items:center;margin:8px 0}.slider label{color:var(--muted)}input[type=range]{width:100%}.status{display:flex;align-items:center;gap:14px;padding:0 9px;background:#181c1f;border-top:1px solid var(--line);color:var(--muted);white-space:nowrap;overflow:hidden}
+@media(max-width:850px){.workspace{grid-template-columns:170px minmax(0,1fr) 230px}.kv{grid-template-columns:80px 1fr}.slider{grid-template-columns:80px 1fr 38px}}
+@media(max-width:650px){.workspace{grid-template-columns:120px minmax(0,1fr) 170px}.node{padding:7px 6px}.kv{grid-template-columns:58px 1fr}.slider{grid-template-columns:58px 1fr}.slider output{display:none}.badge{display:none}.hint{display:none}}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.185.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.185.0/examples/jsm/"}}</script>
+</head>
+<body>
+<div class="app">
+  <div class="top"><div class="brand">STP PITCH LAB</div><div class="badge">RESTART CLEAN — 1 Plane · UV · Albedo · Normal · Roughness</div><div class="spacer"></div><div class="ok">● MATERIAL READY</div></div>
+  <div class="workspace">
+    <aside class="panel left">
+      <div class="head">Scene</div>
+      <div class="tree">
+        <div class="node sel"><span class="dot"></span><b>PitchPlane</b></div>
+        <div class="node"><span class="dot"></span>Sun</div>
+        <div class="node"><span class="dot"></span>Camera</div>
+      </div>
+      <div class="section"><h3>Pipeline</h3><div class="body">
+        <div class="kv"><span>1</span><b>Plane</b></div>
+        <div class="kv"><span>2</span><b>UV 0→1</b></div>
+        <div class="kv"><span>3</span><b>Albedo</b></div>
+        <div class="kv"><span>4</span><b>Normal</b></div>
+        <div class="kv"><span>5</span><b>Roughness</b></div>
+      </div></div>
+    </aside>
+
+    <main class="viewport">
+      <canvas id="view" class="main"></canvas>
+      <div class="tabs">
+        <button data-tab="3d" class="active">Vue 3D</button>
+        <button data-tab="uv">UV</button>
+        <button data-tab="albedo">Albedo</button>
+        <button data-tab="normal">Normal</button>
+        <button data-tab="roughness">Roughness</button>
+      </div>
+      <div id="preview" class="preview"><canvas id="previewCanvas"></canvas></div>
+      <div class="hint">Glisse pour tourner · molette/pincement pour zoomer · utilise les onglets pour inspecter chaque couche.</div>
+    </main>
+
+    <aside class="panel right">
+      <div class="head">Inspector — PitchPlane</div>
+      <section class="section"><h3>Geometry</h3><div class="body">
+        <div class="kv"><span>Type</span><span>Plane</span></div>
+        <div class="kv"><span>Longueur</span><span class="mono">105.00 m</span></div>
+        <div class="kv"><span>Largeur</span><span class="mono">68.00 m</span></div>
+        <div class="kv"><span>Triangles</span><span class="mono">2</span></div>
+        <div class="kv"><span>Surface</span><span class="mono">7140 m²</span></div>
+      </div></section>
+      <section class="section"><h3>UV Unwrap</h3><div class="body">
+        <div class="kv"><span>UV0</span><span class="mono">0, 0</span></div>
+        <div class="kv"><span>UV1</span><span class="mono">1, 0</span></div>
+        <div class="kv"><span>UV2</span><span class="mono">0, 1</span></div>
+        <div class="kv"><span>UV3</span><span class="mono">1, 1</span></div>
+        <div class="kv"><span>Mode</span><span>1 texture = 1 terrain</span></div>
+      </div></section>
+      <section class="section"><h3>Material — Pitch_PBR</h3><div class="body">
+        <div class="toggle"><span>Base Color / Albedo</span><input id="albedoOn" type="checkbox" checked></div>
+        <div class="toggle"><span>Normal Map</span><input id="normalOn" type="checkbox" checked></div>
+        <div class="toggle"><span>Roughness Map</span><input id="roughOn" type="checkbox" checked></div>
+        <div class="slider"><label>Normal strength</label><input id="normalStrength" type="range" min="0" max="1.5" step="0.05" value="0.55"><output id="normalOut">0.55</output></div>
+        <div class="slider"><label>Roughness</label><input id="roughness" type="range" min="0.35" max="1" step="0.01" value="0.86"><output id="roughOut">0.86</output></div>
+      </div></section>
+      <section class="section"><h3>Transform</h3><div class="body">
+        <div class="kv"><span>Position</span><span class="mono">0, 0, 0</span></div>
+        <div class="kv"><span>Rotation</span><span class="mono">0, 0, 0</span></div>
+        <div class="kv"><span>Scale</span><span class="mono">1, 1, 1</span></div>
+      </div></section>
+    </aside>
+  </div>
+  <div class="status"><span class="ok">PitchPlane OK</span><span>UV OK</span><span>Albedo ON</span><span>Normal ON</span><span>Roughness ON</span><span>Aucun brin 3D</span></div>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const fieldW=68,fieldL=105;
+const canvas=document.getElementById('view');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x111715);scene.fog=new THREE.Fog(0x111715,95,190);
+const camera=new THREE.PerspectiveCamera(42,1,.1,300);camera.position.set(52,47,72);
+const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,0,0);controls.enableDamping=true;controls.dampingFactor=.08;controls.minDistance=18;controls.maxDistance=150;controls.maxPolarAngle=Math.PI*.49;controls.update();
+scene.add(new THREE.HemisphereLight(0xcfe1d4,0x202820,1.65));
+const sun=new THREE.DirectionalLight(0xfff2d0,3.6);sun.position.set(-34,55,28);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-70;sun.shadow.camera.right=70;sun.shadow.camera.top=65;sun.shadow.camera.bottom=-65;scene.add(sun);
+
+const TEX_W=1024,TEX_H=Math.round(TEX_W*fieldL/fieldW);
+function metricToPx(x,z){return[(x+fieldW/2)/fieldW*TEX_W,(z+fieldL/2)/fieldL*TEX_H]}
+function lineWidthPx(m=.12){return Math.max(2,m/fieldW*TEX_W)}
+function makeAlbedo(){
+  const c=document.createElement('canvas');c.width=TEX_W;c.height=TEX_H;const ctx=c.getContext('2d');
+  const img=ctx.createImageData(TEX_W,TEX_H),d=img.data;
+  for(let y=0;y<TEX_H;y++){
+    const z=y/TEX_H*fieldL-fieldL/2;const band=Math.floor((z+fieldL/2)/(fieldL/12))%2;const baseG=band?96:87;
+    for(let x=0;x<TEX_W;x++){
+      const i=(y*TEX_W+x)*4;const n=(Math.random()-.5)*16;const fine=Math.sin(x*.22+y*.07)*1.8+Math.sin(x*.05-y*.17)*1.2;
+      d[i]=Math.max(28,Math.min(72,39+n*.22+fine*.45));
+      d[i+1]=Math.max(72,Math.min(130,baseG+n+fine));
+      d[i+2]=Math.max(28,Math.min(72,43+n*.26));d[i+3]=255;
+    }
+  }
+  ctx.putImageData(img,0,0);
+  ctx.globalAlpha=.14;for(let i=0;i<18000;i++){const x=Math.random()*TEX_W,y=Math.random()*TEX_H,l=1+Math.random()*2;ctx.strokeStyle=Math.random()>.5?'#9dbb72':'#1d4828';ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+(Math.random()-.5)*1.2,y-l);ctx.stroke()}
+  ctx.globalAlpha=1;ctx.strokeStyle='#f3f1e8';ctx.fillStyle='#f3f1e8';ctx.lineWidth=lineWidthPx(.12);ctx.lineJoin='round';ctx.lineCap='round';
+  const [x0,z0]=metricToPx(-fieldW/2,-fieldL/2),[x1,z1]=metricToPx(fieldW/2,fieldL/2);ctx.strokeRect(x0+ctx.lineWidth/2,z0+ctx.lineWidth/2,(x1-x0)-ctx.lineWidth,(z1-z0)-ctx.lineWidth);
+  const [mx0,mz]=metricToPx(-fieldW/2,0),[mx1]=metricToPx(fieldW/2,0);ctx.beginPath();ctx.moveTo(mx0,mz);ctx.lineTo(mx1,mz);ctx.stroke();
+  const [cx,cy]=metricToPx(0,0);ctx.beginPath();ctx.arc(cx,cy,9.15/fieldW*TEX_W,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(cx,cy,Math.max(2,.16/fieldW*TEX_W),0,Math.PI*2);ctx.fill();
+  function box(sign,depth,width){const goalZ=sign*fieldL/2,innerZ=goalZ-sign*depth;const [a,b]=metricToPx(-width/2,goalZ),[c2,d2]=metricToPx(width/2,innerZ);ctx.strokeRect(Math.min(a,c2),Math.min(b,d2),Math.abs(c2-a),Math.abs(d2-b))}
+  box(1,16.5,40.32);box(-1,16.5,40.32);box(1,5.5,18.32);box(-1,5.5,18.32);
+  for(const sign of [-1,1]){const spotZ=sign*(fieldL/2-11);const [sx,sy]=metricToPx(0,spotZ);ctx.beginPath();ctx.arc(sx,sy,Math.max(2,.16/fieldW*TEX_W),0,Math.PI*2);ctx.fill()}
+  // Penalty arcs (only the part outside each penalty area).
+  ctx.save();
+  for(const sign of [-1,1]){const spotZ=sign*(fieldL/2-11),boxEdge=sign*(fieldL/2-16.5);const [sx,sy]=metricToPx(0,spotZ);const r=9.15/fieldW*TEX_W;ctx.save();if(sign>0){const [,clipY]=metricToPx(0,boxEdge);ctx.beginPath();ctx.rect(0,0,TEX_W,clipY);ctx.clip()}else{const [,clipY]=metricToPx(0,boxEdge);ctx.beginPath();ctx.rect(0,clipY,TEX_W,TEX_H-clipY);ctx.clip()}ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);ctx.stroke();ctx.restore()}
+  ctx.restore();
+  // Corner arcs.
+  const cr=1/fieldW*TEX_W;for(const x of [-fieldW/2,fieldW/2])for(const z of [-fieldL/2,fieldL/2]){const [px,py]=metricToPx(x,z);ctx.beginPath();const start=(x<0?(z<0?0:-Math.PI/2):(z<0?Math.PI/2:Math.PI));ctx.arc(px,py,cr,start,start+Math.PI/2);ctx.stroke()}
+  return c;
+}
+function makeNormal(){
+  const c=document.createElement('canvas');c.width=TEX_W;c.height=TEX_H;const ctx=c.getContext('2d');const img=ctx.createImageData(TEX_W,TEX_H),d=img.data;
+  const h=new Float32Array(TEX_W*TEX_H);
+  for(let y=0;y<TEX_H;y++)for(let x=0;x<TEX_W;x++){const i=y*TEX_W+x;h[i]=Math.random()*.65+.2*Math.sin(x*.37)+.15*Math.sin(y*.49)+.08*Math.sin((x+y)*.18)}
+  for(let y=0;y<TEX_H;y++)for(let x=0;x<TEX_W;x++){const i=y*TEX_W+x,ii=i*4;const xl=Math.max(0,x-1),xr=Math.min(TEX_W-1,x+1),yu=Math.max(0,y-1),yd=Math.min(TEX_H-1,y+1);const dx=h[y*TEX_W+xr]-h[y*TEX_W+xl],dy=h[yd*TEX_W+x]-h[yu*TEX_W+x];let nx=-dx*.42,ny=-dy*.42,nz=1;const len=Math.hypot(nx,ny,nz);nx/=len;ny/=len;nz/=len;d[ii]=(nx*.5+.5)*255;d[ii+1]=(ny*.5+.5)*255;d[ii+2]=(nz*.5+.5)*255;d[ii+3]=255}
+  ctx.putImageData(img,0,0);return c;
+}
+function makeRoughness(){
+  const c=document.createElement('canvas');c.width=TEX_W;c.height=TEX_H;const ctx=c.getContext('2d');const img=ctx.createImageData(TEX_W,TEX_H),d=img.data;
+  for(let y=0;y<TEX_H;y++){const band=Math.floor(y/(TEX_H/12))%2;for(let x=0;x<TEX_W;x++){const i=(y*TEX_W+x)*4;const v=Math.max(120,Math.min(245,(band?208:220)+(Math.random()-.5)*28+Math.sin(x*.03+y*.05)*4));d[i]=d[i+1]=d[i+2]=v;d[i+3]=255}}
+  ctx.putImageData(img,0,0);return c;
+}
+const albedoCanvas=makeAlbedo(),normalCanvas=makeNormal(),roughCanvas=makeRoughness();
+function texFrom(c,color=false){const t=new THREE.CanvasTexture(c);if(color)t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.ClampToEdgeWrapping;t.anisotropy=renderer.capabilities.getMaxAnisotropy();t.needsUpdate=true;return t}
+const albedoTex=texFrom(albedoCanvas,true),normalTex=texFrom(normalCanvas,false),roughTex=texFrom(roughCanvas,false);
+const material=new THREE.MeshStandardMaterial({map:albedoTex,normalMap:normalTex,roughnessMap:roughTex,normalScale:new THREE.Vector2(.55,.55),roughness:.86,metalness:0});
+const geometry=new THREE.PlaneGeometry(fieldW,fieldL,1,1);geometry.rotateX(-Math.PI/2);const pitch=new THREE.Mesh(geometry,material);pitch.receiveShadow=true;scene.add(pitch);
+const surroundGeo=new THREE.PlaneGeometry(fieldW+12,fieldL+12);surroundGeo.rotateX(-Math.PI/2);const surround=new THREE.Mesh(surroundGeo,new THREE.MeshStandardMaterial({color:0x151b16,roughness:1}));surround.position.y=-.015;scene.add(surround);
+
+const preview=document.getElementById('preview'),previewCanvas=document.getElementById('previewCanvas'),pctx=previewCanvas.getContext('2d');
+function showMap(kind){
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===kind));
+  if(kind==='3d'){preview.classList.remove('show');return}
+  preview.classList.add('show');
+  if(kind==='uv'){previewCanvas.width=680;previewCanvas.height=1050;pctx.fillStyle='#161a1c';pctx.fillRect(0,0,680,1050);pctx.strokeStyle='#e5c870';pctx.lineWidth=5;pctx.strokeRect(35,35,610,980);pctx.fillStyle='#e9ece9';pctx.font='28px ui-monospace, monospace';pctx.fillText('UV (0,0)',42,1020);pctx.fillText('UV (1,0)',505,1020);pctx.fillText('UV (0,1)',42,70);pctx.fillText('UV (1,1)',505,70);pctx.strokeStyle='#7c8581';pctx.lineWidth=2;pctx.beginPath();pctx.moveTo(35,35);pctx.lineTo(645,1015);pctx.moveTo(645,35);pctx.lineTo(35,1015);pctx.stroke();return}
+  const src=kind==='albedo'?albedoCanvas:kind==='normal'?normalCanvas:roughCanvas;previewCanvas.width=src.width;previewCanvas.height=src.height;pctx.clearRect(0,0,src.width,src.height);pctx.drawImage(src,0,0)
+}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>showMap(b.dataset.tab));
+const albedoOn=document.getElementById('albedoOn'),normalOn=document.getElementById('normalOn'),roughOn=document.getElementById('roughOn'),normalStrength=document.getElementById('normalStrength'),roughness=document.getElementById('roughness');
+function updateMaterial(){material.map=albedoOn.checked?albedoTex:null;material.color.set(albedoOn.checked?0xffffff:0x3f7d46);material.normalMap=normalOn.checked?normalTex:null;material.roughnessMap=roughOn.checked?roughTex:null;material.normalScale.set(parseFloat(normalStrength.value),parseFloat(normalStrength.value));material.roughness=parseFloat(roughness.value);material.needsUpdate=true;document.getElementById('normalOut').textContent=parseFloat(normalStrength.value).toFixed(2);document.getElementById('roughOut').textContent=parseFloat(roughness.value).toFixed(2)}
+[albedoOn,normalOn,roughOn,normalStrength,roughness].forEach(el=>el.addEventListener('input',updateMaterial));
+function resize(){const w=canvas.clientWidth,h=canvas.clientHeight,dpr=Math.min(devicePixelRatio||1,2);renderer.setPixelRatio(dpr);renderer.setSize(w,h,false);camera.aspect=Math.max(.1,w/h);camera.updateProjectionMatrix()}
+const ro=new ResizeObserver(resize);ro.observe(canvas);resize();
+function loop(){controls.update();renderer.render(scene,camera);requestAnimationFrame(loop)}loop();
+</script>
+</body>
+</html>
