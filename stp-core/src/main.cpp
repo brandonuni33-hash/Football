@@ -9,6 +9,7 @@
 #include <sstream>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace stp {
@@ -169,6 +170,7 @@ public:
             std::cerr << "GLFW initialization failed.\n";
             return false;
         }
+        glfwInitialized_ = true;
 
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -180,7 +182,7 @@ public:
         window_ = glfwCreateWindow(width, height, title, nullptr, nullptr);
         if (!window_) {
             std::cerr << "Window creation failed.\n";
-            glfwTerminate();
+            shutdown();
             return false;
         }
 
@@ -219,7 +221,7 @@ public:
 
 private:
     GLFWwindow* window_{nullptr};
-    bool glfwInitialized_{true};
+    bool glfwInitialized_{false};
 };
 
 } // namespace stp
