@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+<title>STP — 3D Pitch Test 02</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0b0f0d;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#f4f1e8}#app{position:fixed;inset:0}canvas{display:block;width:100%;height:100%;touch-action:none}.hud{position:fixed;left:14px;top:14px;z-index:10;background:rgba(8,12,10,.76);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.10);border-radius:14px;padding:12px 14px;max-width:min(360px,calc(100vw - 28px))}.title{font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px}.sub{font-size:12px;line-height:1.35;color:#c8cdc8}.badge{display:inline-block;margin-top:8px;padding:4px 8px;border-radius:999px;font-size:11px;background:rgba(255,255,255,.08);color:#f1d58a}.controls{position:fixed;right:14px;bottom:14px;z-index:10;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;max-width:calc(100vw - 28px)}button{appearance:none;border:1px solid rgba(255,255,255,.14);background:rgba(8,12,10,.78);color:#f4f1e8;border-radius:12px;padding:10px 12px;font-weight:700;font-size:12px}.status{position:fixed;left:14px;bottom:14px;z-index:10;font-size:11px;color:#bcc5bd;background:rgba(8,12,10,.62);padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.08)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="hud"><div class="title">STP — 3D TEST 02</div><div class="sub">Terrain 105 × 68 m. Marquage corrigé : ligne médiane dans la largeur et rond central exactement au milieu.</div><span class="badge">sol + marquage terrain</span></div>
+<div class="controls"><button id="matchView">Vue match</button><button id="topView">Vue contrôle</button><button id="rollBall">Tester friction</button></div>
+<div class="status" id="status">Glisse avec le doigt pour tourner la caméra.</div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.185.0/build/three.module.js';
+const app=document.getElementById('app');
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x111814);scene.fog=new THREE.Fog(0x111814,90,190);
+const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,.1,350);
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace;app.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xdce8df,0x202821,2.1));const sun=new THREE.DirectionalLight(0xfff4d6,3);sun.position.set(-26,48,22);sun.castShadow=true;scene.add(sun);
+function grassTexture(size=1024){const c=document.createElement('canvas');c.width=c.height=size;const ctx=c.getContext('2d'),img=ctx.createImageData(size,size),d=img.data;for(let y=0;y<size;y++){const stripe=(Math.floor(y/(size/12))%2)?1:0;for(let x=0;x<size;x++){const i=(y*size+x)*4,g=(Math.random()-.5)*20,f=(Math.sin(x*.16+y*.07)+Math.sin(x*.037-y*.11))*2.5,b=stripe?44:39;d[i]=Math.max(18,Math.min(76,b+g*.35+f));d[i+1]=Math.max(72,Math.min(137,108+g+f));d[i+2]=Math.max(24,Math.min(75,45+g*.4));d[i+3]=255}}ctx.putImageData(img,0,0);ctx.globalAlpha=.20;for(let i=0;i<18000;i++){const x=Math.random()*size,y=Math.random()*size,l=.5+Math.random()*2.2;ctx.strokeStyle=Math.random()>.45?'#99ba62':'#183b20';ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+(Math.random()-.5)*1.2,y-l);ctx.stroke()}const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;tex.wrapS=tex.wrapT=THREE.RepeatWrapping;tex.repeat.set(3.4,5.25);tex.anisotropy=renderer.capabilities.getMaxAnisotropy();return tex}
+const fieldW=68,fieldL=105;
+const surroundGeo=new THREE.PlaneGeometry(fieldW+8,fieldL+8);surroundGeo.rotateX(-Math.PI/2);const surround=new THREE.Mesh(surroundGeo,new THREE.MeshStandardMaterial({color:0x121914,roughness:1}));surround.position.y=-.018;scene.add(surround);
+const fieldGeo=new THREE.PlaneGeometry(fieldW,fieldL);fieldGeo.rotateX(-Math.PI/2);const field=new THREE.Mesh(fieldGeo,new THREE.MeshStandardMaterial({map:grassTexture(),roughness:.96,metalness:0}));field.receiveShadow=true;scene.add(field);
+const lineMat=new THREE.MeshBasicMaterial({color:0xf4f1e8,transparent:true,opacity:.97,side:THREE.DoubleSide});
+function lineRect(w,h,x,z){const g=new THREE.PlaneGeometry(w,h);g.rotateX(-Math.PI/2);const m=new THREE.Mesh(g,lineMat);m.position.set(x,.006,z);scene.add(m);return m}
+const t=.13;
+// Touchlines + goal lines
+lineRect(fieldW,t,0,-fieldL/2);lineRect(fieldW,t,0,fieldL/2);lineRect(t,fieldL,-fieldW/2,0);lineRect(t,fieldL,fieldW/2,0);
+// Correct halfway line: ACROSS the width, exactly at z = 0.
+lineRect(fieldW,t,0,0);
+function ring(radius,thickness=.13,segments=128){const shape=new THREE.Shape();shape.absarc(0,0,radius,0,Math.PI*2,false);const hole=new THREE.Path();hole.absarc(0,0,radius-thickness,0,Math.PI*2,true);shape.holes.push(hole);const g=new THREE.ShapeGeometry(shape,segments);g.rotateX(-Math.PI/2);const m=new THREE.Mesh(g,lineMat);m.position.set(0,.007,0);scene.add(m);return m}
+ring(9.15,.13);const centerDot=new THREE.Mesh(new THREE.CircleGeometry(.16,24),lineMat);centerDot.rotation.x=-Math.PI/2;centerDot.position.set(0,.008,0);scene.add(centerDot);
+function penaltyBox(zSign){const zGoal=zSign*fieldL/2,zInner=zGoal-zSign*16.5;lineRect(40.32,t,0,zInner);lineRect(t,16.5,-20.16,(zGoal+zInner)/2);lineRect(t,16.5,20.16,(zGoal+zInner)/2);const six=5.5,sixW=18.32,zSix=zGoal-zSign*six;lineRect(sixW,t,0,zSix);lineRect(t,six,-sixW/2,(zGoal+zSix)/2);lineRect(t,six,sixW/2,(zGoal+zSix)/2);const spotZ=zGoal-zSign*11;const spot=new THREE.Mesh(new THREE.CircleGeometry(.14,20),lineMat);spot.rotation.x=-Math.PI/2;spot.position.set(0,.008,spotZ);scene.add(spot)}
+penaltyBox(1);penaltyBox(-1);
+const goalMat=new THREE.MeshStandardMaterial({color:0xf4f1e8,roughness:.78});function goal(zSign){const group=new THREE.Group(),postGeo=new THREE.CylinderGeometry(.055,.055,2.44,10),crossGeo=new THREE.CylinderGeometry(.055,.055,7.32,10),left=new THREE.Mesh(postGeo,goalMat),right=left.clone(),cross=new THREE.Mesh(crossGeo,goalMat);left.position.set(-3.66,1.22,0);right.position.set(3.66,1.22,0);cross.rotation.z=Math.PI/2;cross.position.y=2.44;group.add(left,right,cross);group.position.z=zSign*(fieldL/2+.04);scene.add(group)}goal(1);goal(-1);
+const ball=new THREE.Mesh(new THREE.SphereGeometry(.11,32,20),new THREE.MeshStandardMaterial({color:0xf2efe7,roughness:.72}));ball.castShadow=true;ball.position.set(0,.115,0);scene.add(ball);let ballVel=new THREE.Vector3();const FRICTION=2.55;
+const target=new THREE.Vector3();let yaw=0,pitch=.72,distance=74;function updateCamera(){const cp=Math.cos(pitch),sp=Math.sin(pitch);camera.position.set(target.x+Math.sin(yaw)*distance*cp,target.y+distance*sp,target.z+Math.cos(yaw)*distance*cp);camera.lookAt(target)}updateCamera();
+function setView(mode){if(mode==='match'){yaw=0;pitch=.62;distance=76;target.set(0,0,0)}else{yaw=0;pitch=1.2;distance=90;target.set(0,0,0)}updateCamera()}
+document.getElementById('matchView').onclick=()=>setView('match');document.getElementById('topView').onclick=()=>setView('top');document.getElementById('rollBall').onclick=()=>{ball.position.set(-10,.115,-12);ballVel.set(10.5,0,6.5);document.getElementById('status').textContent='Test friction : le ballon doit ralentir naturellement.'};
+let dragging=false,lastX=0,lastY=0;renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;renderer.domElement.setPointerCapture(e.pointerId)});renderer.domElement.addEventListener('pointermove',e=>{if(!dragging)return;const dx=e.clientX-lastX,dy=e.clientY-lastY;lastX=e.clientX;lastY=e.clientY;yaw-=dx*.005;pitch=THREE.MathUtils.clamp(pitch+dy*.004,.12,1.25);updateCamera()});renderer.domElement.addEventListener('pointerup',()=>dragging=false);renderer.domElement.addEventListener('wheel',e=>{distance=THREE.MathUtils.clamp(distance+e.deltaY*.03,28,130);updateCamera()},{passive:true});
+const clock=new THREE.Clock();function animate(){const dt=Math.min(clock.getDelta(),.033);if(ballVel.lengthSq()>.0001){ball.position.addScaledVector(ballVel,dt);const speed=ballVel.length(),next=Math.max(0,speed-FRICTION*dt);if(speed>0)ballVel.multiplyScalar(next/speed);const maxX=fieldW/2-.12,maxZ=fieldL/2-.12;if(Math.abs(ball.position.x)>maxX){ball.position.x=THREE.MathUtils.clamp(ball.position.x,-maxX,maxX);ballVel.x*=-.45}if(Math.abs(ball.position.z)>maxZ){ball.position.z=THREE.MathUtils.clamp(ball.position.z,-maxZ,maxZ);ballVel.z*=-.45}}renderer.render(scene,camera);requestAnimationFrame(animate)}animate();
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+</script>
+</body>
+</html>
