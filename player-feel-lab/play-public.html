@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#07100b">
+<title>STP — Player Feel Public Lab</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07100b;color:#f5f1e8;font-family:Inter,system-ui,sans-serif;touch-action:none}body{position:fixed;inset:0}canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#hud{position:absolute;left:max(12px,env(safe-area-inset-left));top:max(12px,env(safe-area-inset-top));z-index:3;padding:10px 12px;border:1px solid rgba(255,255,255,.13);border-radius:12px;background:rgba(6,10,8,.72);backdrop-filter:blur(8px);pointer-events:none}.k{font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:#d8bd72;font-weight:850}.v{font-size:15px;font-weight:850;margin-top:2px}.s{font-size:10px;color:#b8beb8;margin-top:3px;line-height:1.35}
+#telemetry{position:absolute;right:max(12px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top));z-index:3;padding:9px 11px;border:1px solid rgba(255,255,255,.12);border-radius:11px;background:rgba(6,10,8,.68);font-size:10px;color:#c2c9c3;pointer-events:none}#telemetry b{color:#fff}
+#joy{position:absolute;left:max(22px,calc(env(safe-area-inset-left) + 14px));bottom:max(22px,calc(env(safe-area-inset-bottom) + 14px));width:118px;height:118px;border-radius:50%;background:rgba(8,11,16,.34);border:1px solid rgba(255,255,255,.17);backdrop-filter:blur(5px);z-index:5}#knob{position:absolute;left:35px;top:35px;width:48px;height:48px;border-radius:50%;background:rgba(245,245,240,.82);box-shadow:0 4px 16px rgba(0,0,0,.25)}
+#sprint{position:absolute;right:max(22px,calc(env(safe-area-inset-right) + 14px));bottom:max(24px,calc(env(safe-area-inset-bottom) + 16px));z-index:5;width:82px;height:82px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(150,117,47,.82);color:#fff;font-size:11px;font-weight:900;letter-spacing:.06em}#sprint.active{transform:scale(.96);background:#d6b768;color:#111}
+#slow{position:absolute;right:max(25px,calc(env(safe-area-inset-right) + 17px));bottom:max(116px,calc(env(safe-area-inset-bottom) + 108px));z-index:5;border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:9px 10px;background:rgba(7,11,8,.82);color:#fff;font-size:9px;font-weight:850}#slow.active{border-color:#d6b768;color:#d6b768}
+#note{position:absolute;left:50%;bottom:max(12px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:2;font-size:9px;color:rgba(255,255,255,.56);white-space:nowrap;pointer-events:none}
+@media(max-height:650px){#joy{width:96px;height:96px}#knob{left:29px;top:29px;width:38px;height:38px}#sprint{width:68px;height:68px}#slow{bottom:94px}}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud"><div class="k">STP · Player Feel Lab</div><div class="v">Test jouable public</div><div class="s">Caméra intermédiaire · cible 16° / 1,07× · foulée liée à la distance</div></div>
+<div id="telemetry"><b id="speed">0,0 m/s</b> · <span id="plant">appui G</span><br><span id="phase">phase 0,00</span></div>
+<div id="joy"><div id="knob"></div></div>
+<button id="slow">RALENTI ×0,35</button><button id="sprint">SPRINT</button>
+<div id="note">Prototype mouvement — pas le rendu final STP</div>
+<script>
+(()=>{
+const c=document.getElementById('game'),g=c.getContext('2d');
+const joy=document.getElementById('joy'),knob=document.getElementById('knob'),sprint=document.getElementById('sprint'),slowBtn=document.getElementById('slow');
+const speedEl=document.getElementById('speed'),plantEl=document.getElementById('plant'),phaseEl=document.getElementById('phase');
+let dpr=1,W=1,H=1,last=performance.now(),slow=false,joyPointer=null;
+let input={x:0,z:0,sprint:false};
+const cfg={jog:4.8,sprint:7.2,accel:11.5,decel:14,turnSlow:Math.PI*3.2,turnFast:Math.PI*2.1,strideMin:.9,strideMax:1.45,stop:.04};
+const p={x:-6,z:0,vx:0,vz:0,facing:0,phase:0,plant:'left',bob:0};
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}function moveTowards(a,b,d){const q=b-a;return Math.abs(q)<=d?b:a+Math.sign(q)*d}function wrap(a){while(a>Math.PI)a-=Math.PI*2;while(a<-Math.PI)a+=Math.PI*2;return a}function angleTowards(a,b,d){const q=wrap(b-a);return Math.abs(q)<=d?b:wrap(a+Math.sign(q)*d)}
+function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;c.width=Math.floor(W*dpr);c.height=Math.floor(H*dpr);g.setTransform(dpr,0,0,dpr,0,0)}resize();addEventListener('resize',resize,{passive:true});
+function normInput(){const l=Math.hypot(input.x,input.z);if(l<1e-5)return{x:0,z:0,a:0};return{x:input.x/l,z:input.z/l,a:Math.min(1,l)}}
+function step(dt){const s=normInput(),cur=Math.hypot(p.vx,p.vz),cap=input.sprint?cfg.sprint:cfg.jog,want=cap*s.a,dvx=s.x*want,dvz=s.z*want,rate=want>cur?cfg.accel:cfg.decel;p.vx=moveTowards(p.vx,dvx,rate*dt);p.vz=moveTowards(p.vz,dvz,rate*dt);if(!s.a&&Math.hypot(p.vx,p.vz)<cfg.stop){p.vx=p.vz=0}const sp=Math.hypot(p.vx,p.vz);if(sp>cfg.stop){const target=Math.atan2(p.vx,p.vz),ratio=clamp(sp/cfg.sprint,0,1),tr=cfg.turnSlow+(cfg.turnFast-cfg.turnSlow)*ratio;p.facing=angleTowards(p.facing,target,tr*dt)}const bx=p.x,bz=p.z;p.x=clamp(p.x+p.vx*dt,-52,52);p.z=clamp(p.z+p.vz*dt,-33.5,33.5);const dist=Math.hypot(p.x-bx,p.z-bz);if(dist>0){const ratio=clamp(sp/cfg.sprint,0,1),stride=cfg.strideMin+(cfg.strideMax-cfg.strideMin)*ratio;p.phase=(p.phase+dist/stride)%1;p.plant=p.phase<.5?'left':'right';p.bob=Math.abs(Math.sin(p.phase*Math.PI*2))*.025*ratio}else p.bob=moveTowards(p.bob,0,.2*dt);return sp}
+function proj(x,z,y=0){const cx=W*.5,baseY=H*.58,scale=Math.min(W/115,H/72)*1.07,depth=.53;const sx=cx+x*scale;const sy=baseY+z*scale*depth-y*scale;return{x:sx,y:sy,scale}}
+function drawPitch(){g.clearRect(0,0,W,H);const grad=g.createLinearGradient(0,0,0,H);grad.addColorStop(0,'#101812');grad.addColorStop(1,'#061008');g.fillStyle=grad;g.fillRect(0,0,W,H);const A=proj(-52.5,-34),B=proj(52.5,-34),C=proj(52.5,34),D=proj(-52.5,34);g.beginPath();g.moveTo(A.x,A.y);g.lineTo(B.x,B.y);g.lineTo(C.x,C.y);g.lineTo(D.x,D.y);g.closePath();g.fillStyle='#173f25';g.fill();g.strokeStyle='rgba(245,245,235,.84)';g.lineWidth=1.4;g.stroke();const m1=proj(0,-34),m2=proj(0,34);g.beginPath();g.moveTo(m1.x,m1.y);g.lineTo(m2.x,m2.y);g.stroke();const cc=proj(0,0),r=Math.abs(proj(9.15,0).x-cc.x);g.beginPath();g.ellipse(cc.x,cc.y,r,r*.53,0,0,Math.PI*2);g.stroke();for(const x of [-52.5,52.5]){const s=x<0?1:-1;const p1=proj(x,-20.16),p2=proj(x+s*16.5,-20.16),p3=proj(x+s*16.5,20.16),p4=proj(x,20.16);g.beginPath();g.moveTo(p1.x,p1.y);g.lineTo(p2.x,p2.y);g.lineTo(p3.x,p3.y);g.lineTo(p4.x,p4.y);g.stroke()}}
+function drawPlayer(sp){const q=proj(p.x,p.z,p.bob),ratio=clamp(sp/cfg.sprint,0,1),wave=Math.sin(p.phase*Math.PI*2),h=Math.max(28,q.scale*1.68),body=h*.43,leg=h*.34,head=h*.12,lean=ratio*3.2*Math.PI/180,ang=p.facing;g.save();g.translate(q.x,q.y);g.rotate(-ang*.18);g.fillStyle='rgba(0,0,0,.28)';g.beginPath();g.ellipse(0,3,h*.11,h*.035,0,0,Math.PI*2);g.fill();const hipY=-leg,shoulderY=hipY-body*.75;const swing=wave*(.22+.28*ratio);function legDraw(side){const planted=(side<0&&p.plant==='left')||(side>0&&p.plant==='right');const phase=side<0?swing:-swing,hipX=side*h*.035;let footX=hipX+Math.sin(phase)*leg*.36,footY=0-Math.max(0,planted?0:Math.abs(wave))*h*.018*ratio;if(planted)footY=0;g.strokeStyle=planted?'#e1bd66':'#101217';g.lineWidth=Math.max(3,h*.035);g.lineCap='round';g.beginPath();g.moveTo(hipX,hipY);g.lineTo(footX,footY);g.stroke()}legDraw(-1);legDraw(1);g.save();g.translate(0,hipY);g.rotate(lean);g.strokeStyle='#15171c';g.lineWidth=Math.max(6,h*.09);g.beginPath();g.moveTo(0,0);g.lineTo(0,-body);g.stroke();g.fillStyle='#121419';g.beginPath();g.arc(0,-body-head*.55,head*.5,0,Math.PI*2);g.fill();g.restore();g.restore()}
+function drawBall(){const b=proj(5,0,.11);g.fillStyle='#ecebe5';g.beginPath();g.arc(b.x,b.y,Math.max(2,b.scale*.11),0,Math.PI*2);g.fill()}
+function render(sp){drawPitch();drawBall();drawPlayer(sp);speedEl.textContent=sp.toFixed(1).replace('.',',')+' m/s';plantEl.textContent='appui '+(p.plant==='left'?'G':'D');phaseEl.textContent='phase '+p.phase.toFixed(2).replace('.',',')}
+function frame(now){let dt=Math.min((now-last)/1000,.05);last=now;if(slow)dt*=.35;const sp=step(dt);render(sp);requestAnimationFrame(frame)}requestAnimationFrame(frame);
+function setJoy(clientX,clientY){const r=joy.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,dx=clientX-cx,dy=clientY-cy,max=r.width*.34,len=Math.hypot(dx,dy)||1,k=Math.min(1,max/len),px=dx*k,py=dy*k;knob.style.transform=`translate(${px}px,${py}px)`;input.x=px/max;input.z=py/max}
+joy.addEventListener('pointerdown',e=>{joyPointer=e.pointerId;joy.setPointerCapture(e.pointerId);setJoy(e.clientX,e.clientY)});joy.addEventListener('pointermove',e=>{if(e.pointerId===joyPointer)setJoy(e.clientX,e.clientY)});function clearJoy(e){if(joyPointer!==null&&(!e||e.pointerId===joyPointer)){joyPointer=null;knob.style.transform='';input.x=input.z=0}}joy.addEventListener('pointerup',clearJoy);joy.addEventListener('pointercancel',clearJoy);
+function sprintOn(e){e.preventDefault();input.sprint=true;sprint.classList.add('active')}function sprintOff(e){e.preventDefault();input.sprint=false;sprint.classList.remove('active')}sprint.addEventListener('pointerdown',sprintOn);sprint.addEventListener('pointerup',sprintOff);sprint.addEventListener('pointercancel',sprintOff);slowBtn.addEventListener('click',()=>{slow=!slow;slowBtn.classList.toggle('active',slow)});
+const keys=new Set();addEventListener('keydown',e=>keys.add(e.code));addEventListener('keyup',e=>keys.delete(e.code));setInterval(()=>{if(joyPointer!==null)return;let x=0,z=0;if(keys.has('ArrowLeft')||keys.has('KeyA'))x--;if(keys.has('ArrowRight')||keys.has('KeyD'))x++;if(keys.has('ArrowUp')||keys.has('KeyW'))z--;if(keys.has('ArrowDown')||keys.has('KeyS'))z++;input.x=x;input.z=z;input.sprint=keys.has('ShiftLeft')||keys.has('ShiftRight')},16);
+})();
+</script>
+</body>
+</html>
