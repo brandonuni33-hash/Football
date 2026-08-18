@@ -26,8 +26,6 @@ add_executable(stp_core
 
 target_link_libraries(stp_core PRIVATE glfw OpenGL::GL)
 
-target_compile_definitions(stp_core PRIVATE GLFW_INCLUDE_NONE)
-
 if(MSVC)
   target_compile_options(stp_core PRIVATE /W4 /permissive-)
 else()
