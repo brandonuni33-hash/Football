@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+<title>STP Core Foundations V1</title>
+<style>
+:root{--bg:#101315;--panel:#181d20;--panel2:#20262a;--line:#30383d;--text:#eef1ee;--muted:#9ba6a0;--ok:#79d38f;--gold:#e8c66d;--green:#0e3d1b}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font:12px Inter,system-ui,-apple-system,Segoe UI,sans-serif}.app{height:100%;display:grid;grid-template-rows:48px 1fr 28px}.top{display:flex;align-items:center;gap:10px;padding:0 12px;border-bottom:1px solid var(--line);background:#171b1e}.brand{font-weight:850;letter-spacing:.08em}.tag{padding:4px 7px;border:1px solid #4b513d;border-radius:5px;color:#f1d991;background:#29271c}.top .spacer{flex:1}.live{color:var(--ok)}.workspace{display:grid;grid-template-columns:245px minmax(0,1fr) 315px;min-height:0}.panel{background:var(--panel);overflow:auto}.left{border-right:1px solid var(--line)}.right{border-left:1px solid var(--line)}.head{height:34px;display:flex;align-items:center;padding:0 10px;border-bottom:1px solid var(--line);background:#1d2326;font-weight:800}.pillar{padding:10px;border-bottom:1px solid #293035}.pillar .row{display:flex;align-items:center;gap:7px}.dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px rgba(121,211,143,.35)}.pillar b{font-size:12px}.pillar p{margin:5px 0 0 15px;color:var(--muted);line-height:1.4}.viewport{position:relative;min-width:0;min-height:0;background:#08100b}.viewport canvas{position:absolute;inset:0;width:100%;height:100%;display:block}.overlay{position:absolute;left:12px;top:12px;background:rgba(10,14,12,.74);border:1px solid rgba(255,255,255,.11);padding:10px 11px;border-radius:7px;backdrop-filter:blur(7px);line-height:1.55}.overlay b{color:#fff}.hint{position:absolute;left:12px;bottom:12px;background:rgba(10,14,12,.72);border:1px solid rgba(255,255,255,.1);padding:7px 9px;border-radius:6px;color:#c8d0cb}.section{border-bottom:1px solid var(--line)}.section h3{margin:0;padding:8px 10px;background:#1d2326;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#cbd2ce}.body{padding:9px 10px}.kv{display:grid;grid-template-columns:115px 1fr;gap:6px;margin:5px 0}.kv span:first-child{color:var(--muted)}.mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}.axes{display:grid;grid-template-columns:18px 1fr;gap:5px;margin:4px 0}.bar{height:6px;background:#101417;border-radius:6px;overflow:hidden;border:1px solid #31383c}.fill{height:100%;width:50%;background:#a9b6ae}.status{display:flex;align-items:center;gap:16px;padding:0 10px;border-top:1px solid var(--line);background:#171b1e;color:var(--muted);white-space:nowrap;overflow:hidden}.ok{color:var(--ok)}
+@media(max-width:850px){.workspace{grid-template-columns:190px minmax(0,1fr) 240px}.kv{grid-template-columns:90px 1fr}}
+@media(max-width:650px){.workspace{grid-template-columns:145px minmax(0,1fr) 190px}.pillar p{display:none}.top .tag{display:none}.kv{grid-template-columns:72px 1fr}.overlay{font-size:10px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top"><div class="brand">STP CORE FOUNDATIONS V1</div><div class="tag">Native cible : C++20 · CMake · GLFW · OpenGL</div><div class="spacer"></div><div class="live">● RUNNING</div></div>
+  <div class="workspace">
+    <aside class="panel left">
+      <div class="head">5 piliers</div>
+      <div class="pillar"><div class="row"><span class="dot"></span><b>1. Window Manager</b></div><p>Fenêtre/contexte graphique, résolution et V-Sync.</p></div>
+      <div class="pillar"><div class="row"><span class="dot"></span><b>2. Game Loop + Timer</b></div><p>Rendu variable + logique/physique fixe à 60 Hz.</p></div>
+      <div class="pillar"><div class="row"><span class="dot"></span><b>3. Input Manager</b></div><p>Clavier, durée d'appui, stick et gâchettes analogiques.</p></div>
+      <div class="pillar"><div class="row"><span class="dot"></span><b>4. Asset Manager</b></div><p>Cycle preload → mémoire → nettoyage prêt.</p></div>
+      <div class="pillar"><div class="row"><span class="dot"></span><b>5. Scene / Entity</b></div><p>Entités avec Transform position, rotation et échelle.</p></div>
+    </aside>
+
+    <main class="viewport">
+      <canvas id="gl"></canvas>
+      <div class="overlay">
+        <b>Sortie graphique minimale</b><br>
+        OpenGL natif : écran nettoyé en vert à chaque frame<br>
+        Aperçu web : même boucle via WebGL2<br>
+        Aucun terrain, joueur ou ballon ajouté.
+      </div>
+      <div class="hint">Teste ZQSD / flèches · maintiens ESPACE · connecte une manette si tu veux.</div>
+    </main>
+
+    <aside class="panel right">
+      <div class="head">Diagnostic temps réel</div>
+      <section class="section"><h3>Window / Graphics</h3><div class="body">
+        <div class="kv"><span>Viewport</span><span id="resolution" class="mono">—</span></div>
+        <div class="kv"><span>API aperçu</span><span>WebGL2</span></div>
+        <div class="kv"><span>Native</span><span>OpenGL 3.3 Core</span></div>
+        <div class="kv"><span>V-Sync</span><span class="ok">ON / rAF</span></div>
+      </div></section>
+      <section class="section"><h3>Game Loop</h3><div class="body">
+        <div class="kv"><span>Render FPS</span><span id="fps" class="mono">—</span></div>
+        <div class="kv"><span>deltaTime</span><span id="dt" class="mono">—</span></div>
+        <div class="kv"><span>Physics</span><span class="mono">60.000 Hz</span></div>
+        <div class="kv"><span>Fixed tick</span><span id="tick" class="mono">0</span></div>
+        <div class="kv"><span>Accumulator</span><span id="acc" class="mono">0 ms</span></div>
+      </div></section>
+      <section class="section"><h3>Input</h3><div class="body">
+        <div class="kv"><span>MOVE</span><span id="move" class="mono">----</span></div>
+        <div class="kv"><span>SHOOT hold</span><span id="shoot" class="mono">0.00 s</span></div>
+        <div class="kv"><span>Gamepad</span><span id="pad">non</span></div>
+        <div class="axes"><span>LX</span><div class="bar"><div class="fill" id="lx"></div></div></div>
+        <div class="axes"><span>LY</span><div class="bar"><div class="fill" id="ly"></div></div></div>
+        <div class="kv"><span>LT / RT</span><span id="triggers" class="mono">0.00 / 0.00</span></div>
+      </div></section>
+      <section class="section"><h3>Resources + Scene</h3><div class="body">
+        <div class="kv"><span>Assets</span><span class="mono">1 / 1 preload</span></div>
+        <div class="kv"><span>Entities</span><span class="mono">1</span></div>
+        <div class="kv"><span>Entity</span><span>EngineRoot</span></div>
+        <div class="kv"><span>Position</span><span class="mono">0, 0, 0</span></div>
+        <div class="kv"><span>Rotation</span><span class="mono">0, 0, 0</span></div>
+        <div class="kv"><span>Scale</span><span class="mono">1, 1, 1</span></div>
+      </div></section>
+    </aside>
+  </div>
+  <div class="status"><span class="ok">Core boot OK</span><span>Variable render</span><span>Fixed physics 60 Hz</span><span>Input live</span><span>Resource lifetime ready</span><span>Entity registry ready</span></div>
+</div>
+<script>
+const canvas=document.getElementById('gl');
+const gl=canvas.getContext('webgl2',{antialias:true,powerPreference:'high-performance'});
+if(!gl){document.querySelector('.live').textContent='WebGL2 indisponible';throw new Error('WebGL2 unavailable')}
+const FIXED=1/60, MAX_DT=.25;
+let prev=performance.now()/1000,acc=0,tick=0,frames=0,fpsClock=0,fpsValue=0,shootHold=0;
+const keys=new Set();
+addEventListener('keydown',e=>{keys.add(e.code);if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault()},{passive:false});
+addEventListener('keyup',e=>keys.delete(e.code));
+function resize(){const dpr=Math.min(devicePixelRatio||1,2),w=Math.max(1,Math.floor(canvas.clientWidth*dpr)),h=Math.max(1,Math.floor(canvas.clientHeight*dpr));if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h}gl.viewport(0,0,w,h);document.getElementById('resolution').textContent=`${w} × ${h}`}
+function gamepad(){const pads=navigator.getGamepads?navigator.getGamepads():[];const p=[...pads].find(Boolean);if(!p)return null;const a=p.axes||[];const b=p.buttons||[];return{lx:a[0]||0,ly:-(a[1]||0),lt:b[6]?.value||0,rt:b[7]?.value||0,name:p.id}}
+function bar(el,v){el.style.width=`${((Math.max(-1,Math.min(1,v))+1)*50).toFixed(1)}%`}
+function loop(ms){const now=ms/1000;let dt=Math.min(MAX_DT,Math.max(0,now-prev));prev=now;acc+=dt;fpsClock+=dt;frames++;
+  while(acc>=FIXED){tick++;acc-=FIXED}
+  const f=keys.has('KeyZ')||keys.has('ArrowUp'),b=keys.has('KeyS')||keys.has('ArrowDown'),l=keys.has('KeyQ')||keys.has('ArrowLeft'),r=keys.has('KeyD')||keys.has('ArrowRight');
+  if(keys.has('Space'))shootHold+=dt;else shootHold=0;
+  resize();gl.clearColor(.055,.24,.10,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+  if(fpsClock>=.25){fpsValue=frames/fpsClock;frames=0;fpsClock=0}
+  document.getElementById('fps').textContent=fpsValue.toFixed(1);
+  document.getElementById('dt').textContent=(dt*1000).toFixed(3)+' ms';
+  document.getElementById('tick').textContent=tick;
+  document.getElementById('acc').textContent=(acc*1000).toFixed(3)+' ms';
+  document.getElementById('move').textContent=(f?'F':'-')+(b?'B':'-')+(l?'L':'-')+(r?'R':'-');
+  document.getElementById('shoot').textContent=shootHold.toFixed(2)+' s';
+  const p=gamepad();document.getElementById('pad').textContent=p?'oui':'non';
+  const lx=p?.lx||0,ly=p?.ly||0;bar(document.getElementById('lx'),lx);bar(document.getElementById('ly'),ly);
+  document.getElementById('triggers').textContent=`${(p?.lt||0).toFixed(2)} / ${(p?.rt||0).toFixed(2)}`;
+  requestAnimationFrame(loop)
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
